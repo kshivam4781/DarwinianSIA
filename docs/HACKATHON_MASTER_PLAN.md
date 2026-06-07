@@ -1,0 +1,1461 @@
+# SIA-CABS Hackathon Master Plan
+
+> **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
+
+**Last updated:** 2026-06-06 (Section 20 merge implementation plan added)  
+**Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
+**Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
+**Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
+**Primary track:** Track 3 — Novel Self-Improvement Methodology  
+**Secondary track:** Track 1 — SIA harness extension  
+
+---
+
+## 0. Agent instructions (mandatory)
+
+### Before you do anything
+
+1. Read this file end-to-end.
+2. Check **Section 12 (Implementation status)** — do not rebuild what exists.
+3. Never start Phase 2 (paid API runs) until Phase 0 gates pass.
+4. Never run LawBench full runs without explicit user approval and budget check.
+5. Never use `--focus weights` (RL mode) — requires Tinker + Modal + cloud GPU.
+6. Never delete `runs/` directories without user approval (they are experiment evidence).
+7. Always use unique `--run_id` values; SIA refuses to overwrite existing runs.
+8. Prefer `--no-web` for long runs (less overhead).
+9. Monitor API spend; stop if approaching budget ceiling (Section 8).
+
+### Winning thesis (do not drift)
+
+Most teams optimize benchmark score. We optimize **what to investigate next** when beliefs contradict.
+
+```
+Standard SIA:  Failure → Fix → Higher score
+SIA-CABS:      Belief → Contradiction → Research question → Investigation → New theory
+```
+
+Judges win on **methodology + reproducible evidence**, not necessarily highest accuracy.
+
+---
+
+## 1. Machine environment (developer laptop)
+
+Verified on 2026-06-06:
+
+| Resource | Value | Implication |
+|----------|-------|-------------|
+| **OS** | Windows 11 Home (Build 26200) | SIA upstream assumes Unix paths — **Windows patch required** (Section 6.1) |
+| **CPU** | Intel Core Ultra 9 275HX, 24 cores / 24 threads | More than enough for orchestration |
+| **RAM** | 32 GB (~32,189 MB) | Sufficient for SIA per-run venv + pandas/sklearn eval |
+| **GPU** | NVIDIA GeForce RTX 5070 Ti Laptop (~4 GB VRAM reported) + Intel Graphics | **NOT used** in harness mode; inference is API-based |
+| **Disk** | ~670 GB free on C: | Sufficient |
+| **Python (use this)** | **3.13** via `py -3.13` | SIA requires >= 3.11 |
+| **Python (avoid default)** | 3.10.11 at `Python310\python.exe` | Too old / wrong venv if used by mistake |
+| **Shell** | PowerShell | Use `;` not `&&` for command chaining |
+| **Venv path** | `c:\Users\MSPSA\Documents\SIA2\.venv` | Created with Python 3.13 |
+
+### Hardware verdict
+
+- **CPU/RAM/Disk:** No blocker for this project.
+- **Local GPU:** Irrelevant for planned architecture (API inference only).
+- **Do not** attempt local 120B+ model inference on laptop.
+
+---
+
+## 2. Repository layout
+
+```
+SIA2/
+├── docs/
+│   └── HACKATHON_MASTER_PLAN.md    ← THIS FILE
+├── AGENTS.md                        ← Pointer for Cursor agents
+├── README.md                        ← User-facing quick start
+├── pyproject.toml                   ← sia-cabs package (v0.1.0)
+├── .venv/                           ← Python 3.13 virtualenv (gitignored)
+├── .gitignore
+│
+├── cabs/                            ← CABS core (belief science engine)
+│   ├── belief_store.py              ← JSON persistence (beliefs, contradictions, RQs)
+│   ├── belief_extractor.py          ← Heuristic extraction from gen artifacts
+│   ├── contradiction_detector.py    ← Opposing beliefs on same topic
+│   ├── research_question_generator.py
+│   ├── experiment_planner.py
+│   ├── research_agent.py            ← Rank + enrich agenda
+│   ├── belief_engine.py             ← Pipeline orchestrator per generation
+│   └── prompt_injection.py          ← Inject agenda into SIA prompts
+│
+├── sia_cabs/                        ← SIA integration layer
+│   ├── orchestrator.py              ← SIA loop + CABS hooks (entry: sia-cabs)
+│   └── cli.py                       ← analyze / agenda tools (sia-cabs-tools)
+│
+├── belief_store/                    ← Template JSON schemas (not per-run data)
+│   ├── beliefs.json
+│   ├── contradictions.json
+│   └── research_questions.json
+│
+├── sia-upstream/                    ← Cloned hexo-ai/sia (editable install)
+│   └── sia/                         ← Modify here for Windows venv fix
+│
+├── scripts/
+│   └── demo_cabs.py                 ← Offline demo (no API keys)
+│
+├── tests/
+│   └── test_cabs_pipeline.py        ← 4 unit tests (expand to 12+)
+│
+└── runs/                            ← Created at runtime (gitignored)
+    └── run_<id>/
+        ├── belief_store/            ← Per-run beliefs (CABS only)
+        ├── gen_<n>/
+        │   ├── target_agent.py
+        │   ├── results.json
+        │   ├── improvement.md
+        │   └── cabs_report.json
+        └── context.md
+```
+
+---
+
+## 3. System architecture
+
+### 3.1 Standard SIA loop (baseline)
+
+```
+Meta Agent → writes target_agent.py (gen 1)
+     ↓
+For each generation:
+  Target Agent → executes task → logs + submission
+     ↓
+  evaluate.py → results.json
+     ↓
+  Feedback Agent → writes improved target_agent.py + improvement.md
+```
+
+### 3.2 SIA-CABS loop (our extension)
+
+```
+Meta Agent (with CABS agenda injected)
+     ↓
+Target Agent → evaluate
+     ↓
+Feedback Agent (with CABS agenda injected)
+     ↓
+Belief Engine:
+  1. Belief Extractor      ← improvement.md, results.json, target_agent.py
+  2. Contradiction Detector ← same topic, opposing polarity
+  3. Research Question Generator
+  4. Experiment Planner
+  5. Update belief_store/
+     ↓
+Next generation Meta/Feedback receive active contradictions + research questions
+```
+
+### 3.3 Inference split (orchestration vs models)
+
+```
+┌─────────────────────────────────────────┐
+│  LAPTOP (CPU) — Orchestration           │
+│  sia-cabs, Belief Engine, evaluate.py   │
+└─────────────────────────────────────────┘
+         │                    │
+         ▼                    ▼
+  Anthropic API         Nebius Token Factory
+  Meta + Feedback       Target Agent inference
+  Claude Haiku          Nemotron / Qwen / Kimi
+  (cheap, Claude SDK)   (fast, pay-per-token, no local GPU)
+```
+
+**Layers 2–4** (later phases; see Section 18): Tavily grounding, committee gating, Darwinian population (sibling repo).
+
+**Explicitly NOT in this repo (build elsewhere or later):**
+- OpenClaw (separate framework; SIA already orchestrates)
+- Weights/RL mode (`--focus weights`)
+- Local GPU inference
+- Darwinian population loop → **`c:\Users\MSPSA\Documents\SIA`** (do not implement here unless user asks)
+- Committee + Tavily → Phase 5–6 here, after hackathon submission if time allows
+
+### 3.4 Unified vision (four layers + merge)
+
+Long-term goal: a **stacked self-improvement civilization** — not one trick, but complementary loops.
+
+```mermaid
+flowchart TB
+  subgraph L1["Layer 1 — SIA2 (CABS)"]
+    B[Beliefs] --> C[Contradictions]
+    C --> RQ[Research questions]
+    RQ --> AG[Agenda injected into Meta/Feedback]
+  end
+
+  subgraph L2["Layer 2 — SIA2 (Tavily)"]
+    RQ --> TAV[Tavily web search]
+    TAV --> EV[External evidence snippets]
+    EV --> B
+  end
+
+  subgraph L3["Layer 3 — SIA2 (Committee)"]
+    TAV --> PROP[Proponent]
+    TAV --> SKEP[Skeptic]
+    TAV --> REP[Replicator]
+    PROP --> GATE{Approved?}
+    SKEP --> GATE
+    REP --> GATE
+    GATE -->|yes| NB["New belief: technique X may help task Y"]
+    NB --> IMPL[Meta/Feedback implements in harness]
+  end
+
+  subgraph L4["Layer 4 — SIA repo (Darwinian)"]
+    POP[Population K agents] --> TOUR[Tournament / fitness]
+    TOUR --> SEL[Elites survive]
+    SEL --> XO[Crossover + mutation on DNA]
+    XO --> POP
+    CIV[(civilization.json trait memory)]
+    TOUR --> CIV
+  end
+
+  subgraph MERGE["Future merge (post-hackathon)"]
+    CIV --> B
+    B --> XO
+    NB --> XO
+  end
+
+  L1 --> L2
+  L2 --> L3
+  L4 -.-> MERGE
+  L1 -.-> MERGE
+```
+
+| Layer | Repo | What it optimizes | Hackathon priority |
+|-------|------|-------------------|-------------------|
+| **1 — CABS** | `SIA2` | *What to investigate* when beliefs contradict | **P0 — submit this** |
+| **2 — Tavily** | `SIA2` | Ground research questions in external evidence | P2 — after GPQA runs |
+| **3 — Committee** | `SIA2` | Gate external techniques before implementation | P3 — stretch |
+| **4 — Darwinian** | `SIA` | *Which agent architecture* wins via population competition | **P0 parallel** — separate submission story |
+| **Merge** | unified fork | CABS beliefs about DNA traits; contradictions across population; committee seeds mutations | Post-deadline |
+
+**Two winning narratives (can submit separately or combined later):**
+
+1. **CABS (SIA2):** Science-style self-improvement — belief → contradiction → investigation.
+2. **Darwinian (SIA):** Evolution-style self-improvement — population → selection → crossover/mutation → civilization memory.
+
+Combined pitch (merge): *"An AI civilization that both evolves architectures and questions its own assumptions."*
+
+### 3.5 Split-repo work plan (who builds what)
+
+| Work item | Owner repo | Path | Do not duplicate in |
+|-----------|------------|------|---------------------|
+| Belief store, contradiction detector, RQ generator | **SIA2** | `cabs/` | SIA |
+| `sia-cabs` orchestrator + prompt injection | **SIA2** | `sia_cabs/` | SIA |
+| DNA schema, crossover, mutation, tournament | **SIA** | `sia/evolution/` | SIA2 |
+| `--darwinian`, `--population_size`, `civilization.json` | **SIA** | `sia/cli.py`, `sia/orchestrator.py` | SIA2 |
+| Windows venv fix, `.env`, Nebius profiles | **Both** (each has own `sia-upstream` or fork) | — | — |
+| Tavily research agent | **SIA2** | `cabs/research_agent.py` (extend) | SIA |
+| Committee (proponent/skeptic/replicator) | **SIA2** | `cabs/committee/` (new, Phase 6) | SIA |
+| Unified orchestrator | **Future** | `sia-unified` or merge into one repo | — |
+
+**Coordination rule:** Each repo maintains its own `docs/HACKATHON_MASTER_PLAN.md`. This file is authoritative for **CABS + Layers 2–3**. Darwinian phases live in `SIA/docs/HACKATHON_MASTER_PLAN.md`. Cross-repo contracts: Section 19.
+
+### 3.6 Parallel timeline (two developers / two agents)
+
+```
+Week 1 (hackathon)
+├── SIA2: Phase 0 ✅ → Phase 1 → Phase 2 (GPQA CABS) → Phase 3 (submission)
+└── SIA:  Phase 0–1 ✅ → Phase 2 (GPQA darwinian subset) → submission
+
+Week 2+ (if time)
+├── SIA2: Phase 5 (Tavily) → Phase 6 (committee)
+└── SIA:  Lawbench showcase, larger population
+
+Post-hackathon
+└── Phase 7: merge — CABS reads civilization.json; Darwinian reads belief_store/
+```
+
+**Budget split (shared $100–200 Nebius + Anthropic):**
+- Reserve ~60% for SIA2 GPQA baseline + CABS (primary Track 3 evidence).
+- Reserve ~40% for SIA darwinian subset runs (population × subset cases).
+- Never run both repos' full GPQA jobs in parallel.
+
+---
+
+## 4. APIs, keys, and external services
+
+### 4.1 Required keys
+
+| Env variable | Service | Used for | How to obtain |
+|--------------|---------|----------|---------------|
+| `ANTHROPIC_API_KEY` | Anthropic | Meta Agent + Feedback Agent (Claude SDK) | https://console.anthropic.com |
+| `NEBIUS_API_KEY` | Nebius Token Factory | Target Agent inference (OSS models) | Nebius console; promo code below |
+
+**Set in PowerShell (session):**
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:NEBIUS_API_KEY = "..."
+```
+
+**Never commit keys.** Never log keys. Never put keys in markdown files.
+
+### 4.2 Nebius promo / credits
+
+- Promo event: Nebius + OpenClaw webinar
+- Activation code: `CLAW-NEBIUS-2026-04-B`
+- URL: https://nebius.com/promo-code?utm_promo_event_code=4005-2026-04-webinar-running-openclaw-on-nebius&utm_promo_activation_code=CLAW-NEBIUS-2026-04-B
+- Token Factory docs: https://docs.tokenfactory.nebius.com
+- SIA bundled provider: `sia/defaults/providers/nebius.json`
+- Base URL: `https://api.tokenfactory.us-central1.nebius.com/v1/`
+
+### 4.3 Optional keys (Phase 4 only)
+
+| Env variable | Service | Used for | Cost note |
+|--------------|---------|----------|-----------|
+| `TAVILY_API_KEY` | Tavily | Research Agent web search | Free tier limited; use sparingly |
+| `TINKER_API_KEY` | Tinker | **DO NOT USE** unless weights mode | Required for lawbench reference gpt-oss via Tinker |
+| `MODAL_TOKEN_ID` | Modal | **DO NOT USE** | Weights mode only |
+
+### 4.4 Approved model assignment (default for all runs)
+
+| Role | Profile | Provider | Model | Agent impl |
+|------|---------|----------|-------|------------|
+| Meta + Feedback | `default-meta` | anthropic | `haiku` | `claude` |
+| Target | `nemotron-nebius-target` | nebius | `nvidia/Nemotron-3-Super-120B` | *(generated code)* |
+
+**Profile `nemotron-nebius-target` — TO BE CREATED in Phase 0.**
+
+**Fallback target profiles (if Nemotron unavailable):**
+- `qwen-nebius-target` → `Qwen/Qwen3-Next-80B-A3B-Thinking-fast`
+- `kimi-nebius-target` → `moonshotai/Kimi-K2.6`
+- `gptoss-nebius-target` → `openai/gpt-oss-120b-fast`
+
+**Do NOT use by default:**
+- `default-target` (Claude Haiku target — OK for smoke only)
+- `*-tinker-target` profiles (need `TINKER_API_KEY`, different billing)
+- `kimi-nebius-meta` (needs `openhands` extra — extra dependency)
+
+### 4.5 Nebius model pricing reference (approximate)
+
+| Model | Input / 1M tokens | Output / 1M tokens | Speed |
+|-------|-------------------|---------------------|-------|
+| Nemotron-3-Super-120B | $0.30 | $0.90 | ~127 tok/s |
+| Qwen3.5-397B | $0.60 | $3.60 | ~80–95 tok/s |
+| Kimi-K2.5 | $0.50 | $2.50 | ~60 tok/s |
+| MiniMax-M2.5 | $0.30 | $1.20 | ~37 tok/s |
+
+Promo credits may show $0/$0 for some models during trial — still monitor usage.
+
+---
+
+## 5. Installation (exact commands)
+
+### 5.1 One-time setup
+
+```powershell
+cd c:\Users\MSPSA\Documents\SIA2
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]" -e "./sia-upstream[dev]"
+```
+
+### 5.2 Verify CLIs
+
+```powershell
+sia --help
+sia-cabs --help
+sia-cabs-tools --help
+pytest -q
+python scripts\demo_cabs.py
+```
+
+### 5.3 Entry points
+
+| Command | Module | Purpose |
+|---------|--------|---------|
+| `sia` | `sia.orchestrator:main` | Baseline SIA (comparison runs) |
+| `sia-cabs` | `sia_cabs.orchestrator:main` | SIA + CABS hooks |
+| `sia-cabs-tools analyze` | `sia_cabs.cli` | Retroactive CABS on existing run |
+| `sia-cabs-tools agenda` | `sia_cabs.cli` | Print research agenda JSON |
+| `sia web` | visualizer | Dashboard at http://127.0.0.1:8000 |
+
+---
+
+## 6. Blockers, limitations, and mitigations
+
+### 6.1 CRITICAL: Windows venv path bug
+
+**File:** `sia-upstream/sia/layout.py` lines 53–60
+
+**Problem:** Uses Unix paths `venv/bin/python` and `venv/bin/pip`. On Windows must be `Scripts/python.exe` and `Scripts/pip.exe`.
+
+**Symptom:** Target agent subprocess fails immediately; no `results.json`; run appears broken.
+
+**Status:** **FIXED** — Phase 0 complete (`sia-upstream/sia/layout.py`)
+
+**Fix (reference — already applied):**
+```python
+import sys
+def venv_python_path(venv_dir: str) -> str:
+    if sys.platform == "win32":
+        return os.path.join(venv_dir, "Scripts", "python.exe")
+    return os.path.join(venv_dir, "bin", "python")
+```
+Same pattern for `venv_pip_path`.
+
+**Fallback if patch fails:** Deploy to Nebius Serverless Linux container (docs.nebius.com/serverless).
+
+---
+
+### 6.2 CRITICAL: Missing API keys
+
+| Missing key | What breaks |
+|-------------|-------------|
+| `ANTHROPIC_API_KEY` | Meta + Feedback agents fail at startup |
+| `NEBIUS_API_KEY` | Target agent fails if using Nebius profiles |
+
+**Gate:** Both keys set before any paid run.
+
+---
+
+### 6.3 HIGH: API cost overrun
+
+**What is affected:** Ability to complete GPQA A/B runs.
+
+| Task | Cases per eval | Est. cost per 5-gen run |
+|------|----------------|-------------------------|
+| longcot-chess | 50 | $15–30 |
+| gpqa | 198 | $40–80 |
+| lawbench | 913 | $200–500+ |
+
+**Rules for agents:**
+- Default task for submission: **gpqa**
+- Smoke task: **longcot-chess**
+- **Never run lawbench** without user approval
+- Budget ceiling: **$200 total** unless user raises it
+- If spend > $150: stop after 3 generations and submit with available data
+- Always use `--no-web` on long runs
+- Use Nemotron (cheapest fast option) for target
+
+---
+
+### 6.4 HIGH: Weak belief extraction in real runs
+
+**What is affected:** No contradictions → weak Track 3 story.
+
+**Current state:** Heuristic regex only (`cabs/belief_extractor.py`).
+
+**Mitigation (Phase 1):**
+- Feedback writes `beliefs.json` per generation
+- Haiku LLM fallback when heuristics find < 2 beliefs
+- Dedup by `(topic, polarity)`
+- CABS agenda at TOP of feedback prompt
+
+---
+
+### 6.5 MEDIUM: Agents ignore CABS injection
+
+**What is affected:** CABS run identical to baseline.
+
+**Mitigation:** Top-of-prompt injection + mandatory research question instruction. Log `cabs_prompt_section` per gen.
+
+---
+
+### 6.6 MEDIUM: CABS score ≤ baseline
+
+**What is affected:** Judges questioning value.
+
+**Not a blocker for Track 3.** Submit dual metrics:
+- Benchmark accuracy (results.json)
+- Knowledge Gain Score (cabs_report.json)
+
+A flat score + high knowledge gain is a **feature** for methodology track.
+
+---
+
+### 6.7 MEDIUM: Run directory collision
+
+**Symptom:** `Run directory already exists`
+
+**Fix:** Always use unique `--run_id`. Never reuse: `smoke`, `smoke_cabs`, `baseline_gpqa_5`, `cabs_gpqa_5`.
+
+---
+
+### 6.8 MEDIUM: Target agent uses wrong API
+
+**Symptom:** Gen 1 `target_agent.py` calls Tinker instead of Nebius.
+
+**Cause:** Reference agents in lawbench/gpqa default to `TINKER_API_KEY`.
+
+**Mitigation:** Use Nebius target profile; inspect `gen_1/target_agent.py` after meta agent; meta prompt should specify Nebius OpenAI-compatible endpoint.
+
+---
+
+### 6.9 LOW: Belief extractor false positives
+
+**What is affected:** Demo quality.
+
+**Mitigation:** Curate one clear contradiction chain for submission; use `demo_cabs.py` as backup.
+
+---
+
+### 6.10 Explicitly out of scope in **this repo** (build in SIA or later)
+
+| Item | Where | Why not here |
+|------|-------|--------------|
+| `--focus weights` | — | Tinker + Modal + cloud GPU |
+| Full LawBench 5-gen × 2 | SIA or either | Cost $200–500+ |
+| OpenClaw migration | — | SIA already orchestrates |
+| Darwinian population loop | **`SIA` repo** | Parallel project; merge in Phase 7 |
+| Committee agents | **SIA2 Phase 6** | After CABS submission evidence |
+| Tavily live search | **SIA2 Phase 5** | After GPQA runs |
+| Local GPU inference | — | Wrong architecture |
+
+---
+
+## 7. Task selection policy
+
+| Phase | Task | `--max_gen` | `--run_id` (integer) | Purpose |
+|-------|------|-------------|----------------------|---------|
+| Smoke | `longcot-chess` | 1 | `901` / `902` | Prove loop works |
+| Validation | `longcot-chess` | 3 | `903` | First real contradiction |
+| Submission baseline | `gpqa` | 5 | `910` | Comparison evidence |
+| Submission CABS | `gpqa` | 5 | `911` | Comparison evidence |
+| Narrative only | `lawbench` | 0 | — | Mention in SUBMISSION.md; use `demo_cabs.py` |
+
+> **Note:** SIA requires numeric `--run_id`. Use unique integers; artifacts live in `runs/run_<id>/`.
+
+### Bundled SIA tasks reference
+
+| Task | Cases | Difficulty | CABS relevance |
+|------|-------|------------|----------------|
+| `longcot-chess` | 50 | Medium | Planning, CoT |
+| `gpqa` | 198 | High | Reasoning, tools, prompting |
+| `lawbench` | 913 | High | Memory, legal reasoning (expensive) |
+| `spaceship-titanic` | ML tabular | Low | Poor CABS fit |
+
+---
+
+## 8. Budget and cost controls
+
+### 8.1 Estimated total spend
+
+| Item | Est. cost |
+|------|-----------|
+| Smoke + validation (chess) | $20–40 |
+| GPQA baseline 5 gen | $40–80 |
+| GPQA CABS 5 gen | $40–80 |
+| Phase 1 Haiku belief extraction | $5–15 |
+| Tavily (optional) | $0–10 |
+| **Total** | **$100–200** |
+
+### 8.2 Agent spending rules
+
+1. Check Nebius + Anthropic dashboard before starting Phase 2.
+2. Never run two full GPQA jobs in parallel (doubles spend).
+3. If promo credits exhausted: fall back to `default-target` (Haiku) for target on chess only.
+4. Log estimated spend in commit messages / run notes when starting expensive jobs.
+5. Minimum viable submission needs only 3 generations — use if budget tight.
+
+---
+
+## 9. Implementation phases (strict order)
+
+### Phase 0 — Unblock execution (~3 hours)
+
+| ID | Task | Gate |
+|----|------|------|
+| 0.1 | User redeems Nebius promo; `NEBIUS_API_KEY` set | Key validates |
+| 0.2 | `ANTHROPIC_API_KEY` set | SIA starts clean |
+| 0.3 | Fix Windows `venv_python_path` / `venv_pip_path` | Subprocess works |
+| 0.4 | Create `nemotron-nebius-target.json` profile | Profile loads |
+| 0.5 | `sia run --task longcot-chess --max_gen 1 --run_id 901 --no-web` | `gen_1/results.json` |
+| 0.6 | `sia-cabs run` same with `--run_id 902` | `belief_store/` exists |
+
+**STOP if any gate fails.**
+
+---
+
+### Phase 1 — Make CABS work on real runs (~8 hours)
+
+| ID | Task | Gate |
+|----|------|------|
+| 1.1 | Feedback emits `beliefs.json` | File in each gen dir |
+| 1.2 | Haiku LLM belief fallback | Works when regex finds < 2 |
+| 1.3 | Belief deduplication | No duplicate (topic, polarity) |
+| 1.4 | CABS agenda at top of feedback prompt | Logged in prompt file |
+| 1.5 | `scripts/comparison_report.py` | JSON + markdown table |
+| 1.6 | Tests expanded to >= 12 | `pytest` green |
+| 1.7 | `docs/SUBMISSION.md` draft started | File exists |
+
+**Gate:** 3-gen chess run → >= 1 contradiction + >= 1 research question.
+
+---
+
+### Phase 2 — Submission runs (~12–20 hours wall time)
+
+```powershell
+# Baseline
+sia run --task gpqa --max_gen 5 --run_id baseline_gpqa_5 --no-web `
+  --target-agent-profile nemotron-nebius-target
+
+# CABS
+sia-cabs run --task gpqa --max_gen 5 --run_id cabs_gpqa_5 --no-web `
+  --target-agent-profile nemotron-nebius-target
+```
+
+**Gate:** One full story arc (belief → contradiction → research question → gen N+1 addresses it).
+
+---
+
+### Phase 3 — Submission package (~6 hours)
+
+Deliver all items in Section 11 checklist.
+
+---
+
+### Phase 4 — Polish (only if Phase 2 complete early)
+
+- Contradiction resolution tracking
+- `sia web` CABS panel
+- Nebius Serverless fallback deploy
+- Cross-repo status sync with `SIA` (Section 18)
+
+**Gate:** Hackathon submission package complete (Section 11).
+
+---
+
+### Phase 5 — Tavily grounding (SIA2 only, post-submission or stretch)
+
+| ID | Task | Gate |
+|----|------|------|
+| 5.1 | `TAVILY_API_KEY` in `.env` + `verify_keys.py` | Key validates |
+| 5.2 | Extend `cabs/research_agent.py` — search per open RQ | Snippets saved to `belief_store/evidence/` |
+| 5.3 | Belief confidence updated from external citations | At least 1 RQ has Tavily evidence |
+| 5.4 | Cost cap: max 10 Tavily calls per run | Logged in `cabs_report.json` |
+
+**Purpose:** Turn internal contradictions into externally grounded investigation.
+
+---
+
+### Phase 6 — Committee gating (SIA2 only)
+
+| ID | Task | Gate |
+|----|------|------|
+| 6.1 | `cabs/committee/` — proponent, skeptic, replicator (Haiku) | Module exists |
+| 6.2 | Input: Tavily technique candidate + task context | Structured vote JSON |
+| 6.3 | Output: approved belief → `belief_store/beliefs.json` | e.g. `"Self-consistency may help gpqa"` |
+| 6.4 | Approved belief injected into meta/feedback prompt | Logged like CABS agenda |
+| 6.5 | Rejected techniques logged with skeptic rationale | Audit trail for judges |
+
+**Purpose:** External ideas enter the harness only after multi-agent debate.
+
+---
+
+### Phase 7 — Merge CABS + Darwinian (both repos)
+
+> **Detailed implementation plan:** Section 20 (file-level tasks, phases 7.0–7.5, testing, demo narrative).  
+> **JSON contracts only:** Section 19. Do not import Python across repos until post-hackathon.
+
+| ID | Task | Owner | Gate |
+|----|------|-------|------|
+| 7.0 | Shared schemas + topic→DNA mapping (Section 20.1) | Both | `test_merge_contracts.py` green |
+| 7.1 | CABS analyzes Darwinian `gen_N/agent_K/` layout (Section 20.2) | SIA2 | `analyze` on `SIA/runs/run_311` produces beliefs + cross-agent contradiction |
+| 7.2 | CABS ingests `civilization.json` → beliefs (Section 20.2.4) | SIA2 | e.g. `"aggressive tool_strategy correlates with fitness on gpqa"` |
+| 7.3 | Darwinian `--cabs` feedback injection + committee MUST-implement (Section 20.3) | SIA | Gen 2+ feedback prompt contains CABS agenda + approved techniques |
+| 7.4 | Mutation bias from open RQs + `technique_seeds` on DNA (Section 20.4–20.5) | SIA | Offspring DNA biased toward open `dna_field` values |
+| 7.5 | Documented two-step or wrapper pipeline (Section 20.6) | Both | One repro command in README / `scripts/run_cabs_darwinian.ps1` |
+
+**Priority tiers (if time-boxed):**
+- **P0 (ship first):** 7.1 cross-agent contradictions + 7.3 feedback injection + 7.2 civilization beliefs
+- **P1 (polish):** 7.4 mutation bias + technique_seeds
+
+**Merge command vision (future):**
+```powershell
+sia-unified run --task gpqa --darwinian --population_size 4 `
+  --cabs --committee --tavily --run_id 1000 --no-web
+```
+
+**Prerequisite:** Both repos have independent submission-quality runs. SIA2 has `run_showcase` + Tier 3 (Tavily + committee). SIA has `run_311` (best darwinian showcase).
+
+---
+
+## 10. CABS data model
+
+### Belief
+```json
+{
+  "id": "belief_abc123",
+  "belief": "Planning depth > 5 helps on hard questions",
+  "topic": "planning",
+  "polarity": "positive",
+  "confidence": 0.82,
+  "generation": 3,
+  "evidence": ["gen_2", "gen_3"],
+  "status": "active"
+}
+```
+
+### Contradiction
+```json
+{
+  "id": "contradiction_xyz",
+  "topic": "planning",
+  "belief_a": "Planning depth > 5 helps",
+  "belief_b": "Planning depth > 5 caused timeouts",
+  "priority": 0.85,
+  "status": "open",
+  "detected_at_gen": 4
+}
+```
+
+### Research question
+```json
+{
+  "id": "rq_123",
+  "question": "When does planning depth help vs hurt?",
+  "contradiction_id": "contradiction_xyz",
+  "priority": 0.85,
+  "experiments": [
+    {"name": "planning_on_hard", "variable": "planning", "setting": "enabled", "slice": "hard"}
+  ],
+  "status": "open"
+}
+```
+
+### Knowledge Gain Score (per generation)
+
+Computed in `cabs/belief_engine.py`:
+- +0.05 per new belief
+- +0.25 per new contradiction
+- +0.35 per new research question
+- Capped at 1.0
+
+**Not peer-reviewed.** Defend as hackathon prototype metric.
+
+---
+
+## 11. Submission checklist (all required)
+
+- [ ] Working install (`pip install -e . -e ./sia-upstream[dev]`)
+- [ ] `pytest` green
+- [ ] Baseline run complete (`runs/run_baseline_gpqa_5/`)
+- [ ] CABS run complete (`runs/run_cabs_gpqa_5/`)
+- [ ] Score table per generation (both runs)
+- [ ] Knowledge Gain table (CABS run)
+- [ ] >= 1 contradiction chain documented
+- [ ] `docs/SUBMISSION.md` with Track 3 argument
+- [ ] Repro commands in README
+- [ ] `scripts/demo_cabs.py` works offline
+- [ ] Screenshots from `sia web` (optional but recommended)
+
+---
+
+## 12. Implementation status (update this section as work progresses)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `cabs/` core modules | DONE | Heuristic extractor only |
+| `sia_cabs/orchestrator.py` | DONE | CABS hook after eval |
+| `belief_store/` templates | DONE | |
+| `scripts/demo_cabs.py` | DONE | Offline demo works |
+| `tests/test_cabs_pipeline.py` | DONE | 4 tests passing |
+| Python 3.13 venv | DONE | At `.venv/` |
+| sia-upstream editable install | DONE | v0.5.1 |
+| Windows venv path fix | **DONE** | `layout.py` + UTF-8 subprocess env |
+| UTF-8 task file reads (`run_setup.py`) | **DONE** | Windows cp1252 fix |
+| `nemotron-nebius-target` profile | **DONE** | Added to sia defaults |
+| `.env` + `verify_keys.py` | **DONE** | Both keys verified |
+| `ANTHROPIC_API_KEY` configured | **DONE** | In `.env` |
+| `NEBIUS_API_KEY` configured | **DONE** | In `.env` |
+| Baseline smoke `run_901` | **DONE** | Loop works; 0% acc (parse issue) |
+| CABS smoke `run_902` | **DONE** | belief_store populated |
+| Structured `beliefs.json` from feedback | **DONE** | Feedback prompt + ingest hook |
+| CABS agenda prepended to prompts | **DONE** | `prompt_injection.py` |
+| Belief deduplication | **DONE** | `BeliefStore.append_beliefs` |
+| LLM belief fallback | **DONE** | `llm_belief_extractor.py` (optional API) |
+| Resolution tracking | **DONE** | `resolution_tracker.py` |
+| Chess meta output hints | **DONE** | `sia_prompt_addons.py` |
+| HTML CABS dashboard | **DONE** | `scripts/cabs_dashboard.py` |
+| Tests (16+) | **DONE** | `test_improvements.py` |
+| `docs/SUBMISSION.md` | **DONE** | Hackathon pitch |
+| `docs/PRESENTATION.md` | **DONE** | 2-min demo script |
+| `scripts/present_hackathon.py` | **DONE** | One-command demo |
+| `runs/run_showcase` | **DONE** | Full contradiction chain |
+| `scripts/comparison_report.py` | **DONE** | Baseline vs CABS table |
+| GPQA baseline run | **NOT DONE** | Phase 2 |
+| GPQA CABS run | **NOT DONE** | Phase 2 |
+| Multi-repo roadmap (Sections 18–19) | **DONE** | Split + merge contracts |
+| Tavily integration | **DONE** | `cabs/tavily_*.py`, `--tavily`, `sia-cabs-tools ground` |
+| Committee module | **DONE** | `cabs/committee/`, `--committee`, `sia-cabs-tools committee` |
+| CABS + Darwinian merge | **DONE (P0+P1)** | Section 20 — technique_seeds + enriched civilization |
+| `cabs/dna_mapping.py` topic→DNA map | **DONE** | Section 20.1 |
+| Darwinian `analyze` on `gen_N/agent_K/` | **DONE** | `belief_extractor.py` population loader |
+| Cross-agent contradictions | **DONE** | `detect_population_contradictions` + tests |
+| civilization.json ingest | **DONE** | `ingest_civilization()` + enriched §19.2 export |
+| SIA `--cabs` feedback bridge | **DONE** | `cabs_bridge.py` + `evolution_prompts.py` |
+| SIA mutation bias from RQs | **DONE** | `operators.mutate(bias=...)` |
+| SIA `technique_seeds` on DNA | **DONE** | `dna.py` + `breed_offspring(technique_seeds=...)` |
+| `scripts/run_cabs_darwinian.ps1` | **DONE** | Two-step merge pipeline |
+| Merge contract tests | **DONE** | `test_merge_contracts.py` both repos |
+| Merge tests SIA2 | **DONE** | 35 tests passing |
+| Merge tests SIA (merge modules) | **DONE** | `test_cabs_bridge`, `test_technique_seeds`, `test_merge_contracts` |
+| GPQA baseline run | **DEFERRED** | Submission uses run_311 + showcase (time-boxed) |
+| GPQA CABS run | **DEFERRED** | Submission uses run_902 + showcase |
+| Live merged demo `run_400` | **DEFERRED** | `run_311` + analyze proves merge |
+| `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — prints READY FOR SUBMISSION |
+| Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
+
+---
+
+## 13. Exact run commands reference
+
+### Smoke (Phase 0) — complete
+```powershell
+cd c:\Users\MSPSA\Documents\SIA2
+.\.venv\Scripts\Activate.ps1
+. .\scripts\load_env.ps1
+
+sia run --task longcot-chess --max_gen 1 --run_id 901 --no-web `
+  --target-agent-profile qwen-nebius-target
+
+sia-cabs run --task longcot-chess --max_gen 1 --run_id 902 --no-web `
+  --target-agent-profile qwen-nebius-target
+```
+
+### Validation (Phase 1)
+```powershell
+sia-cabs run --task longcot-chess --max_gen 3 --run_id 903 --no-web `
+  --target-agent-profile nemotron-nebius-target
+```
+
+### Submission (Phase 2)
+```powershell
+sia run --task gpqa --max_gen 5 --run_id 910 --no-web `
+  --target-agent-profile nemotron-nebius-target
+
+sia-cabs run --task gpqa --max_gen 5 --run_id 911 --no-web `
+  --target-agent-profile nemotron-nebius-target
+```
+
+### Inspect results
+```powershell
+sia-cabs-tools agenda --run-dir runs/run_911
+sia-cabs-tools analyze --run-dir runs/run_910
+sia web --runs-dir ./runs
+```
+
+### Phase 7 — CABS + Darwinian merge (Section 20)
+```powershell
+# Analyze sibling darwinian run (after 20.2 implemented)
+sia-cabs-tools analyze --run-dir ..\SIA\runs\run_311
+
+# Full merged pipeline (after 20.6 implemented) — see Section 20.6
+```
+
+### Offline demo (no API)
+```powershell
+python scripts\demo_cabs.py
+pytest -q
+```
+
+---
+
+## 14. Winning pitch (memorize)
+
+**Problem:** Self-improving AI optimizes scores but never questions its own assumptions.
+
+**Insight:** Science advances via belief → contradiction → investigation.
+
+**Solution:** SIA-CABS Belief Engine between Feedback and Meta agents.
+
+**Evidence:** GPQA baseline vs CABS, dual metrics, one contradiction chain.
+
+**Track 3:** New methodology — contradiction-driven self-improvement.
+
+---
+
+## 15. Day schedule
+
+| Day | Work | Exit criteria |
+|-----|------|---------------|
+| Day 1 AM | SIA2 Phase 0 + SIA D0–D1 | Smoke passes both repos |
+| Day 1 PM | SIA2 Phase 1 | 3-gen contradiction |
+| Day 2 | SIA2 Phase 2 + SIA D2 (parallel) | GPQA CABS + darwinian subset |
+| Day 3 | Both submission packages | SUBMISSION.md in each repo |
+| Day 4 | Phase 4–6 (Tavily + committee) or merge prep | Demo rehearsed |
+| Day 5+ | Phase 7 (Section 20) | `analyze run_311` + `--cabs` darwinian demo |
+
+---
+
+## 16. References
+
+| Resource | URL |
+|----------|-----|
+| SIA upstream | https://github.com/hexo-ai/sia |
+| SIA paper | https://arxiv.org/abs/2605.27276 |
+| Nebius Token Factory docs | https://docs.tokenfactory.nebius.com |
+| Nebius Serverless docs | https://docs.nebius.com/serverless |
+| Tavily docs | https://docs.tavily.com |
+| Nebius promo | https://nebius.com/promo-code (code: CLAW-NEBIUS-2026-04-B) |
+| OpenClaw nebius skill | https://github.com/opencolin/nebius-skill (deploy only; not core) |
+| Darwinian sibling repo | `c:\Users\MSPSA\Documents\SIA` |
+| Darwinian master plan | `SIA/docs/HACKATHON_MASTER_PLAN.md` |
+
+---
+
+## 17. Document maintenance
+
+Any agent that completes a phase **must update Section 12** (Implementation status) and check off Section 11 items.
+
+When adding new profiles, blockers, or changing task/budget policy — update this file first, then implement.
+
+**Single source of truth per repo:**
+- **This file** — CABS + Layers 2–3 + merge contracts + **Section 20 merge implementation plan** (SIA2)
+- **`c:\Users\MSPSA\Documents\SIA\docs\HACKATHON_MASTER_PLAN.md`** — Darwinian + population evolution
+- Cross-link both; Darwinian loop internals live in SIA plan; merge execution detail lives in **Section 20 here**.
+
+---
+
+## 18. Sibling repo status (Darwinian — read-only reference)
+
+**Workspace:** `c:\Users\MSPSA\Documents\SIA`  
+**CLI:** `sia run --darwinian --population_size N --elite_count M`  
+**Master plan:** `SIA/docs/HACKATHON_MASTER_PLAN.md`  
+**Sprint doc:** `SIA/docs/HACKATHON_FINISH_LINE.md`
+
+### What exists in SIA (as of 2026-06-06)
+
+| Component | Status |
+|-----------|--------|
+| `sia/evolution/` (dna, operators, civilization, population) | DONE |
+| CLI flags `--darwinian`, `--population_size`, `--elite_count`, `--mutation_rate`, `--baseline_seed`, `--seed`, `--resume` | DONE |
+| `agent_dna.json` per population member | DONE |
+| `civilization.json` trait memory | DONE (simple win-count `trait_insights`; Section 20.1 enriches to §19.2 schema) |
+| Dry-run + `--eval_subset` | DONE |
+| Real API run `run_310` (gpqa, pop=2) | DONE (0% fitness — broken meta) |
+| **Best darwinian showcase `run_311`** | DONE — gen1+gen2, **20% elite** (3/15 GPQA subset), `--baseline_seed` from `run_201` |
+| Baseline `run_201` | DONE — **13.3%** (4/30 GPQA), single `gen_1/target_agent.py` |
+| CABS runtime code in SIA | **NONE** — merge is Phase 7 / Section 20 |
+| `scripts/compare_runs.py` | In progress per FINISH_LINE |
+
+### Darwinian method (understood — do not re-derive)
+
+**Layout:** `runs/run_<id>/gen_<n>/agent_<k>/` (not flat `gen_<n>/`).
+
+**Loop:**
+1. Gen 1: `AgentDNA.random()` per agent → meta-agent (or `--baseline_seed` copy) → `target_agent.py`
+2. Eval all agents → `fitness = results.json["accuracy"]`
+3. `select_elites()` → `civilization.record_generation()`
+4. Breed: `crossover(elite A, elite B)` + `mutate(mutation_rate)` → offspring DNA
+5. Feedback agent rewrites parent `target_agent.py` for offspring DNA traits
+6. Repeat until `--max_gen`
+
+**Key files:** `sia/evolution/dna.py`, `operators.py`, `population.py`, `evolution_prompts.py`, `civilization.py`; orchestrator branch at `sia/orchestrator.py` (~line 1028).
+
+**What Darwinian does NOT do today:** cross-agent belief analysis, CABS agenda in feedback, mutation bias from research questions, `technique_seeds` on DNA.
+
+### Darwinian phases (execute in SIA repo, not here)
+
+| Phase | Goal | Example command |
+|-------|------|-----------------|
+| D0–D1 | Module + dry-run gates | `--dry-run --eval_subset 5` |
+| D2 | Real subset baseline vs darwinian | `run_201` vs `run_300` |
+| D3 | Submission package | `SUBMISSION.md` + civilization trait chart |
+
+### Handoff points (when merge begins)
+
+1. **SIA2 → SIA:** Export `belief_store/research_questions.json` topics that map to DNA fields (`planning_style`, `tool_strategy`, `memory`, etc.).
+2. **SIA → SIA2:** Copy `civilization.json` after each darwinian run; CABS `belief_extractor` ingests trait_insights as beliefs.
+3. **Shared:** Same task (`gpqa`), same target profile (`nemotron-nebius-target`), same `--run_id` numbering convention (integers).
+
+---
+
+## 19. Cross-repo merge contracts (stable interfaces)
+
+These schemas are the **only** coupling surface between repos until Phase 7 unified CLI.
+
+### 19.1 CABS exports (SIA2 → SIA)
+
+**File:** `runs/run_<id>/belief_store/research_questions.json`
+
+```json
+{
+  "id": "rq_123",
+  "question": "Does aggressive tool use help or hurt on gpqa?",
+  "topic": "tool_strategy",
+  "dna_field": "tool_strategy",
+  "priority": 0.85,
+  "status": "open"
+}
+```
+
+**SIA consumer:** `sia/evolution/operators.py` may bias mutation toward `dna_field` values mentioned in open RQs (Phase 7.3).
+
+### 19.2 Darwinian exports (SIA → SIA2)
+
+**File:** `runs/run_<id>/civilization.json`
+
+```json
+{
+  "trait_insights": [
+    {
+      "trait": "tool_strategy",
+      "value": "aggressive",
+      "mean_fitness_delta": 0.12,
+      "generations_observed": [1, 2, 3],
+      "confidence": 0.7
+    }
+  ]
+}
+```
+
+**SIA2 consumer:** `cabs/belief_extractor.py` converts each insight to a belief:
+
+```json
+{
+  "belief": "tool_strategy=aggressive correlates with +0.12 fitness on gpqa",
+  "topic": "tool_strategy",
+  "polarity": "positive",
+  "source": "civilization.json",
+  "status": "active"
+}
+```
+
+### 19.3 Committee exports (SIA2 internal, future input to SIA)
+
+**File:** `runs/run_<id>/belief_store/approved_techniques.json`
+
+```json
+{
+  "technique": "self_consistency",
+  "task": "gpqa",
+  "belief_id": "belief_xyz",
+  "committee_vote": {"proponent": "approve", "skeptic": "approve", "replicator": "approve"},
+  "implementation_hint": "sample 3 answers, majority vote"
+}
+```
+
+**Darwinian consumer:** Approved techniques become mutation **seeds** — offspring DNA includes `technique_seeds: ["self_consistency"]`.
+
+### 19.4 Contradiction across population (merge-only)
+
+When SIA2 analyzes a darwinian run directory:
+
+- Scan `gen_<n>/agent_*/improvement.md` + `agent_dna.json` per agent
+- Detect opposing beliefs on same `topic` across agents in one generation
+- Write to `belief_store/contradictions.json` with `agents: [0, 1]` metadata
+
+### 19.5 Versioning
+
+| Contract file | Version field | Location |
+|---------------|---------------|----------|
+| `belief_store/*.json` | `"schema_version": "1.0"` | SIA2 |
+| `civilization.json` | `"schema_version": "1.0"` | SIA |
+| `approved_techniques.json` | `"schema_version": "1.0"` | SIA2 Phase 6 |
+
+Bump version only on breaking changes; both repos' tests must assert schema_version.
+
+---
+
+## 20. CABS + Darwinian merge — implementation plan
+
+> **Added:** 2026-06-06. Authoritative execution guide for Phase 7. Implements integrations A–F and the three concrete merge points discussed in planning. JSON contracts in Section 19 are the only cross-repo coupling surface.
+
+### 20.0 Problem statement — what each system does alone vs merged
+
+| Target | CABS alone (SIA2) | Darwinian alone (SIA) | Merged (Phase 7) |
+|--------|-------------------|----------------------|------------------|
+| `target_agent.py` | Only if feedback listens to agenda | Yes — core loop | CABS committee hints **MUST** be implemented in Darwinian feedback |
+| DNA | No | Yes — crossover + mutation | CABS open RQs bias `mutate()`; committee → `technique_seeds` |
+| Which architecture wins | No | Yes — fitness + elites | Unchanged — fitness only for selection |
+| What to investigate | Yes — beliefs, contradictions | Partially — civilization hints | Cross-agent contradictions + civilization → beliefs |
+| External grounding | Yes — Tavily | No | Tavily + committee feed back into Darwinian feedback |
+
+**Direct answer:** CABS does not replace Darwinian code evolution. It makes evolution **smarter** — what to mutate, what to implement, what contradictions to resolve — once wired into the SIA darwinian loop.
+
+### 20.0.1 Design principles
+
+1. **Fitness stays Darwinian** — elites chosen by `accuracy` only. No `selection_score = fitness + α * knowledge_gain` for hackathon (document dual metrics separately).
+2. **CABS steers search** — mutation bias, feedback mandates, cross-agent contradictions.
+3. **JSON contracts only** — no shared Python package between repos until post-hackathon.
+4. **Two-step pipeline is acceptable** — `sia run --darwinian` then `sia-cabs-tools analyze` on same run dir.
+
+### 20.0.2 Combined architecture
+
+```mermaid
+flowchart LR
+  subgraph SIA["SIA — Darwinian loop"]
+    E1[Eval all agents] --> EL[select_elites]
+    EL --> CIV[civilization.json]
+    EL --> BR[breed_offspring]
+    BR --> FB[feedback + DNA + CABS addon]
+    FB --> E1
+  end
+
+  subgraph SIA2["SIA2 — CABS after each gen"]
+    E1 --> AN[analyze gen_N/agent_K]
+    AN --> BS[belief_store/]
+    BS --> RQ[research_questions.json]
+    BS --> AT[approved_techniques.json]
+  end
+
+  RQ -->|mutation_bias| BR
+  AT -->|technique_seeds + MUST implement| FB
+  CIV -->|trait_insights| AN
+```
+
+### 20.0.3 Two metrics (hackathon narrative)
+
+| Metric | Source | Decides |
+|--------|--------|---------|
+| **Fitness** (Darwinian) | `score.json` / `results.json` accuracy | Elites, DNA flow, which parent breeds |
+| **Knowledge gain** (CABS) | `belief_store/` — beliefs, contradictions, resolutions, Tavily, committee | What to investigate, what to implement next |
+
+**Do not** replace fitness with knowledge gain. Use both on slides: fitness curve + knowledge gain curve.
+
+### 20.0.4 Integration map (A–F)
+
+| ID | Integration | What CABS improves | Phase | Effort | Hackathon priority |
+|----|-------------|-------------------|-------|--------|-------------------|
+| **A** | Smarter feedback prompts | Inject CABS agenda + committee `implementation_hint` into Darwinian feedback alongside DNA block | 20.3 | Easy | **P0** |
+| **B** | Smarter mutation | Open RQs with `dna_field: memory` → `mutate()` biases toward `failure_based` vs `none` | 20.4 | Medium | **P1** |
+| **C** | Technique seeds in DNA | Committee approves `stratified_memory` → `technique_seeds` on offspring DNA → feedback must implement | 20.5 | Medium | **P1** |
+| **D** | Cross-agent contradictions | `agent_0` memory+ vs `agent_1` memory- same gen → CABS RQ → next mutation explores both | 20.2 | High value | **P0** |
+| **E** | civilization → CABS beliefs | `"aggressive tools correlated with elites"` becomes belief; can contradict other evidence | 20.2 | Easy | **P1** |
+| **F** | CABS replaces fitness | No | — | N/A | **Rejected** — dual metrics only |
+
+### 20.0.5 Three concrete merge points
+
+#### Merge point 1 — After each gen: CABS on every `agent_K`
+
+```
+gen_1/agent_0/improvement.md + results.json + agent_dna.json
+  → beliefs per agent
+  → contradiction: agent_0 memory+ vs agent_1 memory-
+  → research question: "When does memory help on GPQA?"
+```
+
+Darwinian does not do population-level epistemics today. CABS adds this via `sia-cabs-tools analyze` (Section 20.2).
+
+#### Merge point 2 — Before breeding: bias mutation (CABS → DNA)
+
+```
+Open RQ: dna_field: "memory"
+→ mutate() weighted toward failure_based, none, full_history (A/B test architectures)
+```
+
+CABS steers search; Darwinian still picks elites by fitness.
+
+#### Merge point 3 — In feedback: committee → required code (CABS → agent)
+
+```
+Approved technique:
+  "implementation_hint": "Gate memory by difficulty slice; disable on easy questions"
+Darwinian feedback today: DNA block + parent fitness.
+Merged: DNA block + "You MUST implement this committee-approved change in target_agent.py."
+```
+
+This is how CABS stops being "just prompt" and ties to real code changes in the Darwinian loop.
+
+---
+
+### 20.1 Phase 7.0 — Shared contracts (both repos, ~2–3 hours)
+
+**Goal:** Fix schema mismatches before any wiring. Maps to Phase 7 task 7.0 / Section 19.
+
+| Task | Owner | File(s) | Change |
+|------|-------|---------|--------|
+| 7.0.1 Topic → DNA map | SIA2 | `cabs/dna_mapping.py` **(new)** | `tool_use`→`tool_strategy`, `planning`→`planning_style`, `error_handling`→`retry_policy`, `prompting`→`prompt_structure` |
+| 7.0.2 Use map in RQ gen | SIA2 | `cabs/research_question_generator.py` | `dna_field` = mapped DNA field, not raw CABS topic |
+| 7.0.3 `schema_version` on civilization | SIA | `sia/evolution/civilization.py` | Add `"schema_version": "1.0"` on save |
+| 7.0.4 Enrich `trait_insights` | SIA | `sia/evolution/civilization.py` | Export list format per §19.2: trait, value, mean_fitness_delta, generations_observed, confidence |
+| 7.0.5 Contract tests | Both | `tests/test_merge_contracts.py` **(new)** | Assert JSON shapes for RQs, civilization, approved_techniques |
+
+**Topic → DNA mapping table (authoritative):**
+
+| CABS `topic` | Darwinian `dna_field` |
+|--------------|----------------------|
+| `memory` | `memory` |
+| `reflection` | `reflection` |
+| `planning` | `planning_style` |
+| `tool_use` | `tool_strategy` |
+| `prompting` | `prompt_structure` |
+| `error_handling` | `retry_policy` |
+| `model_choice` | `confidence_threshold` (approximate) |
+| `data_quality` | `planning_style` (fallback) |
+| anything else | `planning_style` |
+
+**Gate:** Both repos' `pytest` pass; sample `SIA/runs/run_311/civilization.json` round-trips through SIA2 ingest.
+
+---
+
+### 20.2 Phase 7.1 — CABS on Darwinian runs (SIA2, ~4–6 hours)
+
+**Maps to:** Integrations **D**, **E**; merge point **#1**; Phase 7 tasks 7.1, 7.2.
+
+**Current gap:** `cabs/belief_extractor.py` reads flat `gen_N/target_agent.py`. Darwinian uses `gen_N/agent_K/`. Pointing `analyze` at `run_311` today extracts little or nothing.
+
+#### 20.2.1 Population-aware loader
+
+| File | Change |
+|------|--------|
+| `cabs/belief_extractor.py` | Add `iter_agent_dirs(gen_dir)` → detect `agent_*` subdirs or fallback to flat `gen_N/` |
+| | Add `load_agent_context(run_dir, gen, agent_id)` — `target_agent.py`, `results.json`/`score.json`, `agent_dna.json`, stdout |
+| | Update `load_generation_context()` — if `agent_*` exists, aggregate all agents; else current flat behavior |
+
+#### 20.2.2 DNA-aware beliefs
+
+When `agent_dna.json` present, emit beliefs:
+
+```json
+{
+  "belief": "memory=failure_based",
+  "topic": "memory",
+  "polarity": "neutral",
+  "metadata": {"agent_id": 0, "fitness": 0.2}
+}
+```
+
+Fitness from per-agent `score.json` or `results.json`.
+
+#### 20.2.3 Cross-agent contradictions (Integration D)
+
+| File | Change |
+|------|--------|
+| `cabs/contradiction_detector.py` | Add `detect_population_contradictions(agent_beliefs: dict[int, list])` — same topic, opposing polarity across agents in one gen |
+| | Contradiction metadata: `"agents": [0, 1]` per §19.4 |
+
+**Example from `run_311` gen 2:** agent_0 `memory=full_history` (13.3%) vs agent_1 `memory=failure_based` (20%) → RQ: *When does memory help on GPQA?*
+
+#### 20.2.4 Civilization ingest (Integration E)
+
+| File | Change |
+|------|--------|
+| `cabs/belief_extractor.py` | Add `ingest_civilization(run_dir)` — read `civilization.json` `trait_insights` → `BeliefStore.append_beliefs()` |
+
+#### 20.2.5 BeliefEngine orchestration
+
+| File | Change |
+|------|--------|
+| `cabs/belief_engine.py` | `process_generation()` — if darwinian layout, loop `agent_K`; cross-agent detect; civilization ingest (once per run, gen ≥ 2) |
+| `sia_cabs/cli.py` | `analyze` auto-detects `agent_*`; optional `--darwinian` flag for explicit mode |
+
+**Belief store location:** `{SIA run_dir}/belief_store/` — SIA2 analyzes in place; no copy required.
+
+**Gate:**
+```powershell
+cd c:\Users\MSPSA\Documents\SIA2
+sia-cabs-tools analyze --run-dir ..\SIA\runs\run_311
+```
+→ beliefs populated, ≥1 cross-agent contradiction, open RQ with `dna_field: "memory"`.
+
+---
+
+### 20.3 Phase 7.2 — CABS → Darwinian feedback (SIA, ~3–4 hours)
+
+**Maps to:** Integrations **A**, **C** (prompt half); merge point **#3**; Phase 7 task 7.3.
+
+**No SIA2 Python import.** Read JSON from `{run_dir}/belief_store/` only.
+
+#### 20.3.1 CABS bridge module
+
+| File | Change |
+|------|--------|
+| `sia/evolution/cabs_bridge.py` **(new)** | `load_cabs_agenda(run_dir)` — agenda text (mirror SIA2 `agenda_snapshot` format) |
+| | `load_approved_techniques(run_dir)` → `{technique, implementation_hint}` list |
+| | `load_mutation_bias(run_dir)` — for Section 20.4 |
+
+#### 20.3.2 Prompt addon
+
+| File | Change |
+|------|--------|
+| `sia/evolution/evolution_prompts.py` | Add `cabs_feedback_addon(agenda, techniques)` — **prepend** to feedback (same pattern as SIA2 `prompt_injection.py`) |
+| | Mandatory block: *"You MUST implement these committee-approved techniques in target_agent.py"* |
+| `sia/evolution/population.py` | `_create_offspring_with_feedback()` — call bridge, prepend `cabs_feedback_addon()` |
+| | Gen 1 meta: optional `cabs_meta_addon()` (lower priority) |
+
+#### 20.3.3 CLI flags
+
+| Flag | Purpose |
+|------|---------|
+| `--cabs` | Enable reading `{run_dir}/belief_store/` for feedback injection |
+| `--cabs-store PATH` | Override belief_store path (default: run dir) |
+
+**Gate:** After `analyze` on gen 1 of a darwinian run, gen 2 `feedback_agent_prompt.txt` contains CABS agenda + approved technique hints.
+
+---
+
+### 20.4 Phase 7.3 — CABS → DNA mutation bias (SIA, ~3–4 hours)
+
+**Maps to:** Integration **B**; merge point **#2**; Phase 7 task 7.4.
+
+#### 20.4.1 Biased mutate
+
+| File | Change |
+|------|--------|
+| `sia/evolution/operators.py` | `mutate(dna, mutation_rate, rng, bias: dict[str, list[str]] \| None = None)` |
+| | Per trait: if `bias.get(trait)` → weighted `r.choices(values, weights)`; else uniform random |
+| `sia/evolution/cabs_bridge.py` | `load_mutation_bias(belief_store)` — open RQs grouped by `dna_field` → candidate trait values from contradiction agent DNAs + `hidden_variables` |
+
+**Example:** open RQ `dna_field: "memory"` → bias toward `["failure_based", "none", "full_history"]`.
+
+#### 20.4.2 Wire breeding loop
+
+| File | Change |
+|------|--------|
+| `sia/evolution/population.py` | Before `breed_offspring()` loop (end of gen N), if `--cabs`: reload `research_questions.json`, build bias dict |
+| | Pass bias into `breed_offspring()` → `mutate()` |
+
+**Gate:** Unit test with fixed seed — offspring gen 2 DNAs show skewed memory trait vs pure random.
+
+---
+
+### 20.5 Phase 7.4 — Technique seeds in DNA (SIA, ~2–3 hours)
+
+**Maps to:** Integration **C**; §19.3.
+
+| File | Change |
+|------|--------|
+| `sia/evolution/dna.py` | Add `technique_seeds: list[str] = field(default_factory=list)` to `AgentDNA`; update `random()`, `save()`, `load()`, `describe()` |
+| `sia/evolution/operators.py` | `crossover` / `mutate` — preserve/merge `technique_seeds`; inject from approved techniques |
+| `sia/evolution/evolution_prompts.py` | `dna_architecture_section()` — list `technique_seeds` + *"Feedback MUST implement each seed"* |
+| `sia/evolution/cabs_bridge.py` | Map `approved_techniques.json` → append to offspring `technique_seeds` before feedback |
+| `sia/evolution/population.py` | After `breed_offspring()`, attach seeds from CABS store |
+
+**Gate:** Offspring `agent_dna.json` contains `technique_seeds: ["stratified_memory"]` when committee approved it.
+
+---
+
+### 20.6 Phase 7.5 — Live integrated pipeline (both repos, ~4–6 hours)
+
+**Maps to:** Phase 7 task 7.5.
+
+#### Option A — Documented two-step (hackathon minimum)
+
+```powershell
+# Step 1: Darwinian gen 1
+cd c:\Users\MSPSA\Documents\SIA
+sia run --task gpqa --darwinian --population_size 2 --elite_count 1 `
+  --max_gen 2 --run_id 400 --eval_subset 15 --baseline_seed --no-web --seed 42
+
+# Step 2: CABS on gen 1 (writes belief_store/ into SIA run dir)
+cd c:\Users\MSPSA\Documents\SIA2
+sia-cabs-tools analyze --run-dir ..\SIA\runs\run_400 --max-gen 1
+sia-cabs-tools committee --run-dir ..\SIA\runs\run_400 --generation 1 --offline
+
+# Step 3: Darwinian gen 2+ with CABS steering
+cd c:\Users\MSPSA\Documents\SIA
+sia run --task gpqa --darwinian --resume --cabs --max_gen 3 --run_id 400 --no-web
+```
+
+#### Option B — Wrapper script (recommended for judges)
+
+| File | Repo | Purpose |
+|------|------|---------|
+| `scripts/run_cabs_darwinian.ps1` | SIA2 `docs/` or both READMEs | Orchestrates: darwinian → analyze → committee → darwinian `--cabs --resume` |
+
+#### Option C — In-loop hook (post-hackathon only)
+
+SIA `population.py` shells out to `sia-cabs-tools analyze --generation N` after each gen eval — only if `--cabs-inline` and SIA2 on PATH. **Avoid for hackathon** until stable.
+
+**Future unified command:**
+```powershell
+sia-unified run --task gpqa --darwinian --population_size 4 `
+  --cabs --committee --tavily --run_id 1000 --no-web
+```
+
+---
+
+### 20.7 File change summary
+
+#### SIA2 (new / modified)
+
+```
+cabs/dna_mapping.py                    NEW
+cabs/belief_extractor.py               EXTEND (population + civilization)
+cabs/contradiction_detector.py         EXTEND (cross-agent)
+cabs/belief_engine.py                  EXTEND (darwinian process_generation)
+cabs/research_question_generator.py    FIX dna_field mapping
+tests/test_darwinian_analyze.py        NEW
+tests/test_merge_contracts.py          NEW
+```
+
+#### SIA (new / modified)
+
+```
+sia/evolution/cabs_bridge.py           NEW (JSON-only reader)
+sia/evolution/operators.py             EXTEND mutate bias + technique_seeds
+sia/evolution/dna.py                   EXTEND technique_seeds
+sia/evolution/evolution_prompts.py     EXTEND cabs_feedback_addon
+sia/evolution/population.py            WIRE cabs after eval / before breed
+sia/evolution/civilization.py          EXTEND trait_insights schema + schema_version
+sia/cli.py                             --cabs, --cabs-store
+tests/test_cabs_bridge.py              NEW
+tests/test_merge_contracts.py          NEW
+```
+
+---
+
+### 20.8 Testing strategy
+
+| Test | Repo | What it proves |
+|------|------|----------------|
+| `test_dna_mapping` | SIA2 | `tool_use` → `tool_strategy` in RQs |
+| `test_population_loader` | SIA2 | `run_311` layout loads 2 agents per gen |
+| `test_cross_agent_contradiction` | SIA2 | Synthetic agent_0/1 beliefs → contradiction with `agents: [0,1]` |
+| `test_civilization_ingest` | SIA2 | Sample §19.2 JSON → belief with fitness delta |
+| `test_mutation_bias` | SIA | Fixed seed + bias dict → memory trait skewed |
+| `test_cabs_feedback_addon` | SIA | Mock `approved_techniques.json` → prompt contains MUST implement |
+| `test_merge_contracts` | Both | `schema_version` present on all contract files |
+| E2E dry-run | Both | SIA `--dry-run --darwinian` + SIA2 `analyze` on mock darwinian run dir |
+
+---
+
+### 20.9 Hackathon demo narrative (merged system)
+
+**Assets:**
+- `SIA/runs/run_311` — historical darwinian proof (gen 2 elite 20%)
+- `SIA/runs/run_201` — baseline seed (13.3% on 30; re-run at `--eval_subset 15` for fair compare)
+- `SIA2/runs/run_showcase` — full CABS + Tavily + committee story (chess, offline)
+
+**Story arc for live merged demo (`run_400`):**
+
+| Step | What happens | Metric |
+|------|--------------|--------|
+| Gen 1 | Two agents, same seed code, different DNA → both evaluated | Fitness |
+| CABS analyze | Cross-agent memory contradiction detected | Knowledge gain |
+| Committee | Approve `stratified_memory`, reject others with rationales | Knowledge gain |
+| Gen 2 | CABS-biased mutation + feedback MUST implement approved technique | Fitness + knowledge gain |
+
+**Slide lines:**
+- *"Darwinian picks winners by accuracy. CABS picks what to question next."*
+- *"Gen 2 surfaced a memory contradiction across the population; the committee mandated a concrete code change."*
+
+---
+
+### 20.10 Suggested build order (time-boxed)
+
+| Block | Work | Exit criteria |
+|-------|------|---------------|
+| **Block 1** (~6h) | 20.1 + 20.2.1–20.2.3 | `analyze run_311` produces cross-agent contradiction |
+| **Block 2** (~4h) | 20.2.4–20.2.5 + 20.3 | Gen 2 feedback prompt contains CABS agenda |
+| **Block 3** (~5h) | 20.4 + 20.5 | Mutation bias + `technique_seeds` in offspring DNA |
+| **Block 4** (~4h) | 20.6 + demo script + SUBMISSION update | `run_400` end-to-end repro |
+
+**Stop line:** If time is tight, ship **P0 only** (20.2 cross-agent + 20.3 feedback + 20.2.4 civilization). Skip 20.4–20.5 until after submission.
+
+---
+
+### 20.11 Open decisions (resolve before coding)
+
+| # | Decision | Recommendation |
+|---|----------|----------------|
+| 1 | Belief store location for Darwinian runs | `{SIA run_dir}/belief_store/` — analyze in place |
+| 2 | Civilization ingest timing | After each gen (enables earlier mutation bias) |
+| 3 | Inline vs two-step CABS | Two-step for hackathon; `--cabs-inline` post-hackathon |
+| 4 | Subset fairness | Merged demo uses same `--eval_subset 15` for baseline re-run and darwinian |
+| 5 | SIA meta profile on Windows | Use `default-meta`, not `kimi-nebius-meta` (broken on Windows) |
+
+---
+
+### 20.12 Implementation start order (when user says "go")
+
+1. **SIA2 Block 1** — make `analyze` work on `run_311` (proves D + E; no SIA changes).
+2. **SIA Block 2** — `--cabs` feedback injection (proves A; can test with `run_showcase` committee output copied into darwinian `belief_store/`).
+3. **SIA2 + SIA Blocks 3–4** — mutation bias, technique_seeds, live `run_400`.
+
+**Do not:** implement Darwinian inside SIA2; rotate exposed API keys; run full LawBench without approval.

@@ -1,0 +1,7 @@
+{
+  "profile_id": "nemotron-nebius-target",
+  "name": "Nemotron 3 Super 120B on Nebius",
+  "model": "nvidia/Nemotron-3-Super-120B",
+  "provider_id": "nebius",
+  "agent_reference": "default"
+}
