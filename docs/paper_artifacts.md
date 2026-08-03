@@ -40,7 +40,7 @@ _Empty until G3/G4._
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed in code but **not yet validated on live GPQA**.
-- `--cabs-inline` not implemented; Condition D currently needs two-step analyze or will not refresh mid-run.
+- `--cabs-inline` is implemented (2026-08-03) but G1 dry-run / G2–G4 live B vs D evidence still missing.
 - No cloud API keys in this environment as of 2026-08-03 — no new paid evidence this tick.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
@@ -51,4 +51,7 @@ _Empty until G3/G4._
 |-----------|------|
 | Contradiction-scoped bias | `SIA/sia/evolution/cabs_bridge.py::load_mutation_bias` |
 | Biased mutate | `SIA/sia/evolution/operators.py::mutate` |
+| Condition D inline analyze | `SIA/sia/evolution/cabs_inline.py` + `--cabs-inline` |
+| H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (written by inline hook) |
 | H2 unit test | `SIA/tests/test_cabs_bridge.py` |
+| Inline unit test | `SIA/tests/test_cabs_inline.py` |
