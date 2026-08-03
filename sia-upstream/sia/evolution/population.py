@@ -406,12 +406,15 @@ def run_darwinian_loop(
     baseline_seed: str | None = None,
     enable_cabs: bool = False,
     cabs_store: str | None = None,
+    cabs_inline: bool = False,
 ) -> None:
     """Main Darwinian evolution loop."""
     layout = RunLayout(run_setup.run_directory)
     rng = random.Random(seed)
 
     task_root = task_root or dataset_dir
+    if cabs_inline:
+        enable_cabs = True
 
     civilization = CivilizationMemory(
         path=layout.civilization_json,
@@ -436,6 +439,8 @@ def run_darwinian_loop(
         logger.info(f"  Baseline seed: gen 1 agents copied from {baseline_seed}")
     if enable_cabs:
         logger.info(f"  CABS integration: enabled (belief_store in run dir)")
+    if cabs_inline:
+        logger.info("  CABS inline: analyze after each gen eval (Condition D / epistemic_full)")
     logger.info("=" * 80)
 
     # Generation 1: create initial population with diverse DNA
@@ -498,6 +503,29 @@ def run_darwinian_loop(
         for r in sorted(records, key=lambda x: x["fitness"], reverse=True):
             marker = " ★ ELITE" if r["agent_id"] in elite_ids else ""
             logger.info(f"  agent_{r['agent_id']}: fitness={r['fitness']:.4f}{marker}")
+
+        # Condition D: refresh belief_store before breeding so bias/agenda see this gen
+        if cabs_inline:
+            from sia.evolution.cabs_inline import run_cabs_inline
+
+            try:
+                inline_summary = run_cabs_inline(
+                    run_setup.run_directory,
+                    current_gen,
+                    cabs_store=cabs_store,
+                    task_hint=task_name,
+                    enable_committee=False,
+                )
+                logger.info(
+                    "  CABS inline gen %s: beliefs+%s contradictions+%s RQs+%s epistemic_value=%.3f",
+                    current_gen,
+                    inline_summary.get("beliefs_added"),
+                    inline_summary.get("contradictions_added"),
+                    inline_summary.get("research_questions_added"),
+                    float(inline_summary.get("epistemic_value") or 0),
+                )
+            except Exception as exc:  # noqa: BLE001 — never abort evolution on CABS analyze failure
+                logger.warning("  CABS inline analyze failed (continuing Darwinian loop): %s", exc)
 
         # Log to context.md
         run_setup.context_mgr.add_generation(
