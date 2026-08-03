@@ -6,14 +6,15 @@ Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`
 
 ## Blockers
 
-1. `--cabs-inline` not implemented (Condition D / epistemic_full).
-2. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty).
-3. No historical GPQA darwinian run dirs in this checkout (`runs/` absent).
+1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty).
+2. No historical GPQA darwinian run dirs in this checkout (`runs/` absent).
+3. G1 dry-run on a real task layout not yet executed (flag exists; harness smoke next).
 
 ## Prerequisites completed
 
 - [x] G0: contradiction-scoped mutation bias + unit H2 skew test
-- [ ] G1: dry-run Condition D
+- [x] `--cabs-inline` Condition D loop hook + `epistemic_value.jsonl`
+- [ ] G1: dry-run Condition D (flag ready; pending task dry-run)
 - [ ] G2: smoke GPQA subset
 
 ## Pilot plan (when unblocked)

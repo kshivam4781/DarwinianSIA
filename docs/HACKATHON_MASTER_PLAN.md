@@ -800,10 +800,10 @@ Computed in `cabs/belief_engine.py`:
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
 | ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
 | CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
-| `--cabs-inline` epistemic_full loop | **NOT DONE** | Needed for Condition D single-process runs |
+| `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit test proves skew; need live run artifacts |
-| H5 Spearman ρ validity | **NOT DONE** | Needs epistemic_value series from live runs |
+| H5 Spearman ρ validity | **NOT DONE** | `epistemic_value.jsonl` writer ready; needs live Δfitness series |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass |
 
@@ -1558,4 +1558,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 ### 21.9 Known mechanism bug (fixed 2026-08-03)
 
-`load_mutation_bias` previously appended **all** enum values for an open RQ's `dna_field`, so biased mutation ≡ uniform. Fixed to extract values from contradiction belief text, belief metadata (`trait`/`value`), and contradicting `agent_dna.json` files. Remaining gap: implement `--cabs-inline` so Condition D refreshes the store every generation without an external analyze step.
+`load_mutation_bias` previously appended **all** enum values for an open RQ's `dna_field`, so biased mutation ≡ uniform. Fixed to extract values from contradiction belief text, belief metadata (`trait`/`value`), and contradicting `agent_dna.json` files.
+
+`--cabs-inline` (Condition D) implemented 2026-08-03: after each gen eval, `run_cabs_inline` refreshes `belief_store/` (in-process `BeliefEngine`, subprocess fallback) and appends `belief_store/epistemic_value.jsonl` for H5. Remaining gap: G1 dry-run on a real task layout + API-backed G2–G4 B vs D seeds.
