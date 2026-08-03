@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-06-06 (Section 20 merge implementation plan added)  
+**Last updated:** 2026-08-03 (Section 21 ICML; `--cabs-inline` Condition D)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -798,6 +798,14 @@ Computed in `cabs/belief_engine.py`:
 | Live merged demo `run_400` | **DEFERRED** | `run_311` + analyze proves merge |
 | `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — prints READY FOR SUBMISSION |
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
+| ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
+| CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
+| `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit test proves skew; need live run artifacts |
+| H5 Spearman ρ validity | **NOT DONE** | `epistemic_value.jsonl` writer ready; needs live Δfitness series |
+| Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
+| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass |
 
 ---
 
@@ -1459,3 +1467,97 @@ tests/test_merge_contracts.py          NEW
 3. **SIA2 + SIA Blocks 3–4** — mutation bias, technique_seeds, live `run_400`.
 
 **Do not:** implement Darwinian inside SIA2; rotate exposed API keys; run full LawBench without approval.
+
+---
+
+## 21. ICML Thesis 1 — Epistemic evolution protocol (persistent agent)
+
+> **Source of truth for ICML automation ticks.** Hackathon submission can stay READY while this section tracks the publishable epistemic result.
+
+### 21.1 Winning claim
+
+```
+Belief → Contradiction → Research question → Biased mutation / scoped feedback
+  → Better sample efficiency than fitness-only Darwinian (Condition B)
+```
+
+### 21.2 Experimental conditions
+
+| Cond | Name | Flags / setup | Role |
+|------|------|---------------|------|
+| **A** | baseline SIA | single-agent `sia run` (no darwinian) | Optional reference |
+| **B** | darwinian-only | `--darwinian` **without** `--cabs` | Fitness-only control |
+| **C** | cabs-feedback | `--darwinian --cabs` (belief_store pre-populated / two-step analyze) | Ablation: agenda only |
+| **D** | epistemic_full | `--darwinian --cabs --cabs-inline` | **Primary treatment** |
+
+**Primary contrast:** **D vs B** on ≥5 seeds.
+
+### 21.3 Success criteria (all required for `docs/ICML_READY.md` STATUS: READY)
+
+1. **PRIMARY:** D beats B on ≥3/5 seeds for at least one of:
+   - (a) gens-to-threshold (25% or 30% accuracy), or
+   - (b) cost-to-threshold (≥15% fewer tokens/calls at equal accuracy), or
+   - (c) non-trivial mean final accuracy gap (not ~1pp noise).
+2. **MECHANISM:** Clear H2 DNA trait skew under contradiction bias, **or** a documented case study (tie → contradiction → different DNA/code → fitness lift) with artifacts.
+3. **VALIDITY:** H5 Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3.
+4. **PAPER:** Figs 1–2, Tables 1–2, abstract, limitations, reproducible run IDs in `docs/paper_artifacts.md`.
+
+### 21.4 Hypotheses
+
+| ID | Claim | Measurement |
+|----|-------|-------------|
+| **H2** | Open contradictions bias offspring DNA toward disputed trait values | Trait histogram / χ² or proportion test vs Condition B |
+| **H5** | Epistemic value at gen *t* predicts fitness gain at *t+1* | Spearman ρ > 0.3 |
+
+**epistemic_value_t (working definition):** weighted sum of open contradiction priorities + open RQ priorities at end of generation *t* (export from `belief_store/`).
+
+### 21.5 Phase gates (mandatory order)
+
+| Gate | Requirement | Stop if fail |
+|------|-------------|--------------|
+| **G0** | Unit tests green; mutation bias contradiction-scoped (not full enum) | Fix mechanism before paid runs |
+| **G1** | Dry-run Condition D writes belief_store + biased DNA on gen≥2 | Do not spend API |
+| **G2** | Smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2), one seed | Fix harness |
+| **G3** | Pilot B vs D, 1–2 seeds, `--eval_subset 15`, max_gen≤5 | Diagnose before 5-seed |
+| **G4** | Full 5-seed B vs D under budget; compute PRIMARY + H2 + H5 | Refresh paper artifacts |
+| **G5** | Paper pack + honest limitations → STATUS: READY | — |
+
+### 21.6 Hard stops
+
+- No full LawBench without explicit human approval in run notes.
+- No two full GPQA jobs in parallel.
+- No `--focus weights`.
+- Do not delete `runs/` directories.
+- Do not commit or log API keys.
+- Respect ~$20 budget ceiling unless docs say the user raised it; check spend before paid runs.
+- Run IDs are unique integers; never overwrite existing runs.
+- Prefer `--no-web` for long runs.
+
+### 21.7 Suggested cheap GPQA commands (after keys + budget check)
+
+```bash
+# Condition B — darwinian-only (example IDs — pick unused integers)
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1
+
+# Condition D — after --cabs-inline exists; until then: analyze between gens / two-step
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 5 --run_id 1301 --eval_subset 15 --no-web --seed 1 \
+  --cabs --cabs-inline
+```
+
+### 21.8 Artifact paths
+
+| Artifact | Path |
+|----------|------|
+| Progress log | `docs/ICML_PROGRESS.md` |
+| Ready checklist | `docs/ICML_READY.md` |
+| Paper pack | `docs/paper_artifacts.md` |
+| Gate 3 report | `docs/gate3_report.md` |
+| Result figures | `docs/figures/` (when generated) |
+
+### 21.9 Known mechanism bug (fixed 2026-08-03)
+
+`load_mutation_bias` previously appended **all** enum values for an open RQ's `dna_field`, so biased mutation ≡ uniform. Fixed to extract values from contradiction belief text, belief metadata (`trait`/`value`), and contradicting `agent_dna.json` files.
+
+`--cabs-inline` (Condition D) implemented 2026-08-03: after each gen eval, `run_cabs_inline` refreshes `belief_store/` (in-process `BeliefEngine`, subprocess fallback) and appends `belief_store/epistemic_value.jsonl` for H5. Remaining gap: G1 dry-run on a real task layout + API-backed G2–G4 B vs D seeds.
