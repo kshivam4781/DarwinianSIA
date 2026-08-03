@@ -20,7 +20,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3
-- Evidence: _pending_
+- Evidence: writer ready (`belief_store/epistemic_value.jsonl` via `--cabs-inline`); live series pending
 
 ### 4. PAPER
 - [ ] Figure 1 (learning curves B vs D)
@@ -36,7 +36,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | Gate | Status |
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03) |
-| G1 dry-run Condition D | FAIL / not run (`--cabs-inline` missing) |
+| G1 dry-run Condition D | **UNBLOCKED** — `--cabs-inline` landed; dry-run on task layout not yet executed this tick |
 | G2 smoke GPQA subset | BLOCKED (no API keys) |
 | G3 pilot B vs D | NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED |
