@@ -23,6 +23,9 @@ from sia.evolution.evolution_prompts import (
 from sia.evolution.dry_run import (
     agent_creation_complete,
     agent_run_complete,
+    deterministic_fitness,
+    parse_agent_coords,
+    write_mock_results,
     write_mock_target_agent,
 )
 from sia.evolution.operators import breed_offspring, extract_fitness, select_elites
@@ -74,6 +77,9 @@ def _run_single_agent(
     eval_subset: int | None = None,
     resume: bool = False,
     dry_run: bool = False,
+    task_name: str = "gpqa",
+    agent_id: int | None = None,
+    generation: int | None = None,
 ) -> tuple[bool, float, float]:
     """Run target agent + evaluation in an agent directory. Returns (success, fitness, duration)."""
     if resume and agent_run_complete(agent_dir):
@@ -82,11 +88,24 @@ def _run_single_agent(
         logger.info(f"  → Resume: using cached fitness={fitness:.4f}")
         return True, fitness, 0.0
 
+    # Dry-run: DNA-hash fitness (varied Δfitness for offline H5). Skip real eval —
+    # mock GPQA agents that always answer "A" collapse every agent to accuracy=1.0.
+    if dry_run:
+        dna_path = os.path.join(agent_dir, Names.AGENT_DNA)
+        dna = AgentDNA.load(dna_path) if os.path.isfile(dna_path) else AgentDNA()
+        parsed_id, parsed_gen = parse_agent_coords(agent_dir)
+        aid = agent_id if agent_id is not None else parsed_id
+        gen = generation if generation is not None else parsed_gen
+        fitness = deterministic_fitness(aid, dna, gen)
+        write_mock_results(agent_dir, fitness, task_name, eval_subset)
+        logger.info(f"  → Dry-run: deterministic fitness={fitness:.4f} (agent={aid}, gen={gen})")
+        return True, fitness, 0.0
+
     target_path = os.path.join(agent_dir, Names.TARGET_AGENT if focus == "harness" else Names.TRAIN_SCRIPT)
     stdout_log = os.path.join(agent_dir, Names.STDOUT_LOG if focus == "harness" else Names.TRAIN_STDOUT_LOG)
 
     gen_requirements = os.path.join(agent_dir, Names.REQUIREMENTS_TXT)
-    if os.path.isfile(gen_requirements) and not dry_run:
+    if os.path.isfile(gen_requirements):
         install_requirements(run_setup.venv_dir, gen_requirements)
 
     start = time.time()
@@ -101,9 +120,6 @@ def _run_single_agent(
         env_config=env_config,
     )
     duration = time.time() - start
-
-    if dry_run and not success:
-        logger.warning(f"  ⚠ Dry-run target agent failed: {error_msg}")
 
     orch.run_evaluation(
         agent_dir,
@@ -359,6 +375,8 @@ def run_population_generation(
             eval_subset=eval_subset,
             resume=resume,
             dry_run=dry_run,
+            agent_id=agent_id,
+            generation=gen,
         )
 
         dna_path = os.path.join(agent_dir, Names.AGENT_DNA)
@@ -406,12 +424,15 @@ def run_darwinian_loop(
     baseline_seed: str | None = None,
     enable_cabs: bool = False,
     cabs_store: str | None = None,
+    cabs_inline: bool = False,
 ) -> None:
     """Main Darwinian evolution loop."""
     layout = RunLayout(run_setup.run_directory)
     rng = random.Random(seed)
 
     task_root = task_root or dataset_dir
+    if cabs_inline:
+        enable_cabs = True
 
     civilization = CivilizationMemory(
         path=layout.civilization_json,
@@ -436,6 +457,8 @@ def run_darwinian_loop(
         logger.info(f"  Baseline seed: gen 1 agents copied from {baseline_seed}")
     if enable_cabs:
         logger.info(f"  CABS integration: enabled (belief_store in run dir)")
+    if cabs_inline:
+        logger.info("  CABS inline: analyze after each gen eval (Condition D / epistemic_full)")
     logger.info("=" * 80)
 
     # Generation 1: create initial population with diverse DNA
@@ -499,6 +522,29 @@ def run_darwinian_loop(
             marker = " ★ ELITE" if r["agent_id"] in elite_ids else ""
             logger.info(f"  agent_{r['agent_id']}: fitness={r['fitness']:.4f}{marker}")
 
+        # Condition D: refresh belief_store before breeding so bias/agenda see this gen
+        if cabs_inline:
+            from sia.evolution.cabs_inline import run_cabs_inline
+
+            try:
+                inline_summary = run_cabs_inline(
+                    run_setup.run_directory,
+                    current_gen,
+                    cabs_store=cabs_store,
+                    task_hint=task_name,
+                    enable_committee=False,
+                )
+                logger.info(
+                    "  CABS inline gen %s: beliefs+%s contradictions+%s RQs+%s epistemic_value=%.3f",
+                    current_gen,
+                    inline_summary.get("beliefs_added"),
+                    inline_summary.get("contradictions_added"),
+                    inline_summary.get("research_questions_added"),
+                    float(inline_summary.get("epistemic_value") or 0),
+                )
+            except Exception as exc:  # noqa: BLE001 — never abort evolution on CABS analyze failure
+                logger.warning("  CABS inline analyze failed (continuing Darwinian loop): %s", exc)
+
         # Log to context.md
         run_setup.context_mgr.add_generation(
             gen_num=current_gen,
@@ -544,6 +590,12 @@ def run_darwinian_loop(
             if cabs_technique_seeds:
                 logger.info(f"  CABS technique seeds: {cabs_technique_seeds}")
 
+        # Delay bias-aware crossover until breeding from gen≥2 (→ gen≥3).
+        # First breeding (gen1→gen2) keeps fair XO + mutation bias only so
+        # preferred alleles are not over-collapsed before H5 / gens-to-threshold
+        # signal can accumulate; later gens apply soft bias-aware XO.
+        apply_crossover_bias = current_gen >= 2
+
         for agent_id in range(population_size):
             # Tournament selection: pick two elites (with replacement if only one)
             parent_a_idx = rng.randint(0, len(elite_dnas) - 1)
@@ -555,6 +607,7 @@ def run_darwinian_loop(
                 rng=rng,
                 bias=mutation_bias,
                 technique_seeds=cabs_technique_seeds,
+                apply_crossover_bias=apply_crossover_bias,
             )
 
             agent_dir = layout.gen_agent_dir(next_gen, agent_id)

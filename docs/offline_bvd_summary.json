@@ -1,0 +1,169 @@
+{
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "b_run_ids": [
+    1570,
+    1571,
+    1572,
+    1573,
+    1574
+  ],
+  "d_run_ids": [
+    1580,
+    1581,
+    1582,
+    1583,
+    1584
+  ],
+  "compare": {
+    "n_pairs": 5,
+    "d_wins_gens25": 0,
+    "b_wins_gens25": 0,
+    "d_wins_gens30": 0,
+    "b_wins_gens30": 2,
+    "d_wins_final": 3,
+    "b_wins_final": 2,
+    "primary_gens25_pass": false,
+    "primary_gens30_pass": false
+  },
+  "compare_rows_brief": [
+    {
+      "seed": 11,
+      "B_final": 0.2994,
+      "D_final": 0.315,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 2,
+      "D_gens30": 2,
+      "D_h5_rho": 0.5,
+      "D_h2_share": 0.8125
+    },
+    {
+      "seed": 22,
+      "B_final": 0.3349,
+      "D_final": 0.2769,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 4,
+      "D_gens30": null,
+      "D_h5_rho": -0.5,
+      "D_h2_share": 0.0
+    },
+    {
+      "seed": 33,
+      "B_final": 0.2563,
+      "D_final": 0.3043,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 1,
+      "D_gens30": 1,
+      "D_h5_rho": -0.5,
+      "D_h2_share": 0.9375
+    },
+    {
+      "seed": 44,
+      "B_final": 0.2697,
+      "D_final": 0.2442,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 2,
+      "D_gens30": null,
+      "D_h5_rho": -1.0,
+      "D_h2_share": 0.9375
+    },
+    {
+      "seed": 55,
+      "B_final": 0.2693,
+      "D_final": 0.3342,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 1,
+      "D_gens30": 1,
+      "D_h5_rho": 0.5,
+      "D_h2_share": 0.9375
+    }
+  ],
+  "case_study": {
+    "run_dir": "/workspace/runs/run_1580",
+    "field": "tool_strategy",
+    "preferred_value": "selective",
+    "bias_order": [
+      "selective",
+      "aggressive"
+    ],
+    "contradiction": {
+      "topic": "tool_use",
+      "belief_a": "Agent 0: tool_strategy=selective achieved fitness 0.2863 (population mean 0.2525)",
+      "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.2439 (population mean 0.2525)",
+      "priority": 0.85,
+      "agents": [
+        0,
+        1
+      ]
+    },
+    "gen1_traits": [
+      {
+        "agent_id": 0,
+        "trait": "selective",
+        "fitness": 0.2863
+      },
+      {
+        "agent_id": 1,
+        "trait": "aggressive",
+        "fitness": 0.2439
+      },
+      {
+        "agent_id": 2,
+        "trait": "minimal",
+        "fitness": 0.2831
+      },
+      {
+        "agent_id": 3,
+        "trait": "minimal",
+        "fitness": 0.1968
+      }
+    ],
+    "gen2_traits": [
+      {
+        "agent_id": 0,
+        "trait": "selective",
+        "fitness": 0.3046
+      },
+      {
+        "agent_id": 1,
+        "trait": "selective",
+        "fitness": 0.2844
+      },
+      {
+        "agent_id": 2,
+        "trait": "selective",
+        "fitness": 0.2667
+      },
+      {
+        "agent_id": 3,
+        "trait": "selective",
+        "fitness": 0.3414
+      }
+    ],
+    "gen1_preferred_mean_fitness": 0.2863,
+    "gen1_loser_mean_fitness": 0.2439,
+    "gen2_preferred_mean_fitness": 0.29927499999999996,
+    "gen1_pop_mean": 0.252525,
+    "gen2_pop_mean": 0.29927499999999996,
+    "fitness_lift": 0.05537499999999995,
+    "gen2_preferred_share": 1.0,
+    "dna_fitness_transfers": true,
+    "belief_count": 15,
+    "agenda_prefers_first": "selective"
+  },
+  "figures": [
+    "/workspace/docs/figures/fig1_learning_curves.png",
+    "/workspace/docs/figures/fig2_mechanism.png"
+  ],
+  "note": "Tick 12: delayed bias-aware XO (fair XO gen1→gen2; soft bias XO from gen2→gen3+). Mutation bias alone still collapses preferred share by gen2 (case study share 1.0). Final 3/5 retained; gens30 0/5 and H5 2/5 unchanged vs Tick 11; mean gap ~0.9pp. Offline only — do not set ICML_READY PRIMARY from this."
+}
