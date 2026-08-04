@@ -22,16 +22,17 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3
-- Evidence: writer ready (`belief_store/epistemic_value.jsonl` via `--cabs-inline`); dry-run series exists; live Δfitness pending
+- Evidence: writer + `scripts/epistemic_results.py` compute path ready; dry-run now has Δfitness via DNA-deterministic fitness, but ρ undefined when epistemic_value is constant across gens (observed on dry-run `run_1402`); live series still pending
 
 ### 4. PAPER
 - [ ] Figure 1 (learning curves B vs D)
 - [ ] Figure 2 (mechanism / H2 or case study)
 - [ ] Table 1 (primary metrics by seed)
 - [ ] Table 2 (H2/H5 / cost)
-- [ ] Abstract draft
-- [ ] Limitations (honest: prior gaps, token cost, small-N)
-- [ ] Reproducible run IDs listed in `docs/paper_artifacts.md`
+- [x] Abstract draft (scaffold in `docs/paper_artifacts.md` — results TBD)
+- [x] Limitations (honest; kept updated in `docs/paper_artifacts.md`)
+- [ ] Reproducible run IDs listed in `docs/paper_artifacts.md` (dry-run IDs only; live pending)
+- Metrics helper: `scripts/epistemic_results.py` (not a substitute for Figs/Tables)
 
 ## Gate tracker (Section 21.5)
 

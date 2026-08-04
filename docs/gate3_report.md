@@ -9,6 +9,7 @@ Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`
 1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty).
 2. Bundled GPQA `data/public` not present in checkout — G2/G3 need dataset + keys (G1 used synthetic fixture).
 3. ~~G1 dry-run~~ **PASS** 2026-08-04 (`runs/run_1401` dry-run; `SIA/tests/test_cabs_inline_dry_run.py`).
+4. Offline H5 tooling ready (`scripts/epistemic_results.py`); dry-run Δfitness fixed 2026-08-04 — still not a G3 substitute.
 
 ## Prerequisites completed
 
@@ -16,6 +17,7 @@ Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`
 - [x] `--cabs-inline` Condition D loop hook + `epistemic_value.jsonl`
 - [x] G1: dry-run Condition D (belief_store + scoped bias + gen≥2 DNA)
 - [x] Scoped feedback DNA targets in CABS agenda (same pool as mutation bias)
+- [x] Dry-run DNA-deterministic fitness + epistemic_results metrics script (2026-08-04 Tick 5)
 - [ ] G2: smoke GPQA subset
 
 ## Pilot plan (when unblocked)

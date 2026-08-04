@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T04:03Z — Tick 5 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-3888` (cherry-picked Ticks 1–4 from `0f06`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline gap: dry-run evaluation still ran mock GPQA agents that always answered "A", collapsing every agent to accuracy=1.0. That made Δfitness≡0 so H5 Spearman could not be computed even with `epistemic_value.jsonl` present. `_deterministic_fitness` existed in `dry_run.py` but was dead code.
+
+### What this tick did (ONE step)
+Wired **DNA-deterministic dry-run fitness** + **epistemic metrics pipeline**:
+- `population._run_single_agent(dry_run=True)` → `deterministic_fitness` + `write_mock_results` (skip trivial mock eval)
+- `scripts/epistemic_results.py` — H5 Spearman, H2 trait share, gens-to-threshold, B vs D compare helpers
+- Tests: `test_epistemic_results.py` + dry-run asserts varied fitness — **14/14** related tests pass
+- Smoke dry-run Condition D (local `run_1402`, seed 7, pop=4, max_gen=4): varied fitness curve; H2 memory in-bias share **0.875**; H5 ρ **undefined** because `epistemic_value` stayed constant at 11.9 (open contradiction/RQ priority sum does not move after gen 1)
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Dry-run fitness diversity | All ~1.0 (mock eval) | DNA-hash in [0.05, 0.95]; multi-value |
+| H5 computation tooling | Missing | `scripts/epistemic_results.py` + unit tests |
+| Offline H5 ρ (dry-run D) | N/A (Δfitness=0) | n_pairs=3 but ρ=null (constant epistemic_value) |
+| H2 dry-run memory in-bias share | Not measured | **0.875** on run_1402 |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| Paper artifacts | Stubs | Stubs + metrics script pinned |
+
+### Next recommended step
+Prefer: when keys present → **G2** smoke GPQA. If still no keys: make `epistemic_value_t` non-constant across gens (e.g. fold in `knowledge_gain_score`, resolved-contradiction deltas, or priority updates) so offline H5 ρ is defined; then re-smoke dry-run D.
+
+---
+
 ## 2026-08-04T02:01Z — Tick 4 (automation cron)
 
 ### Status snapshot

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-04 (Section 21 ICML; scoped feedback DNA targets; G1 PASS)  
+**Last updated:** 2026-08-04 (Section 21 ICML; dry-run DNA fitness + epistemic_results metrics)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -803,9 +803,11 @@ Computed in `cabs/belief_engine.py`:
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
+| Dry-run DNA-deterministic fitness | **DONE** | Fixes trivial 1.0 mock-eval collapse; enables offline Δfitness |
+| `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers for paper refresh |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 scoped bias; need live API run artifacts |
-| H5 Spearman ρ validity | **NOT DONE** | `epistemic_value.jsonl` writer ready; needs live Δfitness series |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 scoped bias + run_1402 in-bias 0.875; need live API |
+| H5 Spearman ρ validity | **NOT DONE** | Tooling ready; dry-run ρ undefined (constant epi); need live / non-constant epi |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass |
 
@@ -1566,4 +1568,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **G1 PASS (2026-08-04):** dry-run Condition D on GPQA-shaped fixture (`runs/run_1401`, seed 42, pop=2, max_gen=2) wrote belief_store (7 contradictions / 7 RQs), scoped mutation bias for breed→gen2, and `epistemic_value.jsonl` for gens 1–2. Locked by `SIA/tests/test_cabs_inline_dry_run.py`.
 
-**Scoped feedback (2026-08-04):** `load_cabs_agenda` now injects `### Scoped DNA Feedback Targets` using the same contradiction-scoped candidate pool as `load_mutation_bias`, so Condition D feedback steers rewrites toward disputed DNA values (not RQ field names alone). Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env).
+**Scoped feedback (2026-08-04):** `load_cabs_agenda` now injects `### Scoped DNA Feedback Targets` using the same contradiction-scoped candidate pool as `load_mutation_bias`, so Condition D feedback steers rewrites toward disputed DNA values (not RQ field names alone).
+
+**Dry-run fitness + metrics (2026-08-04):** Dry-run eval now uses `deterministic_fitness` (DNA-hash) instead of mock GPQA accuracy=1.0 for all agents. `scripts/epistemic_results.py` computes H5/H2/gens-to-threshold. Offline smoke `run_1402` showed H2 memory in-bias share 0.875 but H5 ρ undefined (constant `epistemic_value`). Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env); optionally non-constant epistemic_value for offline H5.
