@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-04 (Section 21 ICML; Tick 11 soft bias-aware crossover; offline final wins 3/5, mean gap ~2.13pp)  
+**Last updated:** 2026-08-04 (Section 21 ICML; Tick 12 delayed bias-aware XO; offline final 3/5, gens30/H5 still soft)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -804,17 +804,18 @@ Computed in `cabs/belief_engine.py`:
 | Preferred-allele anchoring | **DONE** | Tick 10: protect preferred; pull outsiders to winner only (`operators._biased_choice`) |
 | Singleton bias pool skip | **DONE** | Tick 10: `load_mutation_bias` requires ≥2 distinct candidates (same-allele disputes skipped) |
 | Soft bias-aware crossover | **DONE** | Tick 11: `crossover(..., bias=)` inherits preferred allele with p=0.85; `breed_offspring` forwards bias |
+| Delayed crossover bias (gen≥2) | **DONE** | Tick 12: fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`); offline gens30/H5 unchanged (mutation bias dominates early) |
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9: **additive latent** trait scores (DNA-transferable; causal bias→fitness); scaled for 25/30% thresholds |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% win counting |
-| Offline B vs D case-study pilot | **DONE** | Latest `1550–1554` / `1560–1564`; case study `docs/case_study_offline.md` (`run_1560`); final 3/5 |
+| Offline B vs D case-study pilot | **DONE** | Latest `1570–1574` / `1580–1584`; case study `docs/case_study_offline.md` (`run_1580`); final 3/5; gens30 0/5; H5 2/5 |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 11 **2/5** ρ>0.3 (`1560–1564`; regression vs Tick 10 4/5); live required |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 12 **2/5** ρ>0.3 (`1580–1584`; still soft vs Tick 10 4/5); live required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1 stub; live empty — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 

@@ -1,31 +1,33 @@
 # Gate 3 report — Pilot B vs D
 
-**Status:** Offline synthetic pilot **refreshed** (2026-08-04 Tick 11); **live** G3 still blocked on API keys
+**Status:** Offline synthetic pilot **refreshed** (2026-08-04 Tick 12); **live** G3 still blocked on API keys
 
 Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`, `max_gen ≤ 5`, before full 5-seed spend.
 
-## Offline synthetic pilot (Tick 11 — not a live G3 substitute)
+## Offline synthetic pilot (Tick 12 — not a live G3 substitute)
 
 | Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |
 |------|-------|-----|-------|---------|-------------|---------|
-| B | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1550–1554` |
-| D | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1560–1564` |
+| B | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1570–1574` |
+| D | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1580–1584` |
 
-Harness: `scripts/offline_bvd_case_study.py` (additive latent dry-run fitness + soft bias-aware crossover p=0.85).
+Harness: `scripts/offline_bvd_case_study.py` (additive latent dry-run fitness + delayed soft bias-aware crossover).
 
 | Metric | Result |
 |--------|--------|
 | D final-fitness wins (>1pp) | **3/5** |
-| B final-fitness wins (>1pp) | **1/5** |
-| Mean final (B / D) | ~0.286 / ~0.307 (~**2.13pp**) |
-| D gens-to-30% wins | **0/5** (B: 2) — regression vs Tick 10 |
+| B final-fitness wins (>1pp) | **2/5** |
+| Mean final (B / D) | ~0.286 / ~0.295 (~**0.9pp**) |
+| D gens-to-30% wins | **0/5** (B: 2) — still regressed vs Tick 10 |
 | Gens-to-25% | Both hit gen1 (still often saturated) |
-| H5 ρ>0.3 (D seeds) | **2/5** — regression vs Tick 10 (4/5) |
-| Case study | `docs/case_study_offline.md` (`run_1560`) |
+| H5 ρ>0.3 (D seeds) | **2/5** — unchanged vs Tick 11 |
+| Case study | `docs/case_study_offline.md` (`run_1580`) |
 | Figures | `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png` |
 | Summary JSON | `docs/offline_bvd_summary.json` |
 
-Prior Tick-10 pilot `1510–1514` / `1520–1524` superseded for PRIMARY tables (final was 2/5). Tick-11 hard-XO mid-pilot `1530–1534` / `1540–1544` superseded by soft p=0.85. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
+**Finding:** delaying bias-aware XO until breeding from gen≥2 is nearly a no-op at `max_gen=4` because **mutation bias alone** sets preferred share to 1.0 by gen2.
+
+Prior Tick-11 pilot `1550–1554` / `1560–1564` superseded for PRIMARY tables. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
 
 ## Blockers (live G3)
 
@@ -47,6 +49,7 @@ Prior Tick-10 pilot `1510–1514` / `1520–1524` superseded for PRIMARY tables 
 - [x] Steering opportunity + additive latent fitness → multi-seed H5 4/5 (Tick 9)
 - [x] Preferred-allele anchoring + singleton bias skip (Tick 10)
 - [x] Soft bias-aware crossover (Tick 11) — final wins 3/5 offline
+- [x] Delayed bias-aware crossover (Tick 12) — did not restore gens30/H5; mutation bias dominates early
 - [ ] G2: smoke GPQA subset (live)
 
 ## Live pilot plan (when unblocked)

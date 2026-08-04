@@ -2,7 +2,7 @@
 
 **Status:** offline dry-run evidence (synthetic GPQA fixture; additive latent DNA fitness). Does **not** satisfy live PRIMARY. Supports MECHANISM case-study criterion.
 
-**Run:** `/workspace/runs/run_1560`
+**Run:** `/workspace/runs/run_1580`
 
 ## Chain
 
@@ -24,7 +24,7 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
   "d_wins_gens30": 0,
   "b_wins_gens30": 2,
   "d_wins_final": 3,
-  "b_wins_final": 1,
+  "b_wins_final": 2,
   "primary_gens25_pass": false,
   "primary_gens30_pass": false
 }
@@ -34,7 +34,7 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
 
 ```json
 {
-  "run_dir": "/workspace/runs/run_1560",
+  "run_dir": "/workspace/runs/run_1580",
   "field": "tool_strategy",
   "preferred_value": "selective",
   "bias_order": [

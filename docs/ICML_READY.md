@@ -10,7 +10,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**
 - [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**
 - [ ] Non-trivial mean final accuracy gap (not ~1pp noise)
-- Evidence: offline synthetic pilot `1550–1554` vs `1560–1564` (Tick 11, soft bias-aware crossover) — D final wins **3/5** (>1pp margin), gens30 wins **0/5** (B: 2), mean final gap ~**2.13pp**. First offline ≥3/5 final seed-win bar, but gens30/H5 regressed vs Tick 10; **not** live GPQA — do not count for READY. Live → `docs/paper_artifacts.md` Table 1
+- Evidence: offline synthetic pilot `1570–1574` vs `1580–1584` (Tick 12, delayed bias-aware XO) — D final wins **3/5** (>1pp margin), gens30 wins **0/5** (B: 2), mean final gap ~**0.9pp**. Delay-XO did not restore gens30/H5 vs Tick 11; mutation bias alone collapses preferred by gen2. **Not** live GPQA — do not count for READY. Live → `docs/paper_artifacts.md` Table 1
 
 ### 2. MECHANISM — H2 or case study
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
@@ -19,13 +19,14 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Fitness-weighted bias: higher-fitness contradiction side ranked first + rank-weighted mutate (`test_mutation_bias_prefers_higher_fitness_side`)
 - [x] Preferred-allele anchoring + singleton-bias skip (Tick 10) — `operators._biased_choice` + `load_mutation_bias` len≥2 gate
 - [x] Bias-aware crossover (Tick 11) — soft preferred inherit in `crossover(..., bias=)` + `test_bias_aware_crossover_prefers_winner_allele`
-- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1560` (`selective` preferred → gen2 share 1.0; lift +0.0554)
+- [x] Delayed crossover bias (Tick 12) — fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`, `test_breed_offspring_can_delay_crossover_bias`)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1580` (`selective` preferred → gen2 share 1.0; lift +0.0554)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
-- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware XO + offline case study; live GPQA still pending (no API keys)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + offline case study; live GPQA still pending (no API keys)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
-- Evidence: offline multi-seed Condition D `1560–1564` → ρ>0.3 on **2/5** seeds (0.5 / −0.5 / −1.0 / −0.5 / 0.5) — **regression** vs Tick 10 (4/5). Soft bias-aware XO may over-steer early. Still **not** live GPQA.
+- Evidence: offline multi-seed Condition D `1580–1584` → ρ>0.3 on **2/5** seeds (0.5 / −0.5 / −0.5 / −1.0 / 0.5) — still regressed vs Tick 10 (4/5). Delay-XO did not fix; early mutation-bias collapse remains. Still **not** live GPQA.
 
 ### 4. PAPER
 - [x] Figure 1 draft (offline B vs D learning curves) — `docs/figures/fig1_learning_curves.png`
@@ -41,9 +42,9 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 
 | Gate | Status |
 |------|--------|
-| G0 mechanism unit tests | **PASS** (2026-08-03; + bias-aware XO Tick 11) |
+| G0 mechanism unit tests | **PASS** (2026-08-03; + delayed bias-aware XO Tick 12) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | BLOCKED (no API keys) |
-| G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 11); **live** G3 NOT STARTED |
+| G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 12); **live** G3 NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED (live) |
 | G5 paper pack | PARTIAL (offline figs + case study; H5 soft); live pack NOT STARTED |
