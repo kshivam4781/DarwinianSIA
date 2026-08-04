@@ -10,10 +10,11 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 
 | Condition | Seed | Run ID | Status |
 |-----------|------|--------|--------|
-| B darwinian-only | — | — | none yet |
-| D epistemic_full | — | — | none yet |
+| D epistemic_full (dry-run G1) | 42 | 1401 | **PASS** harness (no API; synthetic GPQA fixture; gitignored `runs/run_1401`) |
+| B darwinian-only | — | — | none yet (live) |
+| D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7).
 
 ## Table 1 — Primary (B vs D)
 
@@ -26,9 +27,10 @@ _Empty until G3/G4._
 
 | Metric | Value | Pass? |
 |--------|-------|-------|
-| H2 trait skew (live) | — | — |
-| H2 unit skew test | pass (2026-08-03) | yes (unit only) |
-| H5 Spearman ρ | — | need > 0.3 |
+| H2 trait skew (live API) | — | — |
+| H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
+| H2 unit skew test | pass (2026-08-03) | yes (unit) |
+| H5 Spearman ρ | — | need > 0.3 (dry-run epi series present; need Δfitness) |
 
 ## Figures
 
@@ -39,9 +41,9 @@ _Empty until G3/G4._
 
 ## Limitations (honest, keep updated)
 
-- Mutation bias was previously a no-op (full enum); fixed in code but **not yet validated on live GPQA**.
-- `--cabs-inline` is implemented (2026-08-03) but G1 dry-run / G2–G4 live B vs D evidence still missing.
-- No cloud API keys in this environment as of 2026-08-03 — no new paid evidence this tick.
+- Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
+- `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 live B vs D evidence still missing.
+- No cloud API keys in this environment as of 2026-08-04 — no new paid evidence this tick.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
@@ -55,3 +57,4 @@ _Empty until G3/G4._
 | H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (written by inline hook) |
 | H2 unit test | `SIA/tests/test_cabs_bridge.py` |
 | Inline unit test | `SIA/tests/test_cabs_inline.py` |
+| G1 dry-run Condition D | `SIA/tests/test_cabs_inline_dry_run.py` |
