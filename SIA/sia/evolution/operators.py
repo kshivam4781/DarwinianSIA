@@ -43,19 +43,66 @@ def _merge_technique_seeds(parent_a: AgentDNA, parent_b: AgentDNA) -> list[str]:
     return list(dict.fromkeys([*(parent_a.technique_seeds or []), *(parent_b.technique_seeds or [])]))
 
 
-def crossover(parent_a: AgentDNA, parent_b: AgentDNA, rng: random.Random | None = None) -> AgentDNA:
-    """Combine two parent DNAs by randomly inheriting each trait."""
+def _crossover_pick(
+    r: random.Random,
+    field: str,
+    value_a: str,
+    value_b: str,
+    bias: dict[str, list[str]] | None,
+) -> str:
+    """Pick a parental allele; prefer CABS-ranked values when bias is present.
+
+    Bias-aware crossover (Condition D sample efficiency):
+    - If exactly one parent carries the preferred (first) allele, take it.
+    - If both carry preferred, keep preferred.
+    - If neither carries preferred but both alleles are in the disputed pool,
+      prefer the higher-ranked side (exponential rank weights).
+    - Otherwise fall back to fair 50/50 between parents (Condition B path).
+    """
+    if value_a == value_b:
+        return value_a
+    suggested = (bias or {}).get(field) or []
+    if suggested:
+        preferred = suggested[0]
+        if value_a == preferred and value_b != preferred:
+            return value_a
+        if value_b == preferred and value_a != preferred:
+            return value_b
+        if value_a == preferred and value_b == preferred:
+            return preferred
+        rank = {v: i for i, v in enumerate(suggested)}
+        if value_a in rank and value_b in rank:
+            # Lower rank index = higher fitness side from load_mutation_bias.
+            wa = float(3 ** (len(suggested) - 1 - rank[value_a]))
+            wb = float(3 ** (len(suggested) - 1 - rank[value_b]))
+            return r.choices([value_a, value_b], weights=[wa, wb], k=1)[0]
+        if value_a in rank and value_b not in rank:
+            return value_a
+        if value_b in rank and value_a not in rank:
+            return value_b
+    return value_a if r.random() < 0.5 else value_b
+
+
+def crossover(
+    parent_a: AgentDNA,
+    parent_b: AgentDNA,
+    rng: random.Random | None = None,
+    bias: dict[str, list[str]] | None = None,
+) -> AgentDNA:
+    """Combine two parent DNAs; optionally bias disputed traits toward CABS winners."""
     r = rng or random.Random()
     a = parent_a
     b = parent_b
     return AgentDNA(
-        planning_style=a.planning_style if r.random() < 0.5 else b.planning_style,
+        planning_style=_crossover_pick(r, "planning_style", a.planning_style, b.planning_style, bias),
         reflection=a.reflection if r.random() < 0.5 else b.reflection,
-        tool_strategy=a.tool_strategy if r.random() < 0.5 else b.tool_strategy,
-        retry_policy=a.retry_policy if r.random() < 0.5 else b.retry_policy,
-        memory=a.memory if r.random() < 0.5 else b.memory,
+        tool_strategy=_crossover_pick(r, "tool_strategy", a.tool_strategy, b.tool_strategy, bias),
+        retry_policy=_crossover_pick(r, "retry_policy", a.retry_policy, b.retry_policy, bias),
+        memory=_crossover_pick(r, "memory", a.memory, b.memory, bias),
         confidence_threshold=round((a.confidence_threshold + b.confidence_threshold) / 2, 2),
-        prompt_structure=a.prompt_structure if r.random() < 0.5 else b.prompt_structure,
+        prompt_structure=_crossover_pick(
+            r, "prompt_structure", a.prompt_structure, b.prompt_structure, bias
+        ),
         technique_seeds=_merge_technique_seeds(a, b),
     )
 
@@ -152,7 +199,7 @@ def breed_offspring(
     bias: dict[str, list[str]] | None = None,
     technique_seeds: list[str] | None = None,
 ) -> AgentDNA:
-    """Crossover two parents then apply mutation."""
-    child = crossover(parent_a, parent_b, rng=rng)
+    """Crossover two parents then apply mutation (bias flows to both steps)."""
+    child = crossover(parent_a, parent_b, rng=rng, bias=bias)
     child = mutate(child, mutation_rate, rng=rng, bias=bias)
     return inject_technique_seeds(child, technique_seeds or [])

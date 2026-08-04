@@ -7,7 +7,7 @@ from pathlib import Path
 from sia.evolution.cabs_bridge import load_cabs_agenda, load_mutation_bias
 from sia.evolution.dna import AgentDNA, MEMORY_MODES
 from sia.evolution.evolution_prompts import cabs_feedback_addon
-from sia.evolution.operators import mutate
+from sia.evolution.operators import breed_offspring, crossover, mutate
 
 
 def test_load_cabs_agenda(tmp_path):
@@ -295,6 +295,38 @@ def test_biased_mutate_anchors_preferred_allele():
     lose = sum(1 for m in from_loser if m == "full_history")
     assert pref > lose
     assert pref + lose == 200
+
+def test_bias_aware_crossover_prefers_winner_allele():
+    """Bias-aware crossover: inherit preferred allele when exactly one parent has it."""
+    bias = {"memory": ["failure_based", "full_history"]}
+    parent_pref = AgentDNA(memory="failure_based", tool_strategy="selective")
+    parent_lose = AgentDNA(memory="full_history", tool_strategy="aggressive")
+
+    # Preferred present in one parent → always take preferred (deterministic).
+    for i in range(40):
+        child = crossover(parent_pref, parent_lose, rng=random.Random(i), bias=bias)
+        assert child.memory == "failure_based"
+        child_rev = crossover(parent_lose, parent_pref, rng=random.Random(1000 + i), bias=bias)
+        assert child_rev.memory == "failure_based"
+
+    # Without bias → fair mix of parental alleles.
+    mixed = []
+    for i in range(80):
+        child = crossover(parent_pref, parent_lose, rng=random.Random(2000 + i), bias=None)
+        mixed.append(child.memory)
+    assert "failure_based" in mixed and "full_history" in mixed
+
+    # Breed path also forwards bias into crossover (mutation_rate=0 so only XO matters).
+    for i in range(40):
+        child = breed_offspring(
+            parent_pref,
+            parent_lose,
+            mutation_rate=0.0,
+            rng=random.Random(3000 + i),
+            bias=bias,
+        )
+        assert child.memory == "failure_based"
+
 
 def test_mutation_bias_skips_singleton_candidates(tmp_path):
     """Same-allele contradictions must not create singleton bias pools."""
