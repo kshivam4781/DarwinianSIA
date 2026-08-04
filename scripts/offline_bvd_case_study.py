@@ -468,6 +468,8 @@ def main(argv: list[str] | None = None) -> int:
                 "D_final": r["D"]["final_best"],
                 "B_gens25": r["B"]["gens_to_25"],
                 "D_gens25": r["D"]["gens_to_25"],
+                "B_gens30": r["B"]["gens_to_30"],
+                "D_gens30": r["D"]["gens_to_30"],
                 "D_h5_rho": (r["D"].get("h5") or {}).get("spearman_rho"),
                 "D_h2_share": (r["D"].get("h2_memory") or {}).get("in_bias_share"),
             }

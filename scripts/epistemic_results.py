@@ -216,21 +216,39 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def _gens_win(d_g: int | None, b_g: int | None) -> str | None:
+    """Return 'D', 'B', or None (tie) for gens-to-threshold comparison.
+
+    Reaching the threshold when the other never does counts as a win.
+    """
+    if d_g is None and b_g is None:
+        return None
+    if d_g is not None and b_g is None:
+        return "D"
+    if b_g is not None and d_g is None:
+        return "B"
+    if d_g is not None and b_g is not None:
+        if d_g < b_g:
+            return "D"
+        if b_g < d_g:
+            return "B"
+    return None
+
+
 def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
     rows = []
-    b_wins = {"gens25": 0, "final": 0}
-    d_wins = {"gens25": 0, "final": 0}
+    b_wins = {"gens25": 0, "gens30": 0, "final": 0}
+    d_wins = {"gens25": 0, "gens30": 0, "final": 0}
     n = min(len(b_runs), len(d_runs))
     for i in range(n):
         b = summarize_run(b_runs[i])
         d = summarize_run(d_runs[i])
-        b_g = b["gens_to_25"]
-        d_g = d["gens_to_25"]
-        if b_g is not None and d_g is not None:
-            if d_g < b_g:
-                d_wins["gens25"] += 1
-            elif b_g < d_g:
-                b_wins["gens25"] += 1
+        for key, bucket in (("gens_to_25", "gens25"), ("gens_to_30", "gens30")):
+            winner = _gens_win(d.get(key), b.get(key))
+            if winner == "D":
+                d_wins[bucket] += 1
+            elif winner == "B":
+                b_wins[bucket] += 1
         if d["final_best"] > b["final_best"] + 0.01:
             d_wins["final"] += 1
         elif b["final_best"] > d["final_best"] + 0.01:
@@ -240,9 +258,12 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         "n_pairs": n,
         "d_wins_gens25": d_wins["gens25"],
         "b_wins_gens25": b_wins["gens25"],
+        "d_wins_gens30": d_wins["gens30"],
+        "b_wins_gens30": b_wins["gens30"],
         "d_wins_final": d_wins["final"],
         "b_wins_final": b_wins["final"],
         "primary_gens25_pass": d_wins["gens25"] >= 3 and n >= 5,
+        "primary_gens30_pass": d_wins["gens30"] >= 3 and n >= 5,
         "rows": rows,
     }
 

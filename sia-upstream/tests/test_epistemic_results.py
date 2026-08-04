@@ -11,7 +11,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from epistemic_results import (  # noqa: E402
+from epistemic_results import (
+    compare_b_vs_d,  # noqa: E402
     compute_h5,
     gens_to_threshold,
     spearman_rho,
@@ -138,3 +139,27 @@ def test_compute_h5_from_synthetic_run(tmp_path: Path):
     assert gens_to_threshold(run2, 0.30) == 4
     summary = summarize_run(run2)
     assert summary["h5"]["pass"] is True
+
+
+def test_compare_b_vs_d_counts_gens30_reach(tmp_path: Path):
+    """D reaching 30% when B never does counts as a gens30 win."""
+    def _mk(run_id: int, bests: list[float]) -> Path:
+        run = tmp_path / f"run_{run_id}"
+        civ = {
+            "generations": [
+                {"gen": i + 1, "best_fitness": b, "mean_fitness": b}
+                for i, b in enumerate(bests)
+            ]
+        }
+        run.mkdir(parents=True)
+        (run / "civilization.json").write_text(json.dumps(civ), encoding="utf-8")
+        store = run / "belief_store"
+        store.mkdir()
+        (store / "epistemic_value.jsonl").write_text("", encoding="utf-8")
+        return run
+
+    b_runs = [_mk(1, [0.20, 0.22, 0.24, 0.24])]
+    d_runs = [_mk(2, [0.20, 0.28, 0.31, 0.33])]
+    out = compare_b_vs_d(b_runs, d_runs)
+    assert out["d_wins_gens30"] == 1
+    assert out["b_wins_gens30"] == 0
