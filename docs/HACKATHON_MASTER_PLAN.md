@@ -800,6 +800,7 @@ Computed in `cabs/belief_engine.py`:
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
 | ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
 | CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
+| CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
@@ -1563,4 +1564,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 `--cabs-inline` (Condition D) implemented 2026-08-03: after each gen eval, `run_cabs_inline` refreshes `belief_store/` (in-process `BeliefEngine`, subprocess fallback) and appends `belief_store/epistemic_value.jsonl` for H5.
 
-**G1 PASS (2026-08-04):** dry-run Condition D on GPQA-shaped fixture (`runs/run_1401`, seed 42, pop=2, max_gen=2) wrote belief_store (7 contradictions / 7 RQs), scoped mutation bias for breed→gen2, and `epistemic_value.jsonl` for gens 1–2. Locked by `SIA/tests/test_cabs_inline_dry_run.py`. Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env).
+**G1 PASS (2026-08-04):** dry-run Condition D on GPQA-shaped fixture (`runs/run_1401`, seed 42, pop=2, max_gen=2) wrote belief_store (7 contradictions / 7 RQs), scoped mutation bias for breed→gen2, and `epistemic_value.jsonl` for gens 1–2. Locked by `SIA/tests/test_cabs_inline_dry_run.py`.
+
+**Scoped feedback (2026-08-04):** `load_cabs_agenda` now injects `### Scoped DNA Feedback Targets` using the same contradiction-scoped candidate pool as `load_mutation_bias`, so Condition D feedback steers rewrites toward disputed DNA values (not RQ field names alone). Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env).
