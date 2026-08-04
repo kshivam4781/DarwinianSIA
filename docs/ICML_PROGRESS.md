@@ -1,0 +1,204 @@
+# ICML Thesis 1 — Progress log
+
+Persistent agent ticks append newest entries at the top.
+
+---
+
+## 2026-08-04T06:05Z — Tick 6 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-91f9` (fast-forwarded Ticks 1–5 from `3888`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline H5 was still undefined: after gen1 the open contradiction/RQ stock stalled, so `epistemic_value` was constant (11.9 on `run_1402`) and Spearman ρ collapsed despite DNA-deterministic Δfitness.
+
+### What this tick did (ONE step)
+Made **`epistemic_value_t` non-constant** for offline H5:
+- Age-decay open contradiction/RQ priorities (`0.85 ** age`); RQs inherit age from linked contradiction when `detected_at_gen` missing
+- Fold knowledge_gain + resolved-priority flow into `epistemic_value.jsonl` components
+- Unit test `test_epistemic_value_varies_with_age_and_knowledge_gain`
+- Offline Condition D smoke `run_1403` (seed 7, pop=4, max_gen=4): epi **12.9 → 11.11 → 9.60 → 8.31**; H5 ρ **0.5** (pass > 0.3 offline); H2 memory in-bias share **0.875**
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Offline epistemic_value series | Constant after gen1 | **Varies every gen** (age + flow) |
+| Offline H5 ρ (dry-run D) | null (constant epi) | **0.5** on `run_1403` (n_pairs=3) |
+| H2 dry-run memory in-bias | 0.875 (run_1402) | **0.875** (run_1403) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| Paper artifacts | Stubs + tooling | Stubs + offline H5 note |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 pilot B vs D. Do not claim READY from dry-run H5 alone.
+
+---
+
+## 2026-08-04T04:03Z — Tick 5 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-3888` (cherry-picked Ticks 1–4 from `0f06`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline gap: dry-run evaluation still ran mock GPQA agents that always answered "A", collapsing every agent to accuracy=1.0. That made Δfitness≡0 so H5 Spearman could not be computed even with `epistemic_value.jsonl` present. `_deterministic_fitness` existed in `dry_run.py` but was dead code.
+
+### What this tick did (ONE step)
+Wired **DNA-deterministic dry-run fitness** + **epistemic metrics pipeline**:
+- `population._run_single_agent(dry_run=True)` → `deterministic_fitness` + `write_mock_results` (skip trivial mock eval)
+- `scripts/epistemic_results.py` — H5 Spearman, H2 trait share, gens-to-threshold, B vs D compare helpers
+- Tests: `test_epistemic_results.py` + dry-run asserts varied fitness — **14/14** related tests pass
+- Smoke dry-run Condition D (local `run_1402`, seed 7, pop=4, max_gen=4): varied fitness curve; H2 memory in-bias share **0.875**; H5 ρ **undefined** because `epistemic_value` stayed constant at 11.9 (open contradiction/RQ priority sum does not move after gen 1)
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Dry-run fitness diversity | All ~1.0 (mock eval) | DNA-hash in [0.05, 0.95]; multi-value |
+| H5 computation tooling | Missing | `scripts/epistemic_results.py` + unit tests |
+| Offline H5 ρ (dry-run D) | N/A (Δfitness=0) | n_pairs=3 but ρ=null (constant epistemic_value) |
+| H2 dry-run memory in-bias share | Not measured | **0.875** on run_1402 |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| Paper artifacts | Stubs | Stubs + metrics script pinned |
+
+### Next recommended step
+Prefer: when keys present → **G2** smoke GPQA. If still no keys: make `epistemic_value_t` non-constant across gens (e.g. fold in `knowledge_gain_score`, resolved-contradiction deltas, or priority updates) so offline H5 ρ is defined; then re-smoke dry-run D.
+
+---
+
+## 2026-08-04T02:01Z — Tick 4 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0f06` (cherry-picked Ticks 1–3 from `fb8d`, then scoped feedback)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline mechanism gap: Condition D had contradiction-scoped **mutation bias** but feedback agendas only listed open RQs / contradiction text — they did **not** inject the same concrete DNA candidate values. That weakens the causal path Belief → Contradiction → RQ → **scoped feedback** → code change vs fitness-only B.
+
+### What this tick did (ONE step)
+Strengthened **scoped feedback** so agendas share mutation-bias DNA targets:
+- `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` (+ `sia-upstream/` sync) appends `### Scoped DNA Feedback Targets` from `load_mutation_bias`
+- Feedback must prefer contradiction-scoped candidates (not full enums)
+- Test: `test_cabs_agenda_includes_scoped_dna_feedback_targets` — **6/6** `test_cabs_bridge.py` pass
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Scoped feedback DNA candidates in agenda | Missing (RQ field name only) | **Present** (same pool as biased mutation) |
+| H2 unit + G1 dry-run | PASS | PASS (unchanged) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | Writer only | Still no live Δfitness series |
+| Paper artifacts | Stubs | Stubs |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` are present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 pilot B vs D. Do not start paid runs without keys.
+
+---
+
+## 2026-08-04T00:05Z — Tick 3 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-fb8d` (cherry-picked Ticks 1–2 from `c4ef`, then G1)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Section 21 G1 was still open: `--cabs-inline` existed but Condition D had not been dry-run on a GPQA-shaped task layout proving mid-loop `belief_store/` refresh + contradiction-scoped mutation bias before breeding gen≥2. PRIMARY/H5 remain blocked on API keys after G1.
+
+### What this tick did (ONE step)
+Executed **G1 dry-run Condition D** and locked it with an integration test:
+- Harness: `run_darwinian_loop(..., dry_run=True, cabs_inline=True)`, pop=2, max_gen=2, eval_subset=3, seed=42 → local `runs/run_1401` (gitignored)
+- Gen1 inline: beliefs+16, contradictions+7, RQs+7, `epistemic_value=11.9`
+- Breeding logged scoped bias (e.g. `memory: [failure_based, none]` — not full enum)
+- Gen2 DNA written; `belief_store/epistemic_value.jsonl` has gen 1+2 rows
+- Test: `SIA/tests/test_cabs_inline_dry_run.py` (asserts store + epi series + non-empty scoped bias)
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| G1 dry-run Condition D | Unblocked / not executed | **PASS** (run_1401 + pytest) |
+| Mid-run contradictions / RQs (dry-run) | Unknown | **7 / 7** after gen1 |
+| Mutation bias on breed→gen2 | Untested in-loop | **Scoped** (≠ full MEMORY_MODES) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | Writer only | Still no live Δfitness series |
+| Paper artifacts | Stubs | Stubs (+ dry-run ID noted) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` are present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D; then G3 pilot B vs D. Do not start paid runs without keys.
+
+---
+
+## 2026-08-03T22:10Z — Tick 2 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c4ef` (cherry-picked Tick 1 from `bf9b`, then implemented `--cabs-inline`)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Condition D / epistemic_full could not refresh `belief_store/` mid-run: `--cabs` only *reads* an existing store for agenda + mutation bias. Without `--cabs-inline`, D requires a fragile two-step external analyze between gens, so PRIMARY (D≻B) and live H2/H5 were blocked even after the mutation-bias fix.
+
+### What this tick did (ONE step)
+Implemented `--cabs-inline` end-to-end:
+- `SIA/sia/evolution/cabs_inline.py` — in-process `BeliefEngine.process_generation` (+ `sia-cabs-tools` fallback); appends `belief_store/epistemic_value.jsonl`
+- Wired into `run_darwinian_loop` after gen eval / before breeding; CLI `--cabs-inline` implies `--cabs`
+- `sia_cabs/cli.py analyze --generation N` for single-gen subprocess path
+- Synced `sia-upstream/` copies; tests in `SIA/tests/test_cabs_inline.py` (7/7 with bridge tests)
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| `--cabs-inline` CLI / loop hook | Missing | **Present** (Condition D runnable in one process) |
+| Mid-run belief_store refresh | Two-step only | **In-loop** after each gen |
+| `epistemic_value.jsonl` for H5 | Missing | **Written** per inline gen |
+| G1 dry-run Condition D | Blocked on missing flag | **Unblocked** (needs task dry-run next; no API) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | No data | Still no live Δfitness series |
+| Paper artifacts | Stubs | Stubs (flag docs updated) |
+
+### Next recommended step
+G1: dry-run Condition D (`--darwinian --cabs --cabs-inline --dry-run`, pop≤2, max_gen≥2) on an available task to confirm belief_store + biased DNA on gen≥2; then when keys exist, G2 smoke GPQA subset (one seed) under budget.
+
+---
+
+## 2026-08-03T20:36Z — Tick 1 (first automation run)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Section 21: **created** this tick
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Condition D’s causal mechanism was broken: `SIA/sia/evolution/cabs_bridge.py::load_mutation_bias` dumped the **full DNA trait enum** into the bias pool whenever an open RQ named a `dna_field`. That makes biased mutation statistically identical to Condition B (uniform Darwinian mutation), so PRIMARY (D≻B) and MECHANISM (H2 skew) could not pass even with perfect runs.
+
+Secondary gaps (still open):
+- `--cabs-inline` not implemented (Condition D / epistemic_full)
+- No live B vs D runs / run artifacts
+- H5 Spearman ρ not computable yet
+- Paper Figs/Tables / abstract not written
+
+### What this tick did (ONE step)
+Fixed contradiction-scoped mutation bias + regression tests (H2 unit gate):
+- `SIA/sia/evolution/cabs_bridge.py` (+ synced `sia-upstream/` copy)
+- `SIA/tests/test_cabs_bridge.py` — asserts bias ≠ full enum; DNA-file path; mutate skew vs uniform
+- Added Section 21 ICML protocol; scaffolded paper/gate/ready docs
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Mutation bias = full enum (bug) | Yes (D≈B) | **No** — candidates from contradiction DNA/beliefs |
+| H2 unit skew test | Missing | **Pass** (`biased_mass == n`, > uniform) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | No data | No data |
+| Paper artifacts | Missing | Stubs only |
+
+### Next recommended step
+Implement `--cabs-inline` in SIA darwinian loop (analyze + optional offline committee after each gen eval, before breeding) so Condition D can refresh `belief_store/` in-process; then G1 dry-run + G2 smoke when keys available.

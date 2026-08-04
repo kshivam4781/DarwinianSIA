@@ -12,12 +12,39 @@ from sia.io_utils import write_text
 from sia.layout import Names
 
 
-def _deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
-    """Produce stable, varied fitness in [0.05, 0.95] from DNA + ids."""
+def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
+    """Produce stable, varied fitness in [0.05, 0.95] from DNA + ids.
+
+    Used by dry-run evaluation so Condition B/D harnesses get non-trivial
+    Δfitness series (needed for offline H5 Spearman smoke tests). Not a
+    substitute for live GPQA accuracy.
+    """
     payload = json.dumps({"agent_id": agent_id, "gen": generation, "dna": dna.__dict__}, sort_keys=True)
     digest = hashlib.sha256(payload.encode()).hexdigest()
     raw = int(digest[:8], 16) / 0xFFFFFFFF
     return round(0.05 + 0.9 * raw, 4)
+
+
+# Back-compat alias for older call sites / tests.
+_deterministic_fitness = deterministic_fitness
+
+
+def parse_agent_coords(agent_dir: str) -> tuple[int, int]:
+    """Return (agent_id, generation) parsed from ``.../gen_N/agent_K`` paths."""
+    generation = 1
+    agent_id = 0
+    for part in Path(agent_dir).parts:
+        if part.startswith("gen_"):
+            try:
+                generation = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+        elif part.startswith("agent_"):
+            try:
+                agent_id = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+    return agent_id, generation
 
 
 def write_mock_target_agent(agent_dir: str, task_name: str) -> None:
