@@ -7,27 +7,27 @@
     55
   ],
   "b_run_ids": [
-    1470,
-    1471,
-    1472,
-    1473,
-    1474
+    1510,
+    1511,
+    1512,
+    1513,
+    1514
   ],
   "d_run_ids": [
-    1480,
-    1481,
-    1482,
-    1483,
-    1484
+    1520,
+    1521,
+    1522,
+    1523,
+    1524
   ],
   "compare": {
     "n_pairs": 5,
     "d_wins_gens25": 0,
     "b_wins_gens25": 0,
-    "d_wins_gens30": 1,
-    "b_wins_gens30": 1,
+    "d_wins_gens30": 2,
+    "b_wins_gens30": 0,
     "d_wins_final": 2,
-    "b_wins_final": 2,
+    "b_wins_final": 0,
     "primary_gens25_pass": false,
     "primary_gens30_pass": false
   },
@@ -35,7 +35,7 @@
     {
       "seed": 11,
       "B_final": 0.2658,
-      "D_final": 0.3276,
+      "D_final": 0.3404,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": null,
@@ -46,50 +46,50 @@
     {
       "seed": 22,
       "B_final": 0.2479,
-      "D_final": 0.2584,
+      "D_final": 0.3016,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 3,
-      "D_gens30": null,
-      "D_h5_rho": -0.5,
-      "D_h2_share": 0.875
+      "D_gens30": 2,
+      "D_h5_rho": 0.5,
+      "D_h2_share": 0.0
     },
     {
       "seed": 33,
       "B_final": 0.3047,
-      "D_final": 0.3055,
+      "D_final": 0.3057,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 1,
+      "D_gens30": 1,
+      "D_h5_rho": -1.0,
+      "D_h2_share": 0.9375
+    },
+    {
+      "seed": 44,
+      "B_final": 0.2715,
+      "D_final": 0.2712,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 2,
+      "D_gens30": 2,
+      "D_h5_rho": 0.5,
+      "D_h2_share": 0.9375
+    },
+    {
+      "seed": 55,
+      "B_final": 0.3224,
+      "D_final": 0.3216,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 1,
       "D_gens30": 1,
       "D_h5_rho": 0.5,
       "D_h2_share": 0.9375
-    },
-    {
-      "seed": 44,
-      "B_final": 0.2715,
-      "D_final": 0.2607,
-      "B_gens25": 1,
-      "D_gens25": 1,
-      "B_gens30": 2,
-      "D_gens30": 2,
-      "D_h5_rho": 1.0,
-      "D_h2_share": 0.9375
-    },
-    {
-      "seed": 55,
-      "B_final": 0.3224,
-      "D_final": 0.2692,
-      "B_gens25": 1,
-      "D_gens25": 1,
-      "B_gens30": 1,
-      "D_gens30": 1,
-      "D_h5_rho": 1.0,
-      "D_h2_share": 0.9375
     }
   ],
   "case_study": {
-    "run_dir": "/workspace/runs/run_1480",
+    "run_dir": "/workspace/runs/run_1520",
     "field": "tool_strategy",
     "preferred_value": "selective",
     "bias_order": [
@@ -132,31 +132,31 @@
       {
         "agent_id": 0,
         "trait": "selective",
-        "fitness": 0.301
+        "fitness": 0.3354
       },
       {
         "agent_id": 1,
-        "trait": "aggressive",
-        "fitness": 0.2632
+        "trait": "selective",
+        "fitness": 0.3217
       },
       {
         "agent_id": 2,
         "trait": "selective",
-        "fitness": 0.2863
+        "fitness": 0.322
       },
       {
         "agent_id": 3,
         "trait": "selective",
-        "fitness": 0.3171
+        "fitness": 0.3428
       }
     ],
     "gen1_preferred_mean_fitness": 0.2863,
     "gen1_loser_mean_fitness": 0.2439,
-    "gen2_preferred_mean_fitness": 0.30146666666666666,
+    "gen2_preferred_mean_fitness": 0.33047499999999996,
     "gen1_pop_mean": 0.252525,
-    "gen2_pop_mean": 0.2919,
-    "fitness_lift": 0.057566666666666655,
-    "gen2_preferred_share": 0.75,
+    "gen2_pop_mean": 0.33047499999999996,
+    "fitness_lift": 0.08657499999999996,
+    "gen2_preferred_share": 1.0,
     "dna_fitness_transfers": true,
     "belief_count": 15,
     "agenda_prefers_first": "selective"
@@ -165,7 +165,5 @@
     "/workspace/docs/figures/fig1_learning_curves.png",
     "/workspace/docs/figures/fig2_mechanism.png"
   ],
-  "note": "Synthetic additive-latent DNA fitness with transferable traits + steering epi; offline only. H5 4/5 ρ>0.3; PRIMARY not met. Do not set ICML_READY from this.",
-  "h5_seeds_pass": 4,
-  "h5_pooled_rho": 0.3357
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
 }

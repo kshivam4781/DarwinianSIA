@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T14:05Z — Tick 10 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c34f` (fast-forwarded Ticks 1–9 from `c875`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline PRIMARY gap after Tick 9: D final 2/5, gens30 1/5, mean gap ~0.2pp. Diagnosis on failing seed 55: cross-agent extractors emit **same-allele “contradictions”** (both sides `tool_strategy=aggressive` with different fitness from other genes). Singleton bias pools then force that allele population-wide and wipe better elites (e.g. selective). Hard preferred pull without a ≥2-value gate worsened this.
+
+### What this tick did (ONE step)
+Strengthened **Condition D mutation bias** for sample efficiency without singleton collapse:
+1. **Preferred-allele anchoring** in `_biased_choice`: protect preferred; pull outsiders to winner only; exponential rank weights on disputed losers
+2. **Skip singleton bias pools** in `load_mutation_bias` (require ≥2 distinct candidates)
+3. Unit tests: `test_biased_mutate_anchors_preferred_allele`, `test_mutation_bias_skips_singleton_candidates`
+4. Re-pilot B `1510–1514` vs D `1520–1524`; case study on `run_1520`
+
+### Metrics delta
+| Metric | Before (Tick 9) | After (Tick 10) |
+|--------|-----------------|-----------------|
+| Offline D gens30 wins | 1/5 | **2/5** (B gens30 wins 0) |
+| Offline D final wins (>1pp) | 2/5 | **2/5** (B final wins 0; rest ties) |
+| Mean final gap (D−B) | ~0.2pp | ~**2.56pp** |
+| Offline H5 ρ>0.3 | 4/5; pooled ≈0.34 | **4/5**; pooled ≈**0.23** |
+| Case study gen2 pref share / lift | 0.75 / +0.0576 (`1480`) | **1.0 / +0.0866** (`1520`) |
+| Singleton bias → elite wipe | Present (seed 55 all-aggressive) | **Gated out** |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: strengthen offline PRIMARY to ≥3/5 gens30 (e.g. bias-aware crossover / longer horizon) or raise pooled H5 back above 0.3. Do **not** set READY from offline mean-gap alone.
+
+---
+
 ## 2026-08-04T12:05Z — Tick 9 (automation cron)
 
 ### Status snapshot

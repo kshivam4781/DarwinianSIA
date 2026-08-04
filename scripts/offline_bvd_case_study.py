@@ -292,7 +292,7 @@ def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
     lines = [
         "# Offline case study — Condition D mechanism chain",
         "",
-        "**Status:** offline dry-run evidence (synthetic GPQA fixture; DNA-hash fitness). "
+        "**Status:** offline dry-run evidence (synthetic GPQA fixture; additive latent DNA fitness). "
         "Does **not** satisfy live PRIMARY. Supports MECHANISM case-study criterion.",
         "",
         f"**Run:** `{case['run_dir']}`",
@@ -478,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
         "case_study": case,
         "figures": figs,
         "note": (
-            "Synthetic DNA-hash fitness with transferable traits; offline only. "
+            "Synthetic additive latent DNA fitness with transferable traits; offline only. "
             "Do not set ICML_READY PRIMARY from this."
         ),
     }
