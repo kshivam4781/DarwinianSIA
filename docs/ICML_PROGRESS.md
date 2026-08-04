@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T20:05Z — Tick 13 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-cb6a` (fast-forwarded Ticks 1–12 from `e6d1`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 12: final **3/5** but gens30 **0/5**, H5 **2/5**, mean gap ~0.9pp. Root cause: **mutation bias preferred-allele anchoring** collapses preferred DNA share to 1.0 by gen2 even when crossover bias is delayed — starving H5 steering opportunity and gens-to-threshold.
+
+### What this tick did (ONE step)
+Implemented **tempered early mutation bias** (soft rank-weighted mutate on gen1→gen2; full preferred-allele anchoring from gen≥2):
+1. `_biased_choice(..., anchor_preferred=)` — soft mode samples disputed pool with exponential weights (no hard protect / outsider→preferred)
+2. `mutate` / `breed_offspring(..., apply_mutation_anchor=)` forward the flag
+3. `population.py` sets `apply_mutation_anchor = (current_gen >= 2)` (same gate as delayed XO bias)
+4. Unit test `test_biased_mutate_can_soften_preferred_anchor`
+5. Re-pilot B `1590–1594` vs D `1600–1604`; case study on `run_1600`
+
+### Metrics delta
+| Metric | Before (Tick 12) | After (Tick 13) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 3/5 | **3/5** (B final wins 2) |
+| Offline D gens30 wins | 0/5 | **0/5** (B gens30 wins 2) — no change |
+| Mean final gap (D−B) | ~0.9pp | ~**1.66pp** — improved, still soft |
+| Offline H5 ρ>0.3 | 2/5 | **3/5** (0.5 / −0.5 / 0.5 / −0.5 / 0.5) — partial restore |
+| Case study gen2 pref share / lift | 1.0 / +0.0554 (`1580`) | **1.0 / +0.0646** (`1600`) — case-study field still collapses by gen2 |
+| Soft early mutation anchor | Missing | **Present** (`apply_mutation_anchor`) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: **longer horizon** `max_gen≥6` offline re-pilot (gives gen≥2 anchoring room after soft early breed) and/or delay **all** mutation bias until gen≥2 (not only anchoring), targeting gens30 ≥3/5 and H5 ≥4/5 while keeping final ≥3/5. Do **not** set READY — live GPQA still required; offline gens30 still 0/5.
+
+---
+
 ## 2026-08-04T18:06Z — Tick 12 (automation cron)
 
 ### Status snapshot

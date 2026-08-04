@@ -2,7 +2,7 @@
 
 **Status:** offline dry-run evidence (synthetic GPQA fixture; additive latent DNA fitness). Does **not** satisfy live PRIMARY. Supports MECHANISM case-study criterion.
 
-**Run:** `/workspace/runs/run_1580`
+**Run:** `runs/run_1600` (Tick 13 tempered early mutation bias)
 
 ## Chain
 
@@ -10,7 +10,7 @@
 2. **Contradiction:** topic `tool_use` — 'Agent 0: tool_strategy=selective achieved fitness 0.2863 (population mean 0.2525)' vs 'Agent 1: tool_strategy=aggressive achieved fitness 0.2439 (population mean 0.2525)' (priority=0.85).
 3. **Fitness-weighted bias:** field `tool_strategy` ordered `['selective', 'aggressive']` (prefer `selective`).
 4. **DNA skew:** gen2 share of preferred trait = 1.0.
-5. **Fitness lift:** preferred@gen2 mean − loser@gen1 mean = **+0.0554** (pop mean 0.252525 → 0.29927499999999996).
+5. **Fitness lift:** preferred@gen2 mean − loser@gen1 mean = **+0.0646** (pop mean 0.252525 → 0.308525).
 
 DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_id/gen).
 
@@ -34,7 +34,7 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
 
 ```json
 {
-  "run_dir": "/workspace/runs/run_1580",
+  "run_dir": "/workspace/runs/run_1600",
   "field": "tool_strategy",
   "preferred_value": "selective",
   "bias_order": [
@@ -77,12 +77,12 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
     {
       "agent_id": 0,
       "trait": "selective",
-      "fitness": 0.3046
+      "fitness": 0.319
     },
     {
       "agent_id": 1,
       "trait": "selective",
-      "fitness": 0.2844
+      "fitness": 0.3171
     },
     {
       "agent_id": 2,
@@ -92,15 +92,15 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
     {
       "agent_id": 3,
       "trait": "selective",
-      "fitness": 0.3414
+      "fitness": 0.3313
     }
   ],
   "gen1_preferred_mean_fitness": 0.2863,
   "gen1_loser_mean_fitness": 0.2439,
-  "gen2_preferred_mean_fitness": 0.29927499999999996,
+  "gen2_preferred_mean_fitness": 0.308525,
   "gen1_pop_mean": 0.252525,
-  "gen2_pop_mean": 0.29927499999999996,
-  "fitness_lift": 0.05537499999999995,
+  "gen2_pop_mean": 0.308525,
+  "fitness_lift": 0.06462499999999999,
   "gen2_preferred_share": 1.0,
   "dna_fitness_transfers": true,
   "belief_count": 15,
