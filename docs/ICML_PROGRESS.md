@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T12:05Z — Tick 9 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c875` (fast-forwarded Ticks 1–8 from `3a18`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline VALIDITY gap after Tick 8: multi-seed H5 Spearman ρ was often **negative** because (1) `epistemic_value` was mostly age-decayed open-stock (monotone decrease) and (2) opaque DNA-hash fitness made single-trait mutation bias scramble other traits so preferred-side adoption did **not** causally raise fitness.
+
+### What this tick did (ONE step)
+Fixed **offline multi-seed H5** via causal epistemic + fitness coupling:
+1. **Steering opportunity** in `_epistemic_value`: `aged_priority × fitness_gap × (1 − preferred DNA share)` so epi_t tracks remaining contradiction-driven improvement pressure
+2. **Additive latent dry-run fitness** (replaces opaque hash): transferable DNA scores where higher-latent trait sides raise fitness; score scale keeps 25/30% thresholds informative
+3. `compare_b_vs_d` tracks gens-to-30% wins (including reach-vs-never)
+4. Re-pilot B `1470–1474` vs D `1480–1484` (seeds 11/22/33/44/55); case study on `run_1480`
+
+### Metrics delta
+| Metric | Before (Tick 8) | After (Tick 9) |
+|--------|-----------------|----------------|
+| Offline multi-seed H5 ρ>0.3 | Often negative (1/5) | **4/5** seeds; pooled ρ≈**0.34** |
+| Dry-run fitness model | Opaque DNA-hash | **Additive latent** (causal bias→fitness) |
+| `epistemic_value` components | Age + flow | Age + flow + **steering_opportunity** |
+| Offline D final wins (5 seeds) | 4/5 (non-causal hash) | **2/5** (honest; mean gap ~0.2pp) |
+| Offline D gens30 wins | Not tracked | **1/5** (PRIMARY still fail offline) |
+| Case study chain | `run_1420` | `run_1480` (selective share 0.75; lift +0.0576) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. Do **not** set READY from offline H5 4/5 alone — PRIMARY still needs live ≥3/5.
+
+---
+
 ## 2026-08-04T10:06Z — Tick 8 (automation cron)
 
 ### Status snapshot

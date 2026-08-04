@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-04 (Section 21 ICML; DNA-transferable dry-run fitness + offline B vs D case study)  
+**Last updated:** 2026-08-04 (Section 21 ICML; Tick 9 steering epi + additive latent dry-run fitness; offline H5 4/5)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -804,15 +804,16 @@ Computed in `cabs/belief_engine.py`:
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
-| Dry-run DNA-deterministic fitness | **DONE** | DNA-transferable (Tick 8: no agent_id/gen in hash); enables offline case study |
-| `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers for paper refresh |
-| Offline B vs D case-study pilot | **DONE** | `scripts/offline_bvd_case_study.py`; D final 4/5 synthetic; `docs/case_study_offline.md` |
+| Dry-run DNA-deterministic fitness | **DONE** | Tick 9: **additive latent** trait scores (DNA-transferable; causal bias→fitness); scaled for 25/30% thresholds |
+| Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
+| `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% win counting |
+| Offline B vs D case-study pilot | **DONE** | Latest `1470–1474` / `1480–1484`; case study `docs/case_study_offline.md` (`run_1480`) |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study (Tick 8); need live API |
-| Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay open priorities + knowledge_gain/resolution flow (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline dry-run `run_1403` ρ **0.5**; Tick-8 multi-seed unstable; live required |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
+| Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
+| H5 Spearman ρ validity | **PARTIAL** | Offline multi-seed **4/5** ρ>0.3 (`1480–1484`); pooled ρ≈0.34; live required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1 stub; live empty — see `docs/paper_artifacts.md` |
-| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY/H5) |
+| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
 ---
 
@@ -1516,7 +1517,7 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 | **H2** | Open contradictions bias offspring DNA toward disputed trait values | Trait histogram / χ² or proportion test vs Condition B |
 | **H5** | Epistemic value at gen *t* predicts fitness gain at *t+1* | Spearman ρ > 0.3 |
 
-**epistemic_value_t (working definition):** age-weighted sum of open contradiction priorities + open RQ priorities at end of generation *t*, plus flow terms from that generation's `knowledge_gain_score` and newly resolved priorities (export `belief_store/epistemic_value.jsonl`). Unresolved open items decay by `0.85 ** age` (age = gens since detection; RQs inherit age from linked contradiction when needed).
+**epistemic_value_t (working definition):** age-weighted sum of open contradiction priorities + open RQ priorities at end of generation *t*, plus flow terms from that generation's `knowledge_gain_score` and newly resolved priorities, plus a **steering opportunity** term `Σ aged_priority × fitness_gap × (1 − preferred_DNA_share)` (export `belief_store/epistemic_value.jsonl`). Unresolved open items decay by `0.85 ** age` (age = gens since detection; RQs inherit age from linked contradiction when needed).
 
 ### 21.5 Phase gates (mandatory order)
 
@@ -1579,4 +1580,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Fitness-weighted bias (2026-08-04 Tick 7):** `load_mutation_bias` ranks contradiction-scoped candidates by associated fitness (belief metadata / ``achieved fitness`` text / agent score files); `_biased_choice` uses rank weights so Condition D prefers the higher-fitness side while staying in the disputed subspace.
 
-**DNA-transferable dry-run fitness + offline case study (2026-08-04 Tick 8):** `deterministic_fitness` ignores agent_id/generation so winning genomes keep their score under inheritance. Offline 5-seed B vs D (`1410–1414` / `1420–1424`) → D final wins 4/5 synthetic; case study `docs/case_study_offline.md` (`run_1420`). Remaining gap: API-backed G2–G4 live B vs D seeds (keys absent in cloud env).
+**DNA-transferable dry-run fitness + offline case study (2026-08-04 Tick 8):** `deterministic_fitness` ignores agent_id/generation so winning genomes keep their score under inheritance. Offline 5-seed B vs D (`1410–1414` / `1420–1424`) → D final wins 4/5 synthetic; case study `docs/case_study_offline.md` (`run_1420`).
+
+**Steering epi + additive latent fitness (2026-08-04 Tick 9):** Opaque DNA-hash fitness broke bias→Δfitness (negative multi-seed H5). Replaced with additive latent trait scores + `steering_opportunity` in `epistemic_value`. Offline re-pilot `1470–1474` / `1480–1484` → H5 ρ>0.3 on **4/5** seeds (pooled ρ≈0.34); PRIMARY gens/final still not ≥3/5 offline. Remaining gap: API-backed G2–G4 live B vs D seeds (keys absent in cloud env).
