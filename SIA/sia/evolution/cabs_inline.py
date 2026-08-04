@@ -145,20 +145,30 @@ def _epistemic_value(
     Stock: open contradiction + RQ priorities, decayed by gens since detection.
     Flow: knowledge_gain_score (from cabs_report) + resolved priorities this gen.
     """
-    contradictions = [
-        c
-        for c in _load_store_items(store_root, "contradictions.json", "contradictions")
-        if c.get("status", "open") == "open"
-    ]
+    all_contradictions = _load_store_items(store_root, "contradictions.json", "contradictions")
+    contradictions = [c for c in all_contradictions if c.get("status", "open") == "open"]
     questions = [
         q
         for q in _load_store_items(store_root, "research_questions.json", "research_questions")
         if q.get("status", "open") == "open"
     ]
+    # RQs often lack detected_at_gen; inherit age from linked contradiction when needed.
+    c_by_id = {c.get("id"): c for c in all_contradictions if c.get("id")}
+
+    def _rq_effective(q: dict[str, Any]) -> float:
+        base = float(q.get("priority", 0) or 0)
+        has_age = any(q.get(k) is not None for k in ("detected_at_gen", "created_at_gen", "generation"))
+        if has_age:
+            return _effective_priority(q, generation)
+        parent = c_by_id.get(q.get("contradiction_id"))
+        if parent is not None:
+            return base * (_EPI_AGE_DECAY ** _item_age(parent, generation))
+        return base
+
     c_raw = sum(float(c.get("priority", 0) or 0) for c in contradictions)
     q_raw = sum(float(q.get("priority", 0) or 0) for q in questions)
     c_sum = sum(_effective_priority(c, generation) for c in contradictions)
-    q_sum = sum(_effective_priority(q, generation) for q in questions)
+    q_sum = sum(_rq_effective(q) for q in questions)
 
     if knowledge_gain is None:
         knowledge_gain = _knowledge_gain_from_report(run_dir, generation) if run_dir else 0.0

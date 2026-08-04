@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-04 (Section 21 ICML; dry-run DNA fitness + epistemic_results metrics)  
+**Last updated:** 2026-08-04 (Section 21 ICML; non-constant epistemic_value for offline H5)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -807,7 +807,8 @@ Computed in `cabs/belief_engine.py`:
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers for paper refresh |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 scoped bias + run_1402 in-bias 0.875; need live API |
-| H5 Spearman ρ validity | **NOT DONE** | Tooling ready; dry-run ρ undefined (constant epi); need live / non-constant epi |
+| Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay open priorities + knowledge_gain/resolution flow (`cabs_inline.py`) |
+| H5 Spearman ρ validity | **PARTIAL** | Offline dry-run `run_1403` ρ **0.5**; live GPQA series still required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass |
 
@@ -1513,7 +1514,7 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 | **H2** | Open contradictions bias offspring DNA toward disputed trait values | Trait histogram / χ² or proportion test vs Condition B |
 | **H5** | Epistemic value at gen *t* predicts fitness gain at *t+1* | Spearman ρ > 0.3 |
 
-**epistemic_value_t (working definition):** weighted sum of open contradiction priorities + open RQ priorities at end of generation *t* (export from `belief_store/`).
+**epistemic_value_t (working definition):** age-weighted sum of open contradiction priorities + open RQ priorities at end of generation *t*, plus flow terms from that generation's `knowledge_gain_score` and newly resolved priorities (export `belief_store/epistemic_value.jsonl`). Unresolved open items decay by `0.85 ** age` (age = gens since detection; RQs inherit age from linked contradiction when needed).
 
 ### 21.5 Phase gates (mandatory order)
 
@@ -1570,4 +1571,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Scoped feedback (2026-08-04):** `load_cabs_agenda` now injects `### Scoped DNA Feedback Targets` using the same contradiction-scoped candidate pool as `load_mutation_bias`, so Condition D feedback steers rewrites toward disputed DNA values (not RQ field names alone).
 
-**Dry-run fitness + metrics (2026-08-04):** Dry-run eval now uses `deterministic_fitness` (DNA-hash) instead of mock GPQA accuracy=1.0 for all agents. `scripts/epistemic_results.py` computes H5/H2/gens-to-threshold. Offline smoke `run_1402` showed H2 memory in-bias share 0.875 but H5 ρ undefined (constant `epistemic_value`). Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env); optionally non-constant epistemic_value for offline H5.
+**Dry-run fitness + metrics (2026-08-04):** Dry-run eval now uses `deterministic_fitness` (DNA-hash) instead of mock GPQA accuracy=1.0 for all agents. `scripts/epistemic_results.py` computes H5/H2/gens-to-threshold.
+
+**Non-constant epistemic_value (2026-08-04):** Age-weighted open priorities + knowledge_gain/resolution flow. Offline Condition D `run_1403` → H5 ρ **0.5**, H2 memory in-bias **0.875**. Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env).

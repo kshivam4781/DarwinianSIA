@@ -21,8 +21,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - Evidence: unit + dry-run G1 + scoped feedback path; live GPQA artifacts pending (no API keys)
 
 ### 3. VALIDITY — H5
-- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3
-- Evidence: writer + `scripts/epistemic_results.py` compute path ready; dry-run now has Δfitness via DNA-deterministic fitness, but ρ undefined when epistemic_value is constant across gens (observed on dry-run `run_1402`); live series still pending
+- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
+- Evidence: offline dry-run `run_1403` now yields ρ **0.5** (n_pairs=3) after age-weighted + flow epistemic_value (non-constant). Still **not** sufficient for READY — needs live GPQA Δfitness series under the same definition.
 
 ### 4. PAPER
 - [ ] Figure 1 (learning curves B vs D)
@@ -40,7 +40,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | BLOCKED (no API keys) |
+| G2 smoke GPQA subset | BLOCKED (no API keys); offline H5 path unblocked (`run_1403` ρ=0.5) |
 | G3 pilot B vs D | NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED |
 | G5 paper pack | NOT STARTED |

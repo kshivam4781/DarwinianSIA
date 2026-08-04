@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** scaffold + metrics tooling (2026-08-04). No publishable live figures/tables yet.
+**Status:** scaffold + metrics tooling + offline H5 path (2026-08-04). No publishable live figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -11,7 +11,8 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | Condition | Seed | Run ID | Status |
 |-----------|------|--------|--------|
 | D epistemic_full (dry-run G1) | 42 | 1401 | **PASS** harness (no API; synthetic GPQA fixture; gitignored `runs/run_1401`) |
-| D epistemic_full (dry-run H5 smoke) | 7 | 1402 | Offline only — DNA-deterministic fitness; H5 ρ undefined (constant epistemic_value=11.9); H2 memory in-bias share 0.875 |
+| D epistemic_full (dry-run H5 smoke) | 7 | 1402 | Offline only — pre-fix; constant epistemic_value=11.9 → ρ undefined; H2 memory in-bias 0.875 |
+| D epistemic_full (dry-run H5 after epi fix) | 7 | 1403 | Offline — age-weighted + flow epi **12.9→8.31**; H5 ρ **0.5** (pass); H2 memory in-bias **0.875**; not live GPQA |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
@@ -32,7 +33,7 @@ _Empty until G3/G4._
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
 | H2 dry-run in-bias share (run_1402) | memory in-bias 14/16 = **0.875** | informative (dry-run) |
 | H2 unit skew test | pass (2026-08-03) | yes (unit) |
-| H5 Spearman ρ | dry-run tooling pass; live/offline ρ still fail (constant epi or no live data) | need > 0.3 |
+| H5 Spearman ρ | offline `run_1403` ρ **0.5** (n=3); live still pending | offline yes; live need > 0.3 |
 
 ## Figures
 
@@ -47,7 +48,7 @@ _Empty until G3/G4._
 - Scoped feedback now mirrors mutation-bias DNA candidates (2026-08-04); still untested on live rewrite quality.
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 live B vs D evidence still missing.
 - Dry-run fitness previously collapsed to 1.0 via mock eval; fixed 2026-08-04 with DNA-deterministic fitness. Still **not** live GPQA accuracy.
-- Offline H5 on dry-run D (`run_1402`) had Δfitness but **constant** `epistemic_value` (11.9) → Spearman undefined. Need non-constant epi series and/or live runs.
+- Offline H5 on dry-run D (`run_1402`) had Δfitness but **constant** `epistemic_value` (11.9) → Spearman undefined. Fixed 2026-08-04 with age-weighted open priorities + knowledge_gain/resolution flow (`run_1403` ρ=0.5). Still synthetic fitness — not a live validity claim.
 - No cloud API keys in this environment as of 2026-08-04 — no new paid evidence this tick.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
@@ -60,7 +61,7 @@ _Empty until G3/G4._
 | Scoped feedback DNA targets | `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` |
 | Biased mutate | `SIA/sia/evolution/operators.py::mutate` |
 | Condition D inline analyze | `SIA/sia/evolution/cabs_inline.py` + `--cabs-inline` |
-| H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (written by inline hook) |
+| H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (age-weighted open priorities + knowledge_gain/resolution flow) |
 | Dry-run DNA fitness | `SIA/sia/evolution/dry_run.py::deterministic_fitness` (wired in `population._run_single_agent`) |
 | Metrics / H5–H2 helpers | `scripts/epistemic_results.py` |
 | H2 unit test | `SIA/tests/test_cabs_bridge.py` |

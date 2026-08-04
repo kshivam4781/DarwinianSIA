@@ -4,6 +4,38 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T06:05Z — Tick 6 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-91f9` (fast-forwarded Ticks 1–5 from `3888`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline H5 was still undefined: after gen1 the open contradiction/RQ stock stalled, so `epistemic_value` was constant (11.9 on `run_1402`) and Spearman ρ collapsed despite DNA-deterministic Δfitness.
+
+### What this tick did (ONE step)
+Made **`epistemic_value_t` non-constant** for offline H5:
+- Age-decay open contradiction/RQ priorities (`0.85 ** age`); RQs inherit age from linked contradiction when `detected_at_gen` missing
+- Fold knowledge_gain + resolved-priority flow into `epistemic_value.jsonl` components
+- Unit test `test_epistemic_value_varies_with_age_and_knowledge_gain`
+- Offline Condition D smoke `run_1403` (seed 7, pop=4, max_gen=4): epi **12.9 → 11.11 → 9.60 → 8.31**; H5 ρ **0.5** (pass > 0.3 offline); H2 memory in-bias share **0.875**
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Offline epistemic_value series | Constant after gen1 | **Varies every gen** (age + flow) |
+| Offline H5 ρ (dry-run D) | null (constant epi) | **0.5** on `run_1403` (n_pairs=3) |
+| H2 dry-run memory in-bias | 0.875 (run_1402) | **0.875** (run_1403) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| Paper artifacts | Stubs + tooling | Stubs + offline H5 note |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 pilot B vs D. Do not claim READY from dry-run H5 alone.
+
+---
+
 ## 2026-08-04T04:03Z — Tick 5 (automation cron)
 
 ### Status snapshot

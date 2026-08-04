@@ -154,7 +154,7 @@ def test_epistemic_value_varies_with_age_and_knowledge_gain(tmp_path):
                         "id": "rq1",
                         "priority": 0.8,
                         "status": "open",
-                        "detected_at_gen": 1,
+                        # No detected_at_gen — must inherit age from contradiction c1
                         "contradiction_id": "c1",
                     }
                 ]
@@ -171,6 +171,10 @@ def test_epistemic_value_varies_with_age_and_knowledge_gain(tmp_path):
     assert g2["epistemic_value"] != g3["epistemic_value"]
     # Stale open stock decays without new knowledge_gain
     assert g3["epistemic_value"] < g2["epistemic_value"] < g1["epistemic_value"]
+    # RQ without detected_at_gen inherits contradiction age (both sides decay)
+    assert g2["rq_priority_sum"] < g1["rq_priority_sum"]
+    assert g2["contradiction_priority_sum"] < g1["contradiction_priority_sum"]
+    assert g2["rq_priority_sum"] == pytest.approx(0.8 * 0.85)
     # Knowledge gain must move the series (gen1 includes flow)
     assert g1["knowledge_gain_score"] == pytest.approx(0.5)
     assert g1["epistemic_value"] > g1["contradiction_priority_sum"] + g1["rq_priority_sum"] - 1e-9
