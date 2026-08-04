@@ -379,6 +379,80 @@ def test_breed_offspring_can_delay_crossover_bias():
     assert steered < n
 
 
+def test_biased_mutate_can_soften_preferred_anchor():
+    """Soft mutation bias: rank-weighted skew without hard preferred collapse."""
+    bias = {"memory": ["failure_based", "full_history"]}
+
+    # Outsiders under soft mode: preferred dominates but loser remains possible.
+    outs = []
+    for i in range(200):
+        dna = AgentDNA(memory="short_summary")
+        out = mutate(
+            dna,
+            mutation_rate=1.0,
+            rng=random.Random(i),
+            bias=bias,
+            anchor_preferred=False,
+        )
+        outs.append(out.memory)
+    pref = sum(1 for m in outs if m == "failure_based")
+    lose = sum(1 for m in outs if m == "full_history")
+    assert pref + lose == 200
+    assert pref > lose
+    assert lose > 0
+
+    # Already-preferred under soft mode can occasionally flip (no hard protect).
+    flipped = 0
+    for i in range(200):
+        dna = AgentDNA(memory="failure_based")
+        out = mutate(
+            dna,
+            mutation_rate=1.0,
+            rng=random.Random(7000 + i),
+            bias=bias,
+            anchor_preferred=False,
+        )
+        if out.memory != "failure_based":
+            flipped += 1
+    assert flipped > 0
+
+    # Breed path: early gens can disable mutation anchoring while keeping soft bias.
+    parent_a = AgentDNA(memory="short_summary", tool_strategy="selective")
+    parent_b = AgentDNA(memory="short_summary", tool_strategy="aggressive")
+    soft_outs = []
+    for i in range(160):
+        child = breed_offspring(
+            parent_a,
+            parent_b,
+            mutation_rate=1.0,
+            rng=random.Random(8000 + i),
+            bias=bias,
+            apply_crossover_bias=False,
+            apply_mutation_anchor=False,
+        )
+        soft_outs.append(child.memory)
+    soft_pref = sum(1 for m in soft_outs if m == "failure_based")
+    soft_lose = sum(1 for m in soft_outs if m == "full_history")
+    assert soft_pref + soft_lose == 160
+    assert soft_pref > soft_lose
+    assert soft_lose > 0
+
+    # Anchoring restored → outsiders hard-collapse to preferred.
+    hard = []
+    for i in range(80):
+        child = breed_offspring(
+            parent_a,
+            parent_b,
+            mutation_rate=1.0,
+            rng=random.Random(9000 + i),
+            bias=bias,
+            apply_crossover_bias=True,
+            apply_mutation_anchor=True,
+        )
+        hard.append(child.memory)
+    assert all(m == "failure_based" for m in hard)
+
+
 def test_mutation_bias_skips_singleton_candidates(tmp_path):
     """Same-allele contradictions must not create singleton bias pools."""
     store = tmp_path / "belief_store"

@@ -120,27 +120,34 @@ def _biased_choice(
     default_choices: tuple[str, ...],
     bias: dict[str, list[str]] | None,
     current: str | None = None,
+    anchor_preferred: bool = True,
 ) -> str:
     """Pick trait value; weight toward CABS-suggested values when bias present.
 
     Bias lists from ``load_mutation_bias`` are ordered highest-fitness-first.
 
-    Preferred-allele anchoring (Condition D sample efficiency):
+    Preferred-allele anchoring (Condition D sample efficiency), when enabled:
     - If ``current`` is already the preferred (first) value, keep it.
     - If ``current`` is outside the disputed pool, adopt preferred only
       (never force the loser side onto a non-disputed allele).
     - If ``current`` is a disputed non-preferred value, use exponential
       rank weights so the higher-fitness side dominates exploration.
+
+    Soft mode (``anchor_preferred=False``): always sample the disputed pool
+    with exponential rank weights — still steers toward the winner, but does
+    not hard-collapse preferred share in early generations (helps H5 /
+    gens-to-threshold before later gens apply full anchoring).
     """
     suggested = (bias or {}).get(field)
     if suggested:
         pool = [v for v in suggested if v in default_choices]
         if pool:
             preferred = pool[0]
-            if current == preferred:
-                return preferred
-            if current is not None and current not in pool:
-                return preferred
+            if anchor_preferred:
+                if current == preferred:
+                    return preferred
+                if current is not None and current not in pool:
+                    return preferred
             n = len(pool)
             # Exponential rank weights: first=3^(n-1), ..., last=1
             weights = [float(3 ** (n - 1 - i)) for i in range(n)]
@@ -153,6 +160,7 @@ def mutate(
     mutation_rate: float,
     rng: random.Random | None = None,
     bias: dict[str, list[str]] | None = None,
+    anchor_preferred: bool = True,
 ) -> AgentDNA:
     """Randomly mutate traits with given probability per trait."""
     r = rng or random.Random()
@@ -160,25 +168,50 @@ def mutate(
 
     if r.random() < mutation_rate:
         data["planning_style"] = _biased_choice(
-            r, "planning_style", PLANNING_STYLES, bias, current=data["planning_style"]
+            r,
+            "planning_style",
+            PLANNING_STYLES,
+            bias,
+            current=data["planning_style"],
+            anchor_preferred=anchor_preferred,
         )
     if r.random() < mutation_rate:
         data["reflection"] = not data["reflection"]
     if r.random() < mutation_rate:
         data["tool_strategy"] = _biased_choice(
-            r, "tool_strategy", TOOL_STRATEGIES, bias, current=data["tool_strategy"]
+            r,
+            "tool_strategy",
+            TOOL_STRATEGIES,
+            bias,
+            current=data["tool_strategy"],
+            anchor_preferred=anchor_preferred,
         )
     if r.random() < mutation_rate:
         data["retry_policy"] = _biased_choice(
-            r, "retry_policy", RETRY_POLICIES, bias, current=data["retry_policy"]
+            r,
+            "retry_policy",
+            RETRY_POLICIES,
+            bias,
+            current=data["retry_policy"],
+            anchor_preferred=anchor_preferred,
         )
     if r.random() < mutation_rate:
         data["memory"] = _biased_choice(
-            r, "memory", MEMORY_MODES, bias, current=data["memory"]
+            r,
+            "memory",
+            MEMORY_MODES,
+            bias,
+            current=data["memory"],
+            anchor_preferred=anchor_preferred,
         )
     if r.random() < mutation_rate:
         data["prompt_structure"] = _biased_choice(
-            r, "prompt_structure", PROMPT_STRUCTURES, bias, current=data["prompt_structure"]
+            r,
+            "prompt_structure",
+            PROMPT_STRUCTURES,
+            bias,
+            current=data["prompt_structure"],
+            anchor_preferred=anchor_preferred,
         )
     if r.random() < mutation_rate:
         data["confidence_threshold"] = round(
@@ -206,14 +239,22 @@ def breed_offspring(
     bias: dict[str, list[str]] | None = None,
     technique_seeds: list[str] | None = None,
     apply_crossover_bias: bool = True,
+    apply_mutation_anchor: bool = True,
 ) -> AgentDNA:
     """Crossover two parents then apply mutation.
 
-    Mutation bias always applies when ``bias`` is set. Crossover bias is
-    optional via ``apply_crossover_bias`` so early generations can keep fair
-    50/50 mixing (sample diversity / H5) while later gens steer alleles.
+    Mutation bias always applies when ``bias`` is set. Preferred-allele
+    anchoring and crossover bias are optional so early generations can keep
+    soft rank-weighted mutate + fair 50/50 XO (sample diversity / H5) while
+    later gens apply full preferred anchoring and soft bias-aware XO.
     """
     xo_bias = bias if apply_crossover_bias else None
     child = crossover(parent_a, parent_b, rng=rng, bias=xo_bias)
-    child = mutate(child, mutation_rate, rng=rng, bias=bias)
+    child = mutate(
+        child,
+        mutation_rate,
+        rng=rng,
+        bias=bias,
+        anchor_preferred=apply_mutation_anchor,
+    )
     return inject_technique_seeds(child, technique_seeds or [])
