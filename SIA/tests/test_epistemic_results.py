@@ -32,8 +32,8 @@ def test_deterministic_fitness_varies_by_dna():
     b = AgentDNA(memory="none", tool_strategy="aggressive")
     fa = deterministic_fitness(0, a, 1)
     fb = deterministic_fitness(0, b, 1)
-    assert 0.05 <= fa <= 0.75
-    assert 0.05 <= fb <= 0.75
+    assert 0.02 <= fa <= 0.40
+    assert 0.02 <= fb <= 0.40
     assert fa != fb
     # Additive latent: selective + failure_based must beat aggressive + none
     assert fa > fb

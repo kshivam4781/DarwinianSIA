@@ -63,7 +63,7 @@ def _confidence_score(threshold: float) -> float:
 
 
 def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
-    """Produce stable, varied fitness in ~[0.05, 0.95] from transferable DNA traits.
+    """Produce stable, varied fitness in ~[0.02, 0.55] from transferable DNA traits.
 
     Fitness depends **only** on DNA trait values (not ``agent_id`` / ``generation``),
     so offspring that inherit a high-fitness parent's traits keep that fitness
@@ -83,12 +83,13 @@ def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> floa
     total += _LATENT_TRAIT_SCORES["prompt_structure"].get(dna.prompt_structure, 0.0)
     total += _REFLECTION_SCORE.get(bool(dna.reflection), 0.0)
     total += _confidence_score(dna.confidence_threshold)
-    # Normalize additive sum into ~[0.05, 0.70]. Cap below ~0.75 so random
-    # gen-1 DNA often sits under the 25%/30% PRIMARY thresholds; Condition D
-    # must climb via contradiction-biased adoption of high-latent traits.
+    # Normalize additive sum into ~[0.02, 0.34]. With pop=4, gen-1 best is
+    # often still under 30% (and sometimes under 25%), so gens-to-threshold
+    # PRIMARY contrasts are informative offline; Condition D climbs by
+    # adopting high-latent contradiction-preferred traits.
     span = _MAX_LATENT
     norm = (total - _BASE_FITNESS) / span if span > 0 else 0.0
-    fitness = 0.05 + 0.65 * max(0.0, min(1.0, norm))
+    fitness = 0.02 + 0.32 * max(0.0, min(1.0, norm))
     return round(fitness, 4)
 
 
