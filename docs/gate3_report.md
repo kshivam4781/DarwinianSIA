@@ -15,6 +15,7 @@ Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`
 - [x] G0: contradiction-scoped mutation bias + unit H2 skew test
 - [x] `--cabs-inline` Condition D loop hook + `epistemic_value.jsonl`
 - [x] G1: dry-run Condition D (belief_store + scoped bias + gen≥2 DNA)
+- [x] Scoped feedback DNA targets in CABS agenda (same pool as mutation bias)
 - [ ] G2: smoke GPQA subset
 
 ## Pilot plan (when unblocked)

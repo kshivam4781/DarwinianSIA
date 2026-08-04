@@ -4,6 +4,37 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T02:01Z — Tick 4 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0f06` (cherry-picked Ticks 1–3 from `fb8d`, then scoped feedback)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline mechanism gap: Condition D had contradiction-scoped **mutation bias** but feedback agendas only listed open RQs / contradiction text — they did **not** inject the same concrete DNA candidate values. That weakens the causal path Belief → Contradiction → RQ → **scoped feedback** → code change vs fitness-only B.
+
+### What this tick did (ONE step)
+Strengthened **scoped feedback** so agendas share mutation-bias DNA targets:
+- `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` (+ `sia-upstream/` sync) appends `### Scoped DNA Feedback Targets` from `load_mutation_bias`
+- Feedback must prefer contradiction-scoped candidates (not full enums)
+- Test: `test_cabs_agenda_includes_scoped_dna_feedback_targets` — **6/6** `test_cabs_bridge.py` pass
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Scoped feedback DNA candidates in agenda | Missing (RQ field name only) | **Present** (same pool as biased mutation) |
+| H2 unit + G1 dry-run | PASS | PASS (unchanged) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | Writer only | Still no live Δfitness series |
+| Paper artifacts | Stubs | Stubs |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` are present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 pilot B vs D. Do not start paid runs without keys.
+
+---
+
 ## 2026-08-04T00:05Z — Tick 3 (automation cron)
 
 ### Status snapshot

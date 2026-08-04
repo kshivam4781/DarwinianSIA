@@ -42,6 +42,7 @@ _Empty until G3/G4._
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
+- Scoped feedback now mirrors mutation-bias DNA candidates (2026-08-04); still untested on live rewrite quality.
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 live B vs D evidence still missing.
 - No cloud API keys in this environment as of 2026-08-04 — no new paid evidence this tick.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
@@ -52,6 +53,7 @@ _Empty until G3/G4._
 | Component | Note |
 |-----------|------|
 | Contradiction-scoped bias | `SIA/sia/evolution/cabs_bridge.py::load_mutation_bias` |
+| Scoped feedback DNA targets | `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` |
 | Biased mutate | `SIA/sia/evolution/operators.py::mutate` |
 | Condition D inline analyze | `SIA/sia/evolution/cabs_inline.py` + `--cabs-inline` |
 | H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (written by inline hook) |
