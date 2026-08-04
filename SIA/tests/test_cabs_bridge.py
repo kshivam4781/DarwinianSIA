@@ -297,17 +297,24 @@ def test_biased_mutate_anchors_preferred_allele():
     assert pref + lose == 200
 
 def test_bias_aware_crossover_prefers_winner_allele():
-    """Bias-aware crossover: inherit preferred allele when exactly one parent has it."""
+    """Bias-aware crossover: soft-prefer preferred allele when one parent has it."""
     bias = {"memory": ["failure_based", "full_history"]}
     parent_pref = AgentDNA(memory="failure_based", tool_strategy="selective")
     parent_lose = AgentDNA(memory="full_history", tool_strategy="aggressive")
 
-    # Preferred present in one parent → always take preferred (deterministic).
-    for i in range(40):
+    # Preferred present in one parent → soft skew (not hard collapse).
+    pref_counts = 0
+    n = 200
+    for i in range(n):
         child = crossover(parent_pref, parent_lose, rng=random.Random(i), bias=bias)
-        assert child.memory == "failure_based"
+        if child.memory == "failure_based":
+            pref_counts += 1
         child_rev = crossover(parent_lose, parent_pref, rng=random.Random(1000 + i), bias=bias)
-        assert child_rev.memory == "failure_based"
+        if child_rev.memory == "failure_based":
+            pref_counts += 1
+    # 2n trials; expect ~0.85 preferred → well above 0.5 and below hard-1.0.
+    assert pref_counts > int(0.70 * 2 * n)
+    assert pref_counts < 2 * n
 
     # Without bias → fair mix of parental alleles.
     mixed = []
@@ -317,7 +324,8 @@ def test_bias_aware_crossover_prefers_winner_allele():
     assert "failure_based" in mixed and "full_history" in mixed
 
     # Breed path also forwards bias into crossover (mutation_rate=0 so only XO matters).
-    for i in range(40):
+    breed_pref = 0
+    for i in range(n):
         child = breed_offspring(
             parent_pref,
             parent_lose,
@@ -325,7 +333,10 @@ def test_bias_aware_crossover_prefers_winner_allele():
             rng=random.Random(3000 + i),
             bias=bias,
         )
-        assert child.memory == "failure_based"
+        if child.memory == "failure_based":
+            breed_pref += 1
+    assert breed_pref > int(0.70 * n)
+    assert breed_pref < n
 
 
 def test_mutation_bias_skips_singleton_candidates(tmp_path):

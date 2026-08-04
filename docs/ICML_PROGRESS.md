@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T16:04Z — Tick 11 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-7466` (fast-forwarded Ticks 1–10 from `c34f`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline PRIMARY after Tick 10: final/gens30 only **2/5**; mean gap ~2.56pp. Diagnosis: mutation bias alone still loses preferred alleles during fair 50/50 crossover between mixed elites, slowing Condition D sample-efficiency vs B.
+
+### What this tick did (ONE step)
+Implemented **bias-aware crossover** for Condition D (soft preferred inherit):
+1. `operators._crossover_pick` + `crossover(..., bias=)` — when bias present, inherit preferred parental allele with p=0.85 (soft; hard p=1.0 over-collapsed diversity on mid-pilot `1530/1540`)
+2. `breed_offspring` forwards bias into both crossover and mutate (Condition B `bias=None` unchanged)
+3. Unit test `test_bias_aware_crossover_prefers_winner_allele`
+4. Re-pilot B `1550–1554` vs D `1560–1564`; case study on `run_1560`
+
+### Metrics delta
+| Metric | Before (Tick 10) | After (Tick 11) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 2/5 | **3/5** (B final wins 1) |
+| Offline D gens30 wins | 2/5 | **0/5** (B gens30 wins 2) — regression |
+| Mean final gap (D−B) | ~2.56pp | ~**2.13pp** |
+| Offline H5 ρ>0.3 | 4/5; pooled ≈0.23 | **2/5** (0.5 / −0.5 / −1.0 / −0.5 / 0.5) — regression |
+| Case study gen2 pref share / lift | 1.0 / +0.0866 (`1520`) | **1.0 / +0.0554** (`1560`) |
+| Bias-aware crossover | Missing | **Present** (soft p=0.85) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: restore offline H5/gens30 (e.g. longer horizon `max_gen≥6`, or temper XO further / bias only after gen≥2) while keeping final ≥3/5. Do **not** set READY — live GPQA still required; H5 offline regressed.
+
+---
+
 ## 2026-08-04T14:05Z — Tick 10 (automation cron)
 
 ### Status snapshot

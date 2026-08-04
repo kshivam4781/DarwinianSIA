@@ -43,6 +43,12 @@ def _merge_technique_seeds(parent_a: AgentDNA, parent_b: AgentDNA) -> list[str]:
     return list(dict.fromkeys([*(parent_a.technique_seeds or []), *(parent_b.technique_seeds or [])]))
 
 
+# Probability of inheriting the preferred parental allele when exactly one
+# parent carries it. Soft (<1) to avoid early diversity collapse that can
+# hurt gens-to-threshold and H5 while still skewing toward the winner.
+_BIAS_CROSSOVER_PREF_P = 0.85
+
+
 def _crossover_pick(
     r: random.Random,
     field: str,
@@ -53,7 +59,8 @@ def _crossover_pick(
     """Pick a parental allele; prefer CABS-ranked values when bias is present.
 
     Bias-aware crossover (Condition D sample efficiency):
-    - If exactly one parent carries the preferred (first) allele, take it.
+    - If exactly one parent carries the preferred (first) allele, take it
+      with probability ``_BIAS_CROSSOVER_PREF_P`` (soft; keeps exploration).
     - If both carry preferred, keep preferred.
     - If neither carries preferred but both alleles are in the disputed pool,
       prefer the higher-ranked side (exponential rank weights).
@@ -65,9 +72,9 @@ def _crossover_pick(
     if suggested:
         preferred = suggested[0]
         if value_a == preferred and value_b != preferred:
-            return value_a
+            return value_a if r.random() < _BIAS_CROSSOVER_PREF_P else value_b
         if value_b == preferred and value_a != preferred:
-            return value_b
+            return value_b if r.random() < _BIAS_CROSSOVER_PREF_P else value_a
         if value_a == preferred and value_b == preferred:
             return preferred
         rank = {v: i for i, v in enumerate(suggested)}
@@ -77,9 +84,9 @@ def _crossover_pick(
             wb = float(3 ** (len(suggested) - 1 - rank[value_b]))
             return r.choices([value_a, value_b], weights=[wa, wb], k=1)[0]
         if value_a in rank and value_b not in rank:
-            return value_a
+            return value_a if r.random() < _BIAS_CROSSOVER_PREF_P else value_b
         if value_b in rank and value_a not in rank:
-            return value_b
+            return value_b if r.random() < _BIAS_CROSSOVER_PREF_P else value_a
     return value_a if r.random() < 0.5 else value_b
 
 
