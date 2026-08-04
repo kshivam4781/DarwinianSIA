@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T08:05Z — Tick 7 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-88ed` (fast-forwarded Ticks 1–6 from `91f9`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline mechanism gap for PRIMARY: contradiction bias listed both sides of a dispute uniformly (`r.choice(pool)`), so Condition D explored the disputed subspace but did **not** exploit the higher-fitness side encoded in belief text/metadata (`achieved fitness 0.20` vs `0.13`). That weakens Belief → Contradiction → biased mutation → sample efficiency vs fitness-only B.
+
+### What this tick did (ONE step)
+Implemented **fitness-weighted mutation bias** (PRIMARY lever, still offline-validatable):
+- `load_mutation_bias` records per-value fitness from contradiction text, belief `metadata.fitness`, and agent `score.json` / `results.json`
+- Candidates ranked highest-fitness-first (still contradiction-scoped; never full enum)
+- `_biased_choice` uses rank weights (`n, n-1, …, 1`) so the winning side is preferred but the disputed pool stays open
+- Scoped feedback agenda marks preferred (first) candidate
+- Tests: `test_mutation_bias_prefers_higher_fitness_side` + stronger H2 skew assert — **7/7** `test_cabs_bridge.py` pass
+- Synced `sia-upstream/` copies
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Bias order under fitness-tagged contradiction | Unordered / first-seen | **Higher-fitness first** (`failure_based` @0.20 before `full_history` @0.13) |
+| `_biased_choice` within bias pool | Uniform | **Rank-weighted** toward first candidate |
+| H2 unit + G1 dry-run | PASS | PASS (ordering + weight asserts added) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| Offline H5 ρ (`run_1403`) | 0.5 | unchanged this tick |
+| Paper artifacts | Stubs + offline H5 | Stubs + fitness-weighted bias note |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; confirm live bias lists higher-fitness DNA first; then G3 pilot B vs D. Do not claim READY without live PRIMARY.
+
+---
+
 ## 2026-08-04T06:05Z — Tick 6 (automation cron)
 
 ### Status snapshot

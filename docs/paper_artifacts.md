@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** scaffold + metrics tooling + offline H5 path (2026-08-04). No publishable live figures/tables yet.
+**Status:** scaffold + metrics tooling + offline H5 path + fitness-weighted bias (2026-08-04). No publishable live figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -33,6 +33,7 @@ _Empty until G3/G4._
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
 | H2 dry-run in-bias share (run_1402) | memory in-bias 14/16 = **0.875** | informative (dry-run) |
 | H2 unit skew test | pass (2026-08-03) | yes (unit) |
+| Fitness-weighted bias order | higher-fitness side first (`failure_based`@0.20 > `full_history`@0.13); rank-weighted mutate | yes (unit, Tick 7) |
 | H5 Spearman ρ | offline `run_1403` ρ **0.5** (n=3); live still pending | offline yes; live need > 0.3 |
 
 ## Figures
@@ -45,6 +46,7 @@ _Empty until G3/G4._
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
+- Pre-Tick-7 bias treated both contradiction sides uniformly; now fitness-weighted (unit-tested) but **unverified on live GPQA**.
 - Scoped feedback now mirrors mutation-bias DNA candidates (2026-08-04); still untested on live rewrite quality.
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 live B vs D evidence still missing.
 - Dry-run fitness previously collapsed to 1.0 via mock eval; fixed 2026-08-04 with DNA-deterministic fitness. Still **not** live GPQA accuracy.
@@ -58,6 +60,7 @@ _Empty until G3/G4._
 | Component | Note |
 |-----------|------|
 | Contradiction-scoped bias | `SIA/sia/evolution/cabs_bridge.py::load_mutation_bias` |
+| Fitness-weighted bias order | `load_mutation_bias` + rank-weighted `_biased_choice` (Tick 7) |
 | Scoped feedback DNA targets | `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` |
 | Biased mutate | `SIA/sia/evolution/operators.py::mutate` |
 | Condition D inline analyze | `SIA/sia/evolution/cabs_inline.py` + `--cabs-inline` |

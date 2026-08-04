@@ -16,9 +16,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
 - [x] Dry-run in-loop H2 path: scoped mutation bias after `--cabs-inline` (`runs/run_1401`, `SIA/tests/test_cabs_inline_dry_run.py`)
 - [x] Scoped feedback injects same DNA candidates as bias (`load_cabs_agenda` + `test_cabs_agenda_includes_scoped_dna_feedback_targets`)
+- [x] Fitness-weighted bias: higher-fitness contradiction side ranked first + rank-weighted mutate (`test_mutation_bias_prefers_higher_fitness_side`)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias, **or**
 - [ ] Documented case study (tie → contradiction → different DNA/code → fitness lift) with artifacts
-- Evidence: unit + dry-run G1 + scoped feedback path; live GPQA artifacts pending (no API keys)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order; live GPQA artifacts pending (no API keys)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
@@ -40,7 +41,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | BLOCKED (no API keys); offline H5 path unblocked (`run_1403` ρ=0.5) |
+| G2 smoke GPQA subset | BLOCKED (no API keys); offline H5 ρ=0.5; fitness-weighted bias ready (Tick 7) |
 | G3 pilot B vs D | NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED |
 | G5 paper pack | NOT STARTED |

@@ -19,6 +19,7 @@ Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`
 - [x] Scoped feedback DNA targets in CABS agenda (same pool as mutation bias)
 - [x] Dry-run DNA-deterministic fitness + epistemic_results metrics script (2026-08-04 Tick 5)
 - [x] Non-constant epistemic_value (age decay + flow) → offline H5 ρ=0.5 on `run_1403` (Tick 6)
+- [x] Fitness-weighted mutation bias (higher-fitness contradiction side preferred; Tick 7)
 - [ ] G2: smoke GPQA subset
 
 ## Pilot plan (when unblocked)
