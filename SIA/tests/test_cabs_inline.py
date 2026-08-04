@@ -178,3 +178,106 @@ def test_epistemic_value_varies_with_age_and_knowledge_gain(tmp_path):
     # Knowledge gain must move the series (gen1 includes flow)
     assert g1["knowledge_gain_score"] == pytest.approx(0.5)
     assert g1["epistemic_value"] > g1["contradiction_priority_sum"] + g1["rq_priority_sum"] - 1e-9
+    # No run_dir → steering opportunity stays zero (age/flow-only path)
+    assert g1["steering_opportunity"] == pytest.approx(0.0)
+
+
+def test_epistemic_value_includes_steering_opportunity(tmp_path):
+    """H5 epi should rise when preferred DNA is under-adopted and fall as it dominates."""
+    run_dir = tmp_path / "run_steer"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "contradictions": [
+                    {
+                        "id": "c_tool",
+                        "topic": "tool_use",
+                        "priority": 1.0,
+                        "status": "open",
+                        "detected_at_gen": 1,
+                        "belief_a": (
+                            "Agent 0: tool_strategy=selective achieved fitness 0.80 "
+                            "(population mean 0.40)"
+                        ),
+                        "belief_b": (
+                            "Agent 1: tool_strategy=aggressive achieved fitness 0.20 "
+                            "(population mean 0.40)"
+                        ),
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "research_questions.json").write_text(
+        json.dumps({"research_questions": []}),
+        encoding="utf-8",
+    )
+
+    # Gen1: preferred selective under-adopted (1/4)
+    gen1 = run_dir / "gen_1"
+    for agent_id, tool in (
+        (0, "selective"),
+        (1, "aggressive"),
+        (2, "aggressive"),
+        (3, "minimal"),
+    ):
+        agent_dir = gen1 / f"agent_{agent_id}"
+        agent_dir.mkdir(parents=True)
+        (agent_dir / "agent_dna.json").write_text(
+            json.dumps(
+                {
+                    "planning_style": "stepwise",
+                    "reflection": True,
+                    "tool_strategy": tool,
+                    "retry_policy": "generic",
+                    "memory": "none",
+                    "confidence_threshold": 0.5,
+                    "prompt_structure": "single",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    # Gen2: preferred selective dominates (3/4) → less remaining opportunity
+    gen2 = run_dir / "gen_2"
+    for agent_id, tool in (
+        (0, "selective"),
+        (1, "selective"),
+        (2, "selective"),
+        (3, "aggressive"),
+    ):
+        agent_dir = gen2 / f"agent_{agent_id}"
+        agent_dir.mkdir(parents=True)
+        (agent_dir / "agent_dna.json").write_text(
+            json.dumps(
+                {
+                    "planning_style": "stepwise",
+                    "reflection": True,
+                    "tool_strategy": tool,
+                    "retry_policy": "generic",
+                    "memory": "none",
+                    "confidence_threshold": 0.5,
+                    "prompt_structure": "single",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    g1 = _epistemic_value(store, 1, knowledge_gain=0.0, run_dir=str(run_dir))
+    g2 = _epistemic_value(store, 2, knowledge_gain=0.0, run_dir=str(run_dir))
+
+    assert g1["steering_opportunity"] > g2["steering_opportunity"] > 0.0
+    # gap=0.60, under_g1=0.75 → steer≈0.45; under_g2=0.25 → steer≈0.15*0.85
+    assert g1["steering_opportunity"] == pytest.approx(1.0 * 0.60 * 0.75, abs=1e-9)
+    assert g2["steering_opportunity"] == pytest.approx(0.85 * 0.60 * 0.25, abs=1e-9)
+    assert g1["epistemic_value"] > g2["epistemic_value"]
+    # Steering term must move epistemic_value beyond age-weighted open stock alone
+    stock_flow_g1 = (
+        g1["contradiction_priority_sum"]
+        + g1["rq_priority_sum"]
+        + g1["epistemic_flow"]
+    )
+    assert g1["epistemic_value"] > stock_flow_g1 + 1e-9

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -68,6 +69,23 @@ _EPI_AGE_DECAY = 0.85
 # Flow terms: new knowledge / resolutions this generation.
 _EPI_KG_WEIGHT = 1.0
 _EPI_RES_WEIGHT = 0.5
+# Steering opportunity: fitness_gap × under-adoption of preferred DNA.
+# Makes H5 (epi_t vs Δfitness_t+1) track actionable contradiction pressure
+# rather than pure age decay of open-stock priorities.
+_EPI_STEER_WEIGHT = 2.0
+_TRAIT_EQ_RE = re.compile(r"\b([a-z_][a-z0-9_]*)\s*=\s*([a-z0-9_]+)", re.IGNORECASE)
+_FITNESS_RE = re.compile(r"fitness\s*[:=]?\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE)
+_KNOWN_DNA_FIELDS = frozenset(
+    {
+        "planning_style",
+        "tool_strategy",
+        "retry_policy",
+        "memory",
+        "prompt_structure",
+        "reflection",
+        "confidence_threshold",
+    }
+)
 
 
 def _item_age(item: dict[str, Any], generation: int) -> int:
@@ -133,6 +151,125 @@ def _resolved_priority_sum(store_root: Path, generation: int) -> float:
     return total
 
 
+def _parse_belief_side(text: str) -> tuple[str | None, str | None, float | None]:
+    """Parse ``tool_strategy=selective ... fitness 0.52`` style belief sides."""
+    if not text:
+        return None, None, None
+    field: str | None = None
+    value: str | None = None
+    for match in _TRAIT_EQ_RE.finditer(text):
+        cand_field = match.group(1).lower()
+        if cand_field in _KNOWN_DNA_FIELDS:
+            field = cand_field
+            value = match.group(2).lower()
+            break
+    fitness: float | None = None
+    fit_match = _FITNESS_RE.search(text)
+    if fit_match:
+        try:
+            fitness = float(fit_match.group(1))
+        except ValueError:
+            fitness = None
+    return field, value, fitness
+
+
+def _trait_share_in_generation(
+    run_dir: str | Path,
+    generation: int,
+    field: str,
+    value: str,
+) -> float | None:
+    """Fraction of agents in ``gen_N`` whose DNA ``field`` equals ``value``."""
+    gen_dir = Path(run_dir) / f"gen_{int(generation)}"
+    if not gen_dir.is_dir():
+        return None
+    total = 0
+    hits = 0
+    for dna_path in sorted(gen_dir.glob("agent_*/agent_dna.json")):
+        try:
+            data = json.loads(dna_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(data, dict) or field not in data:
+            continue
+        total += 1
+        raw = data.get(field)
+        if isinstance(raw, bool):
+            cur = "true" if raw else "false"
+        else:
+            cur = str(raw).lower()
+        if cur == str(value).lower():
+            hits += 1
+    if total == 0:
+        return None
+    return hits / total
+
+
+def _steering_opportunity(
+    contradictions: list[dict[str, Any]],
+    generation: int,
+    run_dir: str | None,
+) -> float:
+    """Actionable contradiction pressure for H5.
+
+    For each open contradiction with parsable fitness on both sides:
+    ``aged_priority * fitness_gap * (1 - preferred_trait_share)``.
+
+    High when the higher-fitness DNA side is still under-adopted (room for
+    fitness-weighted bias to lift next-gen fitness); low when preferred DNA
+    already dominates or the fitness gap is tiny.
+    """
+    if not run_dir:
+        return 0.0
+    total = 0.0
+    for contradiction in contradictions:
+        sides: list[tuple[str, str, float]] = []
+        for key in ("belief_a", "belief_b"):
+            field, value, fitness = _parse_belief_side(str(contradiction.get(key) or ""))
+            if field and value and fitness is not None:
+                sides.append((field, value, fitness))
+        meta = contradiction.get("metadata") or {}
+        if isinstance(meta, dict):
+            meta_field = meta.get("dna_field") or meta.get("field") or meta.get("trait")
+            meta_values = meta.get("values") or meta.get("candidates")
+            meta_scores = meta.get("fitness_by_value") or meta.get("scores")
+            if (
+                isinstance(meta_field, str)
+                and isinstance(meta_values, (list, tuple))
+                and isinstance(meta_scores, dict)
+            ):
+                for raw_val in meta_values:
+                    try:
+                        score = float(meta_scores[str(raw_val)])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    sides.append((meta_field.lower(), str(raw_val).lower(), score))
+        # Need two scored sides on the same DNA field.
+        by_field: dict[str, list[tuple[str, float]]] = {}
+        for field, value, fitness in sides:
+            by_field.setdefault(field, []).append((value, fitness))
+        best_term = 0.0
+        for field, scored in by_field.items():
+            if len(scored) < 2:
+                continue
+            scored_sorted = sorted(scored, key=lambda x: x[1], reverse=True)
+            preferred_value, best_fit = scored_sorted[0]
+            loser_fit = scored_sorted[-1][1]
+            gap = max(0.0, float(best_fit) - float(loser_fit))
+            if gap <= 0.0:
+                continue
+            share = _trait_share_in_generation(run_dir, generation, field, preferred_value)
+            if share is None:
+                under = 1.0  # unknown adoption → treat as full opportunity
+            else:
+                under = max(0.0, 1.0 - float(share))
+            term = _effective_priority(contradiction, generation) * gap * under
+            if term > best_term:
+                best_term = term
+        total += best_term
+    return total
+
+
 def _epistemic_value(
     store_root: Path,
     generation: int,
@@ -140,10 +277,12 @@ def _epistemic_value(
     knowledge_gain: float | None = None,
     run_dir: str | None = None,
 ) -> dict[str, float]:
-    """H5 epistemic_value_t: age-weighted open priorities + knowledge/resolution flow.
+    """H5 epistemic_value_t: open stock + flow + steering opportunity.
 
     Stock: open contradiction + RQ priorities, decayed by gens since detection.
     Flow: knowledge_gain_score (from cabs_report) + resolved priorities this gen.
+    Steering: aged_priority × fitness_gap × (1 − preferred DNA share) so epi_t
+    tracks remaining contradiction-driven improvement pressure (H5).
     """
     all_contradictions = _load_store_items(store_root, "contradictions.json", "contradictions")
     contradictions = [c for c in all_contradictions if c.get("status", "open") == "open"]
@@ -174,7 +313,8 @@ def _epistemic_value(
         knowledge_gain = _knowledge_gain_from_report(run_dir, generation) if run_dir else 0.0
     resolved_sum = _resolved_priority_sum(store_root, generation)
     flow = _EPI_KG_WEIGHT * float(knowledge_gain) + _EPI_RES_WEIGHT * resolved_sum
-    epistemic_value = c_sum + q_sum + flow
+    steering = _steering_opportunity(contradictions, generation, run_dir)
+    epistemic_value = c_sum + q_sum + flow + _EPI_STEER_WEIGHT * steering
 
     return {
         "open_contradictions": float(len(contradictions)),
@@ -186,6 +326,7 @@ def _epistemic_value(
         "knowledge_gain_score": float(knowledge_gain),
         "resolved_priority_sum": resolved_sum,
         "epistemic_flow": flow,
+        "steering_opportunity": steering,
         "epistemic_value": epistemic_value,
     }
 
