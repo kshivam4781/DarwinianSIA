@@ -14,13 +14,14 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 
 ### 2. MECHANISM — H2 or case study
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
-- [ ] Live-run H2 DNA trait skew under contradiction bias, **or**
+- [x] Dry-run in-loop H2 path: scoped mutation bias after `--cabs-inline` (`runs/run_1401`, `SIA/tests/test_cabs_inline_dry_run.py`)
+- [ ] Live API-run H2 DNA trait skew under contradiction bias, **or**
 - [ ] Documented case study (tie → contradiction → different DNA/code → fitness lift) with artifacts
-- Evidence: unit pass; live artifacts pending
+- Evidence: unit + dry-run G1 pass; live GPQA artifacts pending (no API keys)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3
-- Evidence: writer ready (`belief_store/epistemic_value.jsonl` via `--cabs-inline`); live series pending
+- Evidence: writer ready (`belief_store/epistemic_value.jsonl` via `--cabs-inline`); dry-run series exists; live Δfitness pending
 
 ### 4. PAPER
 - [ ] Figure 1 (learning curves B vs D)
@@ -36,7 +37,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | Gate | Status |
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03) |
-| G1 dry-run Condition D | **UNBLOCKED** — `--cabs-inline` landed; dry-run on task layout not yet executed this tick |
+| G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | BLOCKED (no API keys) |
 | G3 pilot B vs D | NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED |
