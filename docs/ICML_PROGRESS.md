@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T10:06Z — Tick 8 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-3a18` (fast-forwarded Ticks 1–7 from `88ed`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline mechanism gap after Tick 7: `deterministic_fitness` hashed `agent_id` + `generation`, so offspring inheriting a high-fitness parent's traits did **not** keep that score — breaking the case-study chain (contradiction → fitness-weighted bias → DNA → fitness lift) and preventing honest offline B vs D pilots.
+
+### What this tick did (ONE step)
+Made **dry-run fitness DNA-transferable** and ran an **offline 5-seed B vs D case-study pilot**:
+- `deterministic_fitness` now scores transferable DNA traits only (ignores agent_id/gen); unit test `test_deterministic_fitness_transfers_with_dna_traits`
+- Harness: `scripts/offline_bvd_case_study.py` — Conditions B/D, pop=4, max_gen=4, seeds 11/22/33/44/55 → run IDs B `1410–1414`, D `1420–1424` (gitignored `runs/`)
+- Case study (`docs/case_study_offline.md`, `run_1420`): contradiction `tool_strategy` selective@0.5234 vs aggressive@0.1640 → bias prefers `selective` → gen2 preferred share **0.75** → preserved winning genome gen2 agent_2 fitness **0.5234** (lift **+0.3594** vs loser)
+- Offline synthetic D final-fitness wins **4/5** seeds (mean gap ~4.1pp); gens-to-25% uninformative (both hit gen1); multi-seed H5 ρ often negative (keep offline H5 claim on `run_1403` ρ=0.5 only)
+- Figures: `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png`; summary `docs/offline_bvd_summary.json`
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| Dry-run fitness transfer with DNA | Broken (agent_id/gen in hash) | **Transfers** (same DNA ⇒ same score) |
+| Documented case study chain | Missing | **Present** (`docs/case_study_offline.md`) |
+| Offline D final wins vs B (5 seeds) | No data | **4/5** (synthetic; not live PRIMARY) |
+| H2 dry-run in-bias share (D seeds) | — | **0.81–1.0** |
+| Offline H5 multi-seed | — | Unstable (often ρ<0); `run_1403` ρ=0.5 unchanged as reference |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+| Paper Figs 1–2 | Missing | **Draft offline figures written** |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. Do **not** set READY from synthetic 4/5 final-fitness wins.
+
+---
+
 ## 2026-08-04T08:05Z — Tick 7 (automation cron)
 
 ### Status snapshot

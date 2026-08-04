@@ -1,0 +1,156 @@
+{
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "b_run_ids": [
+    1410,
+    1411,
+    1412,
+    1413,
+    1414
+  ],
+  "d_run_ids": [
+    1420,
+    1421,
+    1422,
+    1423,
+    1424
+  ],
+  "compare": {
+    "n_pairs": 5,
+    "d_wins_gens25": 0,
+    "b_wins_gens25": 0,
+    "d_wins_final": 4,
+    "b_wins_final": 1,
+    "primary_gens25_pass": false
+  },
+  "compare_rows_brief": [
+    {
+      "seed": 11,
+      "B_final": 0.7828,
+      "D_final": 0.8122,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "D_h5_rho": -0.5,
+      "D_h2_share": 0.875
+    },
+    {
+      "seed": 22,
+      "B_final": 0.8866,
+      "D_final": 0.9273,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "D_h5_rho": 0.5,
+      "D_h2_share": 1.0
+    },
+    {
+      "seed": 33,
+      "B_final": 0.9267,
+      "D_final": 0.8061,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "D_h5_rho": -1.0,
+      "D_h2_share": 0.8125
+    },
+    {
+      "seed": 44,
+      "B_final": 0.7118,
+      "D_final": 0.917,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "D_h5_rho": -0.5,
+      "D_h2_share": 0.8125
+    },
+    {
+      "seed": 55,
+      "B_final": 0.8801,
+      "D_final": 0.9311,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "D_h5_rho": -0.5,
+      "D_h2_share": 0.9375
+    }
+  ],
+  "case_study": {
+    "run_dir": "/workspace/runs/run_1420",
+    "field": "tool_strategy",
+    "preferred_value": "selective",
+    "bias_order": [
+      "selective",
+      "aggressive"
+    ],
+    "contradiction": {
+      "topic": "tool_use",
+      "belief_a": "Agent 0: tool_strategy=selective achieved fitness 0.5234 (population mean 0.3932)",
+      "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.1640 (population mean 0.3932)",
+      "priority": 0.85,
+      "agents": [
+        0,
+        1
+      ]
+    },
+    "gen1_traits": [
+      {
+        "agent_id": 0,
+        "trait": "selective",
+        "fitness": 0.5234
+      },
+      {
+        "agent_id": 1,
+        "trait": "aggressive",
+        "fitness": 0.164
+      },
+      {
+        "agent_id": 2,
+        "trait": "minimal",
+        "fitness": 0.3667
+      },
+      {
+        "agent_id": 3,
+        "trait": "minimal",
+        "fitness": 0.5186
+      }
+    ],
+    "gen2_traits": [
+      {
+        "agent_id": 0,
+        "trait": "selective",
+        "fitness": 0.1331
+      },
+      {
+        "agent_id": 1,
+        "trait": "aggressive",
+        "fitness": 0.311
+      },
+      {
+        "agent_id": 2,
+        "trait": "selective",
+        "fitness": 0.5234
+      },
+      {
+        "agent_id": 3,
+        "trait": "selective",
+        "fitness": 0.0913
+      }
+    ],
+    "gen1_preferred_mean_fitness": 0.5234,
+    "gen1_loser_mean_fitness": 0.164,
+    "gen2_preferred_mean_fitness": 0.24926666666666666,
+    "gen1_pop_mean": 0.393175,
+    "gen2_pop_mean": 0.2647,
+    "fitness_lift": 0.08526666666666666,
+    "gen2_preferred_share": 0.75,
+    "dna_fitness_transfers": true,
+    "belief_count": 16,
+    "agenda_prefers_first": "selective"
+  },
+  "figures": [
+    "/workspace/docs/figures/fig1_learning_curves.png",
+    "/workspace/docs/figures/fig2_mechanism.png"
+  ],
+  "note": "Synthetic DNA-hash fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
+}

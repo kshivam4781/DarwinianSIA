@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-04 (Section 21 ICML; fitness-weighted mutation bias for PRIMARY)  
+**Last updated:** 2026-08-04 (Section 21 ICML; DNA-transferable dry-run fitness + offline B vs D case study)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -804,14 +804,15 @@ Computed in `cabs/belief_engine.py`:
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
-| Dry-run DNA-deterministic fitness | **DONE** | Fixes trivial 1.0 mock-eval collapse; enables offline Δfitness |
+| Dry-run DNA-deterministic fitness | **DONE** | DNA-transferable (Tick 8: no agent_id/gen in hash); enables offline case study |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers for paper refresh |
+| Offline B vs D case-study pilot | **DONE** | `scripts/offline_bvd_case_study.py`; D final 4/5 synthetic; `docs/case_study_offline.md` |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 + fitness-weighted order (Tick 7); need live API |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study (Tick 8); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay open priorities + knowledge_gain/resolution flow (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline dry-run `run_1403` ρ **0.5**; live GPQA series still required |
-| Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
-| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass |
+| H5 Spearman ρ validity | **PARTIAL** | Offline dry-run `run_1403` ρ **0.5**; Tick-8 multi-seed unstable; live required |
+| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1 stub; live empty — see `docs/paper_artifacts.md` |
+| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY/H5) |
 
 ---
 
@@ -1576,4 +1577,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Non-constant epistemic_value (2026-08-04):** Age-weighted open priorities + knowledge_gain/resolution flow. Offline Condition D `run_1403` → H5 ρ **0.5**, H2 memory in-bias **0.875**.
 
-**Fitness-weighted bias (2026-08-04 Tick 7):** `load_mutation_bias` ranks contradiction-scoped candidates by associated fitness (belief metadata / ``achieved fitness`` text / agent score files); `_biased_choice` uses rank weights so Condition D prefers the higher-fitness side while staying in the disputed subspace. Remaining gap: API-backed G2–G4 B vs D seeds (keys absent in cloud env).
+**Fitness-weighted bias (2026-08-04 Tick 7):** `load_mutation_bias` ranks contradiction-scoped candidates by associated fitness (belief metadata / ``achieved fitness`` text / agent score files); `_biased_choice` uses rank weights so Condition D prefers the higher-fitness side while staying in the disputed subspace.
+
+**DNA-transferable dry-run fitness + offline case study (2026-08-04 Tick 8):** `deterministic_fitness` ignores agent_id/generation so winning genomes keep their score under inheritance. Offline 5-seed B vs D (`1410–1414` / `1420–1424`) → D final wins 4/5 synthetic; case study `docs/case_study_offline.md` (`run_1420`). Remaining gap: API-backed G2–G4 live B vs D seeds (keys absent in cloud env).
