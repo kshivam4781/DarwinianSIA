@@ -25,8 +25,39 @@ def resolve_belief_store(run_dir: str, cabs_store: str | None = None) -> Path:
     return Path(run_dir) / "belief_store"
 
 
+def _format_scoped_dna_targets(bias: dict[str, list[str]]) -> list[str]:
+    """Render contradiction-scoped DNA candidates for feedback (scoped feedback path)."""
+    if not bias:
+        return []
+    lines = [
+        "### Scoped DNA Feedback Targets",
+        "",
+        "When rewriting `target_agent.py`, prefer exploring these **contradiction-scoped** "
+        "DNA trait values (same pool used for biased mutation). Do not invent unrelated "
+        "trait modes outside these candidates unless parents already use them.",
+        "",
+    ]
+    for field in sorted(bias):
+        values = [v for v in bias[field] if v]
+        if not values:
+            continue
+        joined = ", ".join(f"`{v}`" for v in values)
+        lines.append(f"- `{field}`: {joined}")
+    lines.append("")
+    lines.append(
+        "**REQUIRED:** Implement code/prompt changes that make the offspring's behavior "
+        "consistent with at least one listed candidate value per disputed field above."
+    )
+    lines.append("")
+    return lines
+
+
 def load_cabs_agenda(run_dir: str, cabs_store: str | None = None) -> str:
-    """Build CABS agenda text for feedback/meta prompts (mirrors SIA2 format_cabs_context)."""
+    """Build CABS agenda text for feedback/meta prompts (mirrors SIA2 format_cabs_context).
+
+    Includes contradiction-scoped DNA candidate values so Condition D feedback is
+    scoped the same way as biased mutation (Belief → Contradiction → RQ → DNA targets).
+    """
     store = resolve_belief_store(run_dir, cabs_store)
 
     contradictions = [
@@ -40,6 +71,9 @@ def load_cabs_agenda(run_dir: str, cabs_store: str | None = None) -> str:
     approved = _read_json(store / "approved_techniques.json").get("techniques", [])
     if not approved:
         approved = _read_json(store / "approved_techniques.json").get("approved_techniques", [])
+
+    # Bias uses the same store; compute once for scoped feedback targets.
+    bias = load_mutation_bias(run_dir, cabs_store) if (contradictions or questions) else {}
 
     if not contradictions and not questions and not approved:
         return ""
@@ -71,6 +105,8 @@ def load_cabs_agenda(run_dir: str, cabs_store: str | None = None) -> str:
             if q.get("dna_field"):
                 lines.append(f"   DNA field to explore: `{q['dna_field']}`")
         lines.append("")
+
+    lines.extend(_format_scoped_dna_targets(bias))
 
     if approved:
         lines.append("### Committee-Approved Techniques (MUST implement in target_agent.py)")

@@ -55,8 +55,8 @@ def test_load_cabs_agenda(tmp_path):
     assert addon.startswith("\n## CABS")
 
 
-def test_mutation_bias_from_contradiction_not_full_enum(tmp_path):
-    """Bias must be contradiction-scoped values, not the entire MEMORY_MODES enum."""
+def _write_memory_contradiction_store(tmp_path: Path) -> Path:
+    """Shared fixture: open memory contradiction with two concrete DNA values."""
     store = tmp_path / "belief_store"
     store.mkdir()
     (store / "research_questions.json").write_text(
@@ -126,12 +126,36 @@ def test_mutation_bias_from_contradiction_not_full_enum(tmp_path):
         ),
         encoding="utf-8",
     )
+    return store
+
+
+def test_mutation_bias_from_contradiction_not_full_enum(tmp_path):
+    """Bias must be contradiction-scoped values, not the entire MEMORY_MODES enum."""
+    _write_memory_contradiction_store(tmp_path)
 
     bias = load_mutation_bias(str(tmp_path))
     assert "memory" in bias
     assert set(bias["memory"]) == {"full_history", "failure_based"}
     assert set(bias["memory"]) != set(MEMORY_MODES)
     assert "short_summary" not in bias["memory"]
+
+
+def test_cabs_agenda_includes_scoped_dna_feedback_targets(tmp_path):
+    """Scoped feedback must list contradiction-scoped DNA candidates (not full enums)."""
+    _write_memory_contradiction_store(tmp_path)
+
+    agenda = load_cabs_agenda(str(tmp_path))
+    assert "Scoped DNA Feedback Targets" in agenda
+    assert "`memory`" in agenda
+    assert "`full_history`" in agenda
+    assert "`failure_based`" in agenda
+    # Must not dump the rest of MEMORY_MODES into feedback targets
+    assert "`short_summary`" not in agenda
+    assert "`none`" not in agenda
+
+    addon = cabs_feedback_addon(agenda)
+    assert "Scoped DNA Feedback Targets" in addon
+    assert "consistent with at least one listed candidate" in addon
 
 
 def test_mutation_bias_rq_only_without_values_is_empty(tmp_path):
