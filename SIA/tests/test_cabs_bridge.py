@@ -101,24 +101,26 @@ def _write_memory_contradiction_store(tmp_path: Path) -> Path:
                 "beliefs": [
                     {
                         "id": "b1",
-                        "belief": "Agent 0: memory=full_history",
+                        "belief": "Agent 0: memory=full_history achieved fitness 0.13",
                         "topic": "memory",
                         "status": "active",
                         "metadata": {
                             "agent_id": 0,
                             "trait": "memory",
                             "value": "full_history",
+                            "fitness": 0.13,
                         },
                     },
                     {
                         "id": "b2",
-                        "belief": "Agent 1: memory=failure_based",
+                        "belief": "Agent 1: memory=failure_based achieved fitness 0.20",
                         "topic": "memory",
                         "status": "active",
                         "metadata": {
                             "agent_id": 1,
                             "trait": "memory",
                             "value": "failure_based",
+                            "fitness": 0.20,
                         },
                     },
                 ]
@@ -138,6 +140,18 @@ def test_mutation_bias_from_contradiction_not_full_enum(tmp_path):
     assert set(bias["memory"]) == {"full_history", "failure_based"}
     assert set(bias["memory"]) != set(MEMORY_MODES)
     assert "short_summary" not in bias["memory"]
+    # Higher-fitness side (failure_based @ 0.20) must be listed first
+    assert bias["memory"][0] == "failure_based"
+
+
+def test_mutation_bias_prefers_higher_fitness_side(tmp_path):
+    """PRIMARY lever: bias order prefers higher-fitness contradiction side."""
+    _write_memory_contradiction_store(tmp_path)
+    bias = load_mutation_bias(str(tmp_path))
+    assert bias["memory"] == ["failure_based", "full_history"]
+
+    agenda = load_cabs_agenda(str(tmp_path))
+    assert "prefer `failure_based`" in agenda
 
 
 def test_cabs_agenda_includes_scoped_dna_feedback_targets(tmp_path):
@@ -247,3 +261,5 @@ def test_biased_mutate_skews_memory_vs_uniform():
     assert biased_mass == n
     assert biased_counts["short_summary"] == 0
     assert biased_mass > uniform_mass
+    # Rank-weighted choice: first candidate (higher fitness) should dominate second
+    assert biased_counts["failure_based"] > biased_counts["full_history"]

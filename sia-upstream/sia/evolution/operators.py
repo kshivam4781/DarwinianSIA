@@ -66,12 +66,20 @@ def _biased_choice(
     default_choices: tuple[str, ...],
     bias: dict[str, list[str]] | None,
 ) -> str:
-    """Pick trait value; weight toward CABS-suggested values when bias present."""
+    """Pick trait value; weight toward CABS-suggested values when bias present.
+
+    Bias lists from ``load_mutation_bias`` are ordered highest-fitness-first.
+    Earlier candidates get linearly higher weight so Condition D exploits the
+    winning side of a contradiction while still exploring the disputed pool.
+    """
     suggested = (bias or {}).get(field)
     if suggested:
         pool = [v for v in suggested if v in default_choices]
         if pool:
-            return r.choice(pool)
+            n = len(pool)
+            # Rank weights: first=n, second=n-1, ... last=1
+            weights = [float(n - i) for i in range(n)]
+            return r.choices(pool, weights=weights, k=1)[0]
     return r.choice(default_choices)
 
 

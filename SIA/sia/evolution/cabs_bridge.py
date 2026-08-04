@@ -33,7 +33,8 @@ def _format_scoped_dna_targets(bias: dict[str, list[str]]) -> list[str]:
         "### Scoped DNA Feedback Targets",
         "",
         "When rewriting `target_agent.py`, prefer exploring these **contradiction-scoped** "
-        "DNA trait values (same pool used for biased mutation). Do not invent unrelated "
+        "DNA trait values (same pool used for biased mutation). Values are listed "
+        "**highest associated fitness first** when fitness is known. Do not invent unrelated "
         "trait modes outside these candidates unless parents already use them.",
         "",
     ]
@@ -42,11 +43,13 @@ def _format_scoped_dna_targets(bias: dict[str, list[str]]) -> list[str]:
         if not values:
             continue
         joined = ", ".join(f"`{v}`" for v in values)
-        lines.append(f"- `{field}`: {joined}")
+        preferred = f" (prefer `{values[0]}`)" if len(values) > 1 else ""
+        lines.append(f"- `{field}`: {joined}{preferred}")
     lines.append("")
     lines.append(
         "**REQUIRED:** Implement code/prompt changes that make the offspring's behavior "
-        "consistent with at least one listed candidate value per disputed field above."
+        "consistent with at least one listed candidate value per disputed field above; "
+        "prefer the first (higher-fitness) candidate when unsure."
     )
     lines.append("")
     return lines
@@ -185,22 +188,70 @@ def _parse_trait_values_from_text(text: str, dna_field: str, allowed: tuple[str,
     return found
 
 
+_FITNESS_IN_TEXT = re.compile(
+    r"fitness\s*[:=]?\s*(-?\d+(?:\.\d+)?)",
+    re.IGNORECASE,
+)
+
+
+def _fitness_from_text(text: str) -> float | None:
+    """Parse ``achieved fitness 0.20`` style scores from belief / contradiction text."""
+    if not text:
+        return None
+    match = _FITNESS_IN_TEXT.search(text)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _record_candidate(
+    scores: dict[str, float],
+    value: str,
+    fitness: float | None,
+    allowed: tuple[str, ...],
+) -> None:
+    if value not in allowed:
+        return
+    score = float(fitness) if fitness is not None else scores.get(value, 0.0)
+    prev = scores.get(value)
+    if prev is None or score > prev:
+        scores[value] = score
+
+
 def _values_from_beliefs(
     beliefs: list[dict[str, Any]],
     dna_field: str,
     allowed: tuple[str, ...],
     agent_ids: list[Any] | None = None,
+    scores: dict[str, float] | None = None,
 ) -> list[str]:
-    """Pull trait values from belief metadata written by population DNA extractors."""
+    """Pull trait values from belief metadata written by population DNA extractors.
+
+    When ``scores`` is provided, also record per-value fitness from metadata/text so
+    ``load_mutation_bias`` can prefer the higher-fitness side of a contradiction.
+    """
     found: list[str] = []
     agent_filter = {int(a) for a in agent_ids} if agent_ids else None
     for belief in beliefs:
         meta = belief.get("metadata") or {}
+        text = str(belief.get("belief", ""))
+        text_fitness = _fitness_from_text(text)
+        meta_fitness = meta.get("fitness")
+        try:
+            fitness = float(meta_fitness) if meta_fitness is not None else text_fitness
+        except (TypeError, ValueError):
+            fitness = text_fitness
+
         if meta.get("trait") != dna_field:
             # Also parse free-text beliefs
-            for value in _parse_trait_values_from_text(str(belief.get("belief", "")), dna_field, allowed):
+            for value in _parse_trait_values_from_text(text, dna_field, allowed):
                 if value not in found:
                     found.append(value)
+                if scores is not None:
+                    _record_candidate(scores, value, fitness, allowed)
             continue
         if agent_filter is not None:
             aid = meta.get("agent_id")
@@ -209,6 +260,8 @@ def _values_from_beliefs(
         value = meta.get("value")
         if isinstance(value, str) and value in allowed and value not in found:
             found.append(value)
+        if scores is not None and isinstance(value, str):
+            _record_candidate(scores, value, fitness, allowed)
     return found
 
 
@@ -218,17 +271,31 @@ def _values_from_agent_dna_files(
     allowed: tuple[str, ...],
     agent_ids: list[Any],
     generation: int | None,
+    scores: dict[str, float] | None = None,
 ) -> list[str]:
     """Read contradicting agents' agent_dna.json for the disputed trait."""
     if generation is None or not agent_ids:
         return []
     found: list[str] = []
     for aid in agent_ids:
-        dna_path = run_dir / f"gen_{int(generation)}" / f"agent_{int(aid)}" / "agent_dna.json"
+        agent_dir = run_dir / f"gen_{int(generation)}" / f"agent_{int(aid)}"
+        dna_path = agent_dir / "agent_dna.json"
         data = _read_json(dna_path)
         value = data.get(dna_field)
         if isinstance(value, str) and value in allowed and value not in found:
             found.append(value)
+        if scores is not None and isinstance(value, str) and value in allowed:
+            fitness = None
+            for score_name in ("score.json", "results.json"):
+                payload = _read_json(agent_dir / score_name)
+                raw = payload.get("fitness", payload.get("accuracy"))
+                if raw is not None:
+                    try:
+                        fitness = float(raw)
+                        break
+                    except (TypeError, ValueError):
+                        continue
+            _record_candidate(scores, value, fitness, allowed)
     return found
 
 
@@ -238,11 +305,28 @@ def _append_unique(target: list[str], values: list[str]) -> None:
             target.append(value)
 
 
+def _rank_candidates_by_fitness(
+    candidates: list[str],
+    scores: dict[str, float],
+) -> list[str]:
+    """Stable-sort candidates by associated fitness (desc); unknown fitness → 0."""
+    if not candidates:
+        return []
+    # Preserve first-seen order as tie-breaker via enumerate index.
+    indexed = list(enumerate(candidates))
+    indexed.sort(key=lambda iv: (-scores.get(iv[1], 0.0), iv[0]))
+    return [v for _, v in indexed]
+
+
 def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str, list[str]]:
     """Open RQs → DNA field → *contradiction-scoped* candidate values for biased mutation.
 
     Section 20.4: bias must come from contradicting agent DNAs / belief metadata /
     parsed belief text — NOT the full trait enum (full enum ≡ uniform random ≡ no bias).
+
+    Candidates are ordered by associated fitness (desc) when belief text / metadata /
+    agent score files encode it, so Condition D prefers the higher-fitness side of a
+    contradiction while staying inside the disputed subspace (H2 + sample efficiency).
     """
     store = resolve_belief_store(run_dir, cabs_store)
     run_path = Path(run_dir)
@@ -272,6 +356,7 @@ def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str,
             continue
 
         candidates: list[str] = []
+        scores: dict[str, float] = {}
 
         # Explicit candidate_values on the RQ (if a richer exporter wrote them)
         explicit = q.get("candidate_values") or q.get("suggested_values") or []
@@ -297,19 +382,23 @@ def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str,
                     detected_gen = None
 
             for key in ("belief_a", "belief_b"):
-                _append_unique(
-                    candidates,
-                    _parse_trait_values_from_text(str(contradiction.get(key, "")), str(dna_field), allowed),
-                )
+                text = str(contradiction.get(key, ""))
+                values = _parse_trait_values_from_text(text, str(dna_field), allowed)
+                _append_unique(candidates, values)
+                fit = _fitness_from_text(text)
+                for value in values:
+                    _record_candidate(scores, value, fit, allowed)
 
             _append_unique(
                 candidates,
-                _values_from_beliefs(beliefs, str(dna_field), allowed, agent_ids=agent_ids or None),
+                _values_from_beliefs(
+                    beliefs, str(dna_field), allowed, agent_ids=agent_ids or None, scores=scores
+                ),
             )
             _append_unique(
                 candidates,
                 _values_from_agent_dna_files(
-                    run_path, str(dna_field), allowed, agent_ids, detected_gen
+                    run_path, str(dna_field), allowed, agent_ids, detected_gen, scores=scores
                 ),
             )
 
@@ -324,9 +413,10 @@ def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str,
         if not candidates:
             continue
 
+        ranked = _rank_candidates_by_fitness(candidates, scores)
         # Keep contradiction pairs small (typically 2 values) for measurable H2 skew
         bias.setdefault(str(dna_field), [])
-        _append_unique(bias[str(dna_field)], candidates[:4])
+        _append_unique(bias[str(dna_field)], ranked[:4])
 
     return bias
 
