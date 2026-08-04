@@ -23,6 +23,9 @@ from sia.evolution.evolution_prompts import (
 from sia.evolution.dry_run import (
     agent_creation_complete,
     agent_run_complete,
+    deterministic_fitness,
+    parse_agent_coords,
+    write_mock_results,
     write_mock_target_agent,
 )
 from sia.evolution.operators import breed_offspring, extract_fitness, select_elites
@@ -74,6 +77,9 @@ def _run_single_agent(
     eval_subset: int | None = None,
     resume: bool = False,
     dry_run: bool = False,
+    task_name: str = "gpqa",
+    agent_id: int | None = None,
+    generation: int | None = None,
 ) -> tuple[bool, float, float]:
     """Run target agent + evaluation in an agent directory. Returns (success, fitness, duration)."""
     if resume and agent_run_complete(agent_dir):
@@ -82,11 +88,24 @@ def _run_single_agent(
         logger.info(f"  → Resume: using cached fitness={fitness:.4f}")
         return True, fitness, 0.0
 
+    # Dry-run: DNA-hash fitness (varied Δfitness for offline H5). Skip real eval —
+    # mock GPQA agents that always answer "A" collapse every agent to accuracy=1.0.
+    if dry_run:
+        dna_path = os.path.join(agent_dir, Names.AGENT_DNA)
+        dna = AgentDNA.load(dna_path) if os.path.isfile(dna_path) else AgentDNA()
+        parsed_id, parsed_gen = parse_agent_coords(agent_dir)
+        aid = agent_id if agent_id is not None else parsed_id
+        gen = generation if generation is not None else parsed_gen
+        fitness = deterministic_fitness(aid, dna, gen)
+        write_mock_results(agent_dir, fitness, task_name, eval_subset)
+        logger.info(f"  → Dry-run: deterministic fitness={fitness:.4f} (agent={aid}, gen={gen})")
+        return True, fitness, 0.0
+
     target_path = os.path.join(agent_dir, Names.TARGET_AGENT if focus == "harness" else Names.TRAIN_SCRIPT)
     stdout_log = os.path.join(agent_dir, Names.STDOUT_LOG if focus == "harness" else Names.TRAIN_STDOUT_LOG)
 
     gen_requirements = os.path.join(agent_dir, Names.REQUIREMENTS_TXT)
-    if os.path.isfile(gen_requirements) and not dry_run:
+    if os.path.isfile(gen_requirements):
         install_requirements(run_setup.venv_dir, gen_requirements)
 
     start = time.time()
@@ -101,9 +120,6 @@ def _run_single_agent(
         env_config=env_config,
     )
     duration = time.time() - start
-
-    if dry_run and not success:
-        logger.warning(f"  ⚠ Dry-run target agent failed: {error_msg}")
 
     orch.run_evaluation(
         agent_dir,
@@ -359,6 +375,8 @@ def run_population_generation(
             eval_subset=eval_subset,
             resume=resume,
             dry_run=dry_run,
+            agent_id=agent_id,
+            generation=gen,
         )
 
         dna_path = os.path.join(agent_dir, Names.AGENT_DNA)

@@ -139,3 +139,14 @@ def test_condition_d_dry_run_g1_belief_store_and_bias(mock_venv, mock_llm, tmp_p
     if "memory" in bias:
         assert set(bias["memory"]).issubset(set(MEMORY_MODES))
         assert set(bias["memory"]) != set(MEMORY_MODES)
+
+    # Dry-run must use DNA-deterministic fitness (not trivial mock-eval 1.0 for all).
+    fits = []
+    for gen in (1, 2):
+        for agent_id in (0, 1):
+            results_path = Path(layout.gen_agent_dir(gen, agent_id)) / "results.json"
+            results = json.loads(results_path.read_text(encoding="utf-8"))
+            assert results.get("dry_run") is True
+            fits.append(float(results["accuracy"]))
+    assert all(0.05 <= f <= 0.95 for f in fits)
+    assert len(set(fits)) >= 2, "expected varied dry-run fitness for offline H5 Δfitness"
