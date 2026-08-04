@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from sia.evolution.cabs_bridge import load_mutation_bias
-from sia.evolution.cabs_inline import ensure_cabs_importable, run_cabs_inline
+from sia.evolution.cabs_inline import (
+    _epistemic_value,
+    ensure_cabs_importable,
+    run_cabs_inline,
+)
 from sia.evolution.dna import MEMORY_MODES
 
 
@@ -120,3 +124,53 @@ def test_cabs_inline_enables_scoped_mutation_bias(tmp_path):
     assert set(bias["memory"]).issubset(set(MEMORY_MODES))
     assert set(bias["memory"]) != set(MEMORY_MODES)
     assert "full_history" in bias["memory"] or "failure_based" in bias["memory"]
+
+
+def test_epistemic_value_varies_with_age_and_knowledge_gain(tmp_path):
+    """Offline H5 needs non-constant epistemic_value across gens (age decay + flow)."""
+    store = tmp_path / "belief_store"
+    store.mkdir(parents=True)
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "contradictions": [
+                    {
+                        "id": "c1",
+                        "topic": "memory",
+                        "priority": 1.0,
+                        "status": "open",
+                        "detected_at_gen": 1,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "research_questions.json").write_text(
+        json.dumps(
+            {
+                "research_questions": [
+                    {
+                        "id": "rq1",
+                        "priority": 0.8,
+                        "status": "open",
+                        "detected_at_gen": 1,
+                        "contradiction_id": "c1",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    g1 = _epistemic_value(store, 1, knowledge_gain=0.5)
+    g2 = _epistemic_value(store, 2, knowledge_gain=0.0)
+    g3 = _epistemic_value(store, 3, knowledge_gain=0.0)
+
+    assert g1["epistemic_value"] != g2["epistemic_value"]
+    assert g2["epistemic_value"] != g3["epistemic_value"]
+    # Stale open stock decays without new knowledge_gain
+    assert g3["epistemic_value"] < g2["epistemic_value"] < g1["epistemic_value"]
+    # Knowledge gain must move the series (gen1 includes flow)
+    assert g1["knowledge_gain_score"] == pytest.approx(0.5)
+    assert g1["epistemic_value"] > g1["contradiction_priority_sum"] + g1["rq_priority_sum"] - 1e-9

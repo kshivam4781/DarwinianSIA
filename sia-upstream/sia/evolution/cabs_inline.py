@@ -61,41 +61,140 @@ def ensure_cabs_importable() -> bool:
     return False
 
 
-def _epistemic_value(store_root: Path) -> dict[str, float]:
-    """H5 working definition: sum of open contradiction + RQ priorities."""
+# Age decay for unresolved open items (per generation since detection).
+# Fresh contradictions/RQs dominate; stale open stock fades so multi-gen
+# series is non-constant even when the store composition is unchanged.
+_EPI_AGE_DECAY = 0.85
+# Flow terms: new knowledge / resolutions this generation.
+_EPI_KG_WEIGHT = 1.0
+_EPI_RES_WEIGHT = 0.5
 
-    def _load(name: str, key: str) -> list[dict[str, Any]]:
-        path = store_root / name
-        if not path.exists():
-            return []
+
+def _item_age(item: dict[str, Any], generation: int) -> int:
+    for key in ("detected_at_gen", "created_at_gen", "generation", "resolved_at_gen"):
+        raw = item.get(key)
+        if raw is None:
+            continue
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return []
-        items = data.get(key, []) if isinstance(data, dict) else []
-        return [x for x in items if isinstance(x, dict)]
+            return max(0, int(generation) - int(raw))
+        except (TypeError, ValueError):
+            continue
+    return 0
 
+
+def _effective_priority(item: dict[str, Any], generation: int) -> float:
+    base = float(item.get("priority", 0) or 0)
+    age = _item_age(item, generation)
+    return base * (_EPI_AGE_DECAY**age)
+
+
+def _load_store_items(store_root: Path, name: str, key: str) -> list[dict[str, Any]]:
+    path = store_root / name
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    items = data.get(key, []) if isinstance(data, dict) else []
+    return [x for x in items if isinstance(x, dict)]
+
+
+def _knowledge_gain_from_report(run_dir: str, generation: int) -> float:
+    report = Path(run_dir) / f"gen_{generation}" / "cabs_report.json"
+    if not report.is_file():
+        return 0.0
+    try:
+        data = json.loads(report.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return 0.0
+    try:
+        return float(data.get("knowledge_gain_score", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _resolved_priority_sum(store_root: Path, generation: int) -> float:
+    """Sum raw priorities of contradictions/RQs resolved at this generation."""
+    total = 0.0
+    for name, key in (
+        ("contradictions.json", "contradictions"),
+        ("research_questions.json", "research_questions"),
+    ):
+        for item in _load_store_items(store_root, name, key):
+            if item.get("status") != "resolved":
+                continue
+            try:
+                resolved_gen = int(item.get("resolved_at_gen"))
+            except (TypeError, ValueError):
+                continue
+            if resolved_gen == int(generation):
+                total += float(item.get("priority", 0) or 0)
+    return total
+
+
+def _epistemic_value(
+    store_root: Path,
+    generation: int,
+    *,
+    knowledge_gain: float | None = None,
+    run_dir: str | None = None,
+) -> dict[str, float]:
+    """H5 epistemic_value_t: age-weighted open priorities + knowledge/resolution flow.
+
+    Stock: open contradiction + RQ priorities, decayed by gens since detection.
+    Flow: knowledge_gain_score (from cabs_report) + resolved priorities this gen.
+    """
     contradictions = [
-        c for c in _load("contradictions.json", "contradictions") if c.get("status", "open") == "open"
+        c
+        for c in _load_store_items(store_root, "contradictions.json", "contradictions")
+        if c.get("status", "open") == "open"
     ]
     questions = [
-        q for q in _load("research_questions.json", "research_questions") if q.get("status", "open") == "open"
+        q
+        for q in _load_store_items(store_root, "research_questions.json", "research_questions")
+        if q.get("status", "open") == "open"
     ]
-    c_sum = sum(float(c.get("priority", 0) or 0) for c in contradictions)
-    q_sum = sum(float(q.get("priority", 0) or 0) for q in questions)
+    c_raw = sum(float(c.get("priority", 0) or 0) for c in contradictions)
+    q_raw = sum(float(q.get("priority", 0) or 0) for q in questions)
+    c_sum = sum(_effective_priority(c, generation) for c in contradictions)
+    q_sum = sum(_effective_priority(q, generation) for q in questions)
+
+    if knowledge_gain is None:
+        knowledge_gain = _knowledge_gain_from_report(run_dir, generation) if run_dir else 0.0
+    resolved_sum = _resolved_priority_sum(store_root, generation)
+    flow = _EPI_KG_WEIGHT * float(knowledge_gain) + _EPI_RES_WEIGHT * resolved_sum
+    epistemic_value = c_sum + q_sum + flow
+
     return {
         "open_contradictions": float(len(contradictions)),
         "open_research_questions": float(len(questions)),
         "contradiction_priority_sum": c_sum,
         "rq_priority_sum": q_sum,
-        "epistemic_value": c_sum + q_sum,
+        "contradiction_priority_sum_raw": c_raw,
+        "rq_priority_sum_raw": q_raw,
+        "knowledge_gain_score": float(knowledge_gain),
+        "resolved_priority_sum": resolved_sum,
+        "epistemic_flow": flow,
+        "epistemic_value": epistemic_value,
     }
 
 
-def _append_epistemic_snapshot(run_dir: str, generation: int, cabs_store: str | None) -> dict[str, float]:
+def _append_epistemic_snapshot(
+    run_dir: str,
+    generation: int,
+    cabs_store: str | None,
+    *,
+    knowledge_gain: float | None = None,
+) -> dict[str, float]:
     store = resolve_belief_store(run_dir, cabs_store)
     store.mkdir(parents=True, exist_ok=True)
-    metrics = _epistemic_value(store)
+    metrics = _epistemic_value(
+        store,
+        generation,
+        knowledge_gain=knowledge_gain,
+        run_dir=run_dir,
+    )
     row = {"generation": generation, **metrics}
     out = store / "epistemic_value.jsonl"
     with out.open("a", encoding="utf-8") as fh:
@@ -182,7 +281,20 @@ def run_cabs_inline(
         )
         summary = _run_subprocess(run_dir, generation)
 
-    metrics = _append_epistemic_snapshot(run_dir, generation, cabs_store)
+    kg = summary.get("knowledge_gain_score")
+    if kg is None and isinstance(summary.get("payload"), dict):
+        kg = summary["payload"].get("knowledge_gain_score")
+    try:
+        kg_f: float | None = float(kg) if kg is not None else None
+    except (TypeError, ValueError):
+        kg_f = None
+
+    metrics = _append_epistemic_snapshot(
+        run_dir,
+        generation,
+        cabs_store,
+        knowledge_gain=kg_f,
+    )
     summary["epistemic_value"] = metrics.get("epistemic_value", 0.0)
     summary["epistemic_metrics"] = metrics
     return summary
