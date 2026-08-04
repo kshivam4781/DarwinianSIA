@@ -807,7 +807,7 @@ Computed in `cabs/belief_engine.py`:
 | Dry-run DNA-deterministic fitness | **DONE** | Fixes trivial 1.0 mock-eval collapse; enables offline Δfitness |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers for paper refresh |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 scoped bias + run_1402 in-bias 0.875; need live API |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run G1 + fitness-weighted order (Tick 7); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay open priorities + knowledge_gain/resolution flow (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline dry-run `run_1403` ρ **0.5**; live GPQA series still required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **NOT DONE** | See `docs/paper_artifacts.md` |
