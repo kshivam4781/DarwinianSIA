@@ -12,12 +12,56 @@ from sia.io_utils import write_text
 from sia.layout import Names
 
 
-def _deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
-    """Produce stable, varied fitness in [0.05, 0.95] from DNA + ids."""
-    payload = json.dumps({"agent_id": agent_id, "gen": generation, "dna": dna.__dict__}, sort_keys=True)
-    digest = hashlib.sha256(payload.encode()).hexdigest()
+def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
+    """Produce stable, varied fitness in [0.05, 0.95] from transferable DNA traits.
+
+    Fitness depends **only** on DNA trait values (not ``agent_id`` / ``generation``),
+    so offspring that inherit a high-fitness parent's traits keep that fitness
+    contribution. That makes offline case studies of fitness-weighted mutation bias
+    (tie → contradiction → biased DNA → fitness lift) possible.
+
+    ``agent_id`` and ``generation`` remain in the signature for call-site
+    compatibility but are ignored for scoring.
+
+    Used by dry-run evaluation so Condition B/D harnesses get non-trivial
+    Δfitness series (needed for offline H5 Spearman smoke tests). Not a
+    substitute for live GPQA accuracy.
+    """
+    del agent_id, generation  # unused — fitness must transfer with DNA traits
+    payload = {
+        "planning_style": dna.planning_style,
+        "reflection": bool(dna.reflection),
+        "tool_strategy": dna.tool_strategy,
+        "retry_policy": dna.retry_policy,
+        "memory": dna.memory,
+        "confidence_threshold": round(float(dna.confidence_threshold), 2),
+        "prompt_structure": dna.prompt_structure,
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
     raw = int(digest[:8], 16) / 0xFFFFFFFF
     return round(0.05 + 0.9 * raw, 4)
+
+
+# Back-compat alias for older call sites / tests.
+_deterministic_fitness = deterministic_fitness
+
+
+def parse_agent_coords(agent_dir: str) -> tuple[int, int]:
+    """Return (agent_id, generation) parsed from ``.../gen_N/agent_K`` paths."""
+    generation = 1
+    agent_id = 0
+    for part in Path(agent_dir).parts:
+        if part.startswith("gen_"):
+            try:
+                generation = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+        elif part.startswith("agent_"):
+            try:
+                agent_id = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+    return agent_id, generation
 
 
 def write_mock_target_agent(agent_dir: str, task_name: str) -> None:
