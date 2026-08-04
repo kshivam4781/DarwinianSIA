@@ -414,6 +414,12 @@ def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str,
             continue
 
         ranked = _rank_candidates_by_fitness(candidates, scores)
+        # Require a real disagreement (≥2 distinct values). Singleton pools are often
+        # same-allele "contradictions" (two agents share a trait but differ in fitness
+        # via other genes). Forcing that singleton onto the population destroys better
+        # alleles (e.g. selective elite → all aggressive) and collapses Condition D.
+        if len(ranked) < 2:
+            continue
         # Keep contradiction pairs small (typically 2 values) for measurable H2 skew
         bias.setdefault(str(dna_field), [])
         _append_unique(bias[str(dna_field)], ranked[:4])

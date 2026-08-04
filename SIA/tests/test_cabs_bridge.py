@@ -296,3 +296,46 @@ def test_biased_mutate_anchors_preferred_allele():
     assert pref > lose
     assert pref + lose == 200
 
+def test_mutation_bias_skips_singleton_candidates(tmp_path):
+    """Same-allele contradictions must not create singleton bias pools."""
+    store = tmp_path / "belief_store"
+    store.mkdir()
+    (store / "research_questions.json").write_text(
+        json.dumps(
+            {
+                "research_questions": [
+                    {
+                        "id": "rq1",
+                        "question": "Tool strategy?",
+                        "contradiction_id": "c1",
+                        "dna_field": "tool_strategy",
+                        "status": "open",
+                        "priority": 0.8,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "contradictions": [
+                    {
+                        "id": "c1",
+                        "topic": "tool_use",
+                        "belief_a": "Agent 0: tool_strategy=aggressive achieved fitness 0.28",
+                        "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.20",
+                        "status": "open",
+                        "priority": 0.85,
+                        "detected_at_gen": 1,
+                        "metadata": {"agents": [0, 1], "cross_agent": True},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    bias = load_mutation_bias(str(tmp_path))
+    assert "tool_strategy" not in bias
+
