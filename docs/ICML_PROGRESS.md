@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-04T00:05Z — Tick 3 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-fb8d` (cherry-picked Ticks 1–2 from `c4ef`, then G1)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Section 21 G1 was still open: `--cabs-inline` existed but Condition D had not been dry-run on a GPQA-shaped task layout proving mid-loop `belief_store/` refresh + contradiction-scoped mutation bias before breeding gen≥2. PRIMARY/H5 remain blocked on API keys after G1.
+
+### What this tick did (ONE step)
+Executed **G1 dry-run Condition D** and locked it with an integration test:
+- Harness: `run_darwinian_loop(..., dry_run=True, cabs_inline=True)`, pop=2, max_gen=2, eval_subset=3, seed=42 → local `runs/run_1401` (gitignored)
+- Gen1 inline: beliefs+16, contradictions+7, RQs+7, `epistemic_value=11.9`
+- Breeding logged scoped bias (e.g. `memory: [failure_based, none]` — not full enum)
+- Gen2 DNA written; `belief_store/epistemic_value.jsonl` has gen 1+2 rows
+- Test: `SIA/tests/test_cabs_inline_dry_run.py` (asserts store + epi series + non-empty scoped bias)
+
+### Metrics delta
+| Metric | Before | After |
+|--------|--------|-------|
+| G1 dry-run Condition D | Unblocked / not executed | **PASS** (run_1401 + pytest) |
+| Mid-run contradictions / RQs (dry-run) | Unknown | **7 / 7** after gen1 |
+| Mutation bias on breed→gen2 | Untested in-loop | **Scoped** (≠ full MEMORY_MODES) |
+| PRIMARY D beats B (≥3/5 seeds) | No data | No data (no API) |
+| H5 Spearman ρ | Writer only | Still no live Δfitness series |
+| Paper artifacts | Stubs | Stubs (+ dry-run ID noted) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` are present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D; then G3 pilot B vs D. Do not start paid runs without keys.
+
+---
+
 ## 2026-08-03T22:10Z — Tick 2 (automation cron)
 
 ### Status snapshot
