@@ -205,8 +205,15 @@ def breed_offspring(
     rng: random.Random | None = None,
     bias: dict[str, list[str]] | None = None,
     technique_seeds: list[str] | None = None,
+    apply_crossover_bias: bool = True,
 ) -> AgentDNA:
-    """Crossover two parents then apply mutation (bias flows to both steps)."""
-    child = crossover(parent_a, parent_b, rng=rng, bias=bias)
+    """Crossover two parents then apply mutation.
+
+    Mutation bias always applies when ``bias`` is set. Crossover bias is
+    optional via ``apply_crossover_bias`` so early generations can keep fair
+    50/50 mixing (sample diversity / H5) while later gens steer alleles.
+    """
+    xo_bias = bias if apply_crossover_bias else None
+    child = crossover(parent_a, parent_b, rng=rng, bias=xo_bias)
     child = mutate(child, mutation_rate, rng=rng, bias=bias)
     return inject_technique_seeds(child, technique_seeds or [])

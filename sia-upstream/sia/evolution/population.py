@@ -590,6 +590,12 @@ def run_darwinian_loop(
             if cabs_technique_seeds:
                 logger.info(f"  CABS technique seeds: {cabs_technique_seeds}")
 
+        # Delay bias-aware crossover until breeding from gen≥2 (→ gen≥3).
+        # First breeding (gen1→gen2) keeps fair XO + mutation bias only so
+        # preferred alleles are not over-collapsed before H5 / gens-to-threshold
+        # signal can accumulate; later gens apply soft bias-aware XO.
+        apply_crossover_bias = current_gen >= 2
+
         for agent_id in range(population_size):
             # Tournament selection: pick two elites (with replacement if only one)
             parent_a_idx = rng.randint(0, len(elite_dnas) - 1)
@@ -601,6 +607,7 @@ def run_darwinian_loop(
                 rng=rng,
                 bias=mutation_bias,
                 technique_seeds=cabs_technique_seeds,
+                apply_crossover_bias=apply_crossover_bias,
             )
 
             agent_dir = layout.gen_agent_dir(next_gen, agent_id)

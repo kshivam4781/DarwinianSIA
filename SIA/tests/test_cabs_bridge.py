@@ -339,6 +339,46 @@ def test_bias_aware_crossover_prefers_winner_allele():
     assert breed_pref < n
 
 
+def test_breed_offspring_can_delay_crossover_bias():
+    """Early gens: fair XO + mutation bias; later gens: bias-aware XO too."""
+    bias = {"memory": ["failure_based", "full_history"]}
+    parent_pref = AgentDNA(memory="failure_based", tool_strategy="selective")
+    parent_lose = AgentDNA(memory="full_history", tool_strategy="aggressive")
+
+    # mutation_rate=0 → only crossover decides; delayed XO bias ⇒ ~50/50 mix.
+    delayed = []
+    for i in range(120):
+        child = breed_offspring(
+            parent_pref,
+            parent_lose,
+            mutation_rate=0.0,
+            rng=random.Random(4000 + i),
+            bias=bias,
+            apply_crossover_bias=False,
+        )
+        delayed.append(child.memory)
+    assert "failure_based" in delayed and "full_history" in delayed
+    delayed_pref = sum(1 for m in delayed if m == "failure_based")
+    assert 0.35 * len(delayed) < delayed_pref < 0.65 * len(delayed)
+
+    # With crossover bias enabled (default), soft preferred skew returns.
+    steered = 0
+    n = 120
+    for i in range(n):
+        child = breed_offspring(
+            parent_pref,
+            parent_lose,
+            mutation_rate=0.0,
+            rng=random.Random(5000 + i),
+            bias=bias,
+            apply_crossover_bias=True,
+        )
+        if child.memory == "failure_based":
+            steered += 1
+    assert steered > int(0.70 * n)
+    assert steered < n
+
+
 def test_mutation_bias_skips_singleton_candidates(tmp_path):
     """Same-allele contradictions must not create singleton bias pools."""
     store = tmp_path / "belief_store"
