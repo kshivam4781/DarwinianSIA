@@ -37,6 +37,25 @@ def test_deterministic_fitness_varies_by_dna():
     assert fa != fb
 
 
+def test_deterministic_fitness_transfers_with_dna_traits():
+    """Same DNA must score the same across agent_id/generation (offline case study)."""
+    dna = AgentDNA(memory="failure_based", tool_strategy="aggressive", planning_style="react")
+    f00 = deterministic_fitness(0, dna, 1)
+    f17 = deterministic_fitness(1, dna, 7)
+    assert f00 == f17
+    # Mutating a transferred trait must change fitness (bias can select for it).
+    other = AgentDNA(
+        memory="full_history",
+        tool_strategy=dna.tool_strategy,
+        planning_style=dna.planning_style,
+        reflection=dna.reflection,
+        retry_policy=dna.retry_policy,
+        confidence_threshold=dna.confidence_threshold,
+        prompt_structure=dna.prompt_structure,
+    )
+    assert deterministic_fitness(0, other, 1) != f00
+
+
 def test_spearman_rho_perfect():
     xs = [1.0, 2.0, 3.0, 4.0]
     ys = [10.0, 20.0, 30.0, 40.0]
