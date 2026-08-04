@@ -65,20 +65,31 @@ def _biased_choice(
     field: str,
     default_choices: tuple[str, ...],
     bias: dict[str, list[str]] | None,
+    current: str | None = None,
 ) -> str:
     """Pick trait value; weight toward CABS-suggested values when bias present.
 
     Bias lists from ``load_mutation_bias`` are ordered highest-fitness-first.
-    Earlier candidates get linearly higher weight so Condition D exploits the
-    winning side of a contradiction while still exploring the disputed pool.
+
+    Preferred-allele anchoring (Condition D sample efficiency):
+    - If ``current`` is already the preferred (first) value, keep it.
+    - If ``current`` is outside the disputed pool, adopt preferred only
+      (never force the loser side onto a non-disputed allele).
+    - If ``current`` is a disputed non-preferred value, use exponential
+      rank weights so the higher-fitness side dominates exploration.
     """
     suggested = (bias or {}).get(field)
     if suggested:
         pool = [v for v in suggested if v in default_choices]
         if pool:
+            preferred = pool[0]
+            if current == preferred:
+                return preferred
+            if current is not None and current not in pool:
+                return preferred
             n = len(pool)
-            # Rank weights: first=n, second=n-1, ... last=1
-            weights = [float(n - i) for i in range(n)]
+            # Exponential rank weights: first=3^(n-1), ..., last=1
+            weights = [float(3 ** (n - 1 - i)) for i in range(n)]
             return r.choices(pool, weights=weights, k=1)[0]
     return r.choice(default_choices)
 
@@ -94,17 +105,27 @@ def mutate(
     data = asdict(dna)
 
     if r.random() < mutation_rate:
-        data["planning_style"] = _biased_choice(r, "planning_style", PLANNING_STYLES, bias)
+        data["planning_style"] = _biased_choice(
+            r, "planning_style", PLANNING_STYLES, bias, current=data["planning_style"]
+        )
     if r.random() < mutation_rate:
         data["reflection"] = not data["reflection"]
     if r.random() < mutation_rate:
-        data["tool_strategy"] = _biased_choice(r, "tool_strategy", TOOL_STRATEGIES, bias)
+        data["tool_strategy"] = _biased_choice(
+            r, "tool_strategy", TOOL_STRATEGIES, bias, current=data["tool_strategy"]
+        )
     if r.random() < mutation_rate:
-        data["retry_policy"] = _biased_choice(r, "retry_policy", RETRY_POLICIES, bias)
+        data["retry_policy"] = _biased_choice(
+            r, "retry_policy", RETRY_POLICIES, bias, current=data["retry_policy"]
+        )
     if r.random() < mutation_rate:
-        data["memory"] = _biased_choice(r, "memory", MEMORY_MODES, bias)
+        data["memory"] = _biased_choice(
+            r, "memory", MEMORY_MODES, bias, current=data["memory"]
+        )
     if r.random() < mutation_rate:
-        data["prompt_structure"] = _biased_choice(r, "prompt_structure", PROMPT_STRUCTURES, bias)
+        data["prompt_structure"] = _biased_choice(
+            r, "prompt_structure", PROMPT_STRUCTURES, bias, current=data["prompt_structure"]
+        )
     if r.random() < mutation_rate:
         data["confidence_threshold"] = round(
             max(0.0, min(1.0, data["confidence_threshold"] + r.uniform(-0.15, 0.15))),

@@ -261,5 +261,38 @@ def test_biased_mutate_skews_memory_vs_uniform():
     assert biased_mass == n
     assert biased_counts["short_summary"] == 0
     assert biased_mass > uniform_mass
-    # Rank-weighted choice: first candidate (higher fitness) should dominate second
+    # Preferred-allele anchoring: outsiders adopt preferred only → first dominates
     assert biased_counts["failure_based"] > biased_counts["full_history"]
+    assert biased_counts["failure_based"] == n
+
+def test_biased_mutate_anchors_preferred_allele():
+    """Preferred-allele anchoring: protect preferred; pull outsiders to winner only."""
+    bias = {"memory": ["failure_based", "full_history"]}
+
+    # Outside disputed pool → must adopt preferred (never loser).
+    outs = []
+    for i in range(80):
+        dna = AgentDNA(memory="short_summary")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(i), bias=bias)
+        outs.append(out.memory)
+    assert all(m == "failure_based" for m in outs)
+
+    # Already preferred → stay preferred (protect).
+    kept = []
+    for i in range(80):
+        dna = AgentDNA(memory="failure_based")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(2000 + i), bias=bias)
+        kept.append(out.memory)
+    assert all(m == "failure_based" for m in kept)
+
+    # Loser side → preferred should dominate (exponential weights).
+    from_loser = []
+    for i in range(200):
+        dna = AgentDNA(memory="full_history")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(3000 + i), bias=bias)
+        from_loser.append(out.memory)
+    pref = sum(1 for m in from_loser if m == "failure_based")
+    lose = sum(1 for m in from_loser if m == "full_history")
+    assert pref > lose
+    assert pref + lose == 200
+
