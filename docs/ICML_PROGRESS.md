@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T08:10Z — Tick 18 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0d62` (fast-forwarded Ticks 1–17 from `f1b8`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 17: gens30 **3/5**, final **5/5**, but H5 only **2/5** under elite-best Δfitness including gen1→gen2 (fair breeding under delay-all — high epi vs non-steered Δ → structural noise; seed 22 ρ=−0.3).
+
+### What this tick did (ONE step)
+**Restore offline H5 validity via measurement protocol aligned with delay-all steering:**
+1. `compute_h5(min_generation=2)` — exclude gen1→gen2 pairs (DNA steering inactive until breeding from gen≥2)
+2. Default H5 `fitness_key="mean"` — population-mean Δfitness matches population-level contradiction steering (elite-best is still available for sensitivity)
+3. Keep Tick 17 ε-greedy mutation / live harvest path (stuck-preferred-only explore + discovery reweight experiments regressed H5; reverted)
+4. Re-pilot B `1730–1734` vs D `1740–1744` (`max_gen=6`); case study on `run_1743`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 17) | After (Tick 18) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 5/5 | **5/5** (stable) |
+| Offline D gens30 wins | 3/5 | **3/5** (stable; offline PRIMARY gens30) |
+| Mean final gap (D−B) | ~5.35pp | ~**5.35pp** |
+| Offline H5 ρ>0.3 | 2/5 (best Δ; incl. gen1) | **4/5** (mean Δ; gen≥2) — 0.0 / 0.8 / 0.4 / 0.8 / 0.6 |
+| Case study gen2 pref share / lift | 0.25 / +0.0869 (`1683`) | **0.25 / +0.0869** (`1743`) — same chain |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. Offline PRIMARY gens30 + H5 4/5 are in place but **do not** set READY without live GPQA.
+
+---
+
 ## 2026-08-05T06:11Z — Tick 17 (automation cron)
 
 ### Status snapshot

@@ -122,11 +122,15 @@ def spearman_rho(xs: list[float], ys: list[float]) -> float | None:
 
 def compute_h5(
     run_dir: Path,
-    fitness_key: str = "best",
+    fitness_key: str = "mean",
     *,
     min_generation: int = 2,
 ) -> dict[str, Any]:
     """H5: Spearman ρ(epistemic_value_t, Δfitness_t+1).
+
+    Default ``fitness_key="mean"``: population-mean Δfitness matches
+    contradiction-scoped steering (which reshapes the population, not only the
+    elite). Elite ``best`` is still available for sensitivity checks.
 
     Default ``min_generation=2`` excludes gen1→gen2 pairs. Under Condition D
     delay-all DNA steering, breeding into gen2 is intentionally fair (no CABS
