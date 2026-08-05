@@ -175,11 +175,15 @@ def test_epistemic_value_varies_with_age_and_knowledge_gain(tmp_path):
     assert g2["rq_priority_sum"] < g1["rq_priority_sum"]
     assert g2["contradiction_priority_sum"] < g1["contradiction_priority_sum"]
     assert g2["rq_priority_sum"] == pytest.approx(0.8 * 0.85)
-    # Knowledge gain must move the series (gen1 includes flow)
+    # Knowledge gain must move the series (gen1 includes flow); stock is soft-weighted
     assert g1["knowledge_gain_score"] == pytest.approx(0.5)
-    assert g1["epistemic_value"] > g1["contradiction_priority_sum"] + g1["rq_priority_sum"] - 1e-9
-    # No run_dir → steering opportunity stays zero (age/flow-only path)
+    soft_stock_g1 = 0.35 * (
+        g1["contradiction_priority_sum"] + g1["rq_priority_sum"]
+    )
+    assert g1["epistemic_value"] == pytest.approx(soft_stock_g1 + 0.5, abs=1e-9)
+    # No run_dir → steering/discovery stay zero (age/flow-only path)
     assert g1["steering_opportunity"] == pytest.approx(0.0)
+    assert g1["discovery_opportunity"] == pytest.approx(0.0)
 
 
 def test_epistemic_value_includes_steering_opportunity(tmp_path):

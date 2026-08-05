@@ -141,13 +141,16 @@ def _biased_choice(
     - If ``current`` is a disputed non-preferred value, use exponential
       rank weights so the higher-fitness side dominates exploitation.
 
-    ε-greedy exploration (``_BIAS_MUTATE_EXPLORE_EPS``): with small
-    probability sample the full trait enum so alleles absent from the
-    contradiction pair can still appear; fitness selection + later
-    contradictions can then adopt them (gens-to-threshold / H2 escape).
+    ε-greedy exploration (``_BIAS_MUTATE_EXPLORE_EPS``): when the allele is
+    already the local preferred winner, with small probability sample the
+    full trait enum so alleles absent from the contradiction pair can still
+    appear (escape suboptimal frozen pairs). Exploration is **not** applied
+    on every mutate — only when stuck at preferred — so random mid-run
+    fitness noise does not destroy H5 (epi_t vs Δfitness_t+1).
 
     Soft mode (``anchor_preferred=False``): skip preferred protect / outsider
-    preserve; still ε-explore, otherwise sample the disputed pool with
+    preserve; ε-explore from the preferred slot still applies when
+    ``current == preferred``, otherwise sample the disputed pool with
     exponential rank weights.
     """
     suggested = (bias or {}).get(field)
@@ -155,13 +158,15 @@ def _biased_choice(
         pool = [v for v in suggested if v in default_choices]
         if pool:
             preferred = pool[0]
-            # Explore outside the disputed subspace before protect/exploit so a
-            # collapsed local winner (e.g. minimal) can still discover better
-            # unexplored alleles (selective) in later generations.
-            if default_choices and r.random() < _BIAS_MUTATE_EXPLORE_EPS:
-                return r.choice(default_choices)
             if anchor_preferred and current == preferred:
+                # Stuck at local winner: ε-escape to full enum, else protect.
+                if default_choices and r.random() < _BIAS_MUTATE_EXPLORE_EPS:
+                    return r.choice(default_choices)
                 return preferred
+            if (not anchor_preferred) and current == preferred:
+                # Soft mode: still allow stuck-preferred escape.
+                if default_choices and r.random() < _BIAS_MUTATE_EXPLORE_EPS:
+                    return r.choice(default_choices)
             if anchor_preferred and current is not None and current not in pool:
                 # Retain unexplored outsider alleles (selective, etc.).
                 return current

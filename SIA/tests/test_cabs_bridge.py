@@ -579,6 +579,7 @@ def test_biased_mutate_epsilon_explores_outside_disputed_pool():
 
     Regression for suboptimal-pool traps: bias=[minimal, aggressive] must not
     permanently exclude selective (higher latent fitness offline / live escape).
+    Tick 18: explore only when already at preferred (stuck), not on every mutate.
     """
     bias = {"tool_strategy": ["minimal", "aggressive"]}
     seen = set()
@@ -602,6 +603,14 @@ def test_biased_mutate_epsilon_explores_outside_disputed_pool():
         if out.tool_strategy == "minimal":
             pref_keep += 1
     assert pref_keep > int(0.70 * n)
+    # Loser alleles are pulled toward preferred without full-enum ε noise.
+    loser_to_selective = 0
+    for i in range(n):
+        dna = AgentDNA(tool_strategy="aggressive")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(17000 + i), bias=bias)
+        if out.tool_strategy == "selective":
+            loser_to_selective += 1
+    assert loser_to_selective == 0
 
 
 def test_mutation_bias_skips_singleton_candidates(tmp_path):

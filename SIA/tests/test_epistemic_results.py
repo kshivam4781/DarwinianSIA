@@ -144,11 +144,14 @@ def test_compute_h5_from_synthetic_run(tmp_path: Path):
         "\n".join(json.dumps(r) for r in epi_lines) + "\n",
         encoding="utf-8",
     )
-    # Δ: g1→2 = +0.10, g2→3 = +0.15, g3→4 = +0.05
-    # epi: 1, 5, 8  vs deltas 0.10, 0.15, 0.05 → not perfect but computable
+    # Default min_generation=2 skips gen1→gen2 (delay-all: steering inactive).
+    # Remaining: g2→3 = +0.15, g3→4 = +0.05 with epi 5, 8
     h5 = compute_h5(run_dir)
-    assert h5["n_pairs"] == 3
+    assert h5["n_pairs"] == 2
+    assert h5["min_generation"] == 2
     assert h5["spearman_rho"] is not None
+    h5_all = compute_h5(run_dir, min_generation=1)
+    assert h5_all["n_pairs"] == 3
 
     # Construct a perfect series for pass check
     civ2 = {

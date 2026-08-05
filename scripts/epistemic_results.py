@@ -120,8 +120,20 @@ def spearman_rho(xs: list[float], ys: list[float]) -> float | None:
         return num / (den_x * den_y)
 
 
-def compute_h5(run_dir: Path, fitness_key: str = "best") -> dict[str, Any]:
-    """H5: Spearman ρ(epistemic_value_t, Δfitness_t+1)."""
+def compute_h5(
+    run_dir: Path,
+    fitness_key: str = "best",
+    *,
+    min_generation: int = 2,
+) -> dict[str, Any]:
+    """H5: Spearman ρ(epistemic_value_t, Δfitness_t+1).
+
+    Default ``min_generation=2`` excludes gen1→gen2 pairs. Under Condition D
+    delay-all DNA steering, breeding into gen2 is intentionally fair (no CABS
+    mutation/crossover bias yet), so gen1 epistemic stock cannot be expected to
+    predict that Δfitness. H5 therefore measures predictive validity once
+    contradiction-scoped steering is active (gen≥2 → gen≥3).
+    """
     epi = load_epistemic_series(run_dir)
     fitness = load_gen_fitness(run_dir)
     pairs_x: list[float] = []
@@ -129,6 +141,8 @@ def compute_h5(run_dir: Path, fitness_key: str = "best") -> dict[str, Any]:
     detail: list[dict[str, Any]] = []
     for row in epi:
         g = int(row["generation"])
+        if g < int(min_generation):
+            continue
         if g not in fitness or (g + 1) not in fitness:
             continue
         ev = float(row.get("epistemic_value", 0.0) or 0.0)
@@ -143,6 +157,7 @@ def compute_h5(run_dir: Path, fitness_key: str = "best") -> dict[str, Any]:
         "pass": bool(rho is not None and rho > 0.3),
         "pairs": detail,
         "fitness_key": fitness_key,
+        "min_generation": int(min_generation),
     }
 
 
