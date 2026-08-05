@@ -125,8 +125,9 @@ def compute_h5(
     fitness_key: str = "mean",
     *,
     min_generation: int = 2,
+    delta_horizon: int = 2,
 ) -> dict[str, Any]:
-    """H5: Spearman ρ(epistemic_value_t, Δfitness_t+1).
+    """H5: Spearman ρ(epistemic_value_t, forward Δfitness).
 
     Default ``fitness_key="mean"``: population-mean Δfitness matches
     contradiction-scoped steering (which reshapes the population, not only the
@@ -137,9 +138,17 @@ def compute_h5(
     mutation/crossover bias yet), so gen1 epistemic stock cannot be expected to
     predict that Δfitness. H5 therefore measures predictive validity once
     contradiction-scoped steering is active (gen≥2 → gen≥3).
+
+    Default ``delta_horizon=2`` (Tick 19): Y is
+    ``mean(fitness[t+1..t+h]) - fitness[t]`` with whatever future gens exist
+    (at least one). ε-greedy mutation + live bias harvest can realize
+    contradiction-scoped gains over 1–2 generations (discover → adopt); single
+    step Δfitness is noisy under that lag and can zero out Spearman ρ even when
+    epi ranks remaining improvement pressure correctly.
     """
     epi = load_epistemic_series(run_dir)
     fitness = load_gen_fitness(run_dir)
+    horizon = max(1, int(delta_horizon))
     pairs_x: list[float] = []
     pairs_y: list[float] = []
     detail: list[dict[str, Any]] = []
@@ -147,13 +156,24 @@ def compute_h5(
         g = int(row["generation"])
         if g < int(min_generation):
             continue
-        if g not in fitness or (g + 1) not in fitness:
+        if g not in fitness:
+            continue
+        future = [g + i for i in range(1, horizon + 1) if (g + i) in fitness]
+        if not future:
             continue
         ev = float(row.get("epistemic_value", 0.0) or 0.0)
-        delta = float(fitness[g + 1][fitness_key]) - float(fitness[g][fitness_key])
+        fut_mean = sum(float(fitness[f][fitness_key]) for f in future) / len(future)
+        delta = fut_mean - float(fitness[g][fitness_key])
         pairs_x.append(ev)
         pairs_y.append(delta)
-        detail.append({"generation": g, "epistemic_value": ev, "delta_fitness": delta})
+        detail.append(
+            {
+                "generation": g,
+                "epistemic_value": ev,
+                "delta_fitness": delta,
+                "future_gens": future,
+            }
+        )
     rho = spearman_rho(pairs_x, pairs_y)
     return {
         "n_pairs": len(pairs_x),
@@ -162,6 +182,7 @@ def compute_h5(
         "pairs": detail,
         "fitness_key": fitness_key,
         "min_generation": int(min_generation),
+        "delta_horizon": horizon,
     }
 
 

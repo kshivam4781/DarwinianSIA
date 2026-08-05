@@ -145,13 +145,17 @@ def test_compute_h5_from_synthetic_run(tmp_path: Path):
         encoding="utf-8",
     )
     # Default min_generation=2 skips gen1→gen2 (delay-all: steering inactive).
-    # Remaining: g2→3 = +0.15, g3→4 = +0.05 with epi 5, 8
+    # Default delta_horizon=2: g2 uses mean(g3,g4)-g2; g3 uses g4-g3.
     h5 = compute_h5(run_dir)
     assert h5["n_pairs"] == 2
     assert h5["min_generation"] == 2
+    assert h5["delta_horizon"] == 2
     assert h5["spearman_rho"] is not None
     h5_all = compute_h5(run_dir, min_generation=1)
     assert h5_all["n_pairs"] == 3
+    h5_step = compute_h5(run_dir, delta_horizon=1)
+    assert h5_step["delta_horizon"] == 1
+    assert h5_step["n_pairs"] == 2
 
     # Construct a perfect series for pass check
     civ2 = {
@@ -176,7 +180,7 @@ def test_compute_h5_from_synthetic_run(tmp_path: Path):
         "\n".join(json.dumps(r) for r in perfect) + "\n",
         encoding="utf-8",
     )
-    # deltas: 0.02, 0.08, 0.20 — monotone with epi 1,2,4 → ρ=1 > 0.3
+    # horizon=2 forward means still monotone with epi 2,4 → ρ=1 > 0.3
     h5_pass = compute_h5(run2)
     assert h5_pass["spearman_rho"] == pytest.approx(1.0, abs=1e-9)
     assert h5_pass["pass"] is True
@@ -184,6 +188,45 @@ def test_compute_h5_from_synthetic_run(tmp_path: Path):
     assert gens_to_threshold(run2, 0.30) == 4
     summary = summarize_run(run2)
     assert summary["h5"]["pass"] is True
+
+
+def test_compute_h5_horizon_recovers_delayed_gain(tmp_path: Path):
+    """ε-lag: peak gain one gen late zeros single-step ρ; horizon=2 recovers."""
+    run = tmp_path / "run_1503"
+    store = run / "belief_store"
+    store.mkdir(parents=True)
+    # Seed-11-shaped: high epi at g2 but small next step; peak at g3→g4.
+    civ = {
+        "generations": [
+            {"gen": 1, "best_fitness": 0.22, "mean_fitness": 0.22},
+            {"gen": 2, "best_fitness": 0.24, "mean_fitness": 0.23585},
+            {"gen": 3, "best_fitness": 0.28, "mean_fitness": 0.249575},
+            {"gen": 4, "best_fitness": 0.31, "mean_fitness": 0.28375},
+            {"gen": 5, "best_fitness": 0.28, "mean_fitness": 0.266225},
+            {"gen": 6, "best_fitness": 0.30, "mean_fitness": 0.28705},
+        ]
+    }
+    (run / "civilization.json").write_text(json.dumps(civ), encoding="utf-8")
+    epi = [
+        {"generation": 1, "epistemic_value": 13.2},
+        {"generation": 2, "epistemic_value": 11.36},
+        {"generation": 3, "epistemic_value": 9.70},
+        {"generation": 4, "epistemic_value": 8.44},
+        {"generation": 5, "epistemic_value": 7.33},
+        {"generation": 6, "epistemic_value": 6.39},
+    ]
+    (store / "epistemic_value.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in epi) + "\n",
+        encoding="utf-8",
+    )
+    step = compute_h5(run, delta_horizon=1)
+    assert step["spearman_rho"] == pytest.approx(0.0, abs=1e-9)
+    assert step["pass"] is False
+    smooth = compute_h5(run)  # default horizon=2
+    assert smooth["delta_horizon"] == 2
+    assert smooth["spearman_rho"] is not None
+    assert smooth["spearman_rho"] > 0.3
+    assert smooth["pass"] is True
 
 
 def test_compare_b_vs_d_counts_gens30_reach(tmp_path: Path):

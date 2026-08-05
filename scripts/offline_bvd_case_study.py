@@ -475,12 +475,24 @@ def main(argv: list[str] | None = None) -> int:
                 "B_gens30": r["B"]["gens_to_30"],
                 "D_gens30": r["D"]["gens_to_30"],
                 "D_h5_rho": (r["D"].get("h5") or {}).get("spearman_rho"),
+                "D_h5_pass": (r["D"].get("h5") or {}).get("pass"),
+                "D_h5_key": (r["D"].get("h5") or {}).get("fitness_key"),
+                "D_h5_horizon": (r["D"].get("h5") or {}).get("delta_horizon"),
                 "D_h2_share": (r["D"].get("h2_memory") or {}).get("in_bias_share"),
             }
             for r in compare.get("rows", [])
         ],
         "case_study": case,
         "figures": figs,
+        "h5_protocol": {
+            "min_generation": 2,
+            "fitness_key": "mean",
+            "delta_horizon": 2,
+            "note": (
+                "H5 uses population-mean forward Δfitness over the next 1–2 gens "
+                "after DNA steering is active (gen≥2), matching ε-greedy discovery lag."
+            ),
+        },
         "note": (
             "Synthetic additive latent DNA fitness with transferable traits; offline only. "
             "Do not set ICML_READY PRIMARY from this."
