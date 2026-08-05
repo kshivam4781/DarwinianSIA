@@ -72,14 +72,15 @@ _EPI_RES_WEIGHT = 0.5
 # Steering opportunity: fitness_gap × under-adoption of preferred DNA.
 # Makes H5 (epi_t vs Δfitness_t+1) track actionable contradiction pressure
 # rather than pure age decay of open-stock priorities.
-_EPI_STEER_WEIGHT = 2.0
-# Discovery headroom: aged open-stock × (1 − best_fitness). Keeps epi elevated
-# when a local preferred allele has dominated (steering→0) but population
+_EPI_STEER_WEIGHT = 3.0
+# Discovery pressure: aged open-stock × fitness headroom × preferred stuckness.
+# Peaks when local preferred DNA already dominates (steering→0) but best
 # fitness still has room — the regime where stuck-preferred ε-explore can
-# unlock a better allele and raise next-gen fitness (H5 under Tick 17/18).
-_EPI_DISCOVERY_WEIGHT = 1.25
+# unlock a better allele next gen (H5 under Tick 17/18). Unlike pure
+# headroom, stuckness prevents early-gen monotone age decay from dominating.
+_EPI_DISCOVERY_WEIGHT = 3.0
 # Soften raw open-stock so age-decay alone does not dominate H5 ranks.
-_EPI_STOCK_WEIGHT = 0.35
+_EPI_STOCK_WEIGHT = 0.05
 _TRAIT_EQ_RE = re.compile(r"\b([a-z_][a-z0-9_]*)\s*=\s*([a-z0-9_]+)", re.IGNORECASE)
 _FITNESS_RE = re.compile(r"fitness\s*[:=]?\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE)
 _KNOWN_DNA_FIELDS = frozenset(
@@ -248,16 +249,52 @@ def _generation_best_fitness(run_dir: str | Path, generation: int) -> float | No
     return max(fits)
 
 
+def _preferred_stuckness(
+    contradictions: list[dict[str, Any]],
+    generation: int,
+    run_dir: str | None,
+) -> float:
+    """Max preferred-allele share across scored contradiction DNA fields.
+
+    Near 1 when the higher-fitness contradiction side already dominates the
+    population (local-optimum / explore regime); near 0 when still under-adopted
+    (steering regime).
+    """
+    if not run_dir:
+        return 0.0
+    best_share = 0.0
+    saw = False
+    for contradiction in contradictions:
+        sides: list[tuple[str, str, float]] = []
+        for key in ("belief_a", "belief_b"):
+            field, value, fitness = _parse_belief_side(str(contradiction.get(key) or ""))
+            if field and value and fitness is not None:
+                sides.append((field, value, fitness))
+        by_field: dict[str, list[tuple[str, float]]] = {}
+        for field, value, fitness in sides:
+            by_field.setdefault(field, []).append((value, fitness))
+        for field, scored in by_field.items():
+            if len(scored) < 2:
+                continue
+            preferred_value = max(scored, key=lambda x: x[1])[0]
+            share = _trait_share_in_generation(run_dir, generation, field, preferred_value)
+            if share is None:
+                continue
+            saw = True
+            best_share = max(best_share, float(share))
+    return best_share if saw else 0.0
+
+
 def _discovery_opportunity(
     contradictions: list[dict[str, Any]],
     generation: int,
     run_dir: str | None,
 ) -> float:
-    """Open-contradiction pressure × fitness headroom (live-safe).
+    """Stuck-preferred × fitness headroom × aged open stock (live-safe).
 
     When preferred DNA already dominates, steering_opportunity collapses even
-    if the local winner is suboptimal. Discovery keeps epistemic_value high
-    until best fitness rises — aligning epi_t with later ε-explore gains.
+    if the local winner is suboptimal. Discovery peaks in that stuck regime
+    while best fitness still has room — aligning epi_t with ε-explore gains.
     """
     if not run_dir or not contradictions:
         return 0.0
@@ -267,8 +304,11 @@ def _discovery_opportunity(
     headroom = max(0.0, 1.0 - float(best))
     if headroom <= 0.0:
         return 0.0
+    stuck = _preferred_stuckness(contradictions, generation, run_dir)
+    if stuck <= 0.0:
+        return 0.0
     aged = sum(_effective_priority(c, generation) for c in contradictions)
-    return aged * headroom
+    return aged * headroom * stuck
 
 
 def _steering_opportunity(
