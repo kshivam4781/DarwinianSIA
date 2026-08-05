@@ -1,10 +1,10 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot refreshed (2026-08-04 Tick 13). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot refreshed (2026-08-05 Tick 14). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
-We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift) and D final-fitness wins on **3/5** seeds. **Tempering early mutation bias (soft rank weights on gen1→gen2; preferred anchoring from gen≥2) partially restored offline H5 (3/5) and raised mean final gap to ~1.66pp, but gens-to-30% remains 0/5; live multi-seed GPQA subset results pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
+We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift) and D final-fitness wins on **4/5** seeds (mean gap ~**3.34pp**). **Delaying all Condition D DNA steering until breeding from gen≥2 prevents early preferred-allele collapse (case-study gen2 share 0.5) and strengthens offline final wins, but gens-to-30% remains 0/5 and live multi-seed GPQA subset results are pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
 
 
 ## Reproducible run IDs
@@ -21,8 +21,9 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B / D (Tick 11 hard-XO mid) | 11–55 | 1530–1534 / 1540–1544 | Intermediate — hard preferred XO over-collapsed diversity |
 | B / D (Tick 11 soft-XO pilot) | 11–55 | 1550–1554 / 1560–1564 | Superseded by Tick 12 delayed-XO pilot |
 | B / D (Tick 12 delayed-XO pilot) | 11–55 | 1570–1574 / 1580–1584 | Superseded by Tick 13 tempered-mutation pilot |
-| B darwinian-only (offline pilot Tick 13) | 11/22/33/44/55 | 1590–1594 | Tempered early mutation control; gitignored `runs/` |
-| D epistemic_full (offline pilot Tick 13) | 11/22/33/44/55 | 1600–1604 | Final wins 3/5; H5 3/5; case study on `1600` |
+| B / D (Tick 13 tempered-mutation pilot) | 11–55 | 1590–1594 / 1600–1604 | Superseded by Tick 14 delay-all mutation bias |
+| B darwinian-only (offline pilot Tick 14) | 11/22/33/44/55 | 1610–1614 | Delay-all mutation bias control; gitignored `runs/` |
+| D epistemic_full (offline pilot Tick 14) | 11/22/33/44/55 | 1620–1624 | Final wins 4/5; H5 3/5; case study on `1620` |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
@@ -30,17 +31,17 @@ Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`,
 
 ## Table 1 — Primary (B vs D)
 
-### Offline synthetic pilot (Tick 13 — not PRIMARY)
+### Offline synthetic pilot (Tick 14 — not PRIMARY)
 
 | Seed | B final | D final | B gens@25% | D gens@25% | B gens@30% | D gens@30% | Winner (final>1pp / gens30) |
 |------|---------|---------|------------|------------|------------|------------|------------------------------|
-| 11 | 0.2994 | 0.3459 | 1 | 1 | 2 | 2 | D / tie |
-| 22 | 0.3349 | 0.2817 | 1 | 1 | 4 | — | B / B |
-| 33 | 0.2563 | 0.3029 | 1 | 1 | 1 | 1 | D / tie |
-| 44 | 0.2697 | 0.2484 | 1 | 1 | 2 | — | B / B |
-| 55 | 0.2693 | 0.3335 | 1 | 1 | 1 | 1 | D / tie |
+| 11 | 0.2994 | 0.3372 | 1 | 1 | 2 | 2 | D / tie |
+| 22 | 0.3349 | 0.2988 | 1 | 1 | 4 | — | B / B |
+| 33 | 0.2563 | 0.3286 | 1 | 1 | 1 | 1 | D / tie |
+| 44 | 0.2697 | 0.3026 | 1 | 1 | 2 | 2 | D / tie |
+| 55 | 0.2693 | 0.3292 | 1 | 1 | 1 | 1 | D / tie |
 
-Mean final: B ≈ 0.286, D ≈ 0.302 (gap ~**1.66pp**). D final wins 3/5; gens30 wins 0/5. Source: `docs/offline_bvd_summary.json`.
+Mean final: B ≈ 0.286, D ≈ 0.319 (gap ~**3.34pp**). D final wins 4/5; gens30 wins 0/5. Source: `docs/offline_bvd_summary.json`.
 
 ### Live GPQA
 
@@ -54,14 +55,15 @@ Mean final: B ≈ 0.286, D ≈ 0.302 (gap ~**1.66pp**). D final wins 3/5; gens30
 |--------|-------|-------|
 | H2 trait skew (live API) | — | — |
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
-| H2 offline pilot D (Tick 13) | soft early mutate + delayed soft bias-aware XO; preferred share can still hit 1.0 by gen2 | informative (dry-run) |
-| H2 unit skew test | pass (+ preferred-allele anchoring + bias-aware / delayed XO + tempered early mutate) | yes (unit) |
+| H2 offline pilot D (Tick 14) | delay-all DNA steering until gen≥2; case-study gen2 preferred share **0.5** | informative (dry-run) |
+| H2 unit skew test | pass (+ preferred-allele anchoring + bias-aware / delayed XO + tempered early mutate + delay-all mutation bias) | yes (unit) |
 | Fitness-weighted bias order | higher-fitness side first; exponential rank weights | yes (unit) |
 | Singleton bias skip | `load_mutation_bias` requires ≥2 distinct candidates | yes (unit, Tick 10) |
 | Bias-aware crossover | soft p=0.85 preferred inherit; delayed until breeding from gen≥2 | yes (unit, Tick 11–12) |
-| Tempered early mutation | soft rank-weighted mutate gen1→gen2; full anchoring from gen≥2 | yes (unit, Tick 13) |
-| Case study chain | `docs/case_study_offline.md` (`run_1600`) | yes (offline) |
-| H5 Spearman ρ | offline D `1600–1604`: **3/5** ρ>0.3 (partial restore vs Tick 12 2/5); live pending | offline soft; live need > 0.3 |
+| Tempered early mutation | soft rank-weighted mutate option retained (`anchor_preferred`) | yes (unit, Tick 13) |
+| Delay-all mutation bias | fair mutate gen1→gen2; full bias+anchor from gen≥2 (`apply_mutation_bias`) | yes (unit, Tick 14) |
+| Case study chain | `docs/case_study_offline.md` (`run_1620`) | yes (offline) |
+| H5 Spearman ρ | offline D `1620–1624`: **3/5** ρ>0.3; live pending | offline soft; live need > 0.3 |
 | Steering opportunity term | `fitness_gap × (1 − preferred share)` in epi | yes (unit + offline) |
 
 ## Figures
@@ -73,7 +75,7 @@ Mean final: B ≈ 0.286, D ≈ 0.302 (gap ~**1.66pp**). D final wins 3/5; gens30
 
 ## Case study (offline)
 
-See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → gen2 preferred share **1.0** → fitness lift **+0.0646** vs loser side (`run_1600`).
+See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → gen2 preferred share **0.5** (fair early breed) → fitness lift **+0.0473** vs loser side (`run_1620`).
 
 ## Limitations (honest, keep updated)
 
@@ -82,11 +84,12 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Pre-Tick-7 bias treated both contradiction sides uniformly; now fitness-weighted + preferred-allele anchoring (unit-tested) but **unverified on live GPQA**.
 - Soft bias-aware crossover (Tick 11) raised offline final seed wins to 3/5 but **hurt gens-to-30% (0/5) and H5 (2/5)** vs Tick 10.
 - Delayed crossover bias (Tick 12) **did not restore gens30/H5** — mutation bias alone collapsed preferred alleles by gen2.
-- Tempered early mutation bias (Tick 13) **partially restored H5 (3/5)** and mean gap (~1.66pp) but **gens30 still 0/5**; case-study preferred share can still hit 1.0 by gen2 under soft rank weights.
+- Tempered early mutation bias (Tick 13) **partially restored H5 (3/5)** and mean gap (~1.66pp) but **gens30 still 0/5**; case-study preferred share could still hit 1.0 by gen2 under soft rank weights.
+- Delay-all mutation bias (Tick 14) **fixed gen2 preferred collapse** (share 0.5) and raised final wins to **4/5** / mean gap ~**3.34pp**, but **gens30 still 0/5** at `max_gen=4` (only two biased breeding rounds after the delay) and H5 remains **3/5**.
 - Scoped feedback now mirrors mutation-bias DNA candidates (2026-08-04); still untested on live rewrite quality.
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 **live** B vs D evidence still missing.
-- Tick 8 opaque DNA-hash fitness made offline D final 4/5 look strong but was **non-causal**; Tick 9–13 additive latent fitness is honest — offline PRIMARY still **not publishable** (gens30 fail; H5 soft; mean gap soft; no live GPQA).
-- No cloud API keys in this environment as of 2026-08-04 — no new paid evidence this tick.
+- Tick 8 opaque DNA-hash fitness made offline D final 4/5 look strong but was **non-causal**; Tick 9–14 additive latent fitness is honest — offline PRIMARY still **not publishable** (gens30 fail; H5 soft; no live GPQA).
+- No cloud API keys in this environment as of 2026-08-05 — no new paid evidence this tick.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
@@ -98,7 +101,8 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Singleton bias skip | `load_mutation_bias` requires ≥2 distinct candidates (Tick 10) |
 | Fitness-weighted bias order | `load_mutation_bias` + exponential rank-weighted `_biased_choice` |
 | Preferred-allele anchoring | `SIA/sia/evolution/operators.py::_biased_choice` (Tick 10) |
-| Tempered early mutation | `anchor_preferred` / `apply_mutation_anchor`; soft until breeding from gen≥2 (Tick 13) |
+| Tempered early mutation | `anchor_preferred` / `apply_mutation_anchor` (Tick 13; now gated with delay-all) |
+| Delay-all mutation bias | `breed_offspring(..., apply_mutation_bias=)` + `population.py` gen≥2 gate (Tick 14) |
 | Bias-aware crossover | `SIA/sia/evolution/operators.py::_crossover_pick` + `crossover(..., bias=)` (Tick 11; soft p=0.85) |
 | Delayed crossover bias | `breed_offspring(..., apply_crossover_bias=)` + `population.py` gen≥2 gate (Tick 12) |
 | Scoped feedback DNA targets | `SIA/sia/evolution/cabs_bridge.py::load_cabs_agenda` |

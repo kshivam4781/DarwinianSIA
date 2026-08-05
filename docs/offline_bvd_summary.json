@@ -7,27 +7,27 @@
     55
   ],
   "b_run_ids": [
-    1590,
-    1591,
-    1592,
-    1593,
-    1594
+    1610,
+    1611,
+    1612,
+    1613,
+    1614
   ],
   "d_run_ids": [
-    1600,
-    1601,
-    1602,
-    1603,
-    1604
+    1620,
+    1621,
+    1622,
+    1623,
+    1624
   ],
   "compare": {
     "n_pairs": 5,
     "d_wins_gens25": 0,
     "b_wins_gens25": 0,
     "d_wins_gens30": 0,
-    "b_wins_gens30": 2,
-    "d_wins_final": 3,
-    "b_wins_final": 2,
+    "b_wins_gens30": 1,
+    "d_wins_final": 4,
+    "b_wins_final": 1,
     "primary_gens25_pass": false,
     "primary_gens30_pass": false
   },
@@ -35,18 +35,18 @@
     {
       "seed": 11,
       "B_final": 0.2994,
-      "D_final": 0.3459,
+      "D_final": 0.3372,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 2,
       "D_gens30": 2,
       "D_h5_rho": 0.5,
-      "D_h2_share": 0.8125
+      "D_h2_share": 0.6875
     },
     {
       "seed": 22,
       "B_final": 0.3349,
-      "D_final": 0.2817,
+      "D_final": 0.2988,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 4,
@@ -57,39 +57,39 @@
     {
       "seed": 33,
       "B_final": 0.2563,
-      "D_final": 0.3029,
+      "D_final": 0.3286,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 1,
       "D_gens30": 1,
-      "D_h5_rho": 0.5,
+      "D_h5_rho": -1.0,
       "D_h2_share": 0.9375
     },
     {
       "seed": 44,
       "B_final": 0.2697,
-      "D_final": 0.2484,
+      "D_final": 0.3026,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 2,
-      "D_gens30": null,
-      "D_h5_rho": -0.5,
+      "D_gens30": 2,
+      "D_h5_rho": 0.5,
       "D_h2_share": 0.9375
     },
     {
       "seed": 55,
       "B_final": 0.2693,
-      "D_final": 0.3335,
+      "D_final": 0.3292,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 1,
       "D_gens30": 1,
-      "D_h5_rho": 0.5,
+      "D_h5_rho": 1.0,
       "D_h2_share": 0.9375
     }
   ],
   "case_study": {
-    "run_dir": "/workspace/runs/run_1600",
+    "run_dir": "/workspace/runs/run_1620",
     "field": "tool_strategy",
     "preferred_value": "selective",
     "bias_order": [
@@ -131,13 +131,13 @@
     "gen2_traits": [
       {
         "agent_id": 0,
-        "trait": "selective",
-        "fitness": 0.319
+        "trait": "minimal",
+        "fitness": 0.2167
       },
       {
         "agent_id": 1,
         "trait": "selective",
-        "fitness": 0.3171
+        "fitness": 0.3157
       },
       {
         "agent_id": 2,
@@ -146,24 +146,21 @@
       },
       {
         "agent_id": 3,
-        "trait": "selective",
-        "fitness": 0.3313
+        "trait": "aggressive",
+        "fitness": 0.2521
       }
     ],
     "gen1_preferred_mean_fitness": 0.2863,
     "gen1_loser_mean_fitness": 0.2439,
-    "gen2_preferred_mean_fitness": 0.308525,
+    "gen2_preferred_mean_fitness": 0.2912,
     "gen1_pop_mean": 0.252525,
-    "gen2_pop_mean": 0.308525,
-    "fitness_lift": 0.06462499999999999,
-    "gen2_preferred_share": 1.0,
+    "gen2_pop_mean": 0.2628,
+    "fitness_lift": 0.04730000000000001,
+    "gen2_preferred_share": 0.5,
     "dna_fitness_transfers": true,
     "belief_count": 15,
     "agenda_prefers_first": "selective"
   },
-  "figures": [
-    "/workspace/docs/figures/fig1_learning_curves.png",
-    "/workspace/docs/figures/fig2_mechanism.png"
-  ],
+  "figures": [],
   "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
 }

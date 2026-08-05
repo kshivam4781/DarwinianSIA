@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T00:00Z — Tick 14 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-bb57` (fast-forwarded Ticks 1–13 from `cb6a`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 13: final **3/5**, gens30 **0/5**, H5 **3/5**, mean gap ~1.66pp. Soft early mutate still let preferred DNA share hit **1.0 by gen2** — starving gens-to-threshold and limiting further H5 gains.
+
+### What this tick did (ONE step)
+Implemented **delay-all mutation bias until breeding from gen≥2** (fair mutate + fair XO on gen1→gen2; full CABS steering from gen≥2):
+1. `breed_offspring(..., apply_mutation_bias=)` — when False, mutate is uniform even if bias dict is set
+2. `population.py` sets `apply_mutation_bias = (current_gen >= 2)` (same gate as delayed XO / anchoring)
+3. Unit test `test_breed_offspring_can_delay_all_mutation_bias`
+4. Synced `sia-upstream/` copies
+5. Re-pilot B `1610–1614` vs D `1620–1624`; case study on `run_1620`; refreshed figs
+
+### Metrics delta
+| Metric | Before (Tick 13) | After (Tick 14) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 3/5 | **4/5** (B final wins 1) |
+| Offline D gens30 wins | 0/5 | **0/5** (B gens30 wins 1) — still fail |
+| Mean final gap (D−B) | ~1.66pp | ~**3.34pp** — improved |
+| Offline H5 ρ>0.3 | 3/5 | **3/5** (0.5 / −0.5 / −1.0 / 0.5 / 1.0) — no change in pass rate |
+| Case study gen2 pref share / lift | 1.0 / +0.0646 (`1600`) | **0.5 / +0.0473** (`1620`) — collapse fixed |
+| Delay-all mutation bias | Missing | **Present** (`apply_mutation_bias`) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: **longer horizon** offline re-pilot `max_gen≥6` (now that gen2 no longer collapses, later gens can show gens30 wins) targeting gens30 ≥3/5 and H5 ≥4/5 while keeping final ≥3/5. Do **not** set READY — live GPQA still required; offline gens30 still 0/5.
+
+---
+
 ## 2026-08-04T20:05Z — Tick 13 (automation cron)
 
 ### Status snapshot

@@ -1,33 +1,33 @@
 # Gate 3 report — Pilot B vs D
 
-**Status:** Offline synthetic pilot **refreshed** (2026-08-04 Tick 13); **live** G3 still blocked on API keys
+**Status:** Offline synthetic pilot **refreshed** (2026-08-05 Tick 14); **live** G3 still blocked on API keys
 
 Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`, `max_gen ≤ 5`, before full 5-seed spend.
 
-## Offline synthetic pilot (Tick 13 — not a live G3 substitute)
+## Offline synthetic pilot (Tick 14 — not a live G3 substitute)
 
 | Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |
 |------|-------|-----|-------|---------|-------------|---------|
-| B | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1590–1594` |
-| D | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1600–1604` |
+| B | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1610–1614` |
+| D | 11,22,33,44,55 | 4 | 2 | 4 | 3 | `1620–1624` |
 
-Harness: `scripts/offline_bvd_case_study.py` (additive latent dry-run fitness + tempered early mutation bias + delayed soft bias-aware crossover).
+Harness: `scripts/offline_bvd_case_study.py` (additive latent dry-run fitness + delay-all mutation bias until gen≥2 + delayed soft bias-aware crossover).
 
 | Metric | Result |
 |--------|--------|
-| D final-fitness wins (>1pp) | **3/5** |
-| B final-fitness wins (>1pp) | **2/5** |
-| Mean final (B / D) | ~0.286 / ~0.302 (~**1.66pp**) |
-| D gens-to-30% wins | **0/5** (B: 2) — still fail |
+| D final-fitness wins (>1pp) | **4/5** |
+| B final-fitness wins (>1pp) | **1/5** |
+| Mean final (B / D) | ~0.286 / ~0.319 (~**3.34pp**) |
+| D gens-to-30% wins | **0/5** (B: 1) — still fail |
 | Gens-to-25% | Both hit gen1 (still often saturated) |
-| H5 ρ>0.3 (D seeds) | **3/5** — partial restore vs Tick 12 (2/5) |
-| Case study | `docs/case_study_offline.md` (`run_1600`) |
+| H5 ρ>0.3 (D seeds) | **3/5** |
+| Case study | `docs/case_study_offline.md` (`run_1620`) — gen2 preferred share **0.5** |
 | Figures | `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png` |
 | Summary JSON | `docs/offline_bvd_summary.json` |
 
-**Finding:** soft (non-anchored) mutation bias on gen1→gen2 improves H5 to 3/5 and mean gap to ~1.66pp, but case-study preferred share can still reach 1.0 by gen2 (rank weights alone + later anchoring) and gens30 remains 0/5.
+**Finding:** delaying *all* DNA steering (XO + mutate) until breeding from gen≥2 stops preferred-share collapse by gen2 (case study 0.5 vs Tick 13's 1.0), raises final wins to 4/5 and mean gap to ~3.34pp, but gens30 remains 0/5 at `max_gen=4` (only two biased breeding rounds after the delay).
 
-Prior Tick-12 pilot `1570–1574` / `1580–1584` superseded for PRIMARY tables. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
+Prior Tick-13 pilot `1590–1594` / `1600–1604` superseded for PRIMARY tables. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
 
 ## Blockers (live G3)
 
@@ -51,6 +51,7 @@ Prior Tick-12 pilot `1570–1574` / `1580–1584` superseded for PRIMARY tables.
 - [x] Soft bias-aware crossover (Tick 11) — final wins 3/5 offline
 - [x] Delayed bias-aware crossover (Tick 12) — mutation bias dominated early collapse
 - [x] Tempered early mutation bias (Tick 13) — soft mutate gen1→gen2; H5 3/5; gens30 still 0/5
+- [x] Delay-all mutation bias (Tick 14) — fair breed gen1→gen2; final 4/5; mean ~3.34pp; gens30 still 0/5
 - [ ] G2: smoke GPQA subset (live)
 
 ## Live pilot plan (when unblocked)

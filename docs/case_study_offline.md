@@ -2,15 +2,15 @@
 
 **Status:** offline dry-run evidence (synthetic GPQA fixture; additive latent DNA fitness). Does **not** satisfy live PRIMARY. Supports MECHANISM case-study criterion.
 
-**Run:** `runs/run_1600` (Tick 13 tempered early mutation bias)
+**Run:** `/workspace/runs/run_1620`
 
 ## Chain
 
 1. **Tie / disagreement:** population agents hold opposing DNA-linked beliefs.
 2. **Contradiction:** topic `tool_use` — 'Agent 0: tool_strategy=selective achieved fitness 0.2863 (population mean 0.2525)' vs 'Agent 1: tool_strategy=aggressive achieved fitness 0.2439 (population mean 0.2525)' (priority=0.85).
 3. **Fitness-weighted bias:** field `tool_strategy` ordered `['selective', 'aggressive']` (prefer `selective`).
-4. **DNA skew:** gen2 share of preferred trait = 1.0.
-5. **Fitness lift:** preferred@gen2 mean − loser@gen1 mean = **+0.0646** (pop mean 0.252525 → 0.308525).
+4. **DNA skew:** gen2 share of preferred trait = 0.5.
+5. **Fitness lift:** preferred@gen2 mean − loser@gen1 mean = **+0.0473** (pop mean 0.252525 → 0.2628).
 
 DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_id/gen).
 
@@ -22,9 +22,9 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
   "d_wins_gens25": 0,
   "b_wins_gens25": 0,
   "d_wins_gens30": 0,
-  "b_wins_gens30": 2,
-  "d_wins_final": 3,
-  "b_wins_final": 2,
+  "b_wins_gens30": 1,
+  "d_wins_final": 4,
+  "b_wins_final": 1,
   "primary_gens25_pass": false,
   "primary_gens30_pass": false
 }
@@ -34,7 +34,7 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
 
 ```json
 {
-  "run_dir": "/workspace/runs/run_1600",
+  "run_dir": "/workspace/runs/run_1620",
   "field": "tool_strategy",
   "preferred_value": "selective",
   "bias_order": [
@@ -76,13 +76,13 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
   "gen2_traits": [
     {
       "agent_id": 0,
-      "trait": "selective",
-      "fitness": 0.319
+      "trait": "minimal",
+      "fitness": 0.2167
     },
     {
       "agent_id": 1,
       "trait": "selective",
-      "fitness": 0.3171
+      "fitness": 0.3157
     },
     {
       "agent_id": 2,
@@ -91,17 +91,17 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
     },
     {
       "agent_id": 3,
-      "trait": "selective",
-      "fitness": 0.3313
+      "trait": "aggressive",
+      "fitness": 0.2521
     }
   ],
   "gen1_preferred_mean_fitness": 0.2863,
   "gen1_loser_mean_fitness": 0.2439,
-  "gen2_preferred_mean_fitness": 0.308525,
+  "gen2_preferred_mean_fitness": 0.2912,
   "gen1_pop_mean": 0.252525,
-  "gen2_pop_mean": 0.308525,
-  "fitness_lift": 0.06462499999999999,
-  "gen2_preferred_share": 1.0,
+  "gen2_pop_mean": 0.2628,
+  "fitness_lift": 0.04730000000000001,
+  "gen2_preferred_share": 0.5,
   "dna_fitness_transfers": true,
   "belief_count": 15,
   "agenda_prefers_first": "selective"
