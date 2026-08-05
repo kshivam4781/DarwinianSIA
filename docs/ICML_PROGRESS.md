@@ -4,6 +4,38 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T16:58Z — Tick 22 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-2710` (fast-forwarded Ticks 1–21 from `084b`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA; secrets re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 still blocked without API keys. Offline PRIMARY already has gens30 **4/5** and final **5/5**, but PRIMARY criterion **(b) cost-to-threshold** was unimplemented in `epistemic_results.py` — Table 2 cost column empty and live G3/G4 would have no ≥15% savings comparator even when D reaches threshold and B never does.
+
+### What this tick did (ONE step)
+**Implement cost-to-threshold PRIMARY metric (criterion b) + offline re-pilot:**
+1. `scripts/epistemic_results.py`: `load_gen_cost` / `cost_to_threshold` / `_cost_win` (≥15% fewer units); prefer live tokens/USD, else eval-call proxy from `eval_subset`
+2. `compare_b_vs_d` now reports `d_wins_cost25/30` + `primary_cost30_pass`
+3. Unit tests in `SIA/tests/test_epistemic_results.py` (+ sia-upstream sync)
+4. Offline B vs D re-pilot `1810–1814` / `1820–1824` (`max_gen=6`); case study `run_1823`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 21) | After (Tick 22) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / H5 | 5/5 / 4/5 / 5/5 | **5/5 / 4/5 / 5/5** (stable) |
+| Offline D cost30 wins (≥15% / reach-vs-never) | not measured | **4/5** (`primary_cost30_pass`) |
+| Mean final gap (D−B) | ~6.15pp | ~**6.15pp** |
+| Case study gen2 pref share / lift | 0.25 / +0.0869 (`1793`) | **0.25 / +0.0869** (`1823`) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked (secrets re-requested) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present: replace smoke `diamond_questions.json` with real GPQA diamond, budget-check, then **live G2** smoke (drop `--dry-run`; ≤5 samples, pop≤2, max_gen≤2, one seed, unused run_id ≥1830). Cost-to-threshold will then use real token fields. Do **not** set READY from offline cost30 4/5.
+
+---
+
 ## 2026-08-05T14:10Z — Tick 21 (automation cron)
 
 ### Status snapshot
