@@ -265,6 +265,34 @@ def _values_from_beliefs(
     return found
 
 
+def _latest_generation(run_dir: Path) -> int | None:
+    """Return the highest gen_N directory present under run_dir, if any."""
+    best: int | None = None
+    for path in run_dir.glob("gen_*"):
+        if not path.is_dir():
+            continue
+        try:
+            gen = int(path.name.split("_", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        if best is None or gen > best:
+            best = gen
+    return best
+
+
+def _fitness_from_agent_dir(agent_dir: Path) -> float | None:
+    for score_name in ("score.json", "results.json"):
+        payload = _read_json(agent_dir / score_name)
+        raw = payload.get("fitness", payload.get("accuracy"))
+        if raw is None:
+            continue
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _values_from_agent_dna_files(
     run_dir: Path,
     dna_field: str,
@@ -285,17 +313,38 @@ def _values_from_agent_dna_files(
         if isinstance(value, str) and value in allowed and value not in found:
             found.append(value)
         if scores is not None and isinstance(value, str) and value in allowed:
-            fitness = None
-            for score_name in ("score.json", "results.json"):
-                payload = _read_json(agent_dir / score_name)
-                raw = payload.get("fitness", payload.get("accuracy"))
-                if raw is not None:
-                    try:
-                        fitness = float(raw)
-                        break
-                    except (TypeError, ValueError):
-                        continue
-            _record_candidate(scores, value, fitness, allowed)
+            _record_candidate(scores, value, _fitness_from_agent_dir(agent_dir), allowed)
+    return found
+
+
+def _values_from_latest_population(
+    run_dir: Path,
+    dna_field: str,
+    allowed: tuple[str, ...],
+    scores: dict[str, float] | None = None,
+) -> list[str]:
+    """Harvest alleles currently present in the latest generation.
+
+    Lets ε-greedy / mutation discoveries (alleles absent from the original
+    contradiction pair) enter the fitness-ranked bias pool so Condition D can
+    re-prefer a better unexplored trait once it appears and scores well.
+    """
+    generation = _latest_generation(run_dir)
+    if generation is None:
+        return []
+    found: list[str] = []
+    gen_dir = run_dir / f"gen_{generation}"
+    for agent_dir in sorted(gen_dir.glob("agent_*")):
+        if not agent_dir.is_dir():
+            continue
+        data = _read_json(agent_dir / "agent_dna.json")
+        value = data.get(dna_field)
+        if not isinstance(value, str) or value not in allowed:
+            continue
+        if value not in found:
+            found.append(value)
+        if scores is not None:
+            _record_candidate(scores, value, _fitness_from_agent_dir(agent_dir), allowed)
     return found
 
 
@@ -401,6 +450,15 @@ def load_mutation_bias(run_dir: str, cabs_store: str | None = None) -> dict[str,
                     run_path, str(dna_field), allowed, agent_ids, detected_gen, scores=scores
                 ),
             )
+
+        # Live population harvest: alleles discovered after the original
+        # contradiction (ε-greedy / uniform mutation) can enter the ranked pool.
+        _append_unique(
+            candidates,
+            _values_from_latest_population(
+                run_path, str(dna_field), allowed, scores=scores
+            ),
+        )
 
         # Parse the RQ text itself as a last structured clue
         _append_unique(

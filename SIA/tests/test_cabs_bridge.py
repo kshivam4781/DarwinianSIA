@@ -243,6 +243,76 @@ def test_mutation_bias_reads_agent_dna_files(tmp_path):
     assert set(bias["tool_strategy"]) == {"aggressive", "minimal"}
 
 
+def test_mutation_bias_adopts_better_allele_from_latest_population(tmp_path):
+    """Live population harvest: discovered selective can outrank frozen minimal."""
+    store = tmp_path / "belief_store"
+    store.mkdir()
+    (store / "research_questions.json").write_text(
+        json.dumps(
+            {
+                "research_questions": [
+                    {
+                        "id": "rq1",
+                        "question": "Tool strategy disagreement",
+                        "contradiction_id": "c1",
+                        "dna_field": "tool_strategy",
+                        "status": "open",
+                        "priority": 0.7,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "contradictions": [
+                    {
+                        "id": "c1",
+                        "topic": "tool_use",
+                        "belief_a": "Agent 0: tool_strategy=minimal achieved fitness 0.24",
+                        "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.18",
+                        "status": "open",
+                        "priority": 0.85,
+                        "detected_at_gen": 1,
+                        "metadata": {"agents": [0, 1], "cross_agent": True},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Frozen gen-1 contradiction pair.
+    (tmp_path / "gen_1" / "agent_0").mkdir(parents=True)
+    (tmp_path / "gen_1" / "agent_1").mkdir(parents=True)
+    AgentDNA(tool_strategy="minimal").save(str(tmp_path / "gen_1" / "agent_0" / "agent_dna.json"))
+    AgentDNA(tool_strategy="aggressive").save(str(tmp_path / "gen_1" / "agent_1" / "agent_dna.json"))
+    (tmp_path / "gen_1" / "agent_0" / "results.json").write_text(
+        json.dumps({"accuracy": 0.24}), encoding="utf-8"
+    )
+    (tmp_path / "gen_1" / "agent_1" / "results.json").write_text(
+        json.dumps({"accuracy": 0.18}), encoding="utf-8"
+    )
+    # Later gen discovers selective via ε-greedy; higher fitness → preferred.
+    (tmp_path / "gen_3" / "agent_0").mkdir(parents=True)
+    (tmp_path / "gen_3" / "agent_1").mkdir(parents=True)
+    AgentDNA(tool_strategy="selective").save(str(tmp_path / "gen_3" / "agent_0" / "agent_dna.json"))
+    AgentDNA(tool_strategy="minimal").save(str(tmp_path / "gen_3" / "agent_1" / "agent_dna.json"))
+    (tmp_path / "gen_3" / "agent_0" / "results.json").write_text(
+        json.dumps({"accuracy": 0.31}), encoding="utf-8"
+    )
+    (tmp_path / "gen_3" / "agent_1" / "results.json").write_text(
+        json.dumps({"accuracy": 0.25}), encoding="utf-8"
+    )
+
+    bias = load_mutation_bias(str(tmp_path))
+    assert "tool_strategy" in bias
+    assert bias["tool_strategy"][0] == "selective"
+    assert "minimal" in bias["tool_strategy"]
+    assert "aggressive" in bias["tool_strategy"]
+
+
 def test_biased_mutate_skews_memory_vs_uniform():
     """H2 gate: contradiction bias must skew trait distribution vs unbiased mutation."""
     bias = {"memory": ["failure_based", "full_history"]}
