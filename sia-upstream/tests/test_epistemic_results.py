@@ -12,8 +12,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from epistemic_results import (  # noqa: E402
+    _cost_win,
     compare_b_vs_d,
     compute_h5,
+    cost_to_threshold,
     gens_to_threshold,
     spearman_rho,
     summarize_run,
@@ -229,25 +231,74 @@ def test_compute_h5_horizon_recovers_delayed_gain(tmp_path: Path):
     assert smooth["pass"] is True
 
 
+def _mk_run(
+    tmp_path: Path,
+    run_id: int,
+    bests: list[float],
+    *,
+    pop: int = 2,
+    eval_subset: int = 3,
+    tokens_per_agent: int | None = None,
+) -> Path:
+    run = tmp_path / f"run_{run_id}"
+    civ = {
+        "generations": [
+            {"gen": i + 1, "best_fitness": b, "mean_fitness": b}
+            for i, b in enumerate(bests)
+        ]
+    }
+    run.mkdir(parents=True)
+    (run / "civilization.json").write_text(json.dumps(civ), encoding="utf-8")
+    store = run / "belief_store"
+    store.mkdir()
+    (store / "epistemic_value.jsonl").write_text("", encoding="utf-8")
+    for g in range(1, len(bests) + 1):
+        for a in range(pop):
+            agent = run / f"gen_{g}" / f"agent_{a}"
+            agent.mkdir(parents=True)
+            payload: dict = {
+                "accuracy": bests[g - 1],
+                "eval_subset": eval_subset,
+                "n_total": eval_subset,
+            }
+            if tokens_per_agent is not None:
+                payload["total_input_tokens"] = tokens_per_agent
+                payload["total_output_tokens"] = 0
+            (agent / "results.json").write_text(json.dumps(payload), encoding="utf-8")
+    return run
+
+
 def test_compare_b_vs_d_counts_gens30_reach(tmp_path: Path):
     """D reaching 30% when B never does counts as a gens30 win."""
-    def _mk(run_id: int, bests: list[float]) -> Path:
-        run = tmp_path / f"run_{run_id}"
-        civ = {
-            "generations": [
-                {"gen": i + 1, "best_fitness": b, "mean_fitness": b}
-                for i, b in enumerate(bests)
-            ]
-        }
-        run.mkdir(parents=True)
-        (run / "civilization.json").write_text(json.dumps(civ), encoding="utf-8")
-        store = run / "belief_store"
-        store.mkdir()
-        (store / "epistemic_value.jsonl").write_text("", encoding="utf-8")
-        return run
-
-    b_runs = [_mk(1, [0.20, 0.22, 0.24, 0.24])]
-    d_runs = [_mk(2, [0.20, 0.28, 0.31, 0.33])]
+    b_runs = [_mk_run(tmp_path, 1, [0.20, 0.22, 0.24, 0.24])]
+    d_runs = [_mk_run(tmp_path, 2, [0.20, 0.28, 0.31, 0.33])]
     out = compare_b_vs_d(b_runs, d_runs)
     assert out["d_wins_gens30"] == 1
     assert out["b_wins_gens30"] == 0
+    # B never hits 30% → D also wins cost-to-30 (PRIMARY b).
+    assert out["d_wins_cost30"] == 1
+    assert out["b_wins_cost30"] == 0
+
+
+def test_cost_to_threshold_prefers_tokens_and_savings(tmp_path: Path):
+    """Live token fields beat call fallback; ≥15% fewer tokens → D cost win."""
+    b = _mk_run(tmp_path, 10, [0.20, 0.31], pop=2, tokens_per_agent=1000)
+    d = _mk_run(tmp_path, 11, [0.20, 0.31], pop=2, tokens_per_agent=800)
+    b_c = cost_to_threshold(b, 0.30)
+    d_c = cost_to_threshold(d, 0.30)
+    assert b_c["unit"] == "tokens"
+    assert d_c["unit"] == "tokens"
+    # 2 agents × 2 gens × 1000 = 4000 vs 3200 → 20% savings
+    assert b_c["cost"] == pytest.approx(4000.0)
+    assert d_c["cost"] == pytest.approx(3200.0)
+    assert _cost_win(d_c["cost"], b_c["cost"]) == "D"
+    out = compare_b_vs_d([b], [d])
+    assert out["d_wins_cost30"] == 1
+
+
+def test_cost_win_requires_fifteen_percent():
+    assert _cost_win(85.0, 100.0) == "D"
+    assert _cost_win(90.0, 100.0) is None  # only 10% savings
+    assert _cost_win(100.0, 85.0) == "B"
+    assert _cost_win(50.0, None) == "D"
+    assert _cost_win(None, 50.0) == "B"

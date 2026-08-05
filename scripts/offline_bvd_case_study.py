@@ -474,6 +474,10 @@ def main(argv: list[str] | None = None) -> int:
                 "D_gens25": r["D"]["gens_to_25"],
                 "B_gens30": r["B"]["gens_to_30"],
                 "D_gens30": r["D"]["gens_to_30"],
+                "B_cost30": (r["B"].get("cost_to_30") or {}).get("cost"),
+                "D_cost30": (r["D"].get("cost_to_30") or {}).get("cost"),
+                "cost30_unit": (r["D"].get("cost_to_30") or {}).get("unit")
+                or (r["B"].get("cost_to_30") or {}).get("unit"),
                 "D_h5_rho": (r["D"].get("h5") or {}).get("spearman_rho"),
                 "D_h5_pass": (r["D"].get("h5") or {}).get("pass"),
                 "D_h5_key": (r["D"].get("h5") or {}).get("fitness_key"),

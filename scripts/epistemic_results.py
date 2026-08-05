@@ -237,12 +237,114 @@ def gens_to_threshold(run_dir: Path, threshold: float = 0.25, fitness_key: str =
     return None
 
 
+def _agent_eval_cost(results: dict[str, Any]) -> tuple[float, str]:
+    """Return (cost_units, unit) for one agent results.json.
+
+    Prefer real token/USD fields from live GPQA; fall back to eval calls
+    (``eval_subset`` / ``n_total`` / ``total_questions``, default 1).
+    """
+    tokens = 0.0
+    for key in ("total_input_tokens", "total_output_tokens", "total_reasoning_tokens"):
+        val = results.get(key)
+        if isinstance(val, (int, float)):
+            tokens += float(val)
+    if tokens <= 0.0:
+        for detail in results.get("details") or []:
+            if not isinstance(detail, dict):
+                continue
+            for key in ("input_tokens", "output_tokens", "reasoning_tokens"):
+                val = detail.get(key)
+                if isinstance(val, (int, float)):
+                    tokens += float(val)
+    if tokens > 0.0:
+        return tokens, "tokens"
+
+    usd = results.get("total_cost_usd")
+    if isinstance(usd, (int, float)) and float(usd) > 0.0:
+        return float(usd), "usd"
+
+    for key in ("eval_subset", "n_total", "total_questions"):
+        val = results.get(key)
+        if isinstance(val, (int, float)) and float(val) > 0.0:
+            return float(val), "calls"
+    return 1.0, "calls"
+
+
+def load_gen_cost(run_dir: Path) -> dict[int, dict[str, Any]]:
+    """Map generation → cumulative-friendly cost units from agent results.
+
+    Live GPQA writes token/USD fields; dry-run writes ``eval_subset`` / accuracy
+    only, so cost falls back to per-agent eval calls. Unit is homogeneous within
+    a run (tokens preferred over usd over calls).
+    """
+    out: dict[int, dict[str, Any]] = {}
+    for gen_dir in sorted(run_dir.glob("gen_*")):
+        try:
+            g = int(gen_dir.name.split("_", 1)[1])
+        except ValueError:
+            continue
+        total = 0.0
+        unit = "calls"
+        n_agents = 0
+        for results_path in gen_dir.glob("agent_*/results.json"):
+            data = _load_json(results_path)
+            if not data:
+                continue
+            cost, u = _agent_eval_cost(data)
+            # Prefer higher-fidelity units if any agent reports them.
+            if u == "tokens" or (u == "usd" and unit == "calls"):
+                if unit != u and n_agents:
+                    # Restart accumulation in the richer unit.
+                    total = 0.0
+                    n_agents = 0
+                unit = u
+            if u != unit:
+                continue
+            total += cost
+            n_agents += 1
+        if n_agents:
+            out[g] = {"cost": total, "unit": unit, "n_agents": n_agents}
+    return out
+
+
+def cost_to_threshold(
+    run_dir: Path,
+    threshold: float = 0.30,
+    fitness_key: str = "best",
+) -> dict[str, Any]:
+    """Cumulative cost (tokens/usd/calls) until gens-to-threshold; None if never."""
+    g_hit = gens_to_threshold(run_dir, threshold, fitness_key=fitness_key)
+    costs = load_gen_cost(run_dir)
+    if g_hit is None:
+        return {
+            "generation": None,
+            "cost": None,
+            "unit": next((costs[g]["unit"] for g in sorted(costs)), "calls"),
+            "threshold": threshold,
+        }
+    unit = "calls"
+    total = 0.0
+    for g in sorted(costs):
+        if g > g_hit:
+            break
+        unit = str(costs[g]["unit"])
+        total += float(costs[g]["cost"])
+    return {
+        "generation": g_hit,
+        "cost": total if costs else None,
+        "unit": unit,
+        "threshold": threshold,
+    }
+
+
 def summarize_run(run_dir: Path) -> dict[str, Any]:
     fitness = load_gen_fitness(run_dir)
     gens = sorted(fitness)
     final = fitness[gens[-1]] if gens else {"best": 0.0, "mean": 0.0}
     h5 = compute_h5(run_dir)
     h2 = compute_h2(run_dir, field="memory")
+    cost25 = cost_to_threshold(run_dir, 0.25)
+    cost30 = cost_to_threshold(run_dir, 0.30)
     return {
         "run_dir": str(run_dir),
         "n_generations": len(gens),
@@ -250,6 +352,8 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
         "final_mean": final["mean"],
         "gens_to_25": gens_to_threshold(run_dir, 0.25),
         "gens_to_30": gens_to_threshold(run_dir, 0.30),
+        "cost_to_25": cost25,
+        "cost_to_30": cost30,
         "h5": h5,
         "h2_memory": h2,
         "learning_curve": {str(g): fitness[g] for g in gens},
@@ -275,16 +379,57 @@ def _gens_win(d_g: int | None, b_g: int | None) -> str | None:
     return None
 
 
+def _cost_win(
+    d_cost: float | None,
+    b_cost: float | None,
+    *,
+    savings_frac: float = 0.15,
+) -> str | None:
+    """PRIMARY (b): D wins if ≥``savings_frac`` fewer cost units at equal threshold.
+
+    Reaching the threshold when the other never does counts as a D/B win
+    (infinite relative savings). Same-unit comparison only; ties if either cost
+    is missing when both reached the threshold.
+    """
+    if d_cost is None and b_cost is None:
+        return None
+    if d_cost is not None and b_cost is None:
+        return "D"
+    if b_cost is not None and d_cost is None:
+        return "B"
+    assert d_cost is not None and b_cost is not None
+    if b_cost <= 0.0 and d_cost <= 0.0:
+        return None
+    if b_cost <= 0.0:
+        return "B" if d_cost > 0.0 else None
+    if d_cost <= b_cost * (1.0 - savings_frac):
+        return "D"
+    if d_cost >= b_cost * (1.0 + savings_frac):
+        return "B"
+    return None
+
+
 def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
     rows = []
-    b_wins = {"gens25": 0, "gens30": 0, "final": 0}
-    d_wins = {"gens25": 0, "gens30": 0, "final": 0}
+    b_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
+    d_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
     n = min(len(b_runs), len(d_runs))
     for i in range(n):
         b = summarize_run(b_runs[i])
         d = summarize_run(d_runs[i])
         for key, bucket in (("gens_to_25", "gens25"), ("gens_to_30", "gens30")):
             winner = _gens_win(d.get(key), b.get(key))
+            if winner == "D":
+                d_wins[bucket] += 1
+            elif winner == "B":
+                b_wins[bucket] += 1
+        for key, bucket in (("cost_to_25", "cost25"), ("cost_to_30", "cost30")):
+            d_c = (d.get(key) or {}).get("cost")
+            b_c = (b.get(key) or {}).get("cost")
+            winner = _cost_win(
+                float(d_c) if d_c is not None else None,
+                float(b_c) if b_c is not None else None,
+            )
             if winner == "D":
                 d_wins[bucket] += 1
             elif winner == "B":
@@ -300,10 +445,16 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         "b_wins_gens25": b_wins["gens25"],
         "d_wins_gens30": d_wins["gens30"],
         "b_wins_gens30": b_wins["gens30"],
+        "d_wins_cost25": d_wins["cost25"],
+        "b_wins_cost25": b_wins["cost25"],
+        "d_wins_cost30": d_wins["cost30"],
+        "b_wins_cost30": b_wins["cost30"],
         "d_wins_final": d_wins["final"],
         "b_wins_final": b_wins["final"],
         "primary_gens25_pass": d_wins["gens25"] >= 3 and n >= 5,
         "primary_gens30_pass": d_wins["gens30"] >= 3 and n >= 5,
+        "primary_cost25_pass": d_wins["cost25"] >= 3 and n >= 5,
+        "primary_cost30_pass": d_wins["cost30"] >= 3 and n >= 5,
         "rows": rows,
     }
 
