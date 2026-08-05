@@ -1,0 +1,181 @@
+{
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "b_run_ids": [
+    1730,
+    1731,
+    1732,
+    1733,
+    1734
+  ],
+  "d_run_ids": [
+    1740,
+    1741,
+    1742,
+    1743,
+    1744
+  ],
+  "compare": {
+    "n_pairs": 5,
+    "d_wins_gens25": 0,
+    "b_wins_gens25": 0,
+    "d_wins_gens30": 3,
+    "b_wins_gens30": 0,
+    "d_wins_final": 5,
+    "b_wins_final": 0,
+    "primary_gens25_pass": false,
+    "primary_gens30_pass": true
+  },
+  "compare_rows_brief": [
+    {
+      "seed": 11,
+      "B_final": 0.2652,
+      "D_final": 0.301,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": null,
+      "D_gens30": 4,
+      "D_h5_rho": 0.0,
+      "D_h5_pass": false,
+      "D_h5_key": "mean",
+      "D_h2_share": 0.8333333333333334
+    },
+    {
+      "seed": 22,
+      "B_final": 0.2258,
+      "D_final": 0.2733,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": null,
+      "D_gens30": null,
+      "D_h5_rho": 0.7999999999999999,
+      "D_h5_pass": true,
+      "D_h5_key": "mean",
+      "D_h2_share": 0.9166666666666666
+    },
+    {
+      "seed": 33,
+      "B_final": 0.295,
+      "D_final": 0.3235,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": null,
+      "D_gens30": 3,
+      "D_h5_rho": 0.39999999999999997,
+      "D_h5_pass": true,
+      "D_h5_key": "mean",
+      "D_h2_share": 0.9166666666666666
+    },
+    {
+      "seed": 44,
+      "B_final": 0.222,
+      "D_final": 0.3109,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": 2,
+      "D_gens30": 2,
+      "D_h5_rho": 0.7999999999999999,
+      "D_h5_pass": true,
+      "D_h5_key": "mean",
+      "D_h2_share": 0.9583333333333334
+    },
+    {
+      "seed": 55,
+      "B_final": 0.255,
+      "D_final": 0.3216,
+      "B_gens25": 1,
+      "D_gens25": 1,
+      "B_gens30": null,
+      "D_gens30": 4,
+      "D_h5_rho": 0.6000000000000001,
+      "D_h5_pass": true,
+      "D_h5_key": "mean",
+      "D_h2_share": 0.9166666666666666
+    }
+  ],
+  "case_study": {
+    "run_dir": "runs/run_1743",
+    "field": "planning_style",
+    "preferred_value": "stepwise",
+    "bias_order": [
+      "stepwise",
+      "direct"
+    ],
+    "contradiction": {
+      "topic": "planning",
+      "belief_a": "Agent 1: planning_style=stepwise achieved fitness 0.2199 (population mean 0.2083)",
+      "belief_b": "Agent 0: planning_style=direct achieved fitness 0.1725 (population mean 0.2083)",
+      "priority": 0.85,
+      "agents": [
+        1,
+        0
+      ]
+    },
+    "gen1_traits": [
+      {
+        "agent_id": 0,
+        "trait": "direct",
+        "fitness": 0.1725
+      },
+      {
+        "agent_id": 1,
+        "trait": "stepwise",
+        "fitness": 0.2199
+      },
+      {
+        "agent_id": 2,
+        "trait": "hierarchical",
+        "fitness": 0.2653
+      },
+      {
+        "agent_id": 3,
+        "trait": "direct",
+        "fitness": 0.1757
+      }
+    ],
+    "gen2_traits": [
+      {
+        "agent_id": 0,
+        "trait": "direct",
+        "fitness": 0.3016
+      },
+      {
+        "agent_id": 1,
+        "trait": "hierarchical",
+        "fitness": 0.3063
+      },
+      {
+        "agent_id": 2,
+        "trait": "hierarchical",
+        "fitness": 0.1865
+      },
+      {
+        "agent_id": 3,
+        "trait": "stepwise",
+        "fitness": 0.261
+      }
+    ],
+    "gen1_preferred_mean_fitness": 0.2199,
+    "gen1_loser_mean_fitness": 0.17409999999999998,
+    "gen2_preferred_mean_fitness": 0.261,
+    "gen1_pop_mean": 0.20834999999999998,
+    "gen2_pop_mean": 0.26385000000000003,
+    "fitness_lift": 0.08690000000000003,
+    "gen2_preferred_share": 0.25,
+    "dna_fitness_transfers": true,
+    "belief_count": 15,
+    "agenda_prefers_first": "stepwise"
+  },
+  "figures": [],
+  "h5_protocol": {
+    "min_generation": 2,
+    "fitness_key": "mean",
+    "note": "H5 uses population-mean \u0394fitness after DNA steering is active (gen\u22652)."
+  },
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
+}
