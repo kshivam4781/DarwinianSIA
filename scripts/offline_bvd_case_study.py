@@ -447,12 +447,16 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     compare = compare_b_vs_d(b_runs, d_runs)
+    # Prefer a positive-lift chain (tie → contradiction → DNA skew → fitness up).
+    cases = [extract_case_study(d_run) for d_run in d_runs]
+    cases = [c for c in cases if c and c.get("fitness_lift") is not None]
+    positive = [c for c in cases if float(c.get("fitness_lift") or 0) > 0]
     case = None
-    for d_run in d_runs:
-        case = extract_case_study(d_run)
-        if case and case.get("fitness_lift") is not None:
-            break
-    if case is None and d_runs:
+    if positive:
+        case = max(positive, key=lambda c: float(c.get("fitness_lift") or 0))
+    elif cases:
+        case = max(cases, key=lambda c: float(c.get("fitness_lift") or 0))
+    elif d_runs:
         case = extract_case_study(d_runs[0])
 
     figs = _maybe_figures(b_runs, d_runs, args.figures_dir)

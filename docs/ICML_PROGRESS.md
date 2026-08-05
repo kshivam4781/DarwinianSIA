@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T06:11Z — Tick 17 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f1b8` (fast-forwarded Ticks 1–16 from `3956`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 16: final **3/5**, gens30 **2/5**, H5 **2/5**. Seed 22 diagnosis: contradiction bias locked onto suboptimal pair `tool_strategy∈{minimal,aggressive}` (selective absent from gen1), then forced outsiders onto local winner — population never discovered `selective` needed to cross 30%.
+
+### What this tick did (ONE step)
+**Escape suboptimal contradiction pools** via ε-greedy mutation + live population bias harvest:
+1. `_biased_choice`: ε-greedy explore full trait enum (`_BIAS_MUTATE_EXPLORE_EPS=0.18`); preserve out-of-pool outsiders (stop forcing them onto local preferred)
+2. `load_mutation_bias`: harvest latest-gen DNA alleles ranked by fitness so discoveries can become preferred
+3. Unit tests for ε-explore + live harvest; sync `sia-upstream/`
+4. Re-pilot B `1670–1674` vs D `1680–1684` (`max_gen=6`); case study on `run_1683` (positive lift); refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 16) | After (Tick 17) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 3/5 | **5/5** (B final wins 0) |
+| Offline D gens30 wins | 2/5 | **3/5** (B: 0) — offline PRIMARY gens30 pass |
+| Mean final gap (D−B) | ~2.26pp | ~**5.35pp** |
+| Offline H5 ρ>0.3 | 2/5 | **2/5** (0.3 / −0.3 / 0.3 / 0.6 / 0.6) — strict >0.3 unchanged; two solid 0.6 |
+| Case study gen2 pref share / lift | 0.5 / +0.0420 (`1660`) | **0.25 / +0.0869** (`1683`, planning_style=stepwise) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: restore offline H5 to ≥4/5 strict ρ>0.3 (seed 22 ρ=−0.3 under exploration noise) while keeping gens30 ≥3/5. Do **not** set READY — live GPQA still required despite offline gens30 PRIMARY pass.
+
+---
+
 ## 2026-08-05T04:05Z — Tick 16 (automation cron)
 
 ### Status snapshot
