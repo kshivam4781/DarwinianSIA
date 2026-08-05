@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-05 (Section 21 ICML; Tick 14 delay-all mutation bias; offline final 4/5, mean ~3.34pp, H5 3/5, gens30 still 0/5)  
+**Last updated:** 2026-08-05 (Section 21 ICML; Tick 15 longer-horizon offline `max_gen=6`; gens30 still 0/5 — threshold saturation)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -807,17 +807,18 @@ Computed in `cabs/belief_engine.py`:
 | Delayed crossover bias (gen≥2) | **DONE** | Tick 12: fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`) |
 | Tempered early mutation bias | **DONE** | Tick 13: soft rank-weighted mutate option (`apply_mutation_anchor`); superseded for early gens by Tick 14 delay-all |
 | Delay-all mutation bias (gen≥2) | **DONE** | Tick 14: fair mutate+XO gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`); final 4/5; mean ~3.34pp; gens30 still 0/5 |
+| Longer-horizon offline B vs D (`max_gen=6`) | **DONE** | Tick 15: `1630–1634` / `1640–1644`; final 3/5; mean ~2.55pp; H5 2/5; gens30 still 0/5 (early threshold saturation) |
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
 | `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
 | ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9: **additive latent** trait scores (DNA-transferable; causal bias→fitness); scaled for 25/30% thresholds |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% win counting |
-| Offline B vs D case-study pilot | **DONE** | Latest `1610–1614` / `1620–1624`; case study `docs/case_study_offline.md` (`run_1620`); final 4/5; gens30 0/5; H5 3/5; mean gap ~3.34pp |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick 15 `1630–1634` / `1640–1644` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1640`); final 3/5; gens30 0/5; H5 2/5; mean gap ~2.55pp |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; budget check required |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 14 **3/5** ρ>0.3 (`1620–1624`); live required |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 15 **2/5** ρ>0.3 (`1640–1644`, `max_gen=6`); Tick 14 best offline H5 **3/5**; live required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1 stub; live empty — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
@@ -1598,4 +1599,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Tempered early mutation bias (2026-08-04 Tick 13):** Soft rank-weighted mutate gen1→gen2; full preferred anchoring from gen≥2 (`apply_mutation_anchor`). Offline `1590–1594` / `1600–1604` → final **3/5**, mean ~**1.66pp**, H5 **3/5**; gens30 still **0/5**; case-study preferred share could still hit 1.0 by gen2.
 
-**Delay-all mutation bias (2026-08-05 Tick 14):** Fair mutate+XO on gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`). Offline `1610–1614` / `1620–1624` → final **4/5**, mean ~**3.34pp**, H5 **3/5**, case-study gen2 preferred share **0.5** (collapse fixed); gens30 still **0/5** at `max_gen=4`. Remaining gap: longer-horizon offline (`max_gen≥6`) for gens30, or (preferred) API-backed G2–G4 live B vs D seeds (keys absent in cloud env).
+**Delay-all mutation bias (2026-08-05 Tick 14):** Fair mutate+XO on gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`). Offline `1610–1614` / `1620–1624` → final **4/5**, mean ~**3.34pp**, H5 **3/5**, case-study gen2 preferred share **0.5** (collapse fixed); gens30 still **0/5** at `max_gen=4`.
+
+**Longer-horizon offline re-pilot (2026-08-05 Tick 15):** Same delay-all mechanism at `max_gen=6` (`1630–1634` / `1640–1644`) → final **3/5**, mean ~**2.55pp**, H5 **2/5**, gens30 still **0/5**. Diagnosis: **threshold saturation** — 4/5 seeds hit 30% by gen≤2 for both B and D, so extra biased breeding rounds cannot create gens-to-threshold wins. Remaining gap: retune additive latent fitness so early gens sit below 30% more often (make gens30 discriminative), or (preferred) API-backed G2–G4 live B vs D seeds (keys absent in cloud env).

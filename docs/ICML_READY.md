@@ -10,7 +10,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**
 - [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**
 - [ ] Non-trivial mean final accuracy gap (not ~1pp noise)
-- Evidence: offline synthetic pilot `1610–1614` vs `1620–1624` (Tick 14, delay-all mutation bias) — D final wins **4/5** (>1pp margin), gens30 wins **0/5** (B: 1), mean final gap ~**3.34pp**. Delaying all DNA steering until gen≥2 stopped gen2 preferred collapse (case-study share **0.5**) and raised final/mean gap vs Tick 13, but **gens30 still fails**. **Not** live GPQA — do not count for READY. Live → `docs/paper_artifacts.md` Table 1
+- Evidence: offline synthetic pilot `1630–1634` vs `1640–1644` (Tick 15, delay-all + `max_gen=6`) — D final wins **3/5** (>1pp), gens30 wins **0/5** (B: 1), mean final gap ~**2.55pp**. Longer horizon did **not** unlock gens30: 4/5 seeds hit 30% by gen≤2 for both B and D (threshold saturation). Tick 14 `max_gen=4` still best offline final (4/5, ~3.34pp). **Not** live GPQA — do not count for READY. Live → `docs/paper_artifacts.md` Table 1
 
 ### 2. MECHANISM — H2 or case study
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
@@ -22,13 +22,13 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Delayed crossover bias (Tick 12) — fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`, `test_breed_offspring_can_delay_crossover_bias`)
 - [x] Tempered early mutation bias (Tick 13) — soft rank-weighted mutate gen1→gen2; full preferred anchoring from gen≥2 (`apply_mutation_anchor`, `test_biased_mutate_can_soften_preferred_anchor`)
 - [x] Delayed **all** mutation bias (Tick 14) — fair mutate+XO gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`, `test_breed_offspring_can_delay_all_mutation_bias`)
-- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1620` (`selective` preferred → gen2 share **0.5**; lift +0.0473)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1640` (`selective` preferred → gen2 share **0.5**; lift +0.0473)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + offline case study; live GPQA still pending (no API keys)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
-- Evidence: offline multi-seed Condition D `1620–1624` → ρ>0.3 on **3/5** seeds (0.5 / −0.5 / −1.0 / 0.5 / 1.0) — same pass rate as Tick 13. Still **not** live GPQA.
+- Evidence: offline multi-seed Condition D `1640–1644` (`max_gen=6`) → ρ>0.3 on **2/5** seeds (0.6 / 0.3 / 0.1 / 0.3 / 0.4) — regression vs Tick 14's **3/5** at `max_gen=4`. Still **not** live GPQA.
 
 ### 4. PAPER
 - [x] Figure 1 draft (offline B vs D learning curves) — `docs/figures/fig1_learning_curves.png`
@@ -47,6 +47,6 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G0 mechanism unit tests | **PASS** (2026-08-03; + delay-all mutation bias Tick 14) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | BLOCKED (no API keys) |
-| G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 14); **live** G3 NOT STARTED |
+| G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 15, `max_gen=6`); **live** G3 NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED (live) |
 | G5 paper pack | PARTIAL (offline figs + case study; H5 soft); live pack NOT STARTED |

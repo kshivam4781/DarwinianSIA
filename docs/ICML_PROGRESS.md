@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T02:00Z — Tick 15 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-b670` (fast-forwarded Ticks 1–14 from `bb57`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 14: final **4/5**, gens30 **0/5**, H5 **3/5**, mean gap ~3.34pp. Delay-all fixed gen2 preferred collapse, but only two biased breeding rounds exist at `max_gen=4`. Next offline lever was longer horizon.
+
+### What this tick did (ONE step)
+Ran **longer-horizon offline B vs D re-pilot** under unchanged delay-all mutation bias:
+1. `scripts/offline_bvd_case_study.py --max-gen 6 --b-id-start 1630 --d-id-start 1640`
+2. Refreshed case study (`run_1640`), figs, `docs/offline_bvd_summary.json`, paper artifacts / gate3 / READY checklist
+3. No mechanism code change this tick (horizon-only diagnostic)
+
+### Metrics delta
+| Metric | Before (Tick 14, max_gen=4) | After (Tick 15, max_gen=6) |
+|--------|-----------------------------|---------------------------|
+| Offline D final wins (>1pp) | 4/5 | **3/5** (B final wins 1) — soft regression |
+| Offline D gens30 wins | 0/5 | **0/5** (B gens30 wins 1) — still fail |
+| Mean final gap (D−B) | ~3.34pp | ~**2.55pp** — soft regression |
+| Offline H5 ρ>0.3 | 3/5 | **2/5** (0.6 / 0.3 / 0.1 / 0.3 / 0.4) — regression |
+| Seeds with both B&D gens30≤2 | n/a | **4/5** — threshold saturation |
+| Case study gen2 pref share / lift | 0.5 / +0.0473 (`1620`) | **0.5 / +0.0473** (`1640`) — stable |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: **retune additive latent fitness** so early gens sit below 30% more often (make gens-to-threshold discriminative under delay-all), targeting gens30 ≥3/5 and H5 ≥4/5 while keeping final ≥3/5. Do **not** set READY — live GPQA still required; longer horizon alone cannot fix saturated thresholds.
+
+---
+
 ## 2026-08-05T00:00Z — Tick 14 (automation cron)
 
 ### Status snapshot
