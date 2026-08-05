@@ -7,24 +7,24 @@
     55
   ],
   "b_run_ids": [
-    1750,
-    1751,
-    1752,
-    1753,
-    1754
+    1780,
+    1781,
+    1782,
+    1783,
+    1784
   ],
   "d_run_ids": [
-    1760,
-    1761,
-    1762,
-    1763,
-    1764
+    1790,
+    1791,
+    1792,
+    1793,
+    1794
   ],
   "compare": {
     "n_pairs": 5,
     "d_wins_gens25": 0,
     "b_wins_gens25": 0,
-    "d_wins_gens30": 3,
+    "d_wins_gens30": 4,
     "b_wins_gens30": 0,
     "d_wins_final": 5,
     "b_wins_final": 0,
@@ -35,25 +35,25 @@
     {
       "seed": 11,
       "B_final": 0.2652,
-      "D_final": 0.301,
+      "D_final": 0.3035,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": null,
       "D_gens30": 4,
-      "D_h5_rho": 0.7999999999999999,
+      "D_h5_rho": 0.39999999999999997,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
-      "D_h2_share": 0.8333333333333334
+      "D_h2_share": 0.9166666666666666
     },
     {
       "seed": 22,
       "B_final": 0.2258,
-      "D_final": 0.2733,
+      "D_final": 0.306,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": null,
-      "D_gens30": null,
+      "D_gens30": 5,
       "D_h5_rho": 0.7999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
@@ -72,7 +72,7 @@
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
-      "D_h2_share": 0.9166666666666666
+      "D_h2_share": 0.9583333333333334
     },
     {
       "seed": 44,
@@ -86,25 +86,25 @@
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
-      "D_h2_share": 0.9583333333333334
+      "D_h2_share": 0.9166666666666666
     },
     {
       "seed": 55,
       "B_final": 0.255,
-      "D_final": 0.3216,
+      "D_final": 0.3266,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": null,
       "D_gens30": 4,
-      "D_h5_rho": 0.6000000000000001,
+      "D_h5_rho": 0.39999999999999997,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
-      "D_h2_share": 0.9166666666666666
+      "D_h2_share": 0.8333333333333334
     }
   ],
   "case_study": {
-    "run_dir": "runs/run_1763",
+    "run_dir": "runs/run_1793",
     "field": "planning_style",
     "preferred_value": "stepwise",
     "bias_order": [
@@ -186,5 +186,5 @@
     "delta_horizon": 2,
     "note": "H5 uses population-mean forward \u0394fitness over the next 1\u20132 gens after DNA steering is active (gen\u22652), matching \u03b5-greedy discovery lag."
   },
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
+  "note": "Synthetic additive latent DNA fitness with transferable traits + directed \u03b5-explore (Tick 20); offline only. Do not set ICML_READY PRIMARY from this."
 }

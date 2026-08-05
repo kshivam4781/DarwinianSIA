@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T12:10Z — Tick 20 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-d7f1` (fast-forwarded Ticks 1–19 from `eec8`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick; secrets re-requested via environment setup)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 19: gens30 **3/5**, final **5/5**, H5 **5/5**. Seed 22 never crossed 30% — diagnosis: ε-greedy explore sampled the **full** trait enum and often re-drew disputed-pool alleles (`minimal`/`aggressive`), so `selective` never entered; live harvest could not promote it.
+
+### What this tick did (ONE step)
+**Directed ε-explore outside disputed DNA pools:**
+1. `_biased_choice`: on explore steps, sample only alleles **absent** from the contradiction-scoped pool (fallback to full enum if no outsiders)
+2. Unit tests: stronger selective discovery rate + `test_biased_mutate_directed_explore_never_redraws_pool`
+3. Sync `sia-upstream/sia/evolution/operators.py`
+4. Re-pilot B `1780–1784` vs D `1790–1794` (`max_gen=6`); case study on `run_1793`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 19) | After (Tick 20) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 5/5 | **5/5** (stable) |
+| Offline D gens30 wins | 3/5 | **4/5** (B: 0) — seed 22 unlocked |
+| Mean final gap (D−B) | ~5.35pp | ~**6.15pp** |
+| Offline H5 ρ>0.3 | 5/5 (0.8 / 0.8 / 0.8 / 1.0 / 0.6) | **5/5** (0.4 / 0.8 / 0.8 / 1.0 / 0.4) |
+| Case study gen2 pref share / lift | 0.25 / +0.0869 (`1763`) | **0.25 / +0.0869** (`1793`) — same chain |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked (secrets re-requested) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. Offline gens30 **4/5** + H5 **5/5** are in place but **do not** set READY without live GPQA.
+
+---
+
 ## 2026-08-05T10:10Z — Tick 19 (automation cron)
 
 ### Status snapshot

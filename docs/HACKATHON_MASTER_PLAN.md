@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-05 (Section 21 ICML; Tick 19 H5 forward-horizon; offline H5 5/5 + gens30 3/5)  
+**Last updated:** 2026-08-05 (Section 21 ICML; Tick 20 directed ε-explore; offline gens30 4/5 + H5 5/5)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -809,7 +809,8 @@ Computed in `cabs/belief_engine.py`:
 | Delay-all mutation bias (gen≥2) | **DONE** | Tick 14: fair mutate+XO gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`); final 4/5; mean ~3.34pp; gens30 still 0/5 |
 | Longer-horizon offline B vs D (`max_gen=6`) | **DONE** | Tick 15: `1630–1634` / `1640–1644`; final 3/5; mean ~2.55pp; H5 2/5; gens30 still 0/5 (early threshold saturation) |
 | Compressed latent fitness scale | **DONE** | Tick 16: map additive latent into `[0.02, 0.34]`; gen-1 ≥30% fixed; gens30 **2/5** |
-| ε-greedy + live bias harvest | **DONE** | Tick 17: explore outside disputed pool; adopt better latest-gen alleles; offline gens30 **3/5** |
+| ε-greedy + live bias harvest | **DONE** | Tick 17: explore + adopt better latest-gen alleles; offline gens30 **3/5** |
+| Directed ε-explore (outsiders only) | **DONE** | Tick 20: explore samples only alleles outside disputed pool; gens30 **4/5**; mean ~6.15pp |
 | H5 steered-window + mean Δfitness | **DONE** | Tick 18: `min_generation=2`, `fitness_key=mean` |
 | H5 forward-horizon Δfitness | **DONE** | Tick 19: `delta_horizon=2`; offline H5 **5/5** (ε-lag) |
 | CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
@@ -818,11 +819,11 @@ Computed in `cabs/belief_engine.py`:
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9 additive latent; **Tick 16** ceiling 0.34 (was 0.38) so gens-to-30% stay discriminative |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% win counting; Tick 18–19 H5 protocol |
-| Offline B vs D case-study pilot | **DONE** | Latest Tick 19 `1750–1754` / `1760–1764` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1763`); final **5/5**; gens30 **3/5**; H5 **5/5**; mean gap ~5.35pp |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets requested; budget check required |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick 20 `1780–1784` / `1790–1794` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1793`); final **5/5**; gens30 **4/5**; H5 **5/5**; mean gap ~6.15pp |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; budget check required |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 19 **5/5** ρ>0.3 (`1760–1764`, mean forward Δ, gen≥2, horizon=2); live required |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 20 **5/5** ρ>0.3 (`1790–1794`, mean forward Δ, gen≥2, horizon=2); live required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1 stub; live empty — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
@@ -1613,4 +1614,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **H5 steered-window + mean Δfitness (2026-08-05 Tick 18):** Under delay-all, gen1→gen2 breeding is intentionally fair, so gen1 epistemic stock must not be scored against that Δfitness. `compute_h5` now defaults to `min_generation=2` and population-mean Δfitness (steering reshapes the population, not only the elite). Offline re-pilot `1730–1734` / `1740–1744` (Tick 17 mutation path) → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **4/5** ρ>0.3 (0.0 / 0.8 / 0.4 / 0.8 / 0.6).
 
-**H5 forward-horizon Δfitness (2026-08-05 Tick 19):** ε-greedy discover→adopt can lag one generation, zeroing single-step Spearman ρ (seed 11). `compute_h5` defaults to `delta_horizon=2` so Y is mean fitness over the next 1–2 gens minus fitness_t. Offline re-pilot `1750–1754` / `1760–1764` → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **5/5** ρ>0.3 (0.8 / 0.8 / 0.8 / 1.0 / 0.6). Remaining gap: API-backed G2–G4 live B vs D (keys absent in cloud env; secrets requested).
+**H5 forward-horizon Δfitness (2026-08-05 Tick 19):** ε-greedy discover→adopt can lag one generation, zeroing single-step Spearman ρ (seed 11). `compute_h5` defaults to `delta_horizon=2` so Y is mean fitness over the next 1–2 gens minus fitness_t. Offline re-pilot `1750–1754` / `1760–1764` → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **5/5** ρ>0.3 (0.8 / 0.8 / 0.8 / 1.0 / 0.6).
+
+**Directed ε-explore (2026-08-05 Tick 20):** Uniform ε-sampling over the full trait enum often re-drew disputed-pool alleles, so seed 22 never discovered `selective` and stalled under 30%. `_biased_choice` now samples only alleles **outside** the contradiction-scoped pool on explore steps. Offline re-pilot `1780–1784` / `1790–1794` → gens30 **4/5**, final **5/5**, mean ~**6.15pp**, H5 **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4). Remaining gap: API-backed G2–G4 live B vs D (keys absent in cloud env; secrets re-requested).

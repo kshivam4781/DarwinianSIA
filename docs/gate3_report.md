@@ -1,41 +1,41 @@
 # Gate 3 report — Pilot B vs D
 
-**Status:** Offline synthetic pilot **refreshed** (2026-08-05 Tick 19, H5 forward-horizon Δfitness); **live** G3 still blocked on API keys
+**Status:** Offline synthetic pilot **refreshed** (2026-08-05 Tick 20, directed ε-explore); **live** G3 still blocked on API keys
 
 Gate 3 (Section 21.5): pilot Condition B vs D on 1–2 seeds, `--eval_subset 15`, `max_gen ≤ 5`, before full 5-seed spend.
 
-## Offline synthetic pilot (Tick 19 — not a live G3 substitute)
+## Offline synthetic pilot (Tick 20 — not a live G3 substitute)
 
 | Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |
 |------|-------|-----|-------|---------|-------------|---------|
-| B | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1750–1754` |
-| D | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1760–1764` |
+| B | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1780–1784` |
+| D | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1790–1794` |
 
-Harness: `scripts/offline_bvd_case_study.py` (compressed additive latent dry-run fitness [0.02, 0.34] + delay-all mutation bias until gen≥2 + ε-greedy explore + latest-gen bias harvest + delayed soft bias-aware crossover). H5 via `scripts/epistemic_results.compute_h5(min_generation=2, fitness_key="mean", delta_horizon=2)`.
+Harness: `scripts/offline_bvd_case_study.py` (compressed additive latent dry-run fitness [0.02, 0.34] + delay-all mutation bias until gen≥2 + directed ε-explore outside disputed pools + latest-gen bias harvest + delayed soft bias-aware crossover). H5 via `scripts/epistemic_results.compute_h5(min_generation=2, fitness_key="mean", delta_horizon=2)`.
 
 | Metric | Result |
 |--------|--------|
 | D final-fitness wins (>1pp) | **5/5** |
 | B final-fitness wins (>1pp) | **0/5** |
-| Mean final (B / D) | ~0.253 / ~0.306 (~**5.35pp**) |
-| D gens-to-30% wins | **3/5** (B: 0) — offline PRIMARY gens30 pass |
+| Mean final (B / D) | ~0.253 / ~0.314 (~**6.15pp**) |
+| D gens-to-30% wins | **4/5** (B: 0) — offline PRIMARY gens30; seed 22 unlocked |
 | Gens-to-25% | Both hit gen1 (still saturated at 25%) |
 | Gen-1 ≥30% | **0/5** seeds (saturation still fixed) |
-| H5 ρ>0.3 (D seeds) | **5/5** (0.8 / 0.8 / 0.8 / 1.0 / 0.6) — mean forward Δ; gen≥2; horizon=2 |
-| Case study | `docs/case_study_offline.md` (`run_1763`) — gen2 preferred share **0.25**; lift +0.0869 |
+| H5 ρ>0.3 (D seeds) | **5/5** (0.4 / 0.8 / 0.8 / 1.0 / 0.4) — mean forward Δ; gen≥2; horizon=2 |
+| Case study | `docs/case_study_offline.md` (`run_1793`) — gen2 preferred share **0.25**; lift +0.0869 |
 | Figures | `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png` |
 | Summary JSON | `docs/offline_bvd_summary.json` |
 
-**Finding:** Tick 18 recovered H5 to **4/5** but seed 11 single-step ρ stayed 0.0 (ε-greedy discover→adopt lag: peak mean gain one gen after highest epi). Tick 19 keeps the Tick 17 mutation path and scores H5 against a 2-gen forward mean Δfitness → H5 **5/5** while gens30/final stay at **3/5** / **5/5**.
+**Finding:** Tick 19 left seed 22 under 30% because uniform ε-sampling often re-drew `minimal`/`aggressive`. Tick 20 directs explore to alleles **outside** the disputed pool → seed 22 discovers `selective` (gen4), crosses 30% (gen5), and offline gens30 rises to **4/5** while H5 stays **5/5** and mean gap ~**6.15pp**.
 
-Prior Tick-18 pilot `1730–1734` / `1740–1744` remains the first steered-window H5 **4/5** snapshot. Tick-17 `1670–1674` / `1680–1684` remains the first offline gens30 PRIMARY-shaped snapshot. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
+Prior Tick-19 pilot `1750–1754` / `1760–1764` remains the first offline H5 **5/5** snapshot. Tick-17 `1670–1674` / `1680–1684` remains the first offline gens30 PRIMARY-shaped snapshot. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
 
 ## Blockers (live G3)
 
-1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty; secrets requested 2026-08-05).
+1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty; secrets re-requested 2026-08-05 Tick 20).
 2. Bundled GPQA `data/public` not present in checkout — G2/G3 need dataset + keys (offline pilot used synthetic fixture).
 3. ~~G1 dry-run~~ **PASS** 2026-08-04 (`runs/run_1401` dry-run; `SIA/tests/test_cabs_inline_dry_run.py`).
-4. Offline pilot validates harness + case study + offline gens30 **3/5** + offline H5 **5/5** — **not** live PRIMARY.
+4. Offline pilot validates harness + case study + offline gens30 **4/5** + offline H5 **5/5** — **not** live PRIMARY.
 
 ## Prerequisites completed
 
@@ -58,6 +58,7 @@ Prior Tick-18 pilot `1730–1734` / `1740–1744` remains the first steered-wind
 - [x] ε-greedy mutation + live bias harvest (Tick 17) — gens30 **3/5**; final **5/5**; mean ~5.35pp
 - [x] H5 steered-window + mean Δfitness (Tick 18) — H5 **4/5**; gens30/final held
 - [x] H5 forward-horizon Δfitness (Tick 19) — H5 **5/5** (`delta_horizon=2`); gens30/final held
+- [x] Directed ε-explore outside disputed pools (Tick 20) — gens30 **4/5**; mean ~6.15pp; H5 **5/5**
 - [ ] G2: smoke GPQA subset (live)
 
 ## Live pilot plan (when unblocked)
