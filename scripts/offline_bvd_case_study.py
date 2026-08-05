@@ -165,8 +165,48 @@ def _load_json(path: Path) -> dict:
         return {}
 
 
-def extract_case_study(run_dir: Path) -> dict | None:
-    """Find one chain: contradiction with fitness-tagged sides → bias order → DNA skew → lift."""
+# Delay-all: fair breed gen1→gen2; CABS DNA steering applies when breeding from
+# gen≥2, so gen3 is the first population produced under contradiction bias.
+FIRST_STEERED_GEN = 3
+
+
+def _load_gen_traits(layout: RunLayout, gen: int, field: str, max_agents: int = 8) -> list[dict]:
+    traits: list[dict] = []
+    for agent_id in range(max_agents):
+        dna_path = Path(layout.gen_agent_dir(gen, agent_id)) / "agent_dna.json"
+        res_path = Path(layout.gen_agent_dir(gen, agent_id)) / "results.json"
+        if not dna_path.is_file():
+            continue
+        dna = _load_json(dna_path)
+        res = _load_json(res_path)
+        traits.append(
+            {
+                "agent_id": agent_id,
+                "trait": dna.get(field),
+                "fitness": float(res.get("accuracy", 0.0) or 0.0),
+            }
+        )
+    return traits
+
+
+def preferred_share(traits: list[dict], preferred: str) -> float | None:
+    if not traits:
+        return None
+    n = sum(1 for t in traits if t.get("trait") == preferred)
+    return n / len(traits)
+
+
+def extract_case_study(
+    run_dir: Path,
+    *,
+    first_steered_gen: int = FIRST_STEERED_GEN,
+) -> dict | None:
+    """Find one chain: contradiction → bias order → post-steering DNA skew → lift.
+
+    Under delay-all mutation bias, gen2 is still fair-bred. H2 DNA skew and the
+    fitness lift that attribute to CABS steering are measured at
+    ``first_steered_gen`` (default gen3) and later.
+    """
     store = run_dir / "belief_store"
     contradictions = _load_json(store / "contradictions.json").get("contradictions", [])
     beliefs = _load_json(store / "beliefs.json").get("beliefs", [])
@@ -196,65 +236,66 @@ def extract_case_study(run_dir: Path) -> dict | None:
     disputed = list(bias[field])
 
     layout = RunLayout(str(run_dir))
-    gen1_traits = []
-    for agent_id in range(8):
-        dna_path = Path(layout.gen_agent_dir(1, agent_id)) / "agent_dna.json"
-        res_path = Path(layout.gen_agent_dir(1, agent_id)) / "results.json"
-        if not dna_path.is_file():
-            continue
-        dna = _load_json(dna_path)
-        res = _load_json(res_path)
-        gen1_traits.append(
-            {
-                "agent_id": agent_id,
-                "trait": dna.get(field),
-                "fitness": float(res.get("accuracy", 0.0) or 0.0),
-            }
-        )
+    available_gens = sorted(
+        int(p.name.split("_", 1)[1])
+        for p in Path(run_dir).glob("gen_*")
+        if p.is_dir() and p.name.split("_", 1)[-1].isdigit()
+    )
+    traits_by_gen = {g: _load_gen_traits(layout, g, field) for g in available_gens}
+    gen1_traits = traits_by_gen.get(1) or []
+    gen2_traits = traits_by_gen.get(2) or []
+    steered_gen = first_steered_gen if first_steered_gen in traits_by_gen else None
+    if steered_gen is None:
+        # Fall back to the latest gen ≥ first_steered_gen, else latest overall.
+        later = [g for g in available_gens if g >= first_steered_gen]
+        steered_gen = (later or available_gens or [None])[-1]
+    steered_traits = traits_by_gen.get(steered_gen) or []
 
-    gen2_traits = []
-    for agent_id in range(8):
-        dna_path = Path(layout.gen_agent_dir(2, agent_id)) / "agent_dna.json"
-        res_path = Path(layout.gen_agent_dir(2, agent_id)) / "results.json"
-        if not dna_path.is_file():
-            continue
-        dna = _load_json(dna_path)
-        res = _load_json(res_path)
-        gen2_traits.append(
-            {
-                "agent_id": agent_id,
-                "trait": dna.get(field),
-                "fitness": float(res.get("accuracy", 0.0) or 0.0),
-            }
-        )
-
-    if not gen1_traits or not gen2_traits:
+    if not gen1_traits or not steered_traits:
         return None
 
     loser_side = [t for t in disputed if t != preferred]
     loser = loser_side[0] if loser_side else None
     gen1_pref = [t for t in gen1_traits if t["trait"] == preferred]
     gen1_lose = [t for t in gen1_traits if loser and t["trait"] == loser]
+    steered_pref = [t for t in steered_traits if t["trait"] == preferred]
     gen2_pref = [t for t in gen2_traits if t["trait"] == preferred]
 
     mean = lambda xs: (sum(xs) / len(xs)) if xs else None  # noqa: E731
     g1_pref_fit = mean([t["fitness"] for t in gen1_pref])
     g1_lose_fit = mean([t["fitness"] for t in gen1_lose]) if gen1_lose else None
-    g2_pref_fit = mean([t["fitness"] for t in gen2_pref])
+    steered_pref_fit = mean([t["fitness"] for t in steered_pref])
+    g2_pref_fit = mean([t["fitness"] for t in gen2_pref]) if gen2_pref else None
     g1_mean = mean([t["fitness"] for t in gen1_traits])
-    g2_mean = mean([t["fitness"] for t in gen2_traits])
+    g2_mean = mean([t["fitness"] for t in gen2_traits]) if gen2_traits else None
+    steered_mean = mean([t["fitness"] for t in steered_traits])
 
-    # Fitness lift: preferred trait carriers in gen2 beat gen1 loser-side mean, or pop mean rises.
+    shares = {
+        g: preferred_share(traits_by_gen[g], preferred)
+        for g in available_gens
+        if traits_by_gen.get(g)
+    }
+    steered_share = shares.get(steered_gen)
+    pre_steer_share = shares.get(first_steered_gen - 1)  # typically gen2 fair share
+
+    # Fitness lift attributed to steered preferred carriers vs gen1 loser side.
     lift = None
-    if g2_pref_fit is not None and g1_lose_fit is not None:
-        lift = g2_pref_fit - g1_lose_fit
-    elif g1_mean is not None and g2_mean is not None:
-        lift = g2_mean - g1_mean
+    if steered_pref_fit is not None and g1_lose_fit is not None:
+        lift = steered_pref_fit - g1_lose_fit
+    elif g1_mean is not None and steered_mean is not None:
+        lift = steered_mean - g1_mean
 
     # Transferability check: preferred DNA scores same for any agent_id
-    sample_dna = AgentDNA(**{k: v for k, v in _load_json(
-        Path(layout.gen_agent_dir(1, gen1_pref[0]["agent_id"])) / "agent_dna.json"
-    ).items() if k in AgentDNA.__dataclass_fields__}) if gen1_pref else None
+    sample_src = gen1_pref or steered_pref
+    sample_dna = None
+    if sample_src:
+        raw = _load_json(
+            Path(layout.gen_agent_dir(1 if gen1_pref else steered_gen, sample_src[0]["agent_id"]))
+            / "agent_dna.json"
+        )
+        sample_dna = AgentDNA(
+            **{k: v for k, v in raw.items() if k in AgentDNA.__dataclass_fields__}
+        )
     transfer_ok = False
     if sample_dna is not None:
         transfer_ok = deterministic_fitness(0, sample_dna, 1) == deterministic_fitness(9, sample_dna, 99)
@@ -264,6 +305,8 @@ def extract_case_study(run_dir: Path) -> dict | None:
         "field": field,
         "preferred_value": preferred,
         "bias_order": disputed,
+        "first_steered_gen": first_steered_gen,
+        "steered_gen": steered_gen,
         "contradiction": {
             "topic": chosen.get("topic"),
             "belief_a": chosen.get("belief_a"),
@@ -273,13 +316,21 @@ def extract_case_study(run_dir: Path) -> dict | None:
         },
         "gen1_traits": gen1_traits,
         "gen2_traits": gen2_traits,
+        "steered_traits": steered_traits,
+        "traits_by_gen": {str(g): traits_by_gen[g] for g in available_gens},
+        "preferred_share_by_gen": {str(g): shares[g] for g in shares},
         "gen1_preferred_mean_fitness": g1_pref_fit,
         "gen1_loser_mean_fitness": g1_lose_fit,
         "gen2_preferred_mean_fitness": g2_pref_fit,
+        "steered_preferred_mean_fitness": steered_pref_fit,
         "gen1_pop_mean": g1_mean,
         "gen2_pop_mean": g2_mean,
+        "steered_pop_mean": steered_mean,
         "fitness_lift": lift,
-        "gen2_preferred_share": (len(gen2_pref) / len(gen2_traits)) if gen2_traits else None,
+        # Backward-compatible key: fair-bred gen2 share (expect ~weak under delay-all).
+        "gen2_preferred_share": preferred_share(gen2_traits, preferred),
+        "pre_steer_preferred_share": pre_steer_share,
+        "steered_preferred_share": steered_share,
         "dna_fitness_transfers": transfer_ok,
         "belief_count": len(beliefs),
         "agenda_prefers_first": preferred,
@@ -289,6 +340,11 @@ def extract_case_study(run_dir: Path) -> dict | None:
 def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
     lift = case.get("fitness_lift")
     lift_s = f"{lift:+.4f}" if isinstance(lift, (int, float)) else "n/a"
+    steered_gen = case.get("steered_gen")
+    share_by_gen = case.get("preferred_share_by_gen") or {}
+    share_s = ", ".join(
+        f"gen{g}={share_by_gen[g]}" for g in sorted(share_by_gen, key=lambda x: int(x))
+    )
     lines = [
         "# Offline case study — Condition D mechanism chain",
         "",
@@ -305,10 +361,13 @@ def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
         f"(priority={case['contradiction'].get('priority')}).",
         f"3. **Fitness-weighted bias:** field `{case['field']}` ordered "
         f"`{case['bias_order']}` (prefer `{case['preferred_value']}`).",
-        f"4. **DNA skew:** gen2 share of preferred trait = "
-        f"{case.get('gen2_preferred_share')}.",
-        f"5. **Fitness lift:** preferred@gen2 mean − loser@gen1 mean = **{lift_s}** "
-        f"(pop mean {case.get('gen1_pop_mean')} → {case.get('gen2_pop_mean')}).",
+        f"4. **DNA skew (post-steering):** preferred share by gen = {share_s}. "
+        f"Delay-all keeps gen1→gen2 fair; first steered generation is gen"
+        f"{case.get('first_steered_gen')} "
+        f"(steered share **{case.get('steered_preferred_share')}** at gen{steered_gen}; "
+        f"pre-steer/gen2 share {case.get('gen2_preferred_share')}).",
+        f"5. **Fitness lift:** preferred@gen{steered_gen} mean − loser@gen1 mean = **{lift_s}** "
+        f"(pop mean {case.get('gen1_pop_mean')} → {case.get('steered_pop_mean')}).",
         "",
         f"DNA fitness transferability check: `{case.get('dna_fitness_transfers')}` "
         "(same DNA ⇒ same score across agent_id/gen).",
@@ -447,15 +506,22 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     compare = compare_b_vs_d(b_runs, d_runs)
-    # Prefer a positive-lift chain (tie → contradiction → DNA skew → fitness up).
+    # Prefer positive-lift + clear post-steering DNA skew (gen≥3 under delay-all).
     cases = [extract_case_study(d_run) for d_run in d_runs]
     cases = [c for c in cases if c and c.get("fitness_lift") is not None]
-    positive = [c for c in cases if float(c.get("fitness_lift") or 0) > 0]
+
+    def _case_score(c: dict) -> tuple:
+        lift = float(c.get("fitness_lift") or 0)
+        steered = float(c.get("steered_preferred_share") or 0)
+        pre = float(c.get("pre_steer_preferred_share") or c.get("gen2_preferred_share") or 0)
+        # Reward lift, absolute steered share, and share gain vs fair pre-steer gen.
+        return (lift > 0, steered, steered - pre, lift)
+
     case = None
-    if positive:
-        case = max(positive, key=lambda c: float(c.get("fitness_lift") or 0))
-    elif cases:
-        case = max(cases, key=lambda c: float(c.get("fitness_lift") or 0))
+    if cases:
+        positive = [c for c in cases if float(c.get("fitness_lift") or 0) > 0]
+        pool = positive or cases
+        case = max(pool, key=_case_score)
     elif d_runs:
         case = extract_case_study(d_runs[0])
 
@@ -511,7 +577,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Wrote {args.case_md}")
         print(
             f"Case study: field={case['field']} prefer={case['preferred_value']} "
-            f"lift={case.get('fitness_lift')} gen2_pref_share={case.get('gen2_preferred_share')}"
+            f"lift={case.get('fitness_lift')} "
+            f"steered_gen={case.get('steered_gen')} "
+            f"steered_pref_share={case.get('steered_preferred_share')} "
+            f"gen2_pref_share={case.get('gen2_preferred_share')}"
         )
     print(json.dumps(payload["compare"], indent=2))
     print(json.dumps(payload["compare_rows_brief"], indent=2))
