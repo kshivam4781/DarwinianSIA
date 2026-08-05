@@ -18,6 +18,8 @@ Examples:
   python scripts/run_g2_smoke.py --preflight-only --run-id 1850
   python scripts/run_g2_smoke.py --dry-run --run-id 1850
   python scripts/run_g2_smoke.py --live --run-id 1300 --seed 1
+  python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond
+  python scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv /tmp/gpqa_diamond.csv
 """
 
 from __future__ import annotations
@@ -40,6 +42,10 @@ from prepare_gpqa_smoke_data import (  # noqa: E402
     is_synthetic_smoke,
     prepare_task_tree,
     ensure_shared,
+)
+from prepare_gpqa_diamond import (  # noqa: E402
+    materialize_from_csv,
+    materialize_from_hf,
 )
 
 DEFAULT_BUDGET_CEILING = 20.0
@@ -403,10 +409,10 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
             "## Next",
             "",
             "1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` to the cloud environment.",
-            "2. Accept HF access for `Idavidrein/gpqa` and replace synthetic "
-            "`diamond_questions.json` (or set `HF_TOKEN` and fetch).",
-            "3. Re-run: `python scripts/run_g2_smoke.py --live --run-id <unused>` "
-            "after budget check.",
+            "2. Accept HF access for `Idavidrein/gpqa`, set `HF_TOKEN`, then either:",
+            "   `python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
+            "   or `python scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`",
+            "3. Re-run live G2 after budget check (unused integer run_id).",
             "4. Only then start live G3 B vs D pilot (Section 21.5).",
             "",
         ]
@@ -462,6 +468,26 @@ def main(argv: list[str] | None = None) -> int:
         default=REPO_ROOT / "SIA",
         help="Working directory for sia invocation",
     )
+    p.add_argument(
+        "--fetch-diamond",
+        action="store_true",
+        help=(
+            "Before preflight/live: replace synthetic smoke with real GPQA diamond "
+            "(HF_TOKEN + accepted Idavidrein/gpqa access, or --diamond-csv)."
+        ),
+    )
+    p.add_argument(
+        "--diamond-csv",
+        type=Path,
+        default=None,
+        help="Optional local gpqa_diamond.csv for --fetch-diamond (skips HF download)",
+    )
+    p.add_argument(
+        "--diamond-n",
+        type=int,
+        default=5,
+        help="Questions to materialize with --fetch-diamond (default 5)",
+    )
     args = p.parse_args(argv)
 
     if args.live:
@@ -477,7 +503,43 @@ def main(argv: list[str] | None = None) -> int:
         run_id = args.run_id if args.run_id is not None else DEFAULT_DRY_RUN_ID
         seed = args.seed if args.seed is not None else 42
 
+    fetch_notes: list[str] = []
+    if args.fetch_diamond or args.diamond_csv is not None:
+        try:
+            if args.diamond_csv is not None:
+                wrote = materialize_from_csv(
+                    args.diamond_csv,
+                    ["SIA", "sia-upstream"],
+                    n=args.diamond_n,
+                    seed=seed,
+                    force=True,
+                    repo_root=REPO_ROOT,
+                )
+                fetch_notes.append(f"materialized diamond from CSV → {wrote}")
+            else:
+                wrote = materialize_from_hf(
+                    ["SIA", "sia-upstream"],
+                    n=args.diamond_n,
+                    seed=seed,
+                    force=True,
+                    repo_root=REPO_ROOT,
+                )
+                fetch_notes.append(f"materialized diamond from HF → {wrote}")
+        except Exception as exc:
+            fetch_notes.append(f"diamond fetch failed: {exc}")
+            if selected == "live":
+                print(f"G2 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
+                # Still write a preflight report for the tick.
+                report = run_preflight(mode=selected, run_id=run_id)
+                report.notes.extend(fetch_notes)
+                report.command = build_sia_command(
+                    run_id=run_id, seed=seed, dry_run=False
+                )
+                write_gate2_report(report, args.report)
+                return 3
+
     report = run_preflight(mode=selected, run_id=run_id)
+    report.notes.extend(fetch_notes)
     report.command = build_sia_command(
         run_id=run_id, seed=seed, dry_run=(selected != "live")
     )

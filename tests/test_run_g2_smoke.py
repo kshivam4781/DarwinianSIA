@@ -158,6 +158,74 @@ def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
     assert "scoped_mutation_bias" in checks
 
 
+def test_main_fetch_diamond_from_csv_clears_synthetic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 25: --fetch-diamond --diamond-csv replaces smoke before preflight."""
+    import csv
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+
+    root = tmp_path
+    for name in ("SIA", "sia-upstream"):
+        task = root / name / "sia" / "tasks" / "gpqa"
+        task.mkdir(parents=True)
+        prepare_task_tree(task, n=5)
+        assert is_synthetic_smoke(task) is True
+
+    csv_path = root / "fake_diamond.csv"
+    fieldnames = [
+        "Question",
+        "Correct Answer",
+        "Incorrect Answer 1",
+        "Incorrect Answer 2",
+        "Incorrect Answer 3",
+        "High-level domain",
+        "Subdomain",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        for i in range(5):
+            w.writerow(
+                {
+                    "Question": f"Harness chem item {i}?",
+                    "Correct Answer": "yes",
+                    "Incorrect Answer 1": "no",
+                    "Incorrect Answer 2": "maybe",
+                    "Incorrect Answer 3": "never",
+                    "High-level domain": "Chemistry",
+                    "Subdomain": "General",
+                }
+            )
+
+    monkeypatch.setattr(mod, "REPO_ROOT", root)
+    report_path = root / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--preflight-only",
+            "--run-id",
+            "1851",
+            "--fetch-diamond",
+            "--diamond-csv",
+            str(csv_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 0
+    sia_task = root / "SIA" / "sia" / "tasks" / "gpqa"
+    assert is_synthetic_smoke(sia_task) is False
+    text = report_path.read_text(encoding="utf-8")
+    assert "materialized diamond from CSV" in text
+    # Still not live-ready without API keys
+    payload = json.loads(report_path.with_suffix(".json").read_text())
+    assert payload["ready_for_live"] is False
+    assert any(c["name"] == "gpqa_not_synthetic" and c["ok"] for c in payload["checks"])
+
+
 def test_write_gate2_report(tmp_path: Path) -> None:
     from run_g2_smoke import PreflightReport, CheckResult
 
