@@ -48,6 +48,12 @@ def _merge_technique_seeds(parent_a: AgentDNA, parent_b: AgentDNA) -> list[str]:
 # hurt gens-to-threshold and H5 while still skewing toward the winner.
 _BIAS_CROSSOVER_PREF_P = 0.85
 
+# ε-greedy exploration outside the contradiction-scoped mutation pool.
+# Without this, Condition D can trap the population in a suboptimal disputed
+# pair (e.g. minimal vs aggressive) and never discover a better unexplored
+# allele (selective) needed to cross accuracy thresholds.
+_BIAS_MUTATE_EXPLORE_EPS = 0.18
+
 
 def _crossover_pick(
     r: random.Random,
@@ -128,26 +134,37 @@ def _biased_choice(
 
     Preferred-allele anchoring (Condition D sample efficiency), when enabled:
     - If ``current`` is already the preferred (first) value, keep it.
-    - If ``current`` is outside the disputed pool, adopt preferred only
-      (never force the loser side onto a non-disputed allele).
+    - If ``current`` is outside the disputed pool, **preserve** it (do not
+      force preferred). Forcing outsiders onto the local winner trapped
+      populations in suboptimal contradiction pairs and blocked better
+      unexplored alleles from entering.
     - If ``current`` is a disputed non-preferred value, use exponential
-      rank weights so the higher-fitness side dominates exploration.
+      rank weights so the higher-fitness side dominates exploitation.
 
-    Soft mode (``anchor_preferred=False``): always sample the disputed pool
-    with exponential rank weights — still steers toward the winner, but does
-    not hard-collapse preferred share in early generations (helps H5 /
-    gens-to-threshold before later gens apply full anchoring).
+    ε-greedy exploration (``_BIAS_MUTATE_EXPLORE_EPS``): with small
+    probability sample the full trait enum so alleles absent from the
+    contradiction pair can still appear; fitness selection + later
+    contradictions can then adopt them (gens-to-threshold / H2 escape).
+
+    Soft mode (``anchor_preferred=False``): skip preferred protect / outsider
+    preserve; still ε-explore, otherwise sample the disputed pool with
+    exponential rank weights.
     """
     suggested = (bias or {}).get(field)
     if suggested:
         pool = [v for v in suggested if v in default_choices]
         if pool:
             preferred = pool[0]
-            if anchor_preferred:
-                if current == preferred:
-                    return preferred
-                if current is not None and current not in pool:
-                    return preferred
+            # Explore outside the disputed subspace before protect/exploit so a
+            # collapsed local winner (e.g. minimal) can still discover better
+            # unexplored alleles (selective) in later generations.
+            if default_choices and r.random() < _BIAS_MUTATE_EXPLORE_EPS:
+                return r.choice(default_choices)
+            if anchor_preferred and current == preferred:
+                return preferred
+            if anchor_preferred and current is not None and current not in pool:
+                # Retain unexplored outsider alleles (selective, etc.).
+                return current
             n = len(pool)
             # Exponential rank weights: first=3^(n-1), ..., last=1
             weights = [float(3 ** (n - 1 - i)) for i in range(n)]

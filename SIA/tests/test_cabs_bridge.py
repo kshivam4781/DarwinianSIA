@@ -248,53 +248,55 @@ def test_biased_mutate_skews_memory_vs_uniform():
     bias = {"memory": ["failure_based", "full_history"]}
     biased_counts = {m: 0 for m in MEMORY_MODES}
     uniform_counts = {m: 0 for m in MEMORY_MODES}
-    n = 200
+    n = 300
     for i in range(n):
-        dna = AgentDNA(memory="short_summary")
+        # Start on the disputed loser so skew is measured inside the pool
+        # (outsiders are intentionally preserved under ε-greedy anchoring).
+        dna = AgentDNA(memory="full_history")
         biased = mutate(dna, mutation_rate=1.0, rng=random.Random(1000 + i), bias=bias)
         uniform = mutate(dna, mutation_rate=1.0, rng=random.Random(1000 + i), bias=None)
         biased_counts[biased.memory] += 1
         uniform_counts[uniform.memory] += 1
 
-    biased_mass = biased_counts["failure_based"] + biased_counts["full_history"]
-    uniform_mass = uniform_counts["failure_based"] + uniform_counts["full_history"]
-    assert biased_mass == n
-    assert biased_counts["short_summary"] == 0
-    assert biased_mass > uniform_mass
-    # Preferred-allele anchoring: outsiders adopt preferred only → first dominates
+    # Preferred dominates loser; preferred rate far above uniform baseline.
     assert biased_counts["failure_based"] > biased_counts["full_history"]
-    assert biased_counts["failure_based"] == n
+    assert biased_counts["failure_based"] > int(0.45 * n)
+    assert biased_counts["failure_based"] > uniform_counts["failure_based"]
 
 def test_biased_mutate_anchors_preferred_allele():
-    """Preferred-allele anchoring: protect preferred; pull outsiders to winner only."""
+    """Preferred protect + outsider preserve + loser→preferred skew (ε-greedy)."""
     bias = {"memory": ["failure_based", "full_history"]}
 
-    # Outside disputed pool → must adopt preferred (never loser).
+    # Outside disputed pool → preserve outsider most of the time (not force
+    # preferred); ε-greedy may explore. Never hard-collapse to preferred.
     outs = []
-    for i in range(80):
+    for i in range(200):
         dna = AgentDNA(memory="short_summary")
         out = mutate(dna, mutation_rate=1.0, rng=random.Random(i), bias=bias)
         outs.append(out.memory)
-    assert all(m == "failure_based" for m in outs)
+    preserved = sum(1 for m in outs if m == "short_summary")
+    pref = sum(1 for m in outs if m == "failure_based")
+    assert preserved > int(0.50 * len(outs))
+    assert pref < int(0.35 * len(outs))
 
-    # Already preferred → stay preferred (protect).
+    # Already preferred → stay preferred except ε exploration.
     kept = []
-    for i in range(80):
+    for i in range(200):
         dna = AgentDNA(memory="failure_based")
         out = mutate(dna, mutation_rate=1.0, rng=random.Random(2000 + i), bias=bias)
         kept.append(out.memory)
-    assert all(m == "failure_based" for m in kept)
+    assert sum(1 for m in kept if m == "failure_based") > int(0.70 * len(kept))
 
-    # Loser side → preferred should dominate (exponential weights).
+    # Loser side → preferred should dominate (exponential weights); ε explores.
     from_loser = []
-    for i in range(200):
+    for i in range(300):
         dna = AgentDNA(memory="full_history")
         out = mutate(dna, mutation_rate=1.0, rng=random.Random(3000 + i), bias=bias)
         from_loser.append(out.memory)
     pref = sum(1 for m in from_loser if m == "failure_based")
     lose = sum(1 for m in from_loser if m == "full_history")
     assert pref > lose
-    assert pref + lose == 200
+    assert pref > int(0.45 * len(from_loser))
 
 def test_bias_aware_crossover_prefers_winner_allele():
     """Bias-aware crossover: soft-prefer preferred allele when one parent has it."""
@@ -382,8 +384,8 @@ def test_breed_offspring_can_delay_crossover_bias():
 def test_breed_offspring_can_delay_all_mutation_bias():
     """Early gens can disable mutation bias entirely (uniform mutate)."""
     bias = {"memory": ["failure_based", "full_history"]}
-    # Outsider parents: with mutation bias on + anchoring, all children → preferred.
-    # With mutation bias off (and fair XO), outsiders stay outside the disputed pool.
+    # Outsider parents: with mutation bias on, outsiders are preserved (ε may
+    # explore). With mutation bias off (and fair XO), mutate is uniform.
     parent_a = AgentDNA(memory="short_summary", tool_strategy="selective")
     parent_b = AgentDNA(memory="none", tool_strategy="aggressive")
 
@@ -406,7 +408,7 @@ def test_breed_offspring_can_delay_all_mutation_bias():
     assert len(set(delayed)) >= 3
 
     steered = []
-    for i in range(80):
+    for i in range(120):
         child = breed_offspring(
             parent_a,
             parent_b,
@@ -418,16 +420,21 @@ def test_breed_offspring_can_delay_all_mutation_bias():
             apply_mutation_anchor=True,
         )
         steered.append(child.memory)
-    assert all(m == "failure_based" for m in steered)
+    # Outsider preserve dominates; ε-greedy still allows some preferred entry.
+    preserved = sum(1 for m in steered if m in {"short_summary", "none"})
+    pref = sum(1 for m in steered if m == "failure_based")
+    assert preserved > int(0.40 * len(steered))
+    assert pref < int(0.40 * len(steered))
 
 
 def test_biased_mutate_can_soften_preferred_anchor():
     """Soft mutation bias: rank-weighted skew without hard preferred collapse."""
     bias = {"memory": ["failure_based", "full_history"]}
 
-    # Outsiders under soft mode: preferred dominates but loser remains possible.
+    # Outsiders under soft mode: preferred dominates but loser remains possible;
+    # ε-greedy may also emit alleles outside the disputed pool.
     outs = []
-    for i in range(200):
+    for i in range(300):
         dna = AgentDNA(memory="short_summary")
         out = mutate(
             dna,
@@ -439,9 +446,9 @@ def test_biased_mutate_can_soften_preferred_anchor():
         outs.append(out.memory)
     pref = sum(1 for m in outs if m == "failure_based")
     lose = sum(1 for m in outs if m == "full_history")
-    assert pref + lose == 200
     assert pref > lose
     assert lose > 0
+    assert pref + lose > int(0.70 * len(outs))
 
     # Already-preferred under soft mode can occasionally flip (no hard protect).
     flipped = 0
@@ -475,13 +482,14 @@ def test_biased_mutate_can_soften_preferred_anchor():
         soft_outs.append(child.memory)
     soft_pref = sum(1 for m in soft_outs if m == "failure_based")
     soft_lose = sum(1 for m in soft_outs if m == "full_history")
-    assert soft_pref + soft_lose == 160
+    # Soft mode samples disputed pool (plus ε full-enum exploration).
     assert soft_pref > soft_lose
     assert soft_lose > 0
+    assert soft_pref + soft_lose > int(0.70 * len(soft_outs))
 
-    # Anchoring restored → outsiders hard-collapse to preferred.
+    # Anchoring restored → outsiders mostly preserved (ε may explore).
     hard = []
-    for i in range(80):
+    for i in range(160):
         child = breed_offspring(
             parent_a,
             parent_b,
@@ -492,7 +500,38 @@ def test_biased_mutate_can_soften_preferred_anchor():
             apply_mutation_anchor=True,
         )
         hard.append(child.memory)
-    assert all(m == "failure_based" for m in hard)
+    preserved = sum(1 for m in hard if m == "short_summary")
+    assert preserved > int(0.50 * len(hard))
+
+
+def test_biased_mutate_epsilon_explores_outside_disputed_pool():
+    """ε-greedy mutation can discover alleles absent from the contradiction pair.
+
+    Regression for suboptimal-pool traps: bias=[minimal, aggressive] must not
+    permanently exclude selective (higher latent fitness offline / live escape).
+    """
+    bias = {"tool_strategy": ["minimal", "aggressive"]}
+    seen = set()
+    selective = 0
+    n = 400
+    for i in range(n):
+        # Start from collapsed local winner (preferred).
+        dna = AgentDNA(tool_strategy="minimal", memory="failure_based")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(15000 + i), bias=bias)
+        seen.add(out.tool_strategy)
+        if out.tool_strategy == "selective":
+            selective += 1
+    assert "selective" in seen
+    assert selective > 0
+    # Still mostly exploits preferred (protect + pool weights dominate ε).
+    # Re-count preferred retention from preferred parents.
+    pref_keep = 0
+    for i in range(n):
+        dna = AgentDNA(tool_strategy="minimal")
+        out = mutate(dna, mutation_rate=1.0, rng=random.Random(16000 + i), bias=bias)
+        if out.tool_strategy == "minimal":
+            pref_keep += 1
+    assert pref_keep > int(0.70 * n)
 
 
 def test_mutation_bias_skips_singleton_candidates(tmp_path):
