@@ -62,8 +62,17 @@ def _confidence_score(threshold: float) -> float:
     return max(0.0, 0.06 * (1.0 - dist / 0.35))
 
 
+# Output scale for normalized latent sum. Compressed from the Tick-9
+# [0.02, 0.38] mapping after Tick-15 showed ~42% of gen-1 best-of-4 seeds
+# already ≥30% under that ceiling (threshold saturation → gens30 uninformative).
+# [0.02, 0.34] keeps typical gen-1 best under 30% while near-optimal DNA
+# (e.g. selective + failure_based + mid/high companions) can still cross 30%.
+_FITNESS_FLOOR = 0.02
+_FITNESS_SPAN = 0.32  # → ceiling 0.34
+
+
 def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
-    """Produce stable, varied fitness in ~[0.02, 0.38] from transferable DNA traits.
+    """Produce stable, varied fitness in ~[0.02, 0.34] from transferable DNA traits.
 
     Fitness depends **only** on DNA trait values (not ``agent_id`` / ``generation``),
     so offspring that inherit a high-fitness parent's traits keep that fitness
@@ -83,13 +92,13 @@ def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> floa
     total += _LATENT_TRAIT_SCORES["prompt_structure"].get(dna.prompt_structure, 0.0)
     total += _REFLECTION_SCORE.get(bool(dna.reflection), 0.0)
     total += _confidence_score(dna.confidence_threshold)
-    # Normalize additive sum into ~[0.02, 0.38]. With pop=4, gen-1 best is
-    # often still under 30% (and sometimes under 25%), so gens-to-threshold
-    # PRIMARY contrasts are informative offline; Condition D climbs by
-    # adopting high-latent contradiction-preferred traits.
+    # Normalize additive sum into ~[0.02, 0.34]. Ceiling is low enough that
+    # pop=4 gen-1 best is usually still under 30%, so gens-to-threshold
+    # PRIMARY contrasts stay discriminative under delay-all mutation bias;
+    # Condition D climbs past 30% by adopting high-latent preferred traits.
     span = _MAX_LATENT
     norm = (total - _BASE_FITNESS) / span if span > 0 else 0.0
-    fitness = 0.02 + 0.36 * max(0.0, min(1.0, norm))
+    fitness = _FITNESS_FLOOR + _FITNESS_SPAN * max(0.0, min(1.0, norm))
     return round(fitness, 4)
 
 

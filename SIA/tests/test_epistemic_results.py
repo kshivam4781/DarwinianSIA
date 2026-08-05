@@ -33,11 +33,53 @@ def test_deterministic_fitness_varies_by_dna():
     b = AgentDNA(memory="none", tool_strategy="aggressive")
     fa = deterministic_fitness(0, a, 1)
     fb = deterministic_fitness(0, b, 1)
-    assert 0.02 <= fa <= 0.40
-    assert 0.02 <= fb <= 0.40
+    assert 0.02 <= fa <= 0.34
+    assert 0.02 <= fb <= 0.34
     assert fa != fb
     # Additive latent: selective + failure_based must beat aggressive + none
     assert fa > fb
+
+
+def test_deterministic_fitness_scale_keeps_mid_dna_under_threshold():
+    """Compressed scale: mid DNA <30%; near-optimal preferred DNA can cross 30%.
+
+    Tick 15 saturation: old [0.02, 0.38] mapping put ~42% of gen-1 best-of-4
+    seeds already ≥30%. Ceiling 0.34 keeps early gens discriminative.
+    """
+    mid = AgentDNA(
+        planning_style="stepwise",
+        reflection=True,
+        tool_strategy="selective",
+        retry_policy="generic",
+        memory="short_summary",
+        confidence_threshold=0.70,
+        prompt_structure="detailed",
+    )
+    almost = AgentDNA(
+        planning_style="stepwise",
+        reflection=True,
+        tool_strategy="selective",
+        retry_policy="generic",
+        memory="failure_based",
+        confidence_threshold=0.75,
+        prompt_structure="detailed",
+    )
+    perfect = AgentDNA(
+        planning_style="hierarchical",
+        reflection=True,
+        tool_strategy="selective",
+        retry_policy="error_specific",
+        memory="failure_based",
+        confidence_threshold=0.75,
+        prompt_structure="chain_of_thought",
+    )
+    f_mid = deterministic_fitness(0, mid, 1)
+    f_almost = deterministic_fitness(0, almost, 1)
+    f_perfect = deterministic_fitness(0, perfect, 1)
+    assert f_mid < 0.30
+    assert f_almost >= 0.30
+    assert f_perfect <= 0.34
+    assert f_perfect > f_almost > f_mid
 
 
 def test_deterministic_fitness_transfers_with_dna_traits():
