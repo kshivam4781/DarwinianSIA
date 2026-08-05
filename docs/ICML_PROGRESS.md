@@ -4,6 +4,38 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T18:20Z — Tick 23 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-dcdb` (fast-forwarded Ticks 1–22 from `2710`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA; secrets re-requested; GPQA diamond HF-gated)
+- Budget: ~$20 ceiling; spend this tick = $0
+- Infra: installed `python3.12-venv` on cloud host (was missing for per-run venvs)
+
+### Largest gap diagnosed
+G2–G4 still blocked without API keys. Offline PRIMARY/H5 already strong (gens30/cost30 **4/5**, H5 **5/5**), but the MECHANISM case study attributed DNA skew to **gen2** preferred share (~0.25) — which is still **fair-bred under delay-all**. That understated H2 and misaligned the paper chain with Tick 14 (first steered generation = gen3).
+
+### What this tick did (ONE step)
+**Post-steering case-study H2 extraction + offline re-pilot:**
+1. `scripts/offline_bvd_case_study.py`: measure preferred DNA share at gen≥3; keep gen2 as pre-steer baseline; prefer multi-allele + fitness-aligned contradictions with non-trivial lift
+2. Unit tests `tests/test_offline_case_study_steered.py`
+3. Offline B vs D re-pilot `1830–1834` / `1840–1844` (`max_gen=6`); case study `run_1840`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 22) | After (Tick 23) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | **5/5 / 4/5 / 4/5 / 5/5** (stable) |
+| Mean final gap (D−B) | ~6.15pp | ~**6.15pp** |
+| Case-study H2 window | gen2 share **0.25** (`1823`) | **gen3 steered share 0.75** (`1840`; gen1/2/3 = 0.25→0.5→0.75) |
+| Case-study lift | +0.0869 | **+0.0436** (preferred@gen3 − loser@gen1; fitness-aligned `selective`) |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked (secrets + GPQA diamond re-requested) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present: obtain real GPQA diamond (HF gated — needs dataset access), budget-check, then **live G2** smoke (drop `--dry-run`; ≤5 samples, pop≤2, max_gen≤2, one seed, unused run_id ≥1850). Do **not** set READY from offline post-steer H2 alone.
+
+---
+
 ## 2026-08-05T16:58Z — Tick 22 (automation cron)
 
 ### Status snapshot

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-05 (Section 21 ICML; Tick 22 cost-to-threshold PRIMARY + offline `1810–1814`/`1820–1824`)  
+**Last updated:** 2026-08-05 (Section 21 ICML; Tick 23 post-steering case-study H2 + pilot `1830–1834`/`1840–1844`)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -819,14 +819,15 @@ Computed in `cabs/belief_engine.py`:
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9 additive latent; **Tick 16** ceiling 0.34 (was 0.38) so gens-to-30% stay discriminative |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% + **cost-to-threshold** (Tick 22); Tick 18–19 H5 protocol |
-| Offline B vs D case-study pilot | **DONE** | Latest Tick 22 `1810–1814` / `1820–1824` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1823`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick 23 `1830–1834` / `1840–1844` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1840`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp; post-steer H2 share **0.75** at gen3 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
+| Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/` |
 | CLI Condition D dry-run (harness) | **DONE** | Tick 21: `run_1800` via real `sia run --task gpqa --cabs --cabs-inline --dry-run` (belief_store + scoped bias) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need real GPQA diamond for live G2 |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need real GPQA diamond + HF access for live G2 |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 22 **5/5** ρ>0.3 (`1820–1824`, mean forward Δ, gen≥2, horizon=2); live required |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
 | Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 cost stub; live empty — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
@@ -1638,3 +1639,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **GPQA smoke fixture + CLI dry-run (2026-08-05 Tick 21):** Cloud checkouts omit gitignored `sia/tasks/gpqa/data/`. `scripts/prepare_gpqa_smoke_data.py` materializes a 5-question synthetic fixture (public without answers; private with `correct_answer_letter`). Validated real CLI path: `sia run --task gpqa --darwinian --cabs --cabs-inline --dry-run --eval_subset 5 --population_size 2 --max_gen 2 --run_id 1800` → belief_store + scoped mutation bias + `epistemic_value.jsonl`. **Not** live G2 (still needs API keys + real GPQA diamond).
 
 **Cost-to-threshold PRIMARY (b) (2026-08-05 Tick 22):** `scripts/epistemic_results.py` now accumulates per-gen cost (prefer `total_*_tokens` / `total_cost_usd`, else eval-call proxy from `eval_subset`) until gens-to-threshold; `_cost_win` requires ≥15% fewer units (reach-vs-never counts). Offline re-pilot `1810–1814` / `1820–1824` → gens30 **4/5**, cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**. Case study `run_1823`. Live G2–G4 still blocked (no API keys).
+
+**Post-steering case-study H2 (2026-08-05 Tick 23):** Prior case studies reported gen2 preferred share (often ~0.25), but delay-all keeps gen1→gen2 fair — so that understated H2. `extract_case_study` now measures preferred DNA share at gen≥3 (first steered generation), prefers multi-allele + fitness-aligned contradictions, and re-pilots `1830–1834` / `1840–1844` → same PRIMARY/H5 offline rates; case study `run_1840` shows `tool_strategy=selective` share **0.25→0.5→0.75** (gen1/2/3) with lift **+0.0436**. Live G2–G4 still blocked (no API keys; GPQA diamond gated on HuggingFace).

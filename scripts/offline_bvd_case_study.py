@@ -196,6 +196,40 @@ def preferred_share(traits: list[dict], preferred: str) -> float | None:
     return n / len(traits)
 
 
+def contradiction_allele_count(case: dict) -> int:
+    """How many distinct bias-pool alleles appear in the chosen contradiction text."""
+    text = (
+        f"{(case.get('contradiction') or {}).get('belief_a', '')} || "
+        f"{(case.get('contradiction') or {}).get('belief_b', '')}"
+    )
+    pool = list(case.get("bias_order") or [])
+    return sum(1 for v in pool if v and v in text)
+
+
+def preferred_matches_higher_fitness_side(case: dict) -> bool:
+    """True when the preferred allele is the higher-fitness side in the contradiction text."""
+    import re
+
+    preferred = case.get("preferred_value")
+    if not preferred:
+        return False
+    pref_fits: list[float] = []
+    other_fits: list[float] = []
+    for key in ("belief_a", "belief_b"):
+        text = str((case.get("contradiction") or {}).get(key) or "")
+        fit_m = re.search(r"fitness\s*[:=]?\s*(-?\d+(?:\.\d+)?)", text, re.I)
+        if not fit_m:
+            continue
+        fit = float(fit_m.group(1))
+        if preferred in text:
+            pref_fits.append(fit)
+        else:
+            other_fits.append(fit)
+    if not pref_fits or not other_fits:
+        return False
+    return max(pref_fits) >= max(other_fits)
+
+
 def extract_case_study(
     run_dir: Path,
     *,
@@ -214,21 +248,22 @@ def extract_case_study(
     if not contradictions or not bias:
         return None
 
-    # Prefer a contradiction whose belief texts mention fitness and a DNA field in bias.
-    chosen = None
-    field = None
-    for c in sorted(contradictions, key=lambda x: -float(x.get("priority", 0))):
+    # Prefer contradictions whose belief texts name ≥2 distinct bias-pool alleles
+    # (clear tie → opposing DNA), then higher priority.
+    candidates: list[tuple[int, float, dict, str]] = []
+    for c in contradictions:
         text = f"{c.get('belief_a', '')} || {c.get('belief_b', '')}"
         for f, values in bias.items():
             if len(values) < 2:
                 continue
             if f in text or any(v in text for v in values):
-                chosen = c
-                field = f
+                allele_hits = sum(1 for v in values if v and v in text)
+                candidates.append((allele_hits, float(c.get("priority", 0) or 0), c, f))
                 break
-        if chosen is not None:
-            break
-    if chosen is None:
+    if candidates:
+        candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
+        _, _, chosen, field = candidates[0]
+    else:
         field = next(iter(bias))
         chosen = contradictions[0]
 
@@ -514,8 +549,19 @@ def main(argv: list[str] | None = None) -> int:
         lift = float(c.get("fitness_lift") or 0)
         steered = float(c.get("steered_preferred_share") or 0)
         pre = float(c.get("pre_steer_preferred_share") or c.get("gen2_preferred_share") or 0)
-        # Reward lift, absolute steered share, and share gain vs fair pre-steer gen.
-        return (lift > 0, steered, steered - pre, lift)
+        alleles = contradiction_allele_count(c)
+        aligned = preferred_matches_higher_fitness_side(c)
+        # Prefer multi-allele + fitness-aligned preferred + non-trivial lift,
+        # then post-steer skew/gain, then raw lift.
+        return (
+            alleles >= 2,
+            aligned,
+            lift >= 0.02,
+            steered >= 0.5,
+            steered,
+            steered - pre,
+            lift,
+        )
 
     case = None
     if cases:
