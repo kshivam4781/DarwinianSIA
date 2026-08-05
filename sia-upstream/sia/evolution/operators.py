@@ -142,9 +142,11 @@ def _biased_choice(
       rank weights so the higher-fitness side dominates exploitation.
 
     ε-greedy exploration (``_BIAS_MUTATE_EXPLORE_EPS``): with small
-    probability sample the full trait enum so alleles absent from the
-    contradiction pair can still appear; fitness selection + later
-    contradictions can then adopt them (gens-to-threshold / H2 escape).
+    probability sample alleles **outside** the disputed pool (directed
+    explore). Uniform sampling over the full enum often re-drew pool
+    members and left populations stuck on suboptimal pairs (e.g. seed 22
+    never discovered ``selective``). Fitness selection + live harvest
+    then adopt high-scoring outsiders (gens-to-threshold / H2 escape).
 
     Soft mode (``anchor_preferred=False``): skip preferred protect / outsider
     preserve; still ε-explore, otherwise sample the disputed pool with
@@ -155,10 +157,12 @@ def _biased_choice(
         pool = [v for v in suggested if v in default_choices]
         if pool:
             preferred = pool[0]
-            # Explore outside the disputed subspace before protect/exploit so a
-            # collapsed local winner (e.g. minimal) can still discover better
-            # unexplored alleles (selective) in later generations.
+            # Directed explore: sample only alleles absent from the disputed
+            # pool so ε steps actually escape (not re-draw minimal/aggressive).
             if default_choices and r.random() < _BIAS_MUTATE_EXPLORE_EPS:
+                outsiders = [v for v in default_choices if v not in pool]
+                if outsiders:
+                    return r.choice(outsiders)
                 return r.choice(default_choices)
             if anchor_preferred and current == preferred:
                 return preferred

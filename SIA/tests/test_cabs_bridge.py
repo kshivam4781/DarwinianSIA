@@ -579,6 +579,9 @@ def test_biased_mutate_epsilon_explores_outside_disputed_pool():
 
     Regression for suboptimal-pool traps: bias=[minimal, aggressive] must not
     permanently exclude selective (higher latent fitness offline / live escape).
+
+    Tick 20: explore is *directed* — ε steps sample only outsiders (not the
+    full enum), so rediscovering pool members does not waste explore budget.
     """
     bias = {"tool_strategy": ["minimal", "aggressive"]}
     seen = set()
@@ -592,7 +595,8 @@ def test_biased_mutate_epsilon_explores_outside_disputed_pool():
         if out.tool_strategy == "selective":
             selective += 1
     assert "selective" in seen
-    assert selective > 0
+    # Directed explore: only outsider for tool_strategy is selective → ε≈0.18.
+    assert selective > int(0.10 * n)
     # Still mostly exploits preferred (protect + pool weights dominate ε).
     # Re-count preferred retention from preferred parents.
     pref_keep = 0
@@ -602,6 +606,24 @@ def test_biased_mutate_epsilon_explores_outside_disputed_pool():
         if out.tool_strategy == "minimal":
             pref_keep += 1
     assert pref_keep > int(0.70 * n)
+
+
+def test_biased_mutate_directed_explore_never_redraws_pool():
+    """Directed ε-explore must not re-sample disputed-pool alleles."""
+    bias = {"tool_strategy": ["minimal", "aggressive"]}
+    pool = set(bias["tool_strategy"])
+    n = 200
+    for i in range(n):
+        # Force explore path via patched eps=1.0 through Random that always
+        # draws < eps on first call, then arbitrary.
+        class AlwaysExplore(random.Random):
+            def random(self):
+                return 0.0  # < any positive eps → explore
+
+        dna = AgentDNA(tool_strategy="minimal")
+        out = mutate(dna, mutation_rate=1.0, rng=AlwaysExplore(i), bias=bias)
+        assert out.tool_strategy not in pool
+        assert out.tool_strategy == "selective"
 
 
 def test_mutation_bias_skips_singleton_candidates(tmp_path):
