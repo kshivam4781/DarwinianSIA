@@ -239,22 +239,25 @@ def breed_offspring(
     bias: dict[str, list[str]] | None = None,
     technique_seeds: list[str] | None = None,
     apply_crossover_bias: bool = True,
+    apply_mutation_bias: bool = True,
     apply_mutation_anchor: bool = True,
 ) -> AgentDNA:
     """Crossover two parents then apply mutation.
 
-    Mutation bias always applies when ``bias`` is set. Preferred-allele
-    anchoring and crossover bias are optional so early generations can keep
-    soft rank-weighted mutate + fair 50/50 XO (sample diversity / H5) while
-    later gens apply full preferred anchoring and soft bias-aware XO.
+    Crossover bias, mutation bias, and preferred-allele anchoring are each
+    optional so early generations can stay fair (Condition-B-like breeding)
+    while later gens apply full CABS steering (soft bias-aware XO + anchored
+    mutate). When ``apply_mutation_bias`` is False, mutate is uniform even if
+    ``bias`` is set.
     """
     xo_bias = bias if apply_crossover_bias else None
+    mut_bias = bias if apply_mutation_bias else None
     child = crossover(parent_a, parent_b, rng=rng, bias=xo_bias)
     child = mutate(
         child,
         mutation_rate,
         rng=rng,
-        bias=bias,
+        bias=mut_bias,
         anchor_preferred=apply_mutation_anchor,
     )
     return inject_technique_seeds(child, technique_seeds or [])

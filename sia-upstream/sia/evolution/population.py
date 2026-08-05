@@ -590,12 +590,12 @@ def run_darwinian_loop(
             if cabs_technique_seeds:
                 logger.info(f"  CABS technique seeds: {cabs_technique_seeds}")
 
-        # Temper early Condition D collapse: first breeding (gen1→gen2) keeps
-        # fair XO + soft (non-anchored) mutation bias so preferred share does
-        # not hit 1.0 before H5 / gens-to-threshold can accumulate. From
-        # breeding gen≥2 onward, restore preferred-allele anchoring + soft
-        # bias-aware crossover.
+        # Delay *all* Condition D DNA steering until breeding from gen≥2:
+        # gen1→gen2 stays fair (no XO bias, no mutation bias) so preferred
+        # share cannot collapse before H5 / gens-to-threshold accumulate.
+        # From gen≥2 onward: soft bias-aware XO + full preferred anchoring.
         apply_crossover_bias = current_gen >= 2
+        apply_mutation_bias = current_gen >= 2
         apply_mutation_anchor = current_gen >= 2
 
         for agent_id in range(population_size):
@@ -610,6 +610,7 @@ def run_darwinian_loop(
                 bias=mutation_bias,
                 technique_seeds=cabs_technique_seeds,
                 apply_crossover_bias=apply_crossover_bias,
+                apply_mutation_bias=apply_mutation_bias,
                 apply_mutation_anchor=apply_mutation_anchor,
             )
 

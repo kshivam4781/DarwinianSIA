@@ -379,6 +379,48 @@ def test_breed_offspring_can_delay_crossover_bias():
     assert steered < n
 
 
+def test_breed_offspring_can_delay_all_mutation_bias():
+    """Early gens can disable mutation bias entirely (uniform mutate)."""
+    bias = {"memory": ["failure_based", "full_history"]}
+    # Outsider parents: with mutation bias on + anchoring, all children → preferred.
+    # With mutation bias off (and fair XO), outsiders stay outside the disputed pool.
+    parent_a = AgentDNA(memory="short_summary", tool_strategy="selective")
+    parent_b = AgentDNA(memory="none", tool_strategy="aggressive")
+
+    delayed = []
+    for i in range(120):
+        child = breed_offspring(
+            parent_a,
+            parent_b,
+            mutation_rate=1.0,
+            rng=random.Random(11000 + i),
+            bias=bias,
+            apply_crossover_bias=False,
+            apply_mutation_bias=False,
+            apply_mutation_anchor=False,
+        )
+        delayed.append(child.memory)
+    # Uniform mutate over MEMORY_MODES — preferred must not dominate.
+    pref = sum(1 for m in delayed if m == "failure_based")
+    assert pref < int(0.35 * len(delayed))
+    assert len(set(delayed)) >= 3
+
+    steered = []
+    for i in range(80):
+        child = breed_offspring(
+            parent_a,
+            parent_b,
+            mutation_rate=1.0,
+            rng=random.Random(12000 + i),
+            bias=bias,
+            apply_crossover_bias=True,
+            apply_mutation_bias=True,
+            apply_mutation_anchor=True,
+        )
+        steered.append(child.memory)
+    assert all(m == "failure_based" for m in steered)
+
+
 def test_biased_mutate_can_soften_preferred_anchor():
     """Soft mutation bias: rank-weighted skew without hard preferred collapse."""
     bias = {"memory": ["failure_based", "full_history"]}
