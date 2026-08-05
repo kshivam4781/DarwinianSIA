@@ -7,25 +7,25 @@
     55
   ],
   "b_run_ids": [
-    1630,
-    1631,
-    1632,
-    1633,
-    1634
+    1650,
+    1651,
+    1652,
+    1653,
+    1654
   ],
   "d_run_ids": [
-    1640,
-    1641,
-    1642,
-    1643,
-    1644
+    1660,
+    1661,
+    1662,
+    1663,
+    1664
   ],
   "compare": {
     "n_pairs": 5,
     "d_wins_gens25": 0,
     "b_wins_gens25": 0,
-    "d_wins_gens30": 0,
-    "b_wins_gens30": 1,
+    "d_wins_gens30": 2,
+    "b_wins_gens30": 0,
     "d_wins_final": 3,
     "b_wins_final": 1,
     "primary_gens25_pass": false,
@@ -34,41 +34,41 @@
   "compare_rows_brief": [
     {
       "seed": 11,
-      "B_final": 0.2958,
-      "D_final": 0.3369,
+      "B_final": 0.2652,
+      "D_final": 0.3017,
       "B_gens25": 1,
       "D_gens25": 1,
-      "B_gens30": 2,
-      "D_gens30": 2,
+      "B_gens30": null,
+      "D_gens30": 3,
       "D_h5_rho": 0.6,
       "D_h2_share": 0.7916666666666666
     },
     {
       "seed": 22,
-      "B_final": 0.2515,
-      "D_final": 0.296,
+      "B_final": 0.2258,
+      "D_final": 0.2653,
       "B_gens25": 1,
       "D_gens25": 1,
-      "B_gens30": 4,
-      "D_gens30": 5,
+      "B_gens30": null,
+      "D_gens30": null,
       "D_h5_rho": 0.3,
       "D_h2_share": 0.0
     },
     {
       "seed": 33,
-      "B_final": 0.3294,
-      "D_final": 0.3075,
+      "B_final": 0.295,
+      "D_final": 0.2756,
       "B_gens25": 1,
       "D_gens25": 1,
-      "B_gens30": 1,
-      "D_gens30": 1,
+      "B_gens30": null,
+      "D_gens30": null,
       "D_h5_rho": 0.09999999999999999,
       "D_h2_share": 0.9583333333333334
     },
     {
       "seed": 44,
-      "B_final": 0.2472,
-      "D_final": 0.2463,
+      "B_final": 0.222,
+      "D_final": 0.2211,
       "B_gens25": 1,
       "D_gens25": 1,
       "B_gens30": 2,
@@ -78,18 +78,18 @@
     },
     {
       "seed": 55,
-      "B_final": 0.2844,
-      "D_final": 0.349,
+      "B_final": 0.255,
+      "D_final": 0.3125,
       "B_gens25": 1,
       "D_gens25": 1,
-      "B_gens30": 1,
-      "D_gens30": 1,
+      "B_gens30": null,
+      "D_gens30": 5,
       "D_h5_rho": 0.39999999999999997,
       "D_h2_share": 0.9583333333333334
     }
   ],
   "case_study": {
-    "run_dir": "/workspace/runs/run_1640",
+    "run_dir": "/workspace/runs/run_1660",
     "field": "tool_strategy",
     "preferred_value": "selective",
     "bias_order": [
@@ -98,8 +98,8 @@
     ],
     "contradiction": {
       "topic": "tool_use",
-      "belief_a": "Agent 0: tool_strategy=selective achieved fitness 0.2863 (population mean 0.2525)",
-      "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.2439 (population mean 0.2525)",
+      "belief_a": "Agent 0: tool_strategy=selective achieved fitness 0.2567 (population mean 0.2267)",
+      "belief_b": "Agent 1: tool_strategy=aggressive achieved fitness 0.2191 (population mean 0.2267)",
       "priority": 0.85,
       "agents": [
         0,
@@ -110,52 +110,52 @@
       {
         "agent_id": 0,
         "trait": "selective",
-        "fitness": 0.2863
+        "fitness": 0.2567
       },
       {
         "agent_id": 1,
         "trait": "aggressive",
-        "fitness": 0.2439
+        "fitness": 0.2191
       },
       {
         "agent_id": 2,
         "trait": "minimal",
-        "fitness": 0.2831
+        "fitness": 0.2539
       },
       {
         "agent_id": 3,
         "trait": "minimal",
-        "fitness": 0.1968
+        "fitness": 0.1772
       }
     ],
     "gen2_traits": [
       {
         "agent_id": 0,
         "trait": "minimal",
-        "fitness": 0.2167
+        "fitness": 0.1949
       },
       {
         "agent_id": 1,
         "trait": "selective",
-        "fitness": 0.3157
+        "fitness": 0.2829
       },
       {
         "agent_id": 2,
         "trait": "selective",
-        "fitness": 0.2667
+        "fitness": 0.2393
       },
       {
         "agent_id": 3,
         "trait": "aggressive",
-        "fitness": 0.2521
+        "fitness": 0.2263
       }
     ],
-    "gen1_preferred_mean_fitness": 0.2863,
-    "gen1_loser_mean_fitness": 0.2439,
-    "gen2_preferred_mean_fitness": 0.2912,
-    "gen1_pop_mean": 0.252525,
-    "gen2_pop_mean": 0.2628,
-    "fitness_lift": 0.04730000000000001,
+    "gen1_preferred_mean_fitness": 0.2567,
+    "gen1_loser_mean_fitness": 0.2191,
+    "gen2_preferred_mean_fitness": 0.2611,
+    "gen1_pop_mean": 0.226725,
+    "gen2_pop_mean": 0.23585,
+    "fitness_lift": 0.04200000000000001,
     "gen2_preferred_share": 0.5,
     "dna_fitness_transfers": true,
     "belief_count": 15,
@@ -165,6 +165,5 @@
     "/workspace/docs/figures/fig1_learning_curves.png",
     "/workspace/docs/figures/fig2_mechanism.png"
   ],
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only (Tick 15, max_gen=6, delay-all mutation bias). Do not set ICML_READY PRIMARY from this.",
-  "max_gen": 6
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
 }

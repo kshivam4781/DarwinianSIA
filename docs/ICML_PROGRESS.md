@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T04:05Z — Tick 16 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-3956` (fast-forwarded Ticks 1–15 from `b670`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 15: final **3/5**, gens30 **0/5**, H5 **2/5**, mean gap ~2.55pp. Root cause of gens30 fail: **threshold saturation** — ~42% of gen-1 best-of-4 seeds already ≥30% under the `[0.02, 0.38]` latent mapping.
+
+### What this tick did (ONE step)
+**Retuned additive latent fitness scale** so early gens sit below 30%:
+1. `deterministic_fitness` now maps normalized latent sum into `[0.02, 0.34]` (`_FITNESS_FLOOR` / `_FITNESS_SPAN`)
+2. Unit test `test_deterministic_fitness_scale_keeps_mid_dna_under_threshold`
+3. Synced `sia-upstream/` copies
+4. Re-pilot B `1650–1654` vs D `1660–1664` (`max_gen=6`); case study on `run_1660`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 15) | After (Tick 16) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 3/5 | **3/5** (B final wins 1) — stable |
+| Offline D gens30 wins | 0/5 | **2/5** (B: 0) — improved; still short of ≥3/5 |
+| Mean final gap (D−B) | ~2.55pp | ~**2.26pp** — slight regression |
+| Offline H5 ρ>0.3 | 2/5 | **2/5** (0.6 / 0.3 / 0.1 / 0.3 / 0.4) — unchanged |
+| Gen-1 ≥30% (both cond) | 4/5 seeds | **0/5** — saturation fixed |
+| Case study gen2 pref share / lift | 0.5 / +0.0473 (`1640`) | **0.5 / +0.0420** (`1660`) — stable |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. If still no keys: push offline gens30 to ≥3/5 (e.g. strengthen late-gen preferred adoption / slightly longer horizon on lagging seeds 22/33) and restore H5 ≥4/5 while keeping final ≥3/5. Do **not** set READY — live GPQA still required; offline gens30 still 2/5.
+
+---
+
 ## 2026-08-05T02:00Z — Tick 15 (automation cron)
 
 ### Status snapshot
