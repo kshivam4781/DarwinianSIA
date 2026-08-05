@@ -13,6 +13,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 from prepare_gpqa_smoke_data import (  # noqa: E402
     check_task_tree,
+    is_synthetic_smoke,
     prepare_task_tree,
 )
 
@@ -39,3 +40,10 @@ def test_check_task_tree_reports_missing(tmp_path: Path) -> None:
     task_dir.mkdir()
     missing = check_task_tree(task_dir)
     assert len(missing) == 3
+
+
+def test_is_synthetic_smoke_true_for_prepared_fixture(tmp_path: Path) -> None:
+    task_dir = tmp_path / "gpqa"
+    task_dir.mkdir()
+    prepare_task_tree(task_dir, n=3)
+    assert is_synthetic_smoke(task_dir) is True

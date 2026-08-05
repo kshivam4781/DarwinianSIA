@@ -109,6 +109,39 @@ def check_task_tree(task_dir: Path) -> list[str]:
     return missing
 
 
+def is_synthetic_smoke(task_dir: Path) -> bool:
+    """True when diamond_questions.json looks like this script's synthetic fixture.
+
+    Live/paid G2 must refuse synthetic answers (domain=smoke / Smoke Q* text).
+    Missing files → False (caller should use check_task_tree separately).
+    """
+    priv = task_dir / "data" / "private" / "diamond_questions.json"
+    pub = task_dir / "data" / "public" / "diamond_questions.json"
+    path = priv if priv.is_file() else pub
+    if not path.is_file():
+        return False
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(rows, list) or not rows:
+        return False
+    sample = rows[0] if isinstance(rows[0], dict) else {}
+    domain = str(sample.get("domain") or "").lower()
+    question = str(sample.get("Question") or sample.get("question") or "")
+    if domain == "smoke":
+        return True
+    if question.startswith("Smoke Q"):
+        return True
+    # All-smoke domains count even if first row was weird.
+    domains = {
+        str(r.get("domain") or "").lower()
+        for r in rows
+        if isinstance(r, dict)
+    }
+    return domains == {"smoke"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
