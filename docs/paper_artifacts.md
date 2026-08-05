@@ -1,10 +1,10 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot refreshed (2026-08-05 Tick 18, H5 steered-window + mean Δfitness). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot refreshed (2026-08-05 Tick 19, H5 forward-horizon Δfitness). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
-We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift). Delaying all Condition D DNA steering until breeding from gen≥2 prevents early preferred-allele collapse. Compressing the latent fitness ceiling to 0.34 (Tick 16) removes gen-1 threshold saturation. Tick 17 adds ε-greedy exploration outside frozen contradiction pairs plus latest-generation DNA harvest into the bias pool, unlocking offline gens-to-30% wins on **3/5** seeds (final **5/5**, mean gap ~**5.35pp**). Tick 18 scores H5 only after steering is active (gen≥2) against population-mean Δfitness → offline H5 ρ>0.3 on **4/5** seeds. **Live multi-seed GPQA subset results are pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
+We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift). Delaying all Condition D DNA steering until breeding from gen≥2 prevents early preferred-allele collapse. Compressing the latent fitness ceiling to 0.34 (Tick 16) removes gen-1 threshold saturation. Tick 17 adds ε-greedy exploration outside frozen contradiction pairs plus latest-generation DNA harvest into the bias pool, unlocking offline gens-to-30% wins on **3/5** seeds (final **5/5**, mean gap ~**5.35pp**). Tick 18–19 score H5 only after steering is active (gen≥2) against population-mean forward Δfitness over a 2-gen horizon (ε-greedy discover→adopt lag) → offline H5 ρ>0.3 on **5/5** seeds. **Live multi-seed GPQA subset results are pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
 
 
 ## Reproducible run IDs
@@ -16,8 +16,9 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | D epistemic_full (dry-run H5 after epi fix) | 7 | 1403 | Offline — age-weighted + flow epi; H5 ρ **0.5**; not live GPQA |
 | B / D (Tick 8–16 mid pilots) | 11–55 | 1410–1664 | Superseded — see prior ICML_PROGRESS ticks |
 | B / D (Tick 17 ε-greedy pilot) | 11–55 | 1670–1674 / 1680–1684 | First offline gens30 **3/5**; H5 2/5 under old protocol |
-| B darwinian-only (offline pilot Tick 18) | 11/22/33/44/55 | 1730–1734 | Tick 17 mutation path + Tick 18 H5 protocol (`max_gen=6`); gitignored `runs/` |
-| D epistemic_full (offline pilot Tick 18) | 11/22/33/44/55 | 1740–1744 | Final **5/5**; gens30 **3/5**; H5 **4/5**; case study on `1743` |
+| B / D (Tick 18 H5 protocol) | 11–55 | 1730–1734 / 1740–1744 | H5 **4/5** under gen≥2 + mean Δ; seed 11 ρ=0.0 |
+| B darwinian-only (offline pilot Tick 19) | 11/22/33/44/55 | 1750–1754 | Tick 17 mutation path + Tick 19 H5 horizon (`max_gen=6`); gitignored `runs/` |
+| D epistemic_full (offline pilot Tick 19) | 11/22/33/44/55 | 1760–1764 | Final **5/5**; gens30 **3/5**; H5 **5/5**; case study on `1763` |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
@@ -25,7 +26,7 @@ Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`,
 
 ## Table 1 — Primary (B vs D)
 
-### Offline synthetic pilot (Tick 18 — not live PRIMARY)
+### Offline synthetic pilot (Tick 19 — not live PRIMARY)
 
 | Seed | B final | D final | B gens@25% | D gens@25% | B gens@30% | D gens@30% | Winner (final>1pp / gens30) |
 |------|---------|---------|------------|------------|------------|------------|------------------------------|
@@ -49,7 +50,7 @@ Mean final: B ≈ 0.253, D ≈ 0.306 (gap ~**5.35pp**). D final wins **5/5**; ge
 |--------|-------|-------|
 | H2 trait skew (live API) | — | — |
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
-| H2 offline pilot D (Tick 18) | ε-greedy + live harvest; case-study gen2 preferred share **0.25** (`run_1743`) | informative (dry-run) |
+| H2 offline pilot D (Tick 19) | ε-greedy + live harvest; case-study gen2 preferred share **0.25** (`run_1763`) | informative (dry-run) |
 | H2 unit skew test | pass (+ preferred anchoring + bias-aware / delayed XO + tempered early mutate + delay-all + ε-greedy) | yes (unit) |
 | Fitness-weighted bias order | higher-fitness side first; exponential rank weights | yes (unit) |
 | Singleton bias skip | `load_mutation_bias` requires ≥2 distinct candidates | yes (unit, Tick 10) |
@@ -58,9 +59,9 @@ Mean final: B ≈ 0.253, D ≈ 0.306 (gap ~**5.35pp**). D final wins **5/5**; ge
 | Delay-all mutation bias | fair mutate gen1→gen2; full bias+anchor from gen≥2 (`apply_mutation_bias`) | yes (unit, Tick 14) |
 | Compressed latent fitness | output scale `[0.02, 0.34]` (Tick 16) | yes (unit) |
 | ε-greedy + live bias harvest | explore outside disputed pool; adopt better latest-gen alleles (Tick 17) | yes (unit) |
-| H5 protocol | `min_generation=2`, `fitness_key=mean` (Tick 18) | yes (unit + offline) |
-| Case study chain | `docs/case_study_offline.md` (`run_1743`) | yes (offline) |
-| H5 Spearman ρ | offline D `1740–1744`: **4/5** ρ>0.3 (0.0 / 0.8 / 0.4 / 0.8 / 0.6); live pending | offline pass-shaped; live need > 0.3 |
+| H5 protocol | `min_generation=2`, `fitness_key=mean`, `delta_horizon=2` (Tick 18–19) | yes (unit + offline) |
+| Case study chain | `docs/case_study_offline.md` (`run_1763`) | yes (offline) |
+| H5 Spearman ρ | offline D `1760–1764`: **5/5** ρ>0.3 (0.8 / 0.8 / 0.8 / 1.0 / 0.6); live pending | offline pass; live need > 0.3 |
 | Steering opportunity term | `fitness_gap × (1 − preferred share)` in epi | yes (unit + offline) |
 
 ## Figures
@@ -72,7 +73,7 @@ Mean final: B ≈ 0.253, D ≈ 0.306 (gap ~**5.35pp**). D final wins **5/5**; ge
 
 ## Case study (offline)
 
-See `docs/case_study_offline.md`. Summary: gen1 contradiction on `planning_style` (`stepwise` vs `direct`) → fitness-weighted bias prefers `stepwise` → gen2 preferred share **0.25** → fitness lift **+0.0869** vs loser side (`run_1743`, Tick 18).
+See `docs/case_study_offline.md`. Summary: gen1 contradiction on `planning_style` (`stepwise` vs `direct`) → fitness-weighted bias prefers `stepwise` → gen2 preferred share **0.25** → fitness lift **+0.0869** vs loser side (`run_1763`, Tick 19).
 
 ## Limitations (honest, keep updated)
 
@@ -86,12 +87,12 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `planning_style
 - Longer-horizon re-pilot (Tick 15, `max_gen=6`) **does not unlock gens30** — 4/5 seeds hit 30% by gen≤2 for both B and D (threshold saturation).
 - Compressed latent fitness (Tick 16, ceiling 0.34) **fixes gen-1 saturation** and raises gens30 to **2/5**; final 3/5 / mean ~2.26pp / H5 2/5. Gens-to-25% remains saturated.
 - Pre-Tick-17 bias could **trap** populations in suboptimal frozen contradiction pairs (e.g. minimal vs aggressive) by forcing outsiders onto the local winner and never sampling unexplored alleles.
-- ε-greedy + live harvest (Tick 17) unlocks offline gens30 **3/5** / final **5/5** / mean ~**5.35pp**, but H5 stayed soft (**2/5**) when scored with elite-best Δ including fair gen1→gen2 pairs.
-- Tick 18 H5 protocol (gen≥2 + mean Δ) restores offline H5 to **4/5** without changing the mutation path; seed 11 still fails (ρ=0.0). Still **not publishable** without live GPQA.
+- ε-greedy + live harvest (Tick 17) unlocks offline gens30 **3/5** / final **5/5** / mean ~**5.35pp**, but single-step H5 stayed soft for seed 11 (delayed peak gain under explore→adopt lag).
+- Tick 18 H5 protocol (gen≥2 + mean Δ) restored offline H5 to **4/5**; Tick 19 forward-horizon (`delta_horizon=2`) recovers seed 11 → offline H5 **5/5**. Still **not publishable** without live GPQA.
 - Scoped feedback now mirrors mutation-bias DNA candidates (2026-08-04); still untested on live rewrite quality.
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 **live** B vs D evidence still missing.
-- Tick 8 opaque DNA-hash fitness made offline D final 4/5 look strong but was **non-causal**; Tick 9–18 additive latent fitness is honest — offline gens30 **3/5** / H5 **4/5** but still **not publishable** without live GPQA (no API keys).
-- No cloud API keys in this environment as of 2026-08-05 — no new paid evidence this tick.
+- Tick 8 opaque DNA-hash fitness made offline D final 4/5 look strong but was **non-causal**; Tick 9–19 additive latent fitness is honest — offline gens30 **3/5** / H5 **5/5** but still **not publishable** without live GPQA (no API keys).
+- No cloud API keys in this environment as of 2026-08-05 — no new paid evidence this tick; secrets requested for G2.
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
@@ -113,7 +114,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `planning_style
 | Biased mutate | `SIA/sia/evolution/operators.py::mutate` |
 | Condition D inline analyze | `SIA/sia/evolution/cabs_inline.py` + `--cabs-inline` |
 | H5 epistemic_value series | `belief_store/epistemic_value.jsonl` (age + flow + steering opportunity) |
-| H5 protocol | `scripts/epistemic_results.py::compute_h5` (`min_generation=2`, `fitness_key=mean`; Tick 18) |
+| H5 protocol | `scripts/epistemic_results.py::compute_h5` (`min_generation=2`, `fitness_key=mean`, `delta_horizon=2`; Tick 18–19) |
 | Dry-run DNA fitness | `SIA/sia/evolution/dry_run.py::deterministic_fitness` (additive latent; Tick 16 scale `[0.02, 0.34]`) |
 | Metrics / H5–H2 helpers | `scripts/epistemic_results.py` (gens-to-30% wins) |
 | Offline B vs D + case study | `scripts/offline_bvd_case_study.py` |

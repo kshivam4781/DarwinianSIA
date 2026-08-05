@@ -4,6 +4,38 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T10:10Z — Tick 19 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-eec8` (fast-forwarded Ticks 1–18 from `0d62`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA this tick; secrets requested via environment setup)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 remain blocked without API keys. Offline after Tick 18: gens30 **3/5**, final **5/5**, H5 **4/5** — seed 11 single-step ρ=0.0 because ε-greedy discover→adopt lags one generation (peak mean gain at gen3→gen4 while epi ranks highest at gen2).
+
+### What this tick did (ONE step)
+**H5 forward-horizon Δfitness (measurement protocol; Tick 17 mutation path unchanged):**
+1. `compute_h5(delta_horizon=2)` — Y = `mean(fitness[t+1..t+h]) − fitness[t]` (h=2; uses available future gens)
+2. Unit test `test_compute_h5_horizon_recovers_delayed_gain` (seed-11-shaped series)
+3. Re-pilot B `1750–1754` vs D `1760–1764` (`max_gen=6`); case study on `run_1763`; refreshed figs / paper artifacts / gate3 / READY
+
+### Metrics delta
+| Metric | Before (Tick 18) | After (Tick 19) |
+|--------|------------------|-----------------|
+| Offline D final wins (>1pp) | 5/5 | **5/5** (stable) |
+| Offline D gens30 wins | 3/5 | **3/5** (stable) |
+| Mean final gap (D−B) | ~5.35pp | ~**5.35pp** |
+| Offline H5 ρ>0.3 | 4/5 (0.0 / 0.8 / 0.4 / 0.8 / 0.6) | **5/5** (0.8 / 0.8 / 0.8 / 1.0 / 0.6) |
+| Case study gen2 pref share / lift | 0.25 / +0.0869 (`1743`) | **0.25 / +0.0869** (`1763`) — same chain |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked (secrets requested) |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present and budget checked: **G2** smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2, one seed) Condition D with `--cabs --cabs-inline`; then G3 live pilot B vs D. Offline H5 **5/5** + gens30 **3/5** are in place but **do not** set READY without live GPQA.
+
+---
+
 ## 2026-08-05T08:10Z — Tick 18 (automation cron)
 
 ### Status snapshot

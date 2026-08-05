@@ -260,7 +260,7 @@ def extract_case_study(run_dir: Path) -> dict | None:
         transfer_ok = deterministic_fitness(0, sample_dna, 1) == deterministic_fitness(9, sample_dna, 99)
 
     return {
-        "run_dir": str(run_dir),
+        "run_dir": str(Path("runs") / run_dir.name),
         "field": field,
         "preferred_value": preferred,
         "bias_order": disputed,

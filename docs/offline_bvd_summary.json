@@ -7,18 +7,18 @@
     55
   ],
   "b_run_ids": [
-    1730,
-    1731,
-    1732,
-    1733,
-    1734
+    1750,
+    1751,
+    1752,
+    1753,
+    1754
   ],
   "d_run_ids": [
-    1740,
-    1741,
-    1742,
-    1743,
-    1744
+    1760,
+    1761,
+    1762,
+    1763,
+    1764
   ],
   "compare": {
     "n_pairs": 5,
@@ -40,9 +40,10 @@
       "D_gens25": 1,
       "B_gens30": null,
       "D_gens30": 4,
-      "D_h5_rho": 0.0,
-      "D_h5_pass": false,
+      "D_h5_rho": 0.7999999999999999,
+      "D_h5_pass": true,
       "D_h5_key": "mean",
+      "D_h5_horizon": 2,
       "D_h2_share": 0.8333333333333334
     },
     {
@@ -56,6 +57,7 @@
       "D_h5_rho": 0.7999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
+      "D_h5_horizon": 2,
       "D_h2_share": 0.9166666666666666
     },
     {
@@ -66,9 +68,10 @@
       "D_gens25": 1,
       "B_gens30": null,
       "D_gens30": 3,
-      "D_h5_rho": 0.39999999999999997,
+      "D_h5_rho": 0.7999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
+      "D_h5_horizon": 2,
       "D_h2_share": 0.9166666666666666
     },
     {
@@ -79,9 +82,10 @@
       "D_gens25": 1,
       "B_gens30": 2,
       "D_gens30": 2,
-      "D_h5_rho": 0.7999999999999999,
+      "D_h5_rho": 1.0,
       "D_h5_pass": true,
       "D_h5_key": "mean",
+      "D_h5_horizon": 2,
       "D_h2_share": 0.9583333333333334
     },
     {
@@ -95,11 +99,12 @@
       "D_h5_rho": 0.6000000000000001,
       "D_h5_pass": true,
       "D_h5_key": "mean",
+      "D_h5_horizon": 2,
       "D_h2_share": 0.9166666666666666
     }
   ],
   "case_study": {
-    "run_dir": "runs/run_1743",
+    "run_dir": "runs/run_1763",
     "field": "planning_style",
     "preferred_value": "stepwise",
     "bias_order": [
@@ -171,11 +176,15 @@
     "belief_count": 15,
     "agenda_prefers_first": "stepwise"
   },
-  "figures": [],
+  "figures": [
+    "docs/figures/fig1_learning_curves.png",
+    "docs/figures/fig2_mechanism.png"
+  ],
   "h5_protocol": {
     "min_generation": 2,
     "fitness_key": "mean",
-    "note": "H5 uses population-mean \u0394fitness after DNA steering is active (gen\u22652)."
+    "delta_horizon": 2,
+    "note": "H5 uses population-mean forward \u0394fitness over the next 1\u20132 gens after DNA steering is active (gen\u22652), matching \u03b5-greedy discovery lag."
   },
   "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
 }
