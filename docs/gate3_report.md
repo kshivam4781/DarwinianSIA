@@ -34,7 +34,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 ## Blockers (live G3)
 
 1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty; secrets re-requested 2026-08-05 Tick 24).
-2. ~~Bundled GPQA `data/public` missing~~ **layout unblocked** Tick 21 via `scripts/prepare_gpqa_smoke_data.py` + CLI dry-run `run_1800`. Tick 24: `scripts/run_g2_smoke.py --preflight-only` → dry-run ready **yes**, live ready **no** (synthetic smoke + missing keys; see `docs/gate2_report.md`). Live G2/G3 still need **real** GPQA diamond JSON (HF `Idavidrein/gpqa` is gated) + keys.
+2. ~~Bundled GPQA `data/public` missing~~ **layout unblocked** Tick 21 via `scripts/prepare_gpqa_smoke_data.py` + CLI dry-run `run_1800`. Tick 24: `scripts/run_g2_smoke.py --preflight-only` → dry-run ready **yes**, live ready **no**. Tick 25: `prepare_gpqa_diamond.py` / `--fetch-diamond` automates real diamond once `HF_TOKEN` + accepted `Idavidrein/gpqa` access exist (see `docs/gate2_report.md`). Live G2/G3 still need keys + HF fetch.
 3. ~~G1 dry-run~~ **PASS** 2026-08-04 (`runs/run_1401` dry-run; `SIA/tests/test_cabs_inline_dry_run.py`).
 4. Offline pilot validates harness + post-steer case study + offline gens30/cost30 **4/5** + offline H5 **5/5** — **not** live PRIMARY.
 5. `python3.12-venv` installed on cloud host this tick (was missing for SIA per-run venvs).
@@ -65,6 +65,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 - [x] Cost-to-threshold PRIMARY metric (Tick 22) — offline cost30 **4/5**; live token path ready
 - [x] Post-steering case-study H2 (Tick 23) — gen≥3 preferred share; `run_1840` share **0.75**
 - [x] Live G2 preflight runner (Tick 24) — `scripts/run_g2_smoke.py` + `docs/gate2_report.md`
+- [x] GPQA diamond materializer (Tick 25) — `scripts/prepare_gpqa_diamond.py` + `--fetch-diamond`
 - [ ] G2: smoke GPQA subset (**live** API)
 
 ## Live pilot plan (when unblocked)

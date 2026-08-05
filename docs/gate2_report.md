@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-05T20:05:18Z
+**Timestamp:** 2026-08-05T22:04:44Z
 **Mode:** `preflight`
 **Run ID:** `1850`
 
@@ -33,12 +33,18 @@
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
 
+## Notes
+
+- materialized synthetic GPQA smoke fixture under SIA/
+
 **G2 live status:** NOT RUN this tick
 
 ## Next
 
 1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` to the cloud environment.
-2. Accept HF access for `Idavidrein/gpqa` and replace synthetic `diamond_questions.json` (or set `HF_TOKEN` and fetch).
-3. Re-run: `python scripts/run_g2_smoke.py --live --run-id <unused>` after budget check.
+2. Accept HF access for `Idavidrein/gpqa`, set `HF_TOKEN`, then either:
+   `python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`
+   or `python scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
+3. Re-run live G2 after budget check (unused integer run_id).
 4. Only then start live G3 B vs D pilot (Section 21.5).
 

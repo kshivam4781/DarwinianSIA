@@ -4,6 +4,36 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T22:15Z — Tick 25 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-996f` (fast-forwarded Ticks 1–24 from `ed5f`, then this tick)
+- API keys in cloud env: **absent** (secrets + HF GPQA access re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2–G4 remain the READY blocker. Tick 24 made paid G2 turnkey but still required a **manual** replace of synthetic `diamond_questions.json`. Gate2 report said “set HF_TOKEN and fetch” but no fetcher existed — so even with Anthropic/Nebius keys, live G2 would hard-stop on `gpqa_not_synthetic`.
+
+### What this tick did (ONE step)
+**Real GPQA diamond materializer + G2 `--fetch-diamond` (no API spend; no GPQA examples committed):**
+1. `scripts/prepare_gpqa_diamond.py` — HF/CSV → SIA public/private schema; seeded option shuffle; `source=gpqa_diamond` (fails `is_synthetic_smoke`)
+2. `run_g2_smoke.py --fetch-diamond` / `--diamond-csv` / `--diamond-n` — materialize before preflight/live
+3. Unit tests `tests/test_prepare_gpqa_diamond.py` + fetch-from-CSV integration in `tests/test_run_g2_smoke.py` (18 related tests green)
+4. Preflight `--run-id 1850` → dry-run ready **yes**; live ready **no** (missing keys + still synthetic until HF fetch)
+
+### Metrics delta
+| Metric | Before (Tick 24) | After (Tick 25) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Real GPQA materializer | manual / undocumented | **`prepare_gpqa_diamond.py` + `--fetch-diamond`** |
+| Live PRIMARY / G2 | Blocked (keys + real diamond) | Still blocked; diamond path automated once `HF_TOKEN` present |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa` access) present: budget-check, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. Do **not** set READY from offline / fetcher alone. Do **not** commit materialized diamond JSON.
+
+---
+
 ## 2026-08-05T20:05Z — Tick 24 (automation cron)
 
 ### Status snapshot

@@ -29,9 +29,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Cost-to-threshold PRIMARY helper (Tick 22) — tokens/USD/eval-calls; ≥15% savings wins (`cost_to_threshold`, `primary_cost30_pass`)
 - [x] Post-steering case-study H2 (Tick 23) — preferred DNA share at gen≥3 (not fair-bred gen2); multi-allele + fitness-aligned selection (`tests/test_offline_case_study_steered.py`)
 - [x] Live G2 preflight runner (Tick 24) — `scripts/run_g2_smoke.py` hard-stops paid smoke without keys / non-smoke GPQA / free run_id / budget (`docs/gate2_report.md`)
+- [x] GPQA diamond materializer (Tick 25) — `scripts/prepare_gpqa_diamond.py` + `run_g2_smoke.py --fetch-diamond` (HF/CSV → SIA schema; never commit JSON)
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
-- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight tooling; live GPQA still pending (no API keys)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher; live GPQA still pending (no API keys / HF token)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
@@ -48,14 +49,15 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - Metrics helper: `scripts/epistemic_results.py`; offline pilot: `scripts/offline_bvd_case_study.py`
 - G2 layout helper: `scripts/prepare_gpqa_smoke_data.py` (Tick 21; CLI dry-run `run_1800` — not live)
 - G2 live runner: `scripts/run_g2_smoke.py` (Tick 24; preflight `docs/gate2_report.md` — live blocked on keys + real GPQA)
+- G2 diamond fetcher: `scripts/prepare_gpqa_diamond.py` (Tick 25; `--from-hf` / `--from-csv`; `run_g2_smoke.py --fetch-diamond`)
 
 ## Gate tracker (Section 21.5)
 
 | Gate | Status |
 |------|--------|
-| G0 mechanism unit tests | **PASS** (2026-08-03; + delay-all Tick 14; + compressed fitness Tick 16; + ε-greedy/live harvest Tick 17; + H5 protocol Tick 18–19; + directed explore Tick 20; + cost-to-threshold Tick 22; + post-steer case study Tick 23; + G2 preflight Tick 24) |
+| G0 mechanism unit tests | **PASS** (2026-08-03; + delay-all Tick 14; + compressed fitness Tick 16; + ε-greedy/live harvest Tick 17; + H5 protocol Tick 18–19; + directed explore Tick 20; + cost-to-threshold Tick 22; + post-steer case study Tick 23; + G2 preflight Tick 24; + diamond fetcher Tick 25) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24: `run_g2_smoke.py` + `docs/gate2_report.md`; dry-run path OK); **live** G2 still BLOCKED (no API keys; synthetic smoke ≠ real diamond) |
+| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25: runner + diamond fetcher); **live** G2 still BLOCKED (no API keys; no HF_TOKEN / real diamond yet) |
 | G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED (live) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack NOT STARTED |

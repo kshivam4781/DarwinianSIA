@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-05 (Section 21 ICML; Tick 23 post-steering case-study H2 + pilot `1830–1834`/`1840–1844`)  
+**Last updated:** 2026-08-05 (Section 21 ICML; Tick 25 GPQA diamond materializer + `--fetch-diamond`)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -825,7 +825,8 @@ Computed in `cabs/belief_engine.py`:
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
 | CLI Condition D dry-run (harness) | **DONE** | Tick 21: `run_1800` via real `sia run --task gpqa --cabs --cabs-inline --dry-run` (belief_store + scoped bias) |
 | Live G2 preflight runner | **DONE** | Tick 24: `scripts/run_g2_smoke.py` + `docs/gate2_report.md`; hard-stops paid smoke w/o keys / real GPQA / free run_id / budget |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need real GPQA diamond + HF access for live G2 |
+| GPQA diamond materializer | **DONE** | Tick 25: `scripts/prepare_gpqa_diamond.py` (HF/CSV → SIA schema) + `run_g2_smoke.py --fetch-diamond`; never commit JSON |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need HF access + `HF_TOKEN` for `--fetch-diamond` then live G2 |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1561,14 +1562,17 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 ### 21.7 Suggested cheap GPQA commands (after keys + budget check)
 
 ```bash
-# 0) Materialize GPQA task data if gitignored data/ is missing (synthetic smoke OK for dry-run;
-#    replace diamond_questions.json with real GPQA diamond before paid runs)
+# 0) Materialize GPQA task data if gitignored data/ is missing (synthetic smoke OK for dry-run)
 python scripts/prepare_gpqa_smoke_data.py
 
-# 0b) Preferred G2 entrypoint (Tick 24) — preflight / dry-run / live with hard-stops
+# 0a) Real GPQA diamond for paid runs (Tick 25; needs HF_TOKEN + accepted Idavidrein/gpqa access)
+python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force
+# or: python scripts/prepare_gpqa_diamond.py --from-csv /path/to/gpqa_diamond.csv --n 5 --force
+
+# 0b) Preferred G2 entrypoint (Tick 24/25) — preflight / dry-run / live with hard-stops
 python scripts/run_g2_smoke.py --preflight-only --run-id 1850
 python scripts/run_g2_smoke.py --dry-run --run-id 1850
-python scripts/run_g2_smoke.py --live --run-id 1300   # keys + real GPQA required
+python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond   # keys + HF_TOKEN / CSV
 
 # 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
 sia run --task gpqa --darwinian --cabs --cabs-inline \
@@ -1649,3 +1653,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Post-steering case-study H2 (2026-08-05 Tick 23):** Prior case studies reported gen2 preferred share (often ~0.25), but delay-all keeps gen1→gen2 fair — so that understated H2. `extract_case_study` now measures preferred DNA share at gen≥3 (first steered generation), prefers multi-allele + fitness-aligned contradictions, and re-pilots `1830–1834` / `1840–1844` → same PRIMARY/H5 offline rates; case study `run_1840` shows `tool_strategy=selective` share **0.25→0.5→0.75** (gen1/2/3) with lift **+0.0436**. Live G2–G4 still blocked (no API keys; GPQA diamond gated on HuggingFace).
 
 **Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`, refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when secrets + real GPQA diamond are present.
+
+**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted dataset access) are present.
