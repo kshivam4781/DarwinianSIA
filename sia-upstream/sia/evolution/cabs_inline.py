@@ -72,15 +72,7 @@ _EPI_RES_WEIGHT = 0.5
 # Steering opportunity: fitness_gap × under-adoption of preferred DNA.
 # Makes H5 (epi_t vs Δfitness_t+1) track actionable contradiction pressure
 # rather than pure age decay of open-stock priorities.
-_EPI_STEER_WEIGHT = 3.0
-# Discovery pressure: aged open-stock × fitness headroom × preferred stuckness.
-# Peaks when local preferred DNA already dominates (steering→0) but best
-# fitness still has room — the regime where stuck-preferred ε-explore can
-# unlock a better allele next gen (H5 under Tick 17/18). Unlike pure
-# headroom, stuckness prevents early-gen monotone age decay from dominating.
-_EPI_DISCOVERY_WEIGHT = 3.0
-# Soften raw open-stock so age-decay alone does not dominate H5 ranks.
-_EPI_STOCK_WEIGHT = 0.05
+_EPI_STEER_WEIGHT = 2.0
 _TRAIT_EQ_RE = re.compile(r"\b([a-z_][a-z0-9_]*)\s*=\s*([a-z0-9_]+)", re.IGNORECASE)
 _FITNESS_RE = re.compile(r"fitness\s*[:=]?\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE)
 _KNOWN_DNA_FIELDS = frozenset(
@@ -213,104 +205,6 @@ def _trait_share_in_generation(
     return hits / total
 
 
-def _generation_best_fitness(run_dir: str | Path, generation: int) -> float | None:
-    """Best agent fitness/accuracy for ``gen_N`` (civilization.json or results)."""
-    root = Path(run_dir)
-    civ_path = root / "civilization.json"
-    if civ_path.is_file():
-        try:
-            civ = json.loads(civ_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            civ = None
-        if isinstance(civ, dict):
-            for gen in civ.get("generations", []):
-                if not isinstance(gen, dict):
-                    continue
-                try:
-                    g = int(gen.get("gen") or gen.get("generation"))
-                except (TypeError, ValueError):
-                    continue
-                if g == int(generation):
-                    try:
-                        return float(gen.get("best_fitness", 0.0) or 0.0)
-                    except (TypeError, ValueError):
-                        break
-    fits: list[float] = []
-    for results_path in (root / f"gen_{int(generation)}").glob("agent_*/results.json"):
-        try:
-            data = json.loads(results_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            continue
-        acc = data.get("accuracy") if isinstance(data, dict) else None
-        if isinstance(acc, (int, float)):
-            fits.append(float(acc))
-    if not fits:
-        return None
-    return max(fits)
-
-
-def _preferred_stuckness(
-    contradictions: list[dict[str, Any]],
-    generation: int,
-    run_dir: str | None,
-) -> float:
-    """Max preferred-allele share across scored contradiction DNA fields.
-
-    Near 1 when the higher-fitness contradiction side already dominates the
-    population (local-optimum / explore regime); near 0 when still under-adopted
-    (steering regime).
-    """
-    if not run_dir:
-        return 0.0
-    best_share = 0.0
-    saw = False
-    for contradiction in contradictions:
-        sides: list[tuple[str, str, float]] = []
-        for key in ("belief_a", "belief_b"):
-            field, value, fitness = _parse_belief_side(str(contradiction.get(key) or ""))
-            if field and value and fitness is not None:
-                sides.append((field, value, fitness))
-        by_field: dict[str, list[tuple[str, float]]] = {}
-        for field, value, fitness in sides:
-            by_field.setdefault(field, []).append((value, fitness))
-        for field, scored in by_field.items():
-            if len(scored) < 2:
-                continue
-            preferred_value = max(scored, key=lambda x: x[1])[0]
-            share = _trait_share_in_generation(run_dir, generation, field, preferred_value)
-            if share is None:
-                continue
-            saw = True
-            best_share = max(best_share, float(share))
-    return best_share if saw else 0.0
-
-
-def _discovery_opportunity(
-    contradictions: list[dict[str, Any]],
-    generation: int,
-    run_dir: str | None,
-) -> float:
-    """Stuck-preferred × fitness headroom × aged open stock (live-safe).
-
-    When preferred DNA already dominates, steering_opportunity collapses even
-    if the local winner is suboptimal. Discovery peaks in that stuck regime
-    while best fitness still has room — aligning epi_t with ε-explore gains.
-    """
-    if not run_dir or not contradictions:
-        return 0.0
-    best = _generation_best_fitness(run_dir, generation)
-    if best is None:
-        return 0.0
-    headroom = max(0.0, 1.0 - float(best))
-    if headroom <= 0.0:
-        return 0.0
-    stuck = _preferred_stuckness(contradictions, generation, run_dir)
-    if stuck <= 0.0:
-        return 0.0
-    aged = sum(_effective_priority(c, generation) for c in contradictions)
-    return aged * headroom * stuck
-
-
 def _steering_opportunity(
     contradictions: list[dict[str, Any]],
     generation: int,
@@ -383,14 +277,12 @@ def _epistemic_value(
     knowledge_gain: float | None = None,
     run_dir: str | None = None,
 ) -> dict[str, float]:
-    """H5 epistemic_value_t: soft stock + flow + steering + discovery.
+    """H5 epistemic_value_t: open stock + flow + steering opportunity.
 
-    Stock: open contradiction + RQ priorities, decayed by gens since detection
-    (down-weighted so age decay alone does not dominate H5 ranks).
+    Stock: open contradiction + RQ priorities, decayed by gens since detection.
     Flow: knowledge_gain_score (from cabs_report) + resolved priorities this gen.
-    Steering: aged_priority × fitness_gap × (1 − preferred DNA share).
-    Discovery: aged open-stock × (1 − best_fitness) so epi stays predictive when
-    a local preferred allele dominates but fitness headroom remains.
+    Steering: aged_priority × fitness_gap × (1 − preferred DNA share) so epi_t
+    tracks remaining contradiction-driven improvement pressure (H5).
     """
     all_contradictions = _load_store_items(store_root, "contradictions.json", "contradictions")
     contradictions = [c for c in all_contradictions if c.get("status", "open") == "open"]
@@ -422,13 +314,7 @@ def _epistemic_value(
     resolved_sum = _resolved_priority_sum(store_root, generation)
     flow = _EPI_KG_WEIGHT * float(knowledge_gain) + _EPI_RES_WEIGHT * resolved_sum
     steering = _steering_opportunity(contradictions, generation, run_dir)
-    discovery = _discovery_opportunity(contradictions, generation, run_dir)
-    epistemic_value = (
-        _EPI_STOCK_WEIGHT * (c_sum + q_sum)
-        + flow
-        + _EPI_STEER_WEIGHT * steering
-        + _EPI_DISCOVERY_WEIGHT * discovery
-    )
+    epistemic_value = c_sum + q_sum + flow + _EPI_STEER_WEIGHT * steering
 
     return {
         "open_contradictions": float(len(contradictions)),
@@ -441,7 +327,6 @@ def _epistemic_value(
         "resolved_priority_sum": resolved_sum,
         "epistemic_flow": flow,
         "steering_opportunity": steering,
-        "discovery_opportunity": discovery,
         "epistemic_value": epistemic_value,
     }
 
