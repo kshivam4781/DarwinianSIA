@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-05 (Section 21 ICML; Tick 20 directed ε-explore; offline gens30 4/5 + H5 5/5)  
+**Last updated:** 2026-08-05 (Section 21 ICML; Tick 21 GPQA smoke fixture + CLI dry-run `run_1800`)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -820,7 +820,9 @@ Computed in `cabs/belief_engine.py`:
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% win counting; Tick 18–19 H5 protocol |
 | Offline B vs D case-study pilot | **DONE** | Latest Tick 20 `1780–1784` / `1790–1794` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1793`); final **5/5**; gens30 **4/5**; H5 **5/5**; mean gap ~6.15pp |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; budget check required |
+| GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/` |
+| CLI Condition D dry-run (harness) | **DONE** | Tick 21: `run_1800` via real `sia run --task gpqa --cabs --cabs-inline --dry-run` (belief_store + scoped bias) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need real GPQA diamond for live G2 |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline case study; need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 20 **5/5** ρ>0.3 (`1790–1794`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1556,11 +1558,25 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 ### 21.7 Suggested cheap GPQA commands (after keys + budget check)
 
 ```bash
+# 0) Materialize GPQA task data if gitignored data/ is missing (synthetic smoke OK for dry-run;
+#    replace diamond_questions.json with real GPQA diamond before paid runs)
+python scripts/prepare_gpqa_smoke_data.py
+
+# 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
+sia run --task gpqa --darwinian --cabs --cabs-inline \
+  --population_size 2 --elite_count 1 --max_gen 2 \
+  --run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42
+
+# 2) Live G2 smoke (drop --dry-run; unused run_id; keys + real GPQA + budget check)
+sia run --task gpqa --darwinian --cabs --cabs-inline \
+  --population_size 2 --elite_count 1 --max_gen 2 \
+  --run_id 1300 --eval_subset 5 --no-web --seed 1
+
 # Condition B — darwinian-only (example IDs — pick unused integers)
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
   --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1
 
-# Condition D — after --cabs-inline exists; until then: analyze between gens / two-step
+# Condition D — G3-shaped pilot
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
   --max_gen 5 --run_id 1301 --eval_subset 15 --no-web --seed 1 \
   --cabs --cabs-inline
@@ -1617,3 +1633,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **H5 forward-horizon Δfitness (2026-08-05 Tick 19):** ε-greedy discover→adopt can lag one generation, zeroing single-step Spearman ρ (seed 11). `compute_h5` defaults to `delta_horizon=2` so Y is mean fitness over the next 1–2 gens minus fitness_t. Offline re-pilot `1750–1754` / `1760–1764` → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **5/5** ρ>0.3 (0.8 / 0.8 / 0.8 / 1.0 / 0.6).
 
 **Directed ε-explore (2026-08-05 Tick 20):** Uniform ε-sampling over the full trait enum often re-drew disputed-pool alleles, so seed 22 never discovered `selective` and stalled under 30%. `_biased_choice` now samples only alleles **outside** the contradiction-scoped pool on explore steps. Offline re-pilot `1780–1784` / `1790–1794` → gens30 **4/5**, final **5/5**, mean ~**6.15pp**, H5 **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4). Remaining gap: API-backed G2–G4 live B vs D (keys absent in cloud env; secrets re-requested).
+
+**GPQA smoke fixture + CLI dry-run (2026-08-05 Tick 21):** Cloud checkouts omit gitignored `sia/tasks/gpqa/data/`. `scripts/prepare_gpqa_smoke_data.py` materializes a 5-question synthetic fixture (public without answers; private with `correct_answer_letter`). Validated real CLI path: `sia run --task gpqa --darwinian --cabs --cabs-inline --dry-run --eval_subset 5 --population_size 2 --max_gen 2 --run_id 1800` → belief_store + scoped mutation bias + `epistemic_value.jsonl`. **Not** live G2 (still needs API keys + real GPQA diamond).

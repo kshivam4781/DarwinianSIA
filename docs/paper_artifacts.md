@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot refreshed (2026-08-05 Tick 20, directed ε-explore). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 20) + GPQA CLI harness dry-run `run_1800` (Tick 21). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -20,10 +20,11 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B / D (Tick 19 H5 horizon) | 11–55 | 1750–1754 / 1760–1764 | H5 **5/5**; gens30 **3/5**; seed 22 still under 30% |
 | B darwinian-only (offline pilot Tick 20) | 11/22/33/44/55 | 1780–1784 | Directed ε-explore (`max_gen=6`); gitignored `runs/` |
 | D epistemic_full (offline pilot Tick 20) | 11/22/33/44/55 | 1790–1794 | Final **5/5**; gens30 **4/5**; H5 **5/5**; case study on `1793` |
+| D epistemic_full (CLI dry-run harness Tick 21) | 42 | 1800 | Real `sia run --task gpqa --cabs --cabs-inline --dry-run` after `prepare_gpqa_smoke_data.py`; belief_store + scoped bias; **not** live GPQA |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7).
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7). Before live G2: `python scripts/prepare_gpqa_smoke_data.py` (or replace with real diamond JSON), then drop `--dry-run`.
 
 ## Table 1 — Primary (B vs D)
 
@@ -96,6 +97,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `planning_style
 - `--cabs-inline` + G1 dry-run PASS (2026-08-04); G2–G4 **live** B vs D evidence still missing.
 - Tick 8 opaque DNA-hash fitness made offline D final 4/5 look strong but was **non-causal**; Tick 9–20 additive latent fitness is honest — offline gens30 **4/5** / H5 **5/5** but still **not publishable** without live GPQA (no API keys).
 - No cloud API keys in this environment as of 2026-08-05 — no new paid evidence this tick; secrets re-requested for G2.
+- Tick 21 unblocks gitignored GPQA layout via synthetic smoke fixture + CLI dry-run `run_1800`; **does not** satisfy live G2 (answers are synthetic; no Nebius/Anthropic calls).
 - Expect Condition D token cost ≥ B if CABS/committee calls are counted; primary win may be gens-to-threshold or cost-to-threshold, not raw final accuracy.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 

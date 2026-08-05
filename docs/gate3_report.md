@@ -32,8 +32,8 @@ Prior Tick-19 pilot `1750–1754` / `1760–1764` remains the first offline H5 *
 
 ## Blockers (live G3)
 
-1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty; secrets re-requested 2026-08-05 Tick 20).
-2. Bundled GPQA `data/public` not present in checkout — G2/G3 need dataset + keys (offline pilot used synthetic fixture).
+1. No `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in this cloud environment (verified empty; secrets re-requested 2026-08-05 Tick 21).
+2. ~~Bundled GPQA `data/public` missing~~ **layout unblocked** Tick 21 via `scripts/prepare_gpqa_smoke_data.py` + CLI dry-run `run_1800`. Live G2/G3 still need **real** GPQA diamond JSON (replace smoke files) + keys.
 3. ~~G1 dry-run~~ **PASS** 2026-08-04 (`runs/run_1401` dry-run; `SIA/tests/test_cabs_inline_dry_run.py`).
 4. Offline pilot validates harness + case study + offline gens30 **4/5** + offline H5 **5/5** — **not** live PRIMARY.
 
@@ -59,7 +59,8 @@ Prior Tick-19 pilot `1750–1754` / `1760–1764` remains the first offline H5 *
 - [x] H5 steered-window + mean Δfitness (Tick 18) — H5 **4/5**; gens30/final held
 - [x] H5 forward-horizon Δfitness (Tick 19) — H5 **5/5** (`delta_horizon=2`); gens30/final held
 - [x] Directed ε-explore outside disputed pools (Tick 20) — gens30 **4/5**; mean ~6.15pp; H5 **5/5**
-- [ ] G2: smoke GPQA subset (live)
+- [x] GPQA smoke fixture + CLI dry-run Condition D (Tick 21) — `prepare_gpqa_smoke_data.py` + `run_1800`
+- [ ] G2: smoke GPQA subset (**live** API)
 
 ## Live pilot plan (when unblocked)
 

@@ -43,6 +43,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Limitations (honest; kept updated in `docs/paper_artifacts.md`)
 - [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md` (dry-run IDs present; live pending)
 - Metrics helper: `scripts/epistemic_results.py`; offline pilot: `scripts/offline_bvd_case_study.py`
+- G2 layout helper: `scripts/prepare_gpqa_smoke_data.py` (Tick 21; CLI dry-run `run_1800` — not live)
 
 ## Gate tracker (Section 21.5)
 
@@ -50,7 +51,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03; + delay-all Tick 14; + compressed fitness Tick 16; + ε-greedy/live harvest Tick 17; + H5 protocol Tick 18–19; + directed explore Tick 20) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | BLOCKED (no API keys; secrets re-requested 2026-08-05 Tick 20) |
+| G2 smoke GPQA subset | **HARNESS READY** (Tick 21: `prepare_gpqa_smoke_data.py` + CLI dry-run `run_1800`); **live** G2 still BLOCKED (no API keys; need real GPQA diamond) |
 | G3 pilot B vs D | Offline synthetic pilot refreshed (Tick 20; gens30 **4/5**; H5 **5/5**); **live** G3 NOT STARTED |
 | G4 5-seed + metrics | NOT STARTED (live) |
 | G5 paper pack | PARTIAL (offline figs + case study + offline PRIMARY gens30 4/5 + offline H5 5/5); live pack NOT STARTED |

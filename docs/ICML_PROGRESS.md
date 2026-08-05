@@ -4,6 +4,36 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T14:10Z — Tick 21 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-084b` (fast-forwarded Ticks 1–20 from `d7f1`, then this tick)
+- API keys in cloud env: **absent** (no paid GPQA; secrets re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+G2–G4 still blocked without API keys. Offline PRIMARY-shaped signal is already strong (gens30 **4/5**, H5 **5/5**). Next blocker after keys: missing gitignored GPQA `data/public|private` so even a live smoke cannot resolve `--task gpqa`.
+
+### What this tick did (ONE step)
+**Unblock G2 harness layout (no API spend):**
+1. Added `scripts/prepare_gpqa_smoke_data.py` — synthetic 5-Q fixture into `SIA/` + `sia-upstream/` task trees (`--check` / `--force`)
+2. Unit test `tests/test_prepare_gpqa_smoke_data.py`
+3. Validated real CLI Condition D dry-run: `run_1800` (`--cabs --cabs-inline --dry-run --eval_subset 5 --population_size 2 --max_gen 2 --seed 42`) → belief_store + scoped bias (`tool_strategy` / `memory`) + `epistemic_value.jsonl`
+4. Documented in Section 12 / 21, `paper_artifacts.md`, `gate3_report.md`, READY checklist
+
+### Metrics delta
+| Metric | Before (Tick 20) | After (Tick 21) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / H5 | 5/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| CLI `--task gpqa` dry-run Condition D | blocked (missing data/) | **PASS** `run_1800` |
+| Live PRIMARY / G2 | Blocked (no API + no data) | Data layout unblocked; **still no API keys** |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present: replace smoke `diamond_questions.json` with real GPQA diamond (same schema), budget-check, then **live G2** smoke (drop `--dry-run`; ≤5 samples, pop≤2, max_gen≤2, one seed, unused run_id). Do **not** set READY from dry-run/`run_1800`.
+
+---
+
 ## 2026-08-05T12:10Z — Tick 20 (automation cron)
 
 ### Status snapshot
