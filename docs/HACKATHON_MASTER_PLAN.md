@@ -822,8 +822,9 @@ Computed in `cabs/belief_engine.py`:
 | Offline B vs D case-study pilot | **DONE** | Latest Tick 23 `1830–1834` / `1840–1844` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1840`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp; post-steer H2 share **0.75** at gen3 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
-| GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/` |
+| GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
 | CLI Condition D dry-run (harness) | **DONE** | Tick 21: `run_1800` via real `sia run --task gpqa --cabs --cabs-inline --dry-run` (belief_store + scoped bias) |
+| Live G2 preflight runner | **DONE** | Tick 24: `scripts/run_g2_smoke.py` + `docs/gate2_report.md`; hard-stops paid smoke w/o keys / real GPQA / free run_id / budget |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys in cloud env; secrets re-requested; need real GPQA diamond + HF access for live G2 |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -1564,6 +1565,11 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 #    replace diamond_questions.json with real GPQA diamond before paid runs)
 python scripts/prepare_gpqa_smoke_data.py
 
+# 0b) Preferred G2 entrypoint (Tick 24) — preflight / dry-run / live with hard-stops
+python scripts/run_g2_smoke.py --preflight-only --run-id 1850
+python scripts/run_g2_smoke.py --dry-run --run-id 1850
+python scripts/run_g2_smoke.py --live --run-id 1300   # keys + real GPQA required
+
 # 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
 sia run --task gpqa --darwinian --cabs --cabs-inline \
   --population_size 2 --elite_count 1 --max_gen 2 \
@@ -1641,3 +1647,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Cost-to-threshold PRIMARY (b) (2026-08-05 Tick 22):** `scripts/epistemic_results.py` now accumulates per-gen cost (prefer `total_*_tokens` / `total_cost_usd`, else eval-call proxy from `eval_subset`) until gens-to-threshold; `_cost_win` requires ≥15% fewer units (reach-vs-never counts). Offline re-pilot `1810–1814` / `1820–1824` → gens30 **4/5**, cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**. Case study `run_1823`. Live G2–G4 still blocked (no API keys).
 
 **Post-steering case-study H2 (2026-08-05 Tick 23):** Prior case studies reported gen2 preferred share (often ~0.25), but delay-all keeps gen1→gen2 fair — so that understated H2. `extract_case_study` now measures preferred DNA share at gen≥3 (first steered generation), prefers multi-allele + fitness-aligned contradictions, and re-pilots `1830–1834` / `1840–1844` → same PRIMARY/H5 offline rates; case study `run_1840` shows `tool_strategy=selective` share **0.25→0.5→0.75** (gen1/2/3) with lift **+0.0436**. Live G2–G4 still blocked (no API keys; GPQA diamond gated on HuggingFace).
+
+**Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`, refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when secrets + real GPQA diamond are present.

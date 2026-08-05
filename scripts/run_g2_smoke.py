@@ -191,15 +191,16 @@ def run_preflight(
     )
 
     smoke = is_synthetic_smoke(task) if not missing else False
-    if mode == "live":
-        report.add(
-            "gpqa_not_synthetic",
-            (not missing) and (not smoke),
-            "real/non-smoke diamond_questions.json present"
-            if (not missing and not smoke)
-            else "synthetic smoke fixture detected — replace with real GPQA diamond before paid G2",
-        )
-    else:
+    # Always record live-readiness signals (even in preflight/dry-run) so
+    # ready_for_live is not vacuously true when key checks are skipped.
+    report.add(
+        "gpqa_not_synthetic",
+        (not missing) and (not smoke),
+        "real/non-smoke diamond_questions.json present"
+        if (not missing and not smoke)
+        else "synthetic smoke fixture detected — replace with real GPQA diamond before paid G2",
+    )
+    if mode != "live":
         report.add(
             "gpqa_smoke_or_real",
             not missing,
@@ -211,16 +212,8 @@ def run_preflight(
     anth = _env_key("ANTHROPIC_API_KEY")
     neb = _env_key("NEBIUS_API_KEY")
     hf = _env_key("HF_TOKEN") or _env_key("HUGGINGFACE_HUB_TOKEN")
-    if mode == "live":
-        report.add("anthropic_key", bool(anth), "set" if anth else "ANTHROPIC_API_KEY missing")
-        report.add("nebius_key", bool(neb), "set" if neb else "NEBIUS_API_KEY missing")
-    else:
-        report.add(
-            "api_keys_optional",
-            True,
-            f"ANTHROPIC={'set' if anth else 'missing'}; NEBIUS={'set' if neb else 'missing'} "
-            f"(not required for {mode})",
-        )
+    report.add("anthropic_key", bool(anth), "set" if anth else "ANTHROPIC_API_KEY missing")
+    report.add("nebius_key", bool(neb), "set" if neb else "NEBIUS_API_KEY missing")
     report.add(
         "hf_token_optional",
         True,
@@ -232,7 +225,7 @@ def run_preflight(
     budget_ok = spent < ceiling
     report.add(
         "budget",
-        budget_ok if mode == "live" else True,
+        budget_ok,
         f"spent=${spent:.2f} ceiling=${ceiling:.2f}"
         + ("" if budget_ok else " — at/over ceiling; refuse paid G2"),
     )
@@ -254,12 +247,10 @@ def run_preflight(
     except Exception as exc:  # pragma: no cover
         report.add("python_venv_module", False, f"venv import failed: {exc}")
 
-    report.ready_for_dry_run = all(
-        c.ok
-        for c in report.checks
-        if c.name in {"gpqa_layout", "gpqa_smoke_or_real", "run_id_free", "python_venv_module"}
-    )
-    live_needed = {
+    by_name = {c.name: c.ok for c in report.checks}
+    dry_needed = ("gpqa_layout", "run_id_free", "python_venv_module")
+    report.ready_for_dry_run = all(by_name.get(n, False) for n in dry_needed) and not missing
+    live_needed = (
         "gpqa_layout",
         "gpqa_not_synthetic",
         "anthropic_key",
@@ -267,8 +258,8 @@ def run_preflight(
         "budget",
         "run_id_free",
         "python_venv_module",
-    }
-    report.ready_for_live = all(c.ok for c in report.checks if c.name in live_needed)
+    )
+    report.ready_for_live = all(by_name.get(n, False) for n in live_needed)
 
     dry = mode != "live"
     report.command = build_sia_command(run_id=run_id, seed=42, dry_run=dry)

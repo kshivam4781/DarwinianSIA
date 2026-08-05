@@ -81,6 +81,28 @@ def test_preflight_live_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp
     assert names["gpqa_not_synthetic"] is False  # smoke fixture
 
 
+def test_preflight_mode_also_reports_live_not_ready(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regression: ready_for_live must not be vacuously true when mode!=live."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+
+    report = run_preflight(mode="preflight", run_id=1850, ensure_smoke_layout=False)
+    assert report.ready_for_dry_run is True
+    assert report.ready_for_live is False
+    assert any(not c.ok and c.name == "anthropic_key" for c in report.checks)
+
+
 def test_preflight_live_ready_with_keys_and_real_gpqa(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

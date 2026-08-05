@@ -4,6 +4,36 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-05T20:05Z — Tick 24 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-ed5f` (fast-forwarded Ticks 1–23 from `dcdb`, then this tick)
+- API keys in cloud env: **absent** (secrets + HF GPQA access re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2–G4 remain the READY blocker. Offline PRIMARY/H5/mechanism already strong (gens30/cost30 **4/5**, H5 **5/5**, post-steer H2). Prior ticks rediscovered G2 launch constraints ad hoc; risk of accidentally spending API budget on synthetic smoke answers once keys appear.
+
+### What this tick did (ONE step)
+**Turnkey live G2 preflight + hard-stop runner (no API spend):**
+1. `scripts/run_g2_smoke.py` — `--preflight-only` / `--dry-run` / `--live`; refuses paid G2 without keys, non-smoke GPQA, free run_id, and budget headroom; validates belief_store / epistemic_value / scoped bias after a run; writes `docs/gate2_report.md` (+ `.json`)
+2. `prepare_gpqa_smoke_data.is_synthetic_smoke` — detect domain=smoke / Smoke Q* fixtures
+3. Unit tests `tests/test_run_g2_smoke.py` (+ smoke-detect coverage); regression: `ready_for_live` not vacuously true in preflight mode
+4. Ran preflight `--run-id 1850` → dry-run ready **yes**; live ready **no** (missing keys + synthetic GPQA)
+
+### Metrics delta
+| Metric | Before (Tick 23) | After (Tick 24) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Live G2 preflight tooling | ad hoc Section 21.7 commands | **`scripts/run_g2_smoke.py`** + `docs/gate2_report.md` |
+| Live PRIMARY / G2 | Blocked (no API) | Still blocked; secrets re-requested; runner ready for next tick |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` present **and** real GPQA diamond replaces smoke fixture (HF gated — needs access + optional `HF_TOKEN`): budget-check, then `python scripts/run_g2_smoke.py --live --run-id 1300` (or other unused id). Do **not** set READY from preflight alone.
+
+---
+
 ## 2026-08-05T18:20Z — Tick 23 (automation cron)
 
 ### Status snapshot

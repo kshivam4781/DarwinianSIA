@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -26,7 +26,7 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7); offline next ≥1850. Before live G2: `python scripts/prepare_gpqa_smoke_data.py` (or replace with real diamond JSON — HF `Idavidrein/gpqa` is gated), then drop `--dry-run`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7); offline/harness next ≥1850. Before live G2: `python scripts/prepare_gpqa_smoke_data.py` (or replace with real diamond JSON — HF `Idavidrein/gpqa` is gated), then `python scripts/run_g2_smoke.py --live --run-id 1300` (Tick 24; refuses synthetic smoke + missing keys).
 
 ## Table 1 — Primary (B vs D)
 
@@ -104,6 +104,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - No cloud API keys in this environment as of 2026-08-05 — no new paid evidence this tick; secrets re-requested for G2.
 - Real GPQA diamond on HuggingFace (`Idavidrein/gpqa`) is **gated** (401 without accepted access + token); smoke fixture only for dry-run.
 - Tick 21 unblocks gitignored GPQA layout via synthetic smoke fixture + CLI dry-run `run_1800`; **does not** satisfy live G2 (answers are synthetic; no Nebius/Anthropic calls).
+- Tick 24 adds `scripts/run_g2_smoke.py` so paid G2 hard-stops on missing keys / synthetic smoke / budget / existing run_id; preflight this tick is **not** live G2 PASS.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
@@ -130,3 +131,5 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Dry-run DNA fitness | `SIA/sia/evolution/dry_run.py::deterministic_fitness` (additive latent; Tick 16 scale `[0.02, 0.34]`) |
 | Metrics / H5–H2 helpers | `scripts/epistemic_results.py` (gens-to-30% + cost-to-30% wins) |
 | Offline B vs D + case study | `scripts/offline_bvd_case_study.py` (Tick 23: post-steer gen≥3 H2) |
+| Live G2 preflight / runner | `scripts/run_g2_smoke.py` (Tick 24; `docs/gate2_report.md`) |
+| Synthetic smoke detector | `prepare_gpqa_smoke_data.is_synthetic_smoke` (Tick 24) |
