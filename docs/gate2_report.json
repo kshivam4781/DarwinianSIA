@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-08-06T20:07:05Z",
+  "mode": "preflight",
+  "run_id": 1850,
+  "ready_for_live": false,
+  "ready_for_dry_run": false,
+  "blockers": [
+    "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
+    "anthropic_key: ANTHROPIC_API_KEY missing",
+    "nebius_key: NEBIUS_API_KEY missing",
+    "per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip."
+  ],
+  "checks": [
+    {
+      "name": "gpqa_layout",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "gpqa_not_synthetic",
+      "ok": false,
+      "detail": "synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2"
+    },
+    {
+      "name": "gpqa_smoke_or_real",
+      "ok": true,
+      "detail": "synthetic smoke OK for dry-run/preflight"
+    },
+    {
+      "name": "anthropic_key",
+      "ok": false,
+      "detail": "ANTHROPIC_API_KEY missing"
+    },
+    {
+      "name": "nebius_key",
+      "ok": false,
+      "detail": "NEBIUS_API_KEY missing"
+    },
+    {
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
+    },
+    {
+      "name": "budget",
+      "ok": true,
+      "detail": "spent=$0.00 ceiling=$20.00"
+    },
+    {
+      "name": "run_id_free",
+      "ok": true,
+      "detail": "run_1850 unused"
+    },
+    {
+      "name": "per_run_venv",
+      "ok": false,
+      "detail": "stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip."
+    }
+  ],
+  "command": [
+    "/usr/bin/python3",
+    "-m",
+    "sia",
+    "run",
+    "--task",
+    "gpqa",
+    "--darwinian",
+    "--cabs",
+    "--cabs-inline",
+    "--population_size",
+    "2",
+    "--elite_count",
+    "1",
+    "--max_gen",
+    "2",
+    "--run_id",
+    "1850",
+    "--eval_subset",
+    "5",
+    "--no-web",
+    "--seed",
+    "42",
+    "--dry-run"
+  ],
+  "post": []
+}
