@@ -1,0 +1,5 @@
+{
+  "name": "DarwinianSIA ICML live",
+  "install": "python3 -m pip install --user -U pip setuptools wheel\npython3 -m pip install --user -e \".[dev]\"\npython3 -m pip install --user -e \"./SIA[dev]\"\npython3 -m pip install --user huggingface_hub",
+  "start": ""
+}
