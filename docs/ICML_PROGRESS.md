@@ -19,7 +19,7 @@ Live G2→G3→G4 remain the READY blocker. Tick 29 made the stack one command, 
 ### What this tick did (ONE step)
 **Link Cursor environment for ICML live stack (no API spend):**
 1. Added `.cursor/environment.json` (install: `.venv` + `sia-cabs[dev]` + `SIA[dev]` + `huggingface_hub`) and gitignore exception so the file is trackable
-2. Triggered draft environment build(s); first promotable attempt `bld-20260806-c974df7a-…` **INSTALL_FAILED** (`python3 -m venv` needs missing `ensurepip` / `python3.12-venv`). Fixed install to user-site pip and retried `bld-20260806-994ec2ef-…`. Environment now linked (`environmentPublicId=0ed19edd-…`).
+2. Triggered draft environment build(s); first promotable attempt `bld-20260806-c974df7a-…` **INSTALL_FAILED** (`python3 -m venv` needs missing `ensurepip` / `python3.12-venv`). Fixed install to user-site pip; retry `bld-20260806-994ec2ef-…` **SUCCEEDED**. Proposed env via `propose-environment-json` for Portal Save. Environment linked (`environmentPublicId=0ed19edd-…`).
 3. Requested secrets (`ANTHROPIC_API_KEY`, `NEBIUS_API_KEY`, `HF_TOKEN`) + external actions (accept `Idavidrein/gpqa`, save env onto the automation)
 4. Refreshed pipeline preflight → live ready **no** (keys still missing; synthetic until HF fetch); stack budget $20 ≤ $20; pipeline tests **7 green**
 
@@ -27,11 +27,11 @@ Live G2→G3→G4 remain the READY blocker. Tick 29 made the stack one command, 
 | Metric | Before (Tick 29) | After (Tick 30) |
 |--------|------------------|-----------------|
 | Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
-| Cursor environment | `null` (secrets cannot inject) | **Linked draft** `0ed19edd-…`; install fixed to user-site pip after venv fail |
-| Live PRIMARY / G2 | Blocked (keys + HF + env) | Env linked; still blocked on secrets + HF gpqa accept |
+| Cursor environment | `null` (secrets cannot inject) | **Linked draft** `0ed19edd-…`; build `994ec2ef` **SUCCEEDED** + proposed |
+| Live PRIMARY / G2 | Blocked (keys + HF + env) | Env linked + build green; still blocked on secrets + HF gpqa accept |
 
 ### Next recommended step
-User: add secrets to the linked env, accept HF `Idavidrein/gpqa`, save/attach the env to this automation. Next cron (or manual): after successful draft build + `propose-environment-json`, run `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
+User: save the proposed environment, add secrets, accept HF `Idavidrein/gpqa`, attach env to this automation. Next cron: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
 
 ---
 

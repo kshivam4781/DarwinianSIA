@@ -830,7 +830,7 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 30: linked draft env `0ed19edd-…` + `.cursor/environment.json` (user-site pip install); promotable draft build retried after venv failure; secrets still missing |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 30: linked draft env `0ed19edd-…` + `.cursor/environment.json`; draft build `bld-20260806-994ec2ef-…` **SUCCEEDED** + proposed for Portal Save; secrets still missing |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Env linked (Tick 30); blocked on API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
