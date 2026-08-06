@@ -119,6 +119,8 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 31: Tick 30 personal draft was **not** inherited — cron again booted `environment: null`. Re-linked draft `4b2bb39a-…` (build `933779ed` SUCCEEDED + proposed). Until the user Portal Saves and attaches the env to automation `bf73dff3-…`, every cron will keep re-creating orphan drafts and cannot run paid G2–G4.
 - Tick 32: preflight previously greenlit `import venv` while Cursor images lack ensurepip — live `sia run` would fail at per-run venv creation after keys arrived. Fixed via `per_run_venv` probe + **uv** in env install (draft `e0434bc7-…` / build `5be244b4`). Still need Portal Save onto automation + secrets.
 - Tick 33: Tick 32 personal draft was again **not** inherited — cron booted `environment: null`. Re-linked uv draft `b0a8b976-…` (build `3b1c84c6` SUCCEEDED + proposed) and added `docs/icml_portal_save_target.json` so Portal Save / secrets / HF accept instructions are not buried in progress logs. Until the user attaches that env to automation `bf73dff3-…`, paid G2–G4 cannot run.
+- Tick 34: Tick 33 draft again not inherited; re-linked `91d72d0c-…` / `262ebfe1` + SystemExit-safe `per_run_venv` probe. Still need Portal Save onto automation + secrets.
+- Tick 35: Tick 34 draft again not inherited; re-linked `291a67ab-…` / `da839bad` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
