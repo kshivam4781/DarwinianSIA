@@ -4,6 +4,35 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T06:05Z — Tick 29 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-719a` (fast-forwarded Ticks 1–28 from `61b8`, then this tick)
+- API keys in cloud env: **absent** (no linked Cursor environment; secrets + HF access + env-link re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker (no keys / no linked env). Tick 28 made a successful live G4 finish Tables/Figs/READY, but a cron tick with freshly injected keys still risked stopping after G2 or G3 alone — wasting cycles and leaving the paper pack incomplete.
+
+### What this tick did (ONE step)
+**Unified live G2→G3→G4 pipeline orchestrator (no API spend):**
+1. `scripts/run_icml_live_pipeline.py` — `--preflight-only` / `--live`; chains gate runners **serially**; projects full-stack spend (G2 $1 + G3 $4 + G4 $15 = $20); bumps `SIA_BUDGET_SPENT_USD` between stages; fetches diamond once at n=15 (avoids G2 n=5 overwrite); G3→G4 gate via `g3_pilot_promising` (any D win or H5 ρ>0.3) with `--force-g4` override; `--stop-after g2|g3|g4`; writes `docs/icml_live_pipeline_report.md`
+2. Unit tests `tests/test_run_icml_live_pipeline.py` — **7 green**
+3. Pipeline preflight → live ready **no** (same blockers: keys / synthetic / no linked env)
+
+### Metrics delta
+| Metric | Before (Tick 28) | After (Tick 29) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Live path when keys appear | G2 then G3 then G4 as separate cron ticks | **One command** `run_icml_live_pipeline.py --live --fetch-diamond` |
+| Live PRIMARY / G2 | Blocked (keys + HF + env) | Still blocked; secrets re-requested |
+
+### Next recommended step
+When a Cursor environment is linked with `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`): budget-check, then `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. That single command runs G2→G3→G4 (sequential; paper pack + READY if criteria pass). Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-06T04:10Z — Tick 28 (automation cron)
 
 ### Status snapshot

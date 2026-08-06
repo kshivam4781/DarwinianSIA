@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-08-05T22:04:44Z",
+  "timestamp": "2026-08-06T06:03:30Z",
   "mode": "preflight",
-  "run_id": 1850,
+  "run_id": 1300,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -48,7 +48,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1850 unused"
+      "detail": "run_1300 unused"
     },
     {
       "name": "python_venv_module",
@@ -73,7 +73,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1850",
+    "1300",
     "--eval_subset",
     "5",
     "--no-web",

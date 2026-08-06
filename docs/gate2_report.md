@@ -1,8 +1,8 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-05T22:04:44Z
+**Timestamp:** 2026-08-06T06:03:30Z
 **Mode:** `preflight`
-**Run ID:** `1850`
+**Run ID:** `1300`
 
 ## Preflight checks
 
@@ -15,7 +15,7 @@
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
-| `run_id_free` | yes | run_1850 unused |
+| `run_id_free` | yes | run_1300 unused |
 | `python_venv_module` | yes | /usr/bin/python3 has venv |
 
 **Ready for dry-run:** yes
@@ -24,7 +24,7 @@
 ## Planned command
 
 ```bash
-/usr/bin/python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1850 --eval_subset 5 --no-web --seed 42 --dry-run
+/usr/bin/python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1300 --eval_subset 5 --no-web --seed 42 --dry-run
 ```
 
 ## Blockers

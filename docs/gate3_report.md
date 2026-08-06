@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-06T00:04:14Z
+**Timestamp:** 2026-08-06T06:03:30Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -37,7 +37,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 
 | Check | OK | Detail |
 |-------|----|--------|
-| `gpqa_layout` | NO | missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json |
+| `gpqa_layout` | yes | ok |
 | `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G3 |
 | `anthropic_key` | NO | ANTHROPIC_API_KEY missing |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
@@ -61,7 +61,6 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 
 ## Blockers (live G3)
 
-- gpqa_layout: missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing

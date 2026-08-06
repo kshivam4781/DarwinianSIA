@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-06T04:04:36Z",
+  "timestamp": "2026-08-06T06:03:30Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -34,7 +34,6 @@
     }
   ],
   "blockers": [
-    "gpqa_layout: missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json",
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
     "anthropic_key: ANTHROPIC_API_KEY missing",
     "nebius_key: NEBIUS_API_KEY missing"
@@ -42,8 +41,8 @@
   "checks": [
     {
       "name": "gpqa_layout",
-      "ok": false,
-      "detail": "missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json"
+      "ok": true,
+      "detail": "ok"
     },
     {
       "name": "gpqa_not_synthetic",

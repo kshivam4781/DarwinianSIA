@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-06T04:04:36Z
+**Timestamp:** 2026-08-06T06:03:30Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -9,7 +9,7 @@
 
 | Check | OK | Detail |
 |-------|----|--------|
-| `gpqa_layout` | NO | missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json |
+| `gpqa_layout` | yes | ok |
 | `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G4 |
 | `anthropic_key` | NO | ANTHROPIC_API_KEY missing |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
@@ -45,7 +45,6 @@
 
 ## Blockers (live G4)
 
-- gpqa_layout: missing: /workspace/SIA/sia/tasks/gpqa/data/public/diamond_questions.json, /workspace/SIA/sia/tasks/gpqa/data/public/task.md, /workspace/SIA/sia/tasks/gpqa/data/private/diamond_questions.json
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
