@@ -28,15 +28,38 @@ def test_probe_fails_when_neither_uv_nor_ensurepip(
 ) -> None:
     monkeypatch.setattr("icml_env_checks.shutil.which", lambda name: None)
 
-    import venv
-
-    def _boom(*_a, **_k):
-        raise Exception(
+    class _Result:
+        returncode = 1
+        stderr = (
             "The virtual environment was not created successfully because "
             "ensurepip is not available."
         )
+        stdout = ""
 
-    monkeypatch.setattr(venv, "create", _boom)
+    monkeypatch.setattr(
+        "icml_env_checks.subprocess.run",
+        lambda *_a, **_k: _Result(),
+    )
     ok, detail = probe_per_run_venv_capable()
     assert ok is False
     assert "ensurepip" in detail or "failed" in detail.lower()
+
+
+def test_probe_survives_venv_create_systemexit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 34: ensurepip path used to sys.exit and kill preflight."""
+    monkeypatch.setattr("icml_env_checks.shutil.which", lambda name: None)
+
+    class _Result:
+        returncode = 1
+        stderr = "venv.create SystemExit:1"
+        stdout = ""
+
+    monkeypatch.setattr(
+        "icml_env_checks.subprocess.run",
+        lambda *_a, **_k: _Result(),
+    )
+    ok, detail = probe_per_run_venv_capable()
+    assert ok is False
+    assert "failed" in detail.lower()
