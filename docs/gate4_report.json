@@ -1,8 +1,11 @@
 {
-  "timestamp": "2026-08-06T02:03:42Z",
+  "timestamp": "2026-08-06T04:04:36Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
+  "h2_pass": false,
+  "h5_pass": false,
+  "ready_status": "IN_PROGRESS",
   "plans": [
     {
       "seed": 1,
@@ -322,6 +325,8 @@
   ],
   "comparison": null,
   "h5_by_d_run": {},
+  "h2_by_d_run": {},
+  "figures_written": [],
   "notes": [],
   "executed": false,
   "paper_refreshed": false

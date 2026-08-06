@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27; `run_g4_multiseed.py` / `docs/gate4_report.md`; auto-fills Live Table 1 after paid pairs). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27–28; `run_g4_multiseed.py` / `docs/gate4_report.md`; after paid pairs auto-fills Live Table 1/2 + Figs 1–2 + `ICML_READY`). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 

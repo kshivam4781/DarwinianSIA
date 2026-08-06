@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-06T02:03:42Z
+**Timestamp:** 2026-08-06T04:04:36Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -58,6 +58,6 @@
 2. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (+ `HF_TOKEN` for `--fetch-diamond`).
 3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:
    `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`
-4. If PRIMARY passes, refresh Figs 1–2 from live runs and set `ICML_READY` only when H2/H5/paper also pass.
+4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY (or recover via `--refresh-paper-from-runs`).
 5. Do **not** set STATUS: READY from offline / G4 preflight alone.
 

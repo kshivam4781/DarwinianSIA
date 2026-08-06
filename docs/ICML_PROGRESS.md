@@ -4,6 +4,35 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T04:10Z — Tick 28 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-61b8` (fast-forwarded Ticks 1–27 from `316e`, then this tick)
+- API keys in cloud env: **absent** (no linked Cursor environment; secrets + HF access + env-link re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker (no keys / no linked env). Tick 27 made G4 turnkey for sequential paid pairs + Live Table 1, but after a successful live G4 the paper pack would still need a **manual** follow-up tick for live H2, Table 2, Figs 1–2, and `ICML_READY` checklist — risking a wasted cron cycle once keys appear.
+
+### What this tick did (ONE step)
+**Complete G4 paper-pack automation (no API spend):**
+1. `scripts/run_g4_multiseed.py` — after scoring, also compute live H2 (`score_live_h2` / `h2_skew_pass`), refresh Figs 1–2 (`write_live_bvd_figures`), fill Table 2 H2/H5 marker rows, and update `docs/ICML_READY.md` via `update_icml_ready_from_g4` (STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper pass; `--refresh-paper-from-runs` defaults `--no-allow-ready`)
+2. Unit tests `tests/test_run_g4_multiseed.py` — **10 green** (H2/H5 helpers, Table 2 markers, READY gate, figures)
+3. Preflight refreshed → live ready **no** (same blockers: layout/keys/synthetic)
+
+### Metrics delta
+| Metric | Before (Tick 27) | After (Tick 28) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| G4 paper pack | Live Table 1 only | **Table 1/2 + H2 + Figs + ICML_READY** |
+| Live PRIMARY / G2 | Blocked (keys + HF + env) | Still blocked; one live G4 command can finish the pack |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`) present **and** a Cursor environment is linked: budget-check, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. If G2 PASS, `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`. If G3 looks promising under remaining budget, `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond` (auto paper pack). Do **not** set READY from offline / G4 preflight alone.
+
+---
+
 ## 2026-08-06T02:05Z — Tick 27 (automation cron)
 
 ### Status snapshot
