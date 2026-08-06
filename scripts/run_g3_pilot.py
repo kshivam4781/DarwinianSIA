@@ -48,6 +48,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_hf,
 )
 from epistemic_results import compare_b_vs_d, compute_h5  # noqa: E402
+from icml_env_checks import probe_per_run_venv_capable  # noqa: E402
 
 DEFAULT_BUDGET_CEILING = 20.0
 # Rough upper bound for one G3-shaped seed pair (B+D): pop4 × eval15 × max_gen5 × 2 conds
@@ -303,12 +304,8 @@ def run_preflight(
     else:
         report.add("seed_count", True, f"{n_pairs} seed(s) (G3 pilot shape)")
 
-    try:
-        import venv  # noqa: F401
-
-        report.add("python_venv_module", True, f"{sys.executable} has venv")
-    except Exception as exc:  # pragma: no cover
-        report.add("python_venv_module", False, f"venv import failed: {exc}")
+    venv_ok, venv_detail = probe_per_run_venv_capable()
+    report.add("per_run_venv", venv_ok, venv_detail)
 
     by_name = {c.name: c.ok for c in report.checks}
     live_needed = (
@@ -319,7 +316,7 @@ def run_preflight(
         "budget",
         "run_ids_free",
         "seed_count",
-        "python_venv_module",
+        "per_run_venv",
     )
     report.ready_for_live = all(by_name.get(n, False) for n in live_needed)
 

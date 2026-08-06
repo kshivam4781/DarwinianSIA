@@ -47,6 +47,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_csv,
     materialize_from_hf,
 )
+from icml_env_checks import probe_per_run_venv_capable  # noqa: E402
 
 DEFAULT_BUDGET_CEILING = 20.0
 DEFAULT_LIVE_RUN_ID = 1300
@@ -245,16 +246,12 @@ def run_preflight(
         else f"exists at {existing} — pick unused integer (never overwrite)",
     )
 
-    # python3-venv presence (SIA per-run venvs)
-    try:
-        import venv  # noqa: F401
-
-        report.add("python_venv_module", True, f"{sys.executable} has venv")
-    except Exception as exc:  # pragma: no cover
-        report.add("python_venv_module", False, f"venv import failed: {exc}")
+    # SIA per-run venvs: uv OR stdlib venv+ensurepip (import venv alone is vacuous)
+    venv_ok, venv_detail = probe_per_run_venv_capable()
+    report.add("per_run_venv", venv_ok, venv_detail)
 
     by_name = {c.name: c.ok for c in report.checks}
-    dry_needed = ("gpqa_layout", "run_id_free", "python_venv_module")
+    dry_needed = ("gpqa_layout", "run_id_free", "per_run_venv")
     report.ready_for_dry_run = all(by_name.get(n, False) for n in dry_needed) and not missing
     live_needed = (
         "gpqa_layout",
@@ -263,7 +260,7 @@ def run_preflight(
         "nebius_key",
         "budget",
         "run_id_free",
-        "python_venv_module",
+        "per_run_venv",
     )
     report.ready_for_live = all(by_name.get(n, False) for n in live_needed)
 
