@@ -4,6 +4,37 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T10:10Z — Tick 31 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-bf9c` (fast-forwarded Ticks 1–30 from `357b`, then this tick)
+- Cursor environment: **re-linked** personal transitional draft `4b2bb39a-917e-11f1-ba66-0e7d0216e441` (Tick 30 draft `0ed19edd-…` was **not** inherited — this cron booted `environment: null` again)
+- API keys in cloud env: **absent** (secrets + HF gpqa access + Portal Save onto automation re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Tick 30 linked a personal draft and proposed it, but the automation did **not** attach that env — every new cron still starts from `main` with `environment: null`, so secrets cannot inject. Re-establishing a green draft + re-proposing for Portal Save on the automation is the highest-leverage unblock before paid GPQA.
+
+### What this tick did (ONE step)
+**Re-link Cursor environment on greenfield cron (no API spend):**
+1. Fast-forwarded tip from `origin/cursor/icml-epistemic-results-357b`
+2. Triggered draft env build with known-good user-site install (`.cursor/environment.json`); created draft `4b2bb39a-…`; build `bld-20260806-933779ed-…` **SUCCEEDED**
+3. Proposed env via `propose-environment-json` for Portal Save; requested secrets (`ANTHROPIC_API_KEY`, `NEBIUS_API_KEY`, `HF_TOKEN`) + external actions (accept `Idavidrein/gpqa`, **attach saved env to automation** `bf73dff3-…`)
+4. Refreshed pipeline preflight → live ready **no** (keys still missing; synthetic until HF fetch); pipeline tests **7 green**
+
+### Metrics delta
+| Metric | Before (Tick 30) | After (Tick 31) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Cursor environment on this cron | Would be `null` without re-link (Tick 30 draft not on automation) | **Linked draft** `4b2bb39a-…`; build `933779ed` **SUCCEEDED** + proposed |
+| Live PRIMARY / G2 | Blocked (keys + HF + automation attach) | Env re-linked + build green; still blocked on secrets + HF accept + **Portal Save onto automation** |
+
+### Next recommended step
+User: Portal Save proposed env `4b2bb39a-…`, add secrets, accept HF `Idavidrein/gpqa`, attach env to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce. Next cron: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-06T08:10Z — Tick 30 (automation cron)
 
 ### Status snapshot

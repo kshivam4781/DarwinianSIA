@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-06T08:08:57Z
+**Timestamp:** 2026-08-06T10:08:40Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no

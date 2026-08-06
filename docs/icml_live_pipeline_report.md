@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-06T08:08:57Z
+**Timestamp:** 2026-08-06T10:08:40Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -44,7 +44,7 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Next
 
-1. Link a Cursor environment and inject `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).
+1. Portal Save Tick 31 draft env `4b2bb39a-…` (build `bld-20260806-933779ed` SUCCEEDED) onto automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce, then inject `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).
 2. Budget-check, then:
    `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`
 3. Do **not** set STATUS: READY from offline / preflight alone.
