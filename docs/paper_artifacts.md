@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -26,7 +26,7 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: B `1201+`, D `1301+` (Section 21.7); offline/harness next ≥1850. Before live G2: set `HF_TOKEN` (accepted `Idavidrein/gpqa` access) + API keys, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` (Tick 25; materializes real diamond, refuses synthetic smoke + missing keys). Do **not** commit materialized `diamond_questions.json`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+` (Section 21.7); offline/harness next ≥1850. Before live G2: set `HF_TOKEN` (accepted `Idavidrein/gpqa` access) + API keys, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. After G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond` (Tick 26; sequential B→D). Do **not** commit materialized `diamond_questions.json`.
 
 ## Table 1 — Primary (B vs D)
 
@@ -106,6 +106,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 21 unblocks gitignored GPQA layout via synthetic smoke fixture + CLI dry-run `run_1800`; **does not** satisfy live G2 (answers are synthetic; no Nebius/Anthropic calls).
 - Tick 24 adds `scripts/run_g2_smoke.py` so paid G2 hard-stops on missing keys / synthetic smoke / budget / existing run_id; preflight this tick is **not** live G2 PASS.
 - Tick 25 automates real diamond materialization (`prepare_gpqa_diamond.py` / `--fetch-diamond`) but still cannot run paid G2 without secrets; GPQA license forbids committing examples.
+- Tick 26 adds `scripts/run_g3_pilot.py` so live G3 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs and never launches parallel GPQA; preflight this tick is **not** live G3 PASS. This cloud run has **no linked Cursor environment**, so secrets cannot be injected until an environment is linked.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
@@ -135,3 +136,4 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Live G2 preflight / runner | `scripts/run_g2_smoke.py` (Tick 24; `docs/gate2_report.md`) |
 | Synthetic smoke detector | `prepare_gpqa_smoke_data.is_synthetic_smoke` (Tick 24) |
 | Real GPQA diamond materializer | `scripts/prepare_gpqa_diamond.py` + `--fetch-diamond` (Tick 25; HF/CSV → SIA schema) |
+| Live G3 sequential pilot | `scripts/run_g3_pilot.py` (Tick 26; B then D; `docs/gate3_report.md`) |

@@ -4,6 +4,35 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T00:05Z — Tick 26 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-89ff` (fast-forwarded Ticks 1–25 from `996f`, then this tick)
+- API keys in cloud env: **absent** (no linked Cursor environment; secrets re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Tick 25 made diamond fetch turnkey for G2, but the next paid gate (G3 sequential B vs D) still relied on ad hoc Section 21.7 commands — risk of parallel GPQA jobs, budget overrun on 2-seed pairs, or overwriting run IDs once keys appear.
+
+### What this tick did (ONE step)
+**Turnkey live G3 sequential B vs D pilot runner (no API spend):**
+1. `scripts/run_g3_pilot.py` — `--preflight-only` / `--live`; 1–2 seeds; Section 21.5 shape (`eval_subset=15`, `pop=4`, `elite=2`, `max_gen≤5`); executes **B then D serially** (never parallel); hard-stops without keys / non-smoke GPQA / free run IDs / budget projection (`estimate × n_pairs ≤ ceiling`); optional `--fetch-diamond`; scores `compare_b_vs_d` + Condition D H5 into `docs/gate3_report.md` (preserves offline pilot block)
+2. Unit tests `tests/test_run_g3_pilot.py` (9 green) — sequential order, budget projection, offline-block preserve, live refuse without keys
+3. Preflight `--seeds 1 --b-run-ids 1201 --d-run-ids 1301` → live ready **no** (missing layout/keys; synthetic until HF fetch)
+
+### Metrics delta
+| Metric | Before (Tick 25) | After (Tick 26) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Live G3 runner | ad hoc Section 21.7 | **`scripts/run_g3_pilot.py`** + refreshed `docs/gate3_report.md` |
+| Live PRIMARY / G2 | Blocked (keys + HF) | Still blocked; G3 path ready after G2 |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`) present: budget-check, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. If G2 PASS, `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`. Do **not** set READY from offline / G3 preflight alone.
+
+---
+
 ## 2026-08-05T22:15Z — Tick 25 (automation cron)
 
 ### Status snapshot
