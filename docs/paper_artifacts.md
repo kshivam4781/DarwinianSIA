@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27; `run_g4_multiseed.py` / `docs/gate4_report.md`; auto-fills Live Table 1 after paid pairs). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -26,7 +26,7 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+` (Section 21.7); offline/harness next ≥1850. Before live G2: set `HF_TOKEN` (accepted `Idavidrein/gpqa` access) + API keys, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. After G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond` (Tick 26; sequential B→D). Do **not** commit materialized `diamond_questions.json`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1850. Before live G2: set `HF_TOKEN` (accepted `Idavidrein/gpqa` access) + API keys + linked Cursor environment, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. After G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond` (Tick 26). After G3 PASS under budget: `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond` (Tick 27; sequential B→D; refreshes this file's Live table). Do **not** commit materialized `diamond_questions.json`.
 
 ## Table 1 — Primary (B vs D)
 
@@ -107,6 +107,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 24 adds `scripts/run_g2_smoke.py` so paid G2 hard-stops on missing keys / synthetic smoke / budget / existing run_id; preflight this tick is **not** live G2 PASS.
 - Tick 25 automates real diamond materialization (`prepare_gpqa_diamond.py` / `--fetch-diamond`) but still cannot run paid G2 without secrets; GPQA license forbids committing examples.
 - Tick 26 adds `scripts/run_g3_pilot.py` so live G3 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs and never launches parallel GPQA; preflight this tick is **not** live G3 PASS. This cloud run has **no linked Cursor environment**, so secrets cannot be injected until an environment is linked.
+- Tick 27 adds `scripts/run_g4_multiseed.py` so live G4 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs, requires exactly 5 seeds, never launches parallel GPQA, and can auto-fill Live Table 1 here after paid pairs; preflight this tick is **not** live G4 PASS / not READY.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
@@ -137,3 +138,4 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Synthetic smoke detector | `prepare_gpqa_smoke_data.is_synthetic_smoke` (Tick 24) |
 | Real GPQA diamond materializer | `scripts/prepare_gpqa_diamond.py` + `--fetch-diamond` (Tick 25; HF/CSV → SIA schema) |
 | Live G3 sequential pilot | `scripts/run_g3_pilot.py` (Tick 26; B then D; `docs/gate3_report.md`) |
+| Live G4 5-seed PRIMARY | `scripts/run_g4_multiseed.py` (Tick 27; B then D ×5; Live table refresh; `docs/gate4_report.md`) |

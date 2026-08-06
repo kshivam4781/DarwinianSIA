@@ -4,6 +4,35 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T02:05Z — Tick 27 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-316e` (fast-forwarded Ticks 1–26 from `89ff`, then this tick)
+- API keys in cloud env: **absent** (no linked Cursor environment; secrets + HF access re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Tick 26 made G3 turnkey, but Gate G4 (the publishable 5-seed PRIMARY) still relied on ad hoc Section 21.7 loops — risk of parallel GPQA (10 jobs), budget overrun on 5× pairs, or forgetting to refresh `paper_artifacts` Live tables once keys appear.
+
+### What this tick did (ONE step)
+**Turnkey live G4 5-seed sequential B vs D runner + paper pack refresh (no API spend):**
+1. `scripts/run_g4_multiseed.py` — `--preflight-only` / `--live`; **exactly 5 seeds**; Section 21.5 shape (`eval_subset=15`, `pop=4`, `elite=2`, `max_gen≤5`); executes **B then D serially** per seed (never parallel); hard-stops without keys / non-smoke GPQA / free run IDs / budget projection (`SIA_G4_PAIR_ESTIMATE_USD` default $3 × 5 ≤ ceiling); optional `--fetch-diamond`; scores `compare_b_vs_d` + Condition D H5; refreshes Live GPQA Table 1 + run-ID rows in `docs/paper_artifacts.md`; writes `docs/gate4_report.md` (+ `.json`)
+2. Unit tests `tests/test_run_g4_multiseed.py` (7 green) — 5-seed plan, budget projection, paper refresh, PRIMARY aggregate
+3. Preflight defaults B `1211–1215` / D `1311–1315` → live ready **no** (missing layout/keys; synthetic until HF fetch); projected spend $15 under $20
+
+### Metrics delta
+| Metric | Before (Tick 26) | After (Tick 27) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Live G4 runner | ad hoc Section 21.7 | **`scripts/run_g4_multiseed.py`** + `docs/gate4_report.md` |
+| Live PRIMARY / G2 | Blocked (keys + HF) | Still blocked; G2→G3→G4 path now fully scripted |
+
+### Next recommended step
+When `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`) present **and** a Cursor environment is linked: budget-check, then `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond`. If G2 PASS, `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`. If G3 looks promising under remaining budget, `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** set READY from offline / G4 preflight alone.
+
+---
+
 ## 2026-08-06T00:05Z — Tick 26 (automation cron)
 
 ### Status snapshot

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-06 (Section 21 ICML; Tick 26 live G3 sequential pilot runner)  
+**Last updated:** 2026-08-06 (Section 21 ICML; Tick 27 live G4 5-seed sequential runner)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -827,7 +827,8 @@ Computed in `cabs/belief_engine.py`:
 | Live G2 preflight runner | **DONE** | Tick 24: `scripts/run_g2_smoke.py` + `docs/gate2_report.md`; hard-stops paid smoke w/o keys / real GPQA / free run_id / budget |
 | GPQA diamond materializer | **DONE** | Tick 25: `scripts/prepare_gpqa_diamond.py` (HF/CSV → SIA schema) + `run_g2_smoke.py --fetch-diamond`; never commit JSON |
 | Live G3 sequential pilot runner | **DONE** | Tick 26: `scripts/run_g3_pilot.py` — B then D serially; hard-stops keys/synthetic/budget/run IDs; scores PRIMARY/H5 into `docs/gate3_report.md` |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys / no linked cloud env; secrets re-requested; need HF access + `HF_TOKEN` then live G2 → G3 |
+| Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; refreshes Live Table 1 in `docs/paper_artifacts.md`; `docs/gate4_report.md` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys / no linked cloud env; secrets re-requested; need HF access + `HF_TOKEN` then live G2 → G3 → G4 |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1589,6 +1590,12 @@ sia run --task gpqa --darwinian --cabs --cabs-inline \
 python scripts/run_g3_pilot.py --preflight-only --seeds 1 --b-run-ids 1201 --d-run-ids 1301
 python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond
 
+# 3b) Preferred G4 entrypoint (Tick 27) — exactly 5 seeds; sequential B then D; refreshes paper Live table
+python scripts/run_g4_multiseed.py --preflight-only
+python scripts/run_g4_multiseed.py --live \
+  --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 \
+  --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond
+
 # Condition B — darwinian-only (example IDs — pick unused integers)
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
   --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1
@@ -1607,6 +1614,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 | Ready checklist | `docs/ICML_READY.md` |
 | Paper pack | `docs/paper_artifacts.md` |
 | Gate 3 report | `docs/gate3_report.md` |
+| Gate 4 report | `docs/gate4_report.md` |
 | Result figures | `docs/figures/` (when generated) |
 
 ### 21.9 Known mechanism bug (fixed 2026-08-03)
@@ -1662,3 +1670,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted dataset access) are present.
 
 **Live G3 sequential pilot runner (2026-08-06 Tick 26):** `scripts/run_g3_pilot.py` turns Gate G3 into a single entrypoint (`--preflight-only` / `--live`). Enforces Section 21.5 shape (1–2 seeds, `eval_subset=15`, `pop=4`, `elite=2`, `max_gen≤5`), runs Condition **B then D serially** (hard-stop against parallel full GPQA), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G3_PAIR_ESTIMATE_USD` × n_pairs ≤ ceiling). After a live pair, scores `compare_b_vs_d` + Condition D H5 and refreshes `docs/gate3_report.md` while preserving the offline pilot block. Preflight this tick: live ready **no**. Next after G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`.
+
+**Live G4 5-seed sequential runner (2026-08-06 Tick 27):** `scripts/run_g4_multiseed.py` turns Gate G4 into a single entrypoint (`--preflight-only` / `--live`). Requires **exactly 5 seeds**, same Section 21.5 shape as G3, serial B→D (never parallel), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G4_PAIR_ESTIMATE_USD` default $3 × 5 ≤ ceiling). After live pairs, scores PRIMARY + Condition D H5, writes `docs/gate4_report.md`, and refreshes the Live GPQA Table 1 + run-ID rows in `docs/paper_artifacts.md`. Preflight this tick: live ready **no**. Next after G3 PASS under remaining budget: `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`.
