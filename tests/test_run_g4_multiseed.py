@@ -1,4 +1,4 @@
-"""Tests for scripts/run_g4_multiseed.py (Tick 27 live G4 5-seed runner)."""
+"""Tests for scripts/run_g4_multiseed.py (Tick 27–28 live G4 5-seed runner + paper pack)."""
 
 from __future__ import annotations
 
@@ -14,13 +14,21 @@ sys.path.insert(0, str(REPO / "scripts"))
 from prepare_gpqa_smoke_data import is_synthetic_smoke, prepare_task_tree  # noqa: E402
 from run_g4_multiseed import (  # noqa: E402
     PilotPlan,
+    TABLE2_LIVE_H2_END,
+    TABLE2_LIVE_H2_MARKER,
+    TABLE2_LIVE_H5_END,
+    TABLE2_LIVE_H5_MARKER,
     build_g4_plans,
+    h2_skew_pass,
     h5_pass_count,
+    h5_validity_pass,
     primary_criteria_pass,
     refresh_paper_artifacts_live,
     render_live_table1_rows,
     run_preflight,
+    update_icml_ready_from_g4,
     write_gate4_report,
+    write_live_bvd_figures,
 )
 
 
@@ -218,7 +226,14 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
         "|------|-------------|-------------|------------|------------|----------|----------|--------|\n"
         "| — | — | — | — | — | — | — | — |\n\n"
         "## Table 2 — Mechanism / validity\n\n"
-        "| Metric | Value |\n",
+        "| Metric | Value | Pass? |\n"
+        "|--------|-------|-------|\n"
+        f"{TABLE2_LIVE_H2_MARKER}\n"
+        "| H2 trait skew (live API) | — | — |\n"
+        f"{TABLE2_LIVE_H2_END}\n"
+        f"{TABLE2_LIVE_H5_MARKER}\n"
+        "| H5 Spearman ρ (live) | — | — |\n"
+        f"{TABLE2_LIVE_H5_END}\n",
         encoding="utf-8",
     )
     plans = build_g4_plans(
@@ -239,22 +254,46 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
                     "final_best": 0.20,
                     "gens_to_30": None,
                     "cost_to_30": {"cost": None, "unit": "calls"},
+                    "learning_curve": {
+                        "1": {"best": 0.15, "mean": 0.12},
+                        "2": {"best": 0.20, "mean": 0.16},
+                    },
                 },
                 "D": {
                     "final_best": 0.28,
                     "gens_to_30": 3,
                     "cost_to_30": {"cost": 36.0, "unit": "calls"},
+                    "learning_curve": {
+                        "1": {"best": 0.18, "mean": 0.14},
+                        "2": {"best": 0.24, "mean": 0.20},
+                        "3": {"best": 0.28, "mean": 0.24},
+                    },
                 },
             }
             for _ in range(5)
         ],
     }
+    h2 = {
+        f"run_{rid}": {
+            "field": "memory",
+            "counts": {"failure_based": 6, "none": 2},
+            "total": 8,
+            "bias_values": ["failure_based", "none"],
+            "in_bias_share": 1.0,
+        }
+        for rid in (1311, 1312, 1313, 1314, 1315)
+    }
     ok = refresh_paper_artifacts_live(
         docs_path=docs,
         plans=plans,
         comparison=comparison,
-        h5_by_d_run={"run_1311": {"spearman_rho": 0.5}},
-        timestamp="2026-08-06T02:00:00Z",
+        h5_by_d_run={
+            f"run_{rid}": {"spearman_rho": 0.5}
+            for rid in (1311, 1312, 1313, 1314, 1315)
+        },
+        h2_by_d_run=h2,
+        figures_written=["docs/figures/fig1_learning_curves.png"],
+        timestamp="2026-08-06T04:00:00Z",
     )
     assert ok is True
     text = docs.read_text(encoding="utf-8")
@@ -263,12 +302,153 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     assert "PRIMARY flags: gens30=True" in text
     assert "**G4 live**" in text
     assert "## Table 2 — Mechanism / validity" in text
+    assert "H2 trait skew (live API)" in text
+    assert "skew_pass=True" in text
+    assert "H5 Spearman ρ (live)" in text
+    assert "ρ>0.3 = **5/5**" in text
     rows = render_live_table1_rows(plans[:1], comparison)
     assert "D_final" in rows[0] and "D_gens30" in rows[0]
 
 
+def test_h2_h5_pass_helpers() -> None:
+    assert h5_validity_pass({}) is False
+    assert h5_validity_pass(
+        {f"r{i}": {"spearman_rho": 0.5} for i in range(5)}
+    )
+    assert not h5_validity_pass(
+        {
+            "a": {"spearman_rho": 0.5},
+            "b": {"spearman_rho": 0.5},
+            "c": {"spearman_rho": 0.1},
+            "d": {"spearman_rho": 0.1},
+            "e": {"spearman_rho": 0.1},
+        }
+    )
+    assert h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 0.75,
+                "counts": {"failure_based": 3, "none": 1},
+                "total": 4,
+                "bias_values": ["failure_based"],
+            }
+            for i in range(5)
+        }
+    )
+    assert not h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 0.2,
+                "counts": {"a": 1, "b": 4},
+                "total": 5,
+                "bias_values": [],
+            }
+            for i in range(5)
+        }
+    )
+
+
+def test_update_icml_ready_sets_ready_only_when_all_pass(tmp_path: Path) -> None:
+    ready = tmp_path / "ICML_READY.md"
+    ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: IN_PROGRESS**\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    comparison = {
+        "primary_gens30_pass": True,
+        "primary_cost30_pass": False,
+        "d_wins_final": 4,
+    }
+    status = update_icml_ready_from_g4(
+        ready_path=ready,
+        comparison=comparison,
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png", "fig2.png"],
+        timestamp="2026-08-06T04:00:00Z",
+        allow_ready=True,
+    )
+    assert status == "READY"
+    text = ready.read_text(encoding="utf-8")
+    assert "**STATUS: READY**" in text
+    assert "- [x] D beats B on ≥3/5 seeds for gens-to-threshold" in text
+    assert "- [x] Spearman ρ" in text
+    assert "- [x] Table 1" in text
+    assert "_Last G4 pack refresh:" in text
+
+    # Without allow_ready, stay IN_PROGRESS even if metrics pass.
+    status2 = update_icml_ready_from_g4(
+        ready_path=ready,
+        comparison=comparison,
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-08-06T04:01:00Z",
+        allow_ready=False,
+    )
+    assert status2 == "IN_PROGRESS"
+
+
+def test_write_live_bvd_figures(tmp_path: Path) -> None:
+    comparison = {
+        "rows": [
+            {
+                "B": {
+                    "learning_curve": {
+                        "1": {"best": 0.1, "mean": 0.08},
+                        "2": {"best": 0.2, "mean": 0.15},
+                    }
+                },
+                "D": {
+                    "learning_curve": {
+                        "1": {"best": 0.12, "mean": 0.1},
+                        "2": {"best": 0.25, "mean": 0.2},
+                    }
+                },
+            }
+        ]
+    }
+    h2 = {
+        "run_1311": {
+            "field": "memory",
+            "counts": {"failure_based": 5, "none": 1},
+        }
+    }
+    written = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run=h2,
+        figures_dir=tmp_path / "figures",
+    )
+    # matplotlib may be absent in minimal envs — then written == []
+    if written:
+        assert any("fig1_learning_curves.png" in p for p in written)
+        assert any("fig2_mechanism.png" in p for p in written)
+        assert (tmp_path / "figures" / "fig1_learning_curves.png").is_file()
+
+
 def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
-    from run_g4_multiseed import G4PreflightReport, CheckResult
+    from run_g4_multiseed import G4PreflightReport
 
     report = G4PreflightReport(
         timestamp="2026-08-06T02:00:00Z",
@@ -291,3 +471,5 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert payload["mode"] == "preflight"
     assert payload["ready_for_live"] is False
     assert len(payload["plans"]) == 5
+    assert "h2_by_d_run" in payload
+    assert "ready_status" in payload

@@ -52,7 +52,12 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 
 | Metric | Value | Pass? |
 |--------|-------|-------|
+<!-- LIVE_TABLE2_H2_START -->
 | H2 trait skew (live API) | — | — |
+<!-- LIVE_TABLE2_H2_END -->
+<!-- LIVE_TABLE2_H5_START -->
+| H5 Spearman ρ (live) | — | — |
+<!-- LIVE_TABLE2_H5_END -->
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
 | H2 offline pilot D (Tick 23) | directed ε-explore + live harvest; **post-steer** gen3 preferred share **0.75** (`run_1840`; gen1/2/3 = 0.25→0.5→0.75) | informative (dry-run) |
 | H2 unit skew test | pass (+ preferred anchoring + bias-aware / delayed XO + tempered early mutate + delay-all + ε-greedy + directed explore) | yes (unit) |
@@ -67,7 +72,7 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 | Cost-to-threshold | tokens/USD preferred; else eval-calls; ≥15% savings or reach-vs-never (Tick 22) | yes (unit + offline **4/5**) |
 | H5 protocol | `min_generation=2`, `fitness_key=mean`, `delta_horizon=2` (Tick 18–19) | yes (unit + offline) |
 | Case study chain | `docs/case_study_offline.md` (`run_1840`) | yes (offline; post-steer gen≥3) |
-| H5 Spearman ρ | offline D `1840–1844`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live pending | offline pass; live need > 0.3 |
+| H5 Spearman ρ (offline) | offline D `1840–1844`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live row above | offline pass; live need > 0.3 |
 | Steering opportunity term | `fitness_gap × (1 − preferred share)` in epi | yes (unit + offline) |
 
 ## Figures
@@ -108,6 +113,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 25 automates real diamond materialization (`prepare_gpqa_diamond.py` / `--fetch-diamond`) but still cannot run paid G2 without secrets; GPQA license forbids committing examples.
 - Tick 26 adds `scripts/run_g3_pilot.py` so live G3 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs and never launches parallel GPQA; preflight this tick is **not** live G3 PASS. This cloud run has **no linked Cursor environment**, so secrets cannot be injected until an environment is linked.
 - Tick 27 adds `scripts/run_g4_multiseed.py` so live G4 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs, requires exactly 5 seeds, never launches parallel GPQA, and can auto-fill Live Table 1 here after paid pairs; preflight this tick is **not** live G4 PASS / not READY.
+- Tick 28 extends G4 paper pack: live H2 scoring, Table 2 H2/H5 markers, Figs 1–2 refresh, and `ICML_READY` checklist updater (`--refresh-paper-from-runs` for recovery; READY only when criteria pass and `--allow-ready`). Still **not** READY without live GPQA keys.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
@@ -138,4 +144,4 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Synthetic smoke detector | `prepare_gpqa_smoke_data.is_synthetic_smoke` (Tick 24) |
 | Real GPQA diamond materializer | `scripts/prepare_gpqa_diamond.py` + `--fetch-diamond` (Tick 25; HF/CSV → SIA schema) |
 | Live G3 sequential pilot | `scripts/run_g3_pilot.py` (Tick 26; B then D; `docs/gate3_report.md`) |
-| Live G4 5-seed PRIMARY | `scripts/run_g4_multiseed.py` (Tick 27; B then D ×5; Live table refresh; `docs/gate4_report.md`) |
+| Live G4 5-seed PRIMARY | `scripts/run_g4_multiseed.py` (Tick 27–28; B then D ×5; Live Table 1/2 + Figs + ICML_READY; `docs/gate4_report.md`) |
