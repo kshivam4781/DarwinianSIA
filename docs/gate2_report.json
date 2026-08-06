@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-08-06T20:07:05Z",
+  "timestamp": "2026-08-06T22:07:54Z",
   "mode": "preflight",
-  "run_id": 1850,
+  "run_id": 1300,
   "ready_for_live": false,
   "ready_for_dry_run": false,
   "blockers": [
@@ -49,7 +49,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1850 unused"
+      "detail": "run_1300 unused"
     },
     {
       "name": "per_run_venv",
@@ -74,7 +74,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1850",
+    "1300",
     "--eval_subset",
     "5",
     "--no-web",
