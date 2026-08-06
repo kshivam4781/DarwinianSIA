@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T12:15Z — Tick 32 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-8daf` (fast-forwarded Ticks 1–31 from `bf9c`, then this tick)
+- Cursor environment: **re-linked** personal draft `e0434bc7-918e-11f1-ba66-0e7d0216e441` (build `bld-20260806-5be244b4-…` **SUCCEEDED** + proposed; installs **uv**)
+- API keys in cloud env: **absent** (secrets + HF gpqa access + Portal Save onto automation re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker (keys / Portal Save). Separately, preflight claimed `python_venv_module: yes` via `import venv` while `venv.create(with_pip=True)` **fails** on Cursor images (no ensurepip). SIA per-run venvs only work when `uv` is present — without this fix, the first live cron after secrets would burn budget and fail at run setup.
+
+### What this tick did (ONE step)
+**Fix vacuous per-run venv preflight + ship uv in Cursor env (no API spend):**
+1. `scripts/icml_env_checks.py` — `probe_per_run_venv_capable()` (uv on PATH **or** real `venv.create(with_pip=True)`)
+2. G2/G3/G4 preflight check renamed to `per_run_venv` (no longer vacuous `import venv`)
+3. `.cursor/environment.json` installs uv + exports `PATH` in start; draft build `5be244b4` **SUCCEEDED** + proposed
+4. `SIA/sia/run_setup._create_venv` clearer RuntimeError when neither path works
+5. Tests: `tests/test_icml_env_checks.py` + G2/G3/G4/pipeline suite **37 green**; pipeline preflight refreshed (`per_run_venv=yes` via uv)
+
+### Metrics delta
+| Metric | Before (Tick 31) | After (Tick 32) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Preflight venv check | Vacuous `import venv` → false green | **Real** `per_run_venv` (uv or ensurepip create) |
+| Cursor env install | user-site pip only | **+ uv** (build `5be244b4` SUCCEEDED) |
+| Live PRIMARY / G2 | Blocked (keys + HF + automation attach) | Same human blockers; live path no longer doomed by missing ensurepip |
+
+### Next recommended step
+User: Portal Save proposed uv-capable env `e0434bc7-…` onto automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce, add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`, accept HF `Idavidrein/gpqa`. Next cron: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-06T10:10Z — Tick 31 (automation cron)
 
 ### Status snapshot

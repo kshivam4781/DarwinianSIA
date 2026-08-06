@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-06T10:08:40Z
+**Timestamp:** 2026-08-06T12:03:45Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -16,7 +16,7 @@
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
 | `run_id_free` | yes | run_1300 unused |
-| `python_venv_module` | yes | /usr/bin/python3 has venv |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no

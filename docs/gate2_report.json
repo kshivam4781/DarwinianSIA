@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-06T10:08:40Z",
+  "timestamp": "2026-08-06T12:03:45Z",
   "mode": "preflight",
   "run_id": 1300,
   "ready_for_live": false,
@@ -51,9 +51,9 @@
       "detail": "run_1300 unused"
     },
     {
-      "name": "python_venv_module",
+      "name": "per_run_venv",
       "ok": true,
-      "detail": "/usr/bin/python3 has venv"
+      "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
     }
   ],
   "command": [

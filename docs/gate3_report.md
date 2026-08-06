@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-06T10:08:40Z
+**Timestamp:** 2026-08-06T12:03:45Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -46,7 +46,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 1 seed(s) (G3 pilot shape) |
-| `python_venv_module` | yes | /usr/bin/python3 has venv |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
 
 ### Planned seed pairs
 

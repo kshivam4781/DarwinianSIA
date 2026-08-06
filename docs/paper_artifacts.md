@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27–28; `run_g4_multiseed.py` / `docs/gate4_report.md`; after paid pairs auto-fills Live Table 1/2 + Figs 1–2 + `ICML_READY`) + unified live pipeline (Tick 29; `run_icml_live_pipeline.py` / `docs/icml_live_pipeline_report.md`) + Cursor env (Tick 30 draft `0ed19edd-…`; Tick 31 re-link draft `4b2bb39a-…` + `.cursor/environment.json`; need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–32) + **Tick 32** real `per_run_venv` probe + **uv** in `.cursor/environment.json` (draft `e0434bc7-…` / build `5be244b4` SUCCEEDED; need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -117,6 +117,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 29 adds `scripts/run_icml_live_pipeline.py` so one unblocked cron tick can run G2→G3→G4 serially under a $20 stack budget; preflight this tick is **not** live PASS / not READY (no linked Cursor environment / no keys).
 - Tick 30 links a Cursor environment draft (`0ed19edd-…`) and adds `.cursor/environment.json` so secrets can inject into future cron ticks; live still blocked on missing `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` (+ HF gpqa accept).
 - Tick 31: Tick 30 personal draft was **not** inherited — cron again booted `environment: null`. Re-linked draft `4b2bb39a-…` (build `933779ed` SUCCEEDED + proposed). Until the user Portal Saves and attaches the env to automation `bf73dff3-…`, every cron will keep re-creating orphan drafts and cannot run paid G2–G4.
+- Tick 32: preflight previously greenlit `import venv` while Cursor images lack ensurepip — live `sia run` would fail at per-run venv creation after keys arrived. Fixed via `per_run_venv` probe + **uv** in env install (draft `e0434bc7-…` / build `5be244b4`). Still need Portal Save onto automation + secrets.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins

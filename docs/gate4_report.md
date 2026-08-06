@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-06T10:08:40Z
+**Timestamp:** 2026-08-06T12:03:45Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -18,7 +18,7 @@
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 5 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 5 seeds (G4 full multi-seed shape) |
-| `python_venv_module` | yes | /usr/bin/python3 has venv |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
 
 ### Planned seed pairs
 
