@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–36) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 36** draft `df01ec67-…` / build `aecd8ae8` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–37) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 37** draft `a60e2d80-…` / build `f1fa5eeb` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -122,6 +122,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 34: Tick 33 draft again not inherited; re-linked `91d72d0c-…` / `262ebfe1` + SystemExit-safe `per_run_venv` probe. Still need Portal Save onto automation + secrets.
 - Tick 35: Tick 34 draft again not inherited; re-linked `291a67ab-…` / `da839bad` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Tick 36: Tick 35 draft again not inherited; re-linked `df01ec67-…` / `aecd8ae8` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
+- Tick 37: Tick 36 draft again not inherited; re-linked `a60e2d80-…` / `f1fa5eeb` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
