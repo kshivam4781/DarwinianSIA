@@ -37,9 +37,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Linked Cursor environment for live stack (Tick 30) — draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` + `.cursor/environment.json` (was `environment: null` every prior tick); secrets still required
 - [x] Re-linked Cursor environment on greenfield cron (Tick 31) — draft `4b2bb39a-917e-11f1-ba66-0e7d0216e441`; build `bld-20260806-933779ed-…` **SUCCEEDED** + proposed; Tick 30 draft was **not** inherited by automation (cron still booted `environment: null`)
 - [x] Per-run venv capability (Tick 32) — `probe_per_run_venv_capable` + G2/G3/G4 `per_run_venv`; Cursor env installs **uv** (draft `e0434bc7-…` / build `5be244b4` SUCCEEDED); fixes vacuous `import venv` false green on images without ensurepip
+- [x] Canonical Portal Save target (Tick 33) — `docs/icml_portal_save_target.json`; re-linked uv draft `b0a8b976-…` / build `3b1c84c6` **SUCCEEDED** + proposed (prefer over older Tick 30–32 drafts)
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
-- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + **Tick 32 uv / per_run_venv**; live GPQA still pending (Portal Save **uv-capable** env `e0434bc7-…` onto automation + API keys + HF token / gpqa accept)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + **Tick 33 Portal Save pointer**; live GPQA still pending (Portal Save **uv-capable** env `b0a8b976-…` onto automation + API keys + HF token / gpqa accept)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
@@ -60,7 +61,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - G3 sequential pilot: `scripts/run_g3_pilot.py` (Tick 26; preflight `docs/gate3_report.md` — live blocked on keys + real GPQA; run after G2)
 - G4 5-seed PRIMARY: `scripts/run_g4_multiseed.py` (Tick 27–28; preflight `docs/gate4_report.md` — live blocked on keys + real GPQA; run after G3; paper pack auto-fills Tables/Figs/READY)
 - Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear)
-- Cursor env: `.cursor/environment.json` (+ **uv**, Tick 32) + draft `e0434bc7-…` (build `5be244b4` SUCCEEDED + proposed; must Portal Save onto automation — prior drafts not inherited)
+- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 33 draft `b0a8b976-…` (build `3b1c84c6` SUCCEEDED + proposed; must Portal Save onto automation — prior drafts not inherited); pointer `docs/icml_portal_save_target.json`
 - Per-run venv probe: `scripts/icml_env_checks.py` (Tick 32)
 
 ## Gate tracker (Section 21.5)
@@ -69,7 +70,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 32 per_run_venv / uv) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32 `per_run_venv=yes` via uv); **live** G2 still BLOCKED (no API keys; no HF_TOKEN / real diamond; need Portal Save uv env `e0434bc7-…` onto automation) |
+| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32 `per_run_venv`); **live** G2 still BLOCKED (no API keys; no HF_TOKEN / real diamond; need Portal Save uv env `b0a8b976-…` onto automation — see `docs/icml_portal_save_target.json`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
