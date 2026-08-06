@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-06T12:03:45Z
+**Timestamp:** 2026-08-06T16:08:38Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -16,9 +16,9 @@
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
 | `run_id_free` | yes | run_1300 unused |
-| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
+| `per_run_venv` | NO | stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip. |
 
-**Ready for dry-run:** yes
+**Ready for dry-run:** no
 **Ready for live G2:** no
 
 ## Planned command
@@ -32,10 +32,7 @@
 - gpqa_not_synthetic: synthetic smoke fixture detected — replace with real GPQA diamond before paid G2
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
-
-## Notes
-
-- materialized synthetic GPQA smoke fixture under SIA/
+- per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.
 
 **G2 live status:** NOT RUN this tick
 

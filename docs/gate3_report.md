@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-06T12:03:45Z
+**Timestamp:** 2026-08-06T16:08:38Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -46,7 +46,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 1 seed(s) (G3 pilot shape) |
-| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
+| `per_run_venv` | NO | stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip. |
 
 ### Planned seed pairs
 
@@ -64,6 +64,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
+- per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.
 
 **Live G3 status:** NOT RUN this tick
 
