@@ -4,6 +4,37 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-06T08:10Z — Tick 30 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-357b` (fast-forwarded Ticks 1–29 from `719a`, then this tick)
+- Cursor environment: **linked** personal transitional draft `0ed19edd-916e-11f1-ba66-0e7d0216e441` (was `null` every prior tick)
+- API keys in cloud env: **absent** (secrets + HF gpqa access re-requested against linked env)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Tick 29 made the stack one command, but every cron agent still booted with `environment: null`, so secrets could not inject even if the user added them to an unbound env. Linking a Cursor environment is the highest-leverage unblock before paid GPQA.
+
+### What this tick did (ONE step)
+**Link Cursor environment for ICML live stack (no API spend):**
+1. Added `.cursor/environment.json` (install: `.venv` + `sia-cabs[dev]` + `SIA[dev]` + `huggingface_hub`) and gitignore exception so the file is trackable
+2. Triggered draft environment build(s); first promotable attempt `bld-20260806-c974df7a-…` **INSTALL_FAILED** (`python3 -m venv` needs missing `ensurepip` / `python3.12-venv`). Fixed install to user-site pip and retried `bld-20260806-994ec2ef-…`. Environment now linked (`environmentPublicId=0ed19edd-…`).
+3. Requested secrets (`ANTHROPIC_API_KEY`, `NEBIUS_API_KEY`, `HF_TOKEN`) + external actions (accept `Idavidrein/gpqa`, save env onto the automation)
+4. Refreshed pipeline preflight → live ready **no** (keys still missing; synthetic until HF fetch); stack budget $20 ≤ $20; pipeline tests **7 green**
+
+### Metrics delta
+| Metric | Before (Tick 29) | After (Tick 30) |
+|--------|------------------|-----------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Cursor environment | `null` (secrets cannot inject) | **Linked draft** `0ed19edd-…`; install fixed to user-site pip after venv fail |
+| Live PRIMARY / G2 | Blocked (keys + HF + env) | Env linked; still blocked on secrets + HF gpqa accept |
+
+### Next recommended step
+User: add secrets to the linked env, accept HF `Idavidrein/gpqa`, save/attach the env to this automation. Next cron (or manual): after successful draft build + `propose-environment-json`, run `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-06T06:05Z — Tick 29 (automation cron)
 
 ### Status snapshot

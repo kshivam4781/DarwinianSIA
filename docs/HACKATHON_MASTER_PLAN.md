@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-06 (Section 21 ICML; Tick 29 unified G2→G3→G4 live pipeline)  
+**Last updated:** 2026-08-06 (Section 21 ICML; Tick 30 linked Cursor env for live stack)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -830,7 +830,8 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked: no API keys / no linked cloud env; secrets re-requested; need HF access + `HF_TOKEN` then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 30: linked draft env `0ed19edd-…` + `.cursor/environment.json` (user-site pip install); promotable draft build retried after venv failure; secrets still missing |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Env linked (Tick 30); blocked on API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1683,3 +1684,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G4 full paper-pack refresh (2026-08-06 Tick 28):** Same runner now also scores live H2 DNA skew, refreshes Table 2 H2/H5 marker rows, rewrites Figs 1–2 from B vs D curves + pooled H2 histograms, and updates `docs/ICML_READY.md` checklist (sets STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper all pass). Recovery without re-spend: `python scripts/run_g4_multiseed.py --refresh-paper-from-runs --b-run-dirs ... --d-run-dirs ...` (READY requires explicit `--allow-ready` on refresh).
 
 **Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot is promising (any D gens/cost/final win or H5 ρ>0.3) unless `--force-g4`. Preferred live entry: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
+
+**Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. Live still blocked on `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).

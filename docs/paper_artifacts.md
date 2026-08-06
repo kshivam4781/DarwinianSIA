@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27–28; `run_g4_multiseed.py` / `docs/gate4_report.md`; after paid pairs auto-fills Live Table 1/2 + Figs 1–2 + `ICML_READY`) + unified live pipeline (Tick 29; `run_icml_live_pipeline.py` / `docs/icml_live_pipeline_report.md`). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2 preflight runner (Tick 24; `docs/gate2_report.md`) + GPQA diamond materializer (Tick 25; `prepare_gpqa_diamond.py` / `--fetch-diamond`) + live G3 sequential pilot runner (Tick 26; `run_g3_pilot.py` / refreshed `docs/gate3_report.md`) + live G4 5-seed runner (Tick 27–28; `run_g4_multiseed.py` / `docs/gate4_report.md`; after paid pairs auto-fills Live Table 1/2 + Figs 1–2 + `ICML_READY`) + unified live pipeline (Tick 29; `run_icml_live_pipeline.py` / `docs/icml_live_pipeline_report.md`) + linked Cursor env (Tick 30; draft `0ed19edd-…` + `.cursor/environment.json`). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -115,6 +115,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 27 adds `scripts/run_g4_multiseed.py` so live G4 hard-stops on missing keys / synthetic smoke / budget projection / occupied run IDs, requires exactly 5 seeds, never launches parallel GPQA, and can auto-fill Live Table 1 here after paid pairs; preflight this tick is **not** live G4 PASS / not READY.
 - Tick 28 extends G4 paper pack: live H2 scoring, Table 2 H2/H5 markers, Figs 1–2 refresh, and `ICML_READY` checklist updater (`--refresh-paper-from-runs` for recovery; READY only when criteria pass and `--allow-ready`). Still **not** READY without live GPQA keys.
 - Tick 29 adds `scripts/run_icml_live_pipeline.py` so one unblocked cron tick can run G2→G3→G4 serially under a $20 stack budget; preflight this tick is **not** live PASS / not READY (no linked Cursor environment / no keys).
+- Tick 30 links a Cursor environment draft (`0ed19edd-…`) and adds `.cursor/environment.json` so secrets can inject into future cron ticks; live still blocked on missing `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` (+ HF gpqa accept).
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
