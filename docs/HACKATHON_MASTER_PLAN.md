@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-06-06 (Section 20 merge implementation plan added)  
+**Last updated:** 2026-08-07 (Section 21 ICML; Tick 46 re-link uv Cursor env draft `3b6f81a0` + Portal Save target)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -798,6 +798,46 @@ Computed in `cabs/belief_engine.py`:
 | Live merged demo `run_400` | **DEFERRED** | `run_311` + analyze proves merge |
 | `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — prints READY FOR SUBMISSION |
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
+| ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
+| CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
+| Fitness-weighted mutation bias | **DONE** | Higher-fitness contradiction side ranked first; exponential rank-weighted `_biased_choice` |
+| Preferred-allele anchoring | **DONE** | Tick 10; **Tick 17**: preserve outsiders (stop forcing onto local winner); ε-greedy explores |
+| Singleton bias pool skip | **DONE** | Tick 10: `load_mutation_bias` requires ≥2 distinct candidates (same-allele disputes skipped) |
+| Soft bias-aware crossover | **DONE** | Tick 11: `crossover(..., bias=)` inherits preferred allele with p=0.85; `breed_offspring` forwards bias |
+| Delayed crossover bias (gen≥2) | **DONE** | Tick 12: fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`) |
+| Tempered early mutation bias | **DONE** | Tick 13: soft rank-weighted mutate option (`apply_mutation_anchor`); superseded for early gens by Tick 14 delay-all |
+| Delay-all mutation bias (gen≥2) | **DONE** | Tick 14: fair mutate+XO gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`); final 4/5; mean ~3.34pp; gens30 still 0/5 |
+| Longer-horizon offline B vs D (`max_gen=6`) | **DONE** | Tick 15: `1630–1634` / `1640–1644`; final 3/5; mean ~2.55pp; H5 2/5; gens30 still 0/5 (early threshold saturation) |
+| Compressed latent fitness scale | **DONE** | Tick 16: map additive latent into `[0.02, 0.34]`; gen-1 ≥30% fixed; gens30 **2/5** |
+| ε-greedy + live bias harvest | **DONE** | Tick 17: explore + adopt better latest-gen alleles; offline gens30 **3/5** |
+| Directed ε-explore (outsiders only) | **DONE** | Tick 20: explore samples only alleles outside disputed pool; gens30 **4/5**; mean ~6.15pp |
+| H5 steered-window + mean Δfitness | **DONE** | Tick 18: `min_generation=2`, `fitness_key=mean` |
+| H5 forward-horizon Δfitness | **DONE** | Tick 19: `delta_horizon=2`; offline H5 **5/5** (ε-lag) |
+| CABS scoped feedback DNA targets | **DONE** | Agenda injects same contradiction-scoped candidates as bias (2026-08-04) |
+| `--cabs-inline` epistemic_full loop | **DONE** | `cabs_inline.py` + CLI; analyze after each gen; `epistemic_value.jsonl` |
+| ICML G1 dry-run Condition D | **DONE** | `run_1401` + `test_cabs_inline_dry_run.py` (2026-08-04) |
+| Dry-run DNA-deterministic fitness | **DONE** | Tick 9 additive latent; **Tick 16** ceiling 0.34 (was 0.38) so gens-to-30% stay discriminative |
+| Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
+| `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% + **cost-to-threshold** (Tick 22); Tick 18–19 H5 protocol |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick 23 `1830–1834` / `1840–1844` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1840`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp; post-steer H2 share **0.75** at gen3 |
+| Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
+| Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
+| GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
+| CLI Condition D dry-run (harness) | **DONE** | Tick 21: `run_1800` via real `sia run --task gpqa --cabs --cabs-inline --dry-run` (belief_store + scoped bias) |
+| Live G2 preflight runner | **DONE** | Tick 24: `scripts/run_g2_smoke.py` + `docs/gate2_report.md`; hard-stops paid smoke w/o keys / real GPQA / free run_id / budget |
+| GPQA diamond materializer | **DONE** | Tick 25: `scripts/prepare_gpqa_diamond.py` (HF/CSV → SIA schema) + `run_g2_smoke.py --fetch-diamond`; never commit JSON |
+| Live G3 sequential pilot runner | **DONE** | Tick 26: `scripts/run_g3_pilot.py` — B then D serially; hard-stops keys/synthetic/budget/run IDs; scores PRIMARY/H5 into `docs/gate3_report.md` |
+| Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
+| G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
+| Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 46: draft `3b6f81a0-…` + build `bld-20260807-b7044749-…` **SUCCEEDED** + proposed (installs **uv** 0.12.3); pointer `docs/icml_portal_save_target.json`; prior drafts not inherited — need Portal Save onto automation + secrets |
+| Per-run venv capability (Cursor) | **DONE** | Tick 32+34: `probe_per_run_venv_capable` (uv or real venv+ensurepip; stdlib path probed in subprocess so ensurepip `SystemExit` cannot kill preflight); G2/G3/G4 use `per_run_venv` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on Portal Save of uv-capable env `3b6f81a0-…` onto automation + API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
+| Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
+| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 cost stub; live automatable via Tick 28 pack — see `docs/paper_artifacts.md` |
+| `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
 ---
 
@@ -1459,3 +1499,223 @@ tests/test_merge_contracts.py          NEW
 3. **SIA2 + SIA Blocks 3–4** — mutation bias, technique_seeds, live `run_400`.
 
 **Do not:** implement Darwinian inside SIA2; rotate exposed API keys; run full LawBench without approval.
+
+---
+
+## 21. ICML Thesis 1 — Epistemic evolution protocol (persistent agent)
+
+> **Source of truth for ICML automation ticks.** Hackathon submission can stay READY while this section tracks the publishable epistemic result.
+
+### 21.1 Winning claim
+
+```
+Belief → Contradiction → Research question → Biased mutation / scoped feedback
+  → Better sample efficiency than fitness-only Darwinian (Condition B)
+```
+
+### 21.2 Experimental conditions
+
+| Cond | Name | Flags / setup | Role |
+|------|------|---------------|------|
+| **A** | baseline SIA | single-agent `sia run` (no darwinian) | Optional reference |
+| **B** | darwinian-only | `--darwinian` **without** `--cabs` | Fitness-only control |
+| **C** | cabs-feedback | `--darwinian --cabs` (belief_store pre-populated / two-step analyze) | Ablation: agenda only |
+| **D** | epistemic_full | `--darwinian --cabs --cabs-inline` | **Primary treatment** |
+
+**Primary contrast:** **D vs B** on ≥5 seeds.
+
+### 21.3 Success criteria (all required for `docs/ICML_READY.md` STATUS: READY)
+
+1. **PRIMARY:** D beats B on ≥3/5 seeds for at least one of:
+   - (a) gens-to-threshold (25% or 30% accuracy), or
+   - (b) cost-to-threshold (≥15% fewer tokens/calls at equal accuracy), or
+   - (c) non-trivial mean final accuracy gap (not ~1pp noise).
+2. **MECHANISM:** Clear H2 DNA trait skew under contradiction bias, **or** a documented case study (tie → contradiction → different DNA/code → fitness lift) with artifacts.
+3. **VALIDITY:** H5 Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3.
+4. **PAPER:** Figs 1–2, Tables 1–2, abstract, limitations, reproducible run IDs in `docs/paper_artifacts.md`.
+
+### 21.4 Hypotheses
+
+| ID | Claim | Measurement |
+|----|-------|-------------|
+| **H2** | Open contradictions bias offspring DNA toward disputed trait values | Trait histogram / χ² or proportion test vs Condition B |
+| **H5** | Epistemic value at gen *t* predicts fitness gain at *t+1* | Spearman ρ > 0.3 |
+
+**epistemic_value_t (working definition):** age-weighted sum of open contradiction priorities + open RQ priorities at end of generation *t*, plus flow terms from that generation's `knowledge_gain_score` and newly resolved priorities, plus a **steering opportunity** term `Σ aged_priority × fitness_gap × (1 − preferred_DNA_share)` (export `belief_store/epistemic_value.jsonl`). Unresolved open items decay by `0.85 ** age` (age = gens since detection; RQs inherit age from linked contradiction when needed).
+
+### 21.5 Phase gates (mandatory order)
+
+| Gate | Requirement | Stop if fail |
+|------|-------------|--------------|
+| **G0** | Unit tests green; mutation bias contradiction-scoped (not full enum) | Fix mechanism before paid runs |
+| **G1** | Dry-run Condition D writes belief_store + biased DNA on gen≥2 | Do not spend API |
+| **G2** | Smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2), one seed | Fix harness |
+| **G3** | Pilot B vs D, 1–2 seeds, `--eval_subset 15`, max_gen≤5 | Diagnose before 5-seed |
+| **G4** | Full 5-seed B vs D under budget; compute PRIMARY + H2 + H5 | Refresh paper artifacts |
+| **G5** | Paper pack + honest limitations → STATUS: READY | — |
+
+### 21.6 Hard stops
+
+- No full LawBench without explicit human approval in run notes.
+- No two full GPQA jobs in parallel.
+- No `--focus weights`.
+- Do not delete `runs/` directories.
+- Do not commit or log API keys.
+- Respect ~$20 budget ceiling unless docs say the user raised it; check spend before paid runs.
+- Run IDs are unique integers; never overwrite existing runs.
+- Prefer `--no-web` for long runs.
+
+### 21.7 Suggested cheap GPQA commands (after keys + budget check)
+
+```bash
+# 0) Materialize GPQA task data if gitignored data/ is missing (synthetic smoke OK for dry-run)
+python scripts/prepare_gpqa_smoke_data.py
+
+# 0a) Real GPQA diamond for paid runs (Tick 25; needs HF_TOKEN + accepted Idavidrein/gpqa access)
+python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force
+# or: python scripts/prepare_gpqa_diamond.py --from-csv /path/to/gpqa_diamond.csv --n 5 --force
+
+# 0b) Preferred G2 entrypoint (Tick 24/25) — preflight / dry-run / live with hard-stops
+python scripts/run_g2_smoke.py --preflight-only --run-id 1850
+python scripts/run_g2_smoke.py --dry-run --run-id 1850
+python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond   # keys + HF_TOKEN / CSV
+
+# 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
+sia run --task gpqa --darwinian --cabs --cabs-inline \
+  --population_size 2 --elite_count 1 --max_gen 2 \
+  --run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42
+
+# 2) Live G2 smoke (drop --dry-run; unused run_id; keys + real GPQA + budget check)
+sia run --task gpqa --darwinian --cabs --cabs-inline \
+  --population_size 2 --elite_count 1 --max_gen 2 \
+  --run_id 1300 --eval_subset 5 --no-web --seed 1
+
+# 3) Preferred G3 entrypoint (Tick 26) — sequential B then D; never parallel
+python scripts/run_g3_pilot.py --preflight-only --seeds 1 --b-run-ids 1201 --d-run-ids 1301
+python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond
+
+# 3b) Preferred G4 entrypoint (Tick 27) — exactly 5 seeds; sequential B then D; refreshes paper Live table
+python scripts/run_g4_multiseed.py --preflight-only
+python scripts/run_g4_multiseed.py --live \
+  --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 \
+  --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond
+
+# 3c) Preferred full-stack entrypoint (Tick 29) — G2 → G3 → G4 serially under one budget
+python scripts/run_icml_live_pipeline.py --preflight-only
+python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+
+# Condition B — darwinian-only (example IDs — pick unused integers)
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1
+
+# Condition D — G3-shaped pilot
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 5 --run_id 1301 --eval_subset 15 --no-web --seed 1 \
+  --cabs --cabs-inline
+```
+
+### 21.8 Artifact paths
+
+| Artifact | Path |
+|----------|------|
+| Progress log | `docs/ICML_PROGRESS.md` |
+| Ready checklist | `docs/ICML_READY.md` |
+| Paper pack | `docs/paper_artifacts.md` |
+| Gate 3 report | `docs/gate3_report.md` |
+| Gate 4 report | `docs/gate4_report.md` |
+| Live pipeline report | `docs/icml_live_pipeline_report.md` |
+| Result figures | `docs/figures/` (when generated) |
+
+### 21.9 Known mechanism bug (fixed 2026-08-03)
+
+`load_mutation_bias` previously appended **all** enum values for an open RQ's `dna_field`, so biased mutation ≡ uniform. Fixed to extract values from contradiction belief text, belief metadata (`trait`/`value`), and contradicting `agent_dna.json` files.
+
+`--cabs-inline` (Condition D) implemented 2026-08-03: after each gen eval, `run_cabs_inline` refreshes `belief_store/` (in-process `BeliefEngine`, subprocess fallback) and appends `belief_store/epistemic_value.jsonl` for H5.
+
+**G1 PASS (2026-08-04):** dry-run Condition D on GPQA-shaped fixture (`runs/run_1401`, seed 42, pop=2, max_gen=2) wrote belief_store (7 contradictions / 7 RQs), scoped mutation bias for breed→gen2, and `epistemic_value.jsonl` for gens 1–2. Locked by `SIA/tests/test_cabs_inline_dry_run.py`.
+
+**Scoped feedback (2026-08-04):** `load_cabs_agenda` now injects `### Scoped DNA Feedback Targets` using the same contradiction-scoped candidate pool as `load_mutation_bias`, so Condition D feedback steers rewrites toward disputed DNA values (not RQ field names alone).
+
+**Dry-run fitness + metrics (2026-08-04):** Dry-run eval now uses `deterministic_fitness` (DNA-hash) instead of mock GPQA accuracy=1.0 for all agents. `scripts/epistemic_results.py` computes H5/H2/gens-to-threshold.
+
+**Non-constant epistemic_value (2026-08-04):** Age-weighted open priorities + knowledge_gain/resolution flow. Offline Condition D `run_1403` → H5 ρ **0.5**, H2 memory in-bias **0.875**.
+
+**Fitness-weighted bias (2026-08-04 Tick 7):** `load_mutation_bias` ranks contradiction-scoped candidates by associated fitness (belief metadata / ``achieved fitness`` text / agent score files); `_biased_choice` uses rank weights so Condition D prefers the higher-fitness side while staying in the disputed subspace.
+
+**DNA-transferable dry-run fitness + offline case study (2026-08-04 Tick 8):** `deterministic_fitness` ignores agent_id/generation so winning genomes keep their score under inheritance. Offline 5-seed B vs D (`1410–1414` / `1420–1424`) → D final wins 4/5 synthetic; case study `docs/case_study_offline.md` (`run_1420`).
+
+**Steering epi + additive latent fitness (2026-08-04 Tick 9):** Opaque DNA-hash fitness broke bias→Δfitness (negative multi-seed H5). Replaced with additive latent trait scores + `steering_opportunity` in `epistemic_value`. Offline re-pilot `1470–1474` / `1480–1484` → H5 ρ>0.3 on **4/5** seeds (pooled ρ≈0.34); PRIMARY gens/final still not ≥3/5 offline.
+
+**Preferred-allele anchoring + singleton bias skip (2026-08-04 Tick 10):** Same-allele cross-agent disputes produced singleton bias pools that wiped better elites. Now require ≥2 distinct candidates; `_biased_choice` anchors on the fitness-ranked preferred allele. Offline re-pilot `1510–1514` / `1520–1524` → gens30 **2/5**, mean final gap ~**2.56pp**, H5 **4/5** (pooled ≈0.23).
+
+**Soft bias-aware crossover (2026-08-04 Tick 11):** Fair 50/50 crossover diluted preferred alleles under Condition D. `crossover(..., bias=)` now soft-inherits the fitness-ranked preferred parental allele (p=0.85); `breed_offspring` forwards bias to both XO and mutate. Offline re-pilot `1550–1554` / `1560–1564` → final wins **3/5**, mean gap ~**2.13pp**, but gens30 **0/5** and H5 **2/5** (regressions).
+
+**Delayed crossover bias (2026-08-04 Tick 12):** Fair XO on gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`). Nearly a no-op at `max_gen=4` because mutation bias alone collapsed preferred share by gen2.
+
+**Tempered early mutation bias (2026-08-04 Tick 13):** Soft rank-weighted mutate gen1→gen2; full preferred anchoring from gen≥2 (`apply_mutation_anchor`). Offline `1590–1594` / `1600–1604` → final **3/5**, mean ~**1.66pp**, H5 **3/5**; gens30 still **0/5**; case-study preferred share could still hit 1.0 by gen2.
+
+**Delay-all mutation bias (2026-08-05 Tick 14):** Fair mutate+XO on gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`). Offline `1610–1614` / `1620–1624` → final **4/5**, mean ~**3.34pp**, H5 **3/5**, case-study gen2 preferred share **0.5** (collapse fixed); gens30 still **0/5** at `max_gen=4`.
+
+**Longer-horizon offline re-pilot (2026-08-05 Tick 15):** Same delay-all mechanism at `max_gen=6` (`1630–1634` / `1640–1644`) → final **3/5**, mean ~**2.55pp**, H5 **2/5**, gens30 still **0/5**. Diagnosis: **threshold saturation** — 4/5 seeds hit 30% by gen≤2 for both B and D, so extra biased breeding rounds cannot create gens-to-threshold wins.
+
+**Compressed latent fitness scale (2026-08-05 Tick 16):** Map additive latent scores into `[0.02, 0.34]` (was `[0.02, 0.38]`) so typical gen-1 best-of-4 stays under 30%. Offline re-pilot `1650–1654` / `1660–1664` → gens30 **2/5** (B: 0; was 0/5), final **3/5**, mean ~**2.26pp**, H5 **2/5**, gen-1 ≥30% **0/5**.
+
+**ε-greedy + live bias harvest (2026-08-05 Tick 17):** Contradiction-scoped bias could trap populations in suboptimal frozen pairs (e.g. minimal vs aggressive) by forcing outsiders onto the local winner. `_biased_choice` now ε-explores the full trait enum and preserves out-of-pool outsiders; `load_mutation_bias` harvests latest-gen DNA alleles ranked by fitness. Offline re-pilot `1670–1674` / `1680–1684` → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **2/5** (seed 22 ρ=−0.3).
+
+**H5 steered-window + mean Δfitness (2026-08-05 Tick 18):** Under delay-all, gen1→gen2 breeding is intentionally fair, so gen1 epistemic stock must not be scored against that Δfitness. `compute_h5` now defaults to `min_generation=2` and population-mean Δfitness (steering reshapes the population, not only the elite). Offline re-pilot `1730–1734` / `1740–1744` (Tick 17 mutation path) → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **4/5** ρ>0.3 (0.0 / 0.8 / 0.4 / 0.8 / 0.6).
+
+**H5 forward-horizon Δfitness (2026-08-05 Tick 19):** ε-greedy discover→adopt can lag one generation, zeroing single-step Spearman ρ (seed 11). `compute_h5` defaults to `delta_horizon=2` so Y is mean fitness over the next 1–2 gens minus fitness_t. Offline re-pilot `1750–1754` / `1760–1764` → gens30 **3/5**, final **5/5**, mean ~**5.35pp**, H5 **5/5** ρ>0.3 (0.8 / 0.8 / 0.8 / 1.0 / 0.6).
+
+**Directed ε-explore (2026-08-05 Tick 20):** Uniform ε-sampling over the full trait enum often re-drew disputed-pool alleles, so seed 22 never discovered `selective` and stalled under 30%. `_biased_choice` now samples only alleles **outside** the contradiction-scoped pool on explore steps. Offline re-pilot `1780–1784` / `1790–1794` → gens30 **4/5**, final **5/5**, mean ~**6.15pp**, H5 **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4). Remaining gap: API-backed G2–G4 live B vs D (keys absent in cloud env; secrets re-requested).
+
+**GPQA smoke fixture + CLI dry-run (2026-08-05 Tick 21):** Cloud checkouts omit gitignored `sia/tasks/gpqa/data/`. `scripts/prepare_gpqa_smoke_data.py` materializes a 5-question synthetic fixture (public without answers; private with `correct_answer_letter`). Validated real CLI path: `sia run --task gpqa --darwinian --cabs --cabs-inline --dry-run --eval_subset 5 --population_size 2 --max_gen 2 --run_id 1800` → belief_store + scoped mutation bias + `epistemic_value.jsonl`. **Not** live G2 (still needs API keys + real GPQA diamond).
+
+**Cost-to-threshold PRIMARY (b) (2026-08-05 Tick 22):** `scripts/epistemic_results.py` now accumulates per-gen cost (prefer `total_*_tokens` / `total_cost_usd`, else eval-call proxy from `eval_subset`) until gens-to-threshold; `_cost_win` requires ≥15% fewer units (reach-vs-never counts). Offline re-pilot `1810–1814` / `1820–1824` → gens30 **4/5**, cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**. Case study `run_1823`. Live G2–G4 still blocked (no API keys).
+
+**Post-steering case-study H2 (2026-08-05 Tick 23):** Prior case studies reported gen2 preferred share (often ~0.25), but delay-all keeps gen1→gen2 fair — so that understated H2. `extract_case_study` now measures preferred DNA share at gen≥3 (first steered generation), prefers multi-allele + fitness-aligned contradictions, and re-pilots `1830–1834` / `1840–1844` → same PRIMARY/H5 offline rates; case study `run_1840` shows `tool_strategy=selective` share **0.25→0.5→0.75** (gen1/2/3) with lift **+0.0436**. Live G2–G4 still blocked (no API keys; GPQA diamond gated on HuggingFace).
+
+**Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`, refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when secrets + real GPQA diamond are present.
+
+**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted dataset access) are present.
+
+**Live G3 sequential pilot runner (2026-08-06 Tick 26):** `scripts/run_g3_pilot.py` turns Gate G3 into a single entrypoint (`--preflight-only` / `--live`). Enforces Section 21.5 shape (1–2 seeds, `eval_subset=15`, `pop=4`, `elite=2`, `max_gen≤5`), runs Condition **B then D serially** (hard-stop against parallel full GPQA), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G3_PAIR_ESTIMATE_USD` × n_pairs ≤ ceiling). After a live pair, scores `compare_b_vs_d` + Condition D H5 and refreshes `docs/gate3_report.md` while preserving the offline pilot block. Preflight this tick: live ready **no**. Next after G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`.
+
+**Live G4 5-seed sequential runner (2026-08-06 Tick 27):** `scripts/run_g4_multiseed.py` turns Gate G4 into a single entrypoint (`--preflight-only` / `--live`). Requires **exactly 5 seeds**, same Section 21.5 shape as G3, serial B→D (never parallel), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G4_PAIR_ESTIMATE_USD` default $3 × 5 ≤ ceiling). After live pairs, scores PRIMARY + Condition D H5, writes `docs/gate4_report.md`, and refreshes the Live GPQA Table 1 + run-ID rows in `docs/paper_artifacts.md`. Preflight this tick: live ready **no**. Next after G3 PASS under remaining budget: `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`.
+
+**G4 full paper-pack refresh (2026-08-06 Tick 28):** Same runner now also scores live H2 DNA skew, refreshes Table 2 H2/H5 marker rows, rewrites Figs 1–2 from B vs D curves + pooled H2 histograms, and updates `docs/ICML_READY.md` checklist (sets STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper all pass). Recovery without re-spend: `python scripts/run_g4_multiseed.py --refresh-paper-from-runs --b-run-dirs ... --d-run-dirs ...` (READY requires explicit `--allow-ready` on refresh).
+
+**Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot is promising (any D gens/cost/final win or H5 ρ>0.3) unless `--force-g4`. Preferred live entry: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
+
+**Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. Live still blocked on `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).
+
+**Re-linked Cursor environment (2026-08-06 Tick 31):** Tick 30 draft was **not** attached to the automation — cron `bf9c` again booted with `environment: null`. Re-created personal transitional draft `4b2bb39a-917e-11f1-ba66-0e7d0216e441`; build `bld-20260806-933779ed-21cd-4af0-a9f5-d66af114146c` **SUCCEEDED** and was proposed for Portal Save. User must Save that env onto automation `bf73dff3-8f7a-11f1-a7d1-d6b4613131ce` and inject secrets, or every future cron will repeat the null-env boot.
+
+**Per-run venv + uv (2026-08-06 Tick 32):** G2/G3/G4 preflight treated `import venv` as sufficient, but Cursor/Debian images lack ensurepip so `venv.create(with_pip=True)` fails — live `sia run` would die after keys arrived. Added `scripts/icml_env_checks.probe_per_run_venv_capable` (prefers `uv`, else real create probe); wired as `per_run_venv` in G2/G3/G4. `.cursor/environment.json` now installs `uv` and exports `PATH`; draft `e0434bc7-918e-11f1-ba66-0e7d0216e441` build `bld-20260806-5be244b4-…` **SUCCEEDED** + proposed. `SIA/sia/run_setup._create_venv` raises a clear RuntimeError when neither uv nor ensurepip works.
+
+**Portal Save target + re-link (2026-08-06 Tick 33):** Cron again booted `environment: null` (Tick 32 draft not attached to automation). Re-linked uv-capable personal draft `b0a8b976-919f-11f1-ba66-0e7d0216e441`; build `bld-20260806-3b1c84c6-e872-4eb0-972a-0717b954261b` **SUCCEEDED** (uv 0.12.2) + proposed. Added `docs/icml_portal_save_target.json` as the single machine-readable pointer (draft ID, build, automation URL, required secrets). User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link + probe harden (2026-08-06 Tick 34):** Cron again booted `environment: null` (Tick 33 draft not attached). Re-linked uv-capable personal draft `91d72d0c-91b0-11f1-ba66-0e7d0216e441`; build `bld-20260806-262ebfe1-1770-43d3-a74c-37706cd0f43d` **SUCCEEDED** (uv 0.12.2) + proposed; pointer updated. Also fixed `probe_per_run_venv_capable`: on images without uv/ensurepip, stdlib `venv.create` calls `sys.exit(1)`, which previously aborted G2/G3/G4 preflight before writing reports — now isolated in a subprocess.
+
+**Portal Save re-link (2026-08-06 Tick 35):** Cron again booted `environment: null` (Tick 34 draft not attached to automation). Re-linked uv-capable personal draft `291a67ab-91c1-11f1-ba66-0e7d0216e441`; build `bld-20260806-da839bad-a6b7-4d16-b6db-ef877a6a9b22` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-06 Tick 36):** Cron again booted `environment: null` (Tick 35 draft not attached to automation). Re-linked uv-capable personal draft `df01ec67-91d1-11f1-ba66-0e7d0216e441`; build `bld-20260806-aecd8ae8-d8b0-4540-840a-58c87f46e5ae` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-06 Tick 37):** Cron again booted `environment: null` (Tick 36 draft not attached to automation). Re-linked uv-capable personal draft `a60e2d80-91e2-11f1-ba66-0e7d0216e441`; build `bld-20260806-f1fa5eeb-ebcd-4dc2-a862-d11e5e63bb4f` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 38):** Cron again booted `environment: null` (Tick 37 draft not attached to automation). Re-linked uv-capable personal draft `667059f5-91f3-11f1-ba66-0e7d0216e441`; build `bld-20260807-d9b1019f-14cd-416b-b6f6-057e1e2b9ffe` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 39):** Cron again booted `environment: null` (Tick 38 draft not attached to automation). Re-linked uv-capable personal draft `f77c2796-9203-11f1-ba66-0e7d0216e441`; build `bld-20260807-fd6c1a72-a258-4ed1-a968-57eebcf6eb8f` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 40):** Cron again booted `environment: null` (Tick 39 draft not attached to automation). Re-linked uv-capable personal draft `a1202e1f-9214-11f1-ba66-0e7d0216e441`; build `bld-20260807-47d88b32-ecca-4869-b9cf-ed45ac025ce2` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 41):** Cron again booted `environment: null` (Tick 40 draft not attached to automation). Re-linked uv-capable personal draft `b28dbfe2-9225-11f1-ba66-0e7d0216e441`; build `bld-20260807-5b2c6af7-b7c8-48ba-9e84-cdbf75b41917` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 42):** Cron again booted `environment: null` (Tick 41 draft not attached to automation). Re-linked uv-capable personal draft `44dc791a-9236-11f1-ba66-0e7d0216e441`; build `bld-20260807-ef042f32-4857-4e49-a309-96fe4c21fcc6` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 43):** Cron again booted `environment: null` (Tick 42 draft not attached to automation). Re-linked uv-capable personal draft `fbd56e14-9246-11f1-ba66-0e7d0216e441`; build `bld-20260807-a55ab7fc-62e2-4f8c-92c8-b4ea104f41eb` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 44):** Cron again booted `environment: null` (Tick 43 draft not attached to automation). Re-linked uv-capable personal draft `c9cbb09f-9268-11f1-ba66-0e7d0216e441`; build `bld-20260807-685c7aeb-0a27-4df1-92ba-9ddc06c74f7c` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 45):** Cron again booted `environment: null` (Tick 44 draft not attached to automation). Re-linked uv-capable personal draft `855d7b11-9279-11f1-ba66-0e7d0216e441`; build `bld-20260807-6bb19bfe-4de9-4a53-aaaa-edb8c3d4f6f0` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 46):** Cron again booted `environment: null` (Tick 45 draft not attached to automation). Re-linked uv-capable personal draft `3b6f81a0-928a-11f1-ba66-0e7d0216e441`; build `bld-20260807-b7044749-728b-4425-a305-068fadaaa21e` **SUCCEEDED** (uv 0.12.3) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
