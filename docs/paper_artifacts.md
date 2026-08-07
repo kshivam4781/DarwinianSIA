@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–41) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 41** draft `b28dbfe2-…` / build `5b2c6af7` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–42) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 42** draft `44dc791a-…` / build `ef042f32` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -127,6 +127,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 39: Tick 38 draft again not inherited; re-linked `f77c2796-…` / `fd6c1a72` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Tick 40: Tick 39 draft again not inherited; re-linked `a1202e1f-…` / `47d88b32` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Tick 41: Tick 40 draft again not inherited; re-linked `b28dbfe2-…` / `5b2c6af7` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
+- Tick 42: Tick 41 draft again not inherited; re-linked `44dc791a-…` / `ef042f32` (uv 0.12.2 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
