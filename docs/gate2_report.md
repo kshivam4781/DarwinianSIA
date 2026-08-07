@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-07T00:03:27Z
+**Timestamp:** 2026-08-07T02:03:58Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -33,10 +33,6 @@
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
 - per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.
-
-## Notes
-
-- materialized synthetic GPQA smoke fixture under SIA/
 
 **G2 live status:** NOT RUN this tick
 
