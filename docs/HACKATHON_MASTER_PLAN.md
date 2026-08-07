@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-07 (Section 21 ICML; Tick 44 re-link uv Cursor env draft `c9cbb09f` + Portal Save target)  
+**Last updated:** 2026-08-07 (Section 21 ICML; Tick 45 re-link uv Cursor env draft `855d7b11` + Portal Save target)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -830,9 +830,9 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 44: draft `c9cbb09f-…` + build `bld-20260807-685c7aeb-…` **SUCCEEDED** + proposed (installs **uv**); pointer `docs/icml_portal_save_target.json`; prior drafts not inherited — need Portal Save onto automation + secrets |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 45: draft `855d7b11-…` + build `bld-20260807-6bb19bfe-…` **SUCCEEDED** + proposed (installs **uv**); pointer `docs/icml_portal_save_target.json`; prior drafts not inherited — need Portal Save onto automation + secrets |
 | Per-run venv capability (Cursor) | **DONE** | Tick 32+34: `probe_per_run_venv_capable` (uv or real venv+ensurepip; stdlib path probed in subprocess so ensurepip `SystemExit` cannot kill preflight); G2/G3/G4 use `per_run_venv` |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on Portal Save of uv-capable env `c9cbb09f-…` onto automation + API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on Portal Save of uv-capable env `855d7b11-…` onto automation + API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1715,3 +1715,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Portal Save re-link (2026-08-07 Tick 43):** Cron again booted `environment: null` (Tick 42 draft not attached to automation). Re-linked uv-capable personal draft `fbd56e14-9246-11f1-ba66-0e7d0216e441`; build `bld-20260807-a55ab7fc-62e2-4f8c-92c8-b4ea104f41eb` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
 
 **Portal Save re-link (2026-08-07 Tick 44):** Cron again booted `environment: null` (Tick 43 draft not attached to automation). Re-linked uv-capable personal draft `c9cbb09f-9268-11f1-ba66-0e7d0216e441`; build `bld-20260807-685c7aeb-0a27-4df1-92ba-9ddc06c74f7c` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-07 Tick 45):** Cron again booted `environment: null` (Tick 44 draft not attached to automation). Re-linked uv-capable personal draft `855d7b11-9279-11f1-ba66-0e7d0216e441`; build `bld-20260807-6bb19bfe-4de9-4a53-aaaa-edb8c3d4f6f0` **SUCCEEDED** (uv 0.12.2) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that draft onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
