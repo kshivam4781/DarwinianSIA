@@ -1,0 +1,64 @@
+{
+  "updated_at": "2026-08-08T14:05:00Z",
+  "tick": 56,
+  "build_status": "SUCCEEDED",
+  "proposed_for_portal_save": true,
+  "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
+  "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
+  "preferred_draft_environment_id": "f5eaef73-9331-11f1-ba66-0e7d0216e441",
+  "preferred_build_id": "bld-20260808-e43fc033-13c0-4fe7-b2f5-e0fe7484539c",
+  "install_requires_uv": true,
+  "uv_version_in_build_logs": "0.12.3",
+  "supersedes_drafts": [
+    "0e1a7bfe-9321-11f1-ba66-0e7d0216e441",
+    "3b58dff6-9310-11f1-ba66-0e7d0216e441",
+    "430427cc-92ff-11f1-ba66-0e7d0216e441",
+    "8be212f6-92ee-11f1-ba66-0e7d0216e441",
+    "2782ce96-92de-11f1-ba66-0e7d0216e441",
+    "160e4ee0-92cd-11f1-ba66-0e7d0216e441",
+    "909a3205-92bc-11f1-ba66-0e7d0216e441",
+    "8433b834-92ab-11f1-ba66-0e7d0216e441",
+    "eabae511-929a-11f1-ba66-0e7d0216e441",
+    "3b6f81a0-928a-11f1-ba66-0e7d0216e441",
+    "855d7b11-9279-11f1-ba66-0e7d0216e441",
+    "c9cbb09f-9268-11f1-ba66-0e7d0216e441",
+    "fbd56e14-9246-11f1-ba66-0e7d0216e441",
+    "44dc791a-9236-11f1-ba66-0e7d0216e441",
+    "b28dbfe2-9225-11f1-ba66-0e7d0216e441",
+    "a1202e1f-9214-11f1-ba66-0e7d0216e441",
+    "f77c2796-9203-11f1-ba66-0e7d0216e441",
+    "667059f5-91f3-11f1-ba66-0e7d0216e441",
+    "a60e2d80-91e2-11f1-ba66-0e7d0216e441",
+    "df01ec67-91d1-11f1-ba66-0e7d0216e441",
+    "291a67ab-91c1-11f1-ba66-0e7d0216e441",
+    "91d72d0c-91b0-11f1-ba66-0e7d0216e441",
+    "b0a8b976-919f-11f1-ba66-0e7d0216e441",
+    "e0434bc7-918e-11f1-ba66-0e7d0216e441",
+    "4b2bb39a-917e-11f1-ba66-0e7d0216e441",
+    "0ed19edd-916e-11f1-ba66-0e7d0216e441"
+  ],
+  "required_secrets": [
+    "ANTHROPIC_API_KEY",
+    "NEBIUS_API_KEY",
+    "HF_TOKEN"
+  ],
+  "external_actions": [
+    {
+      "id": "portal_save_uv_env",
+      "title": "Portal Save uv-capable env onto ICML automation",
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce → Environment → Save/attach the latest uv-capable draft (f5eaef73-9331-11f1-ba66-0e7d0216e441, build bld-20260808-e43fc033-…). Do NOT use older Tick 30–55 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+    },
+    {
+      "id": "hf_gpqa_accept",
+      "title": "Accept HuggingFace Idavidrein/gpqa access",
+      "instructions": "With the HF account behind HF_TOKEN, accept access to https://huggingface.co/datasets/Idavidrein/gpqa so --fetch-diamond can materialize GPQA diamond."
+    }
+  ],
+  "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
+  "notes": [
+    "Cron boots with environment:null until Portal Save attaches an env to the automation.",
+    "Tick 56 re-linked after Tick 55 draft 0e1a7bfe was again not inherited (environment:null).",
+    "Omit non-default git refs when building if the snapshot must stay promotable.",
+    "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
+  ]
+}
