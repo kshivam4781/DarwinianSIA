@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,13 +10,118 @@ from sia.evolution.dna import AgentDNA
 from sia.io_utils import write_text
 from sia.layout import Names
 
+# Latent per-trait quality for offline dry-run fitness. Additive scores make
+# contradiction → fitness-weighted bias → DNA adoption causally improve fitness
+# (opaque DNA-hash scoring broke that chain: biasing one field scrambled others
+# and often lowered fitness, yielding negative multi-seed H5).
+_LATENT_TRAIT_SCORES: dict[str, dict[str, float]] = {
+    "planning_style": {
+        "hierarchical": 0.12,
+        "stepwise": 0.10,
+        "direct": 0.04,
+    },
+    "tool_strategy": {
+        "selective": 0.22,
+        "minimal": 0.12,
+        "aggressive": 0.03,
+    },
+    "retry_policy": {
+        "error_specific": 0.10,
+        "generic": 0.07,
+        "none": 0.02,
+    },
+    "memory": {
+        "failure_based": 0.18,
+        "short_summary": 0.12,
+        "full_history": 0.08,
+        "none": 0.03,
+    },
+    "prompt_structure": {
+        "chain_of_thought": 0.12,
+        "detailed": 0.09,
+        "minimal": 0.04,
+    },
+}
+_REFLECTION_SCORE = {True: 0.08, False: 0.02}
+# confidence_threshold: peak near 0.75
+_BASE_FITNESS = 0.05
+_MAX_LATENT = (
+    0.12  # planning
+    + 0.22  # tool
+    + 0.10  # retry
+    + 0.18  # memory
+    + 0.12  # prompt
+    + 0.08  # reflection
+    + 0.06  # confidence peak
+)
 
-def _deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
-    """Produce stable, varied fitness in [0.05, 0.95] from DNA + ids."""
-    payload = json.dumps({"agent_id": agent_id, "gen": generation, "dna": dna.__dict__}, sort_keys=True)
-    digest = hashlib.sha256(payload.encode()).hexdigest()
-    raw = int(digest[:8], 16) / 0xFFFFFFFF
-    return round(0.05 + 0.9 * raw, 4)
+
+def _confidence_score(threshold: float) -> float:
+    # Triangular peak at 0.75; max 0.06
+    dist = abs(float(threshold) - 0.75)
+    return max(0.0, 0.06 * (1.0 - dist / 0.35))
+
+
+# Output scale for normalized latent sum. Compressed from the Tick-9
+# [0.02, 0.38] mapping after Tick-15 showed ~42% of gen-1 best-of-4 seeds
+# already ≥30% under that ceiling (threshold saturation → gens30 uninformative).
+# [0.02, 0.34] keeps typical gen-1 best under 30% while near-optimal DNA
+# (e.g. selective + failure_based + mid/high companions) can still cross 30%.
+_FITNESS_FLOOR = 0.02
+_FITNESS_SPAN = 0.32  # → ceiling 0.34
+
+
+def deterministic_fitness(agent_id: int, dna: AgentDNA, generation: int) -> float:
+    """Produce stable, varied fitness in ~[0.02, 0.34] from transferable DNA traits.
+
+    Fitness depends **only** on DNA trait values (not ``agent_id`` / ``generation``),
+    so offspring that inherit a high-fitness parent's traits keep that fitness
+    contribution. Scores are **additive latent trait qualities** so Condition D's
+    contradiction-scoped bias toward higher-fitness sides causally improves fitness
+    offline (needed for H5 / case-study chains). Not a substitute for live GPQA.
+
+    ``agent_id`` and ``generation`` remain in the signature for call-site
+    compatibility but are ignored for scoring.
+    """
+    del agent_id, generation  # unused — fitness must transfer with DNA traits
+    total = _BASE_FITNESS
+    total += _LATENT_TRAIT_SCORES["planning_style"].get(dna.planning_style, 0.0)
+    total += _LATENT_TRAIT_SCORES["tool_strategy"].get(dna.tool_strategy, 0.0)
+    total += _LATENT_TRAIT_SCORES["retry_policy"].get(dna.retry_policy, 0.0)
+    total += _LATENT_TRAIT_SCORES["memory"].get(dna.memory, 0.0)
+    total += _LATENT_TRAIT_SCORES["prompt_structure"].get(dna.prompt_structure, 0.0)
+    total += _REFLECTION_SCORE.get(bool(dna.reflection), 0.0)
+    total += _confidence_score(dna.confidence_threshold)
+    # Normalize additive sum into ~[0.02, 0.34]. Ceiling is low enough that
+    # pop=4 gen-1 best is usually still under 30%, so gens-to-threshold
+    # PRIMARY contrasts stay discriminative under delay-all mutation bias;
+    # Condition D climbs past 30% by adopting high-latent preferred traits.
+    span = _MAX_LATENT
+    norm = (total - _BASE_FITNESS) / span if span > 0 else 0.0
+    fitness = _FITNESS_FLOOR + _FITNESS_SPAN * max(0.0, min(1.0, norm))
+    return round(fitness, 4)
+
+
+# Back-compat alias for older call sites / tests.
+_deterministic_fitness = deterministic_fitness
+
+
+def parse_agent_coords(agent_dir: str) -> tuple[int, int]:
+    """Return (agent_id, generation) parsed from ``.../gen_N/agent_K`` paths."""
+    generation = 1
+    agent_id = 0
+    for part in Path(agent_dir).parts:
+        if part.startswith("gen_"):
+            try:
+                generation = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+        elif part.startswith("agent_"):
+            try:
+                agent_id = int(part.split("_", 1)[1])
+            except ValueError:
+                pass
+    return agent_id, generation
 
 
 def write_mock_target_agent(agent_dir: str, task_name: str) -> None:
