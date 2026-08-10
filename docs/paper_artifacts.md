@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–75) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 76** draft `be57c785-…` / build `8b16e793` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–76) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 77** draft `6c885367-…` / build `760dbe3c` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -157,6 +157,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 73: Tick 72 draft again not inherited; re-linked `b69608ac-…` / `46f388db` (uv 0.12.3 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Tick 74–75: Tick 73/74 drafts again not inherited; re-linked through `470cff2e-…` / `fe8f63e4` (uv 0.12.3 SUCCEEDED + proposed). Still **not** READY without live GPQA.
 - Tick 76: Tick 75 draft again not inherited; re-linked `be57c785-…` / `8b16e793` (uv 0.12.3 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
+- Tick 77: Tick 76 draft again not inherited; re-linked `6c885367-…` / `760dbe3c` (uv 0.12.3 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
