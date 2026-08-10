@@ -1035,6 +1035,7 @@ def main():
 
         from sia.evolution.population import run_darwinian_loop
 
+        enable_cabs = bool(getattr(args, "cabs", False) or getattr(args, "cabs_inline", False))
         run_darwinian_loop(
             max_gen=max_gen,
             run_setup=run_setup,
@@ -1060,8 +1061,9 @@ def main():
             task_name=task_name,
             task_root=task_dir,
             baseline_seed=getattr(args, "baseline_seed", None),
-            enable_cabs=getattr(args, "cabs", False),
+            enable_cabs=enable_cabs,
             cabs_store=getattr(args, "cabs_store", None),
+            cabs_inline=bool(getattr(args, "cabs_inline", False)),
         )
 
         logger.info("Finalizing context.md with summary statistics...")
