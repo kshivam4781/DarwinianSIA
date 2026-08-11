@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–85) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 86** draft `97f8da5a-…` / build `a67cdff0` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–86) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 87** draft `2b9d6576-…` / build `ee330319` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
