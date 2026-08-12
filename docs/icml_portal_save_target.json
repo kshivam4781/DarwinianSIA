@@ -1,15 +1,16 @@
 {
-  "updated_at": "2026-08-12T12:16:00Z",
-  "tick": 99,
+  "updated_at": "2026-08-12T14:13:00Z",
+  "tick": 100,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
-  "preferred_draft_environment_id": "70fcc83e-9647-11f1-ba66-0e7d0216e441",
-  "preferred_build_id": "bld-20260812-361b109b-72da-41ab-a469-41747769e7be",
+  "preferred_draft_environment_id": "c2ad6d68-9657-11f1-ba66-0e7d0216e441",
+  "preferred_build_id": "bld-20260812-490aa59b-57cb-4a55-a36d-0d499d2640b1",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.3",
   "supersedes_drafts": [
+    "70fcc83e-9647-11f1-ba66-0e7d0216e441",
     "e08cd29b-9634-11f1-ba66-0e7d0216e441",
     "751332fe-9624-11f1-ba66-0e7d0216e441",
     "81e72868-9613-11f1-ba66-0e7d0216e441",
@@ -89,7 +90,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce → Environment → Save/attach the latest uv-capable draft (70fcc83e-9647-11f1-ba66-0e7d0216e441, build bld-20260812-361b109b-…). Do NOT use older Tick 30–98 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce → Environment → Save/attach the latest uv-capable draft (c2ad6d68-9657-11f1-ba66-0e7d0216e441, build bld-20260812-490aa59b-…). Do NOT use older Tick 30–99 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -100,7 +101,7 @@
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
   "notes": [
     "Cron boots with environment:null until Portal Save attaches an env to the automation.",
-    "Tick 99 re-linked after Tick 98 draft e08cd29b was again not inherited (environment:null).",
+    "Tick 100 re-linked after Tick 99 draft 70fcc83e was again not inherited (environment:null).",
     "Omit non-default git refs when building if the snapshot must stay promotable.",
     "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
   ]
