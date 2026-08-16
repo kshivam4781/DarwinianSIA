@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–131) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 132** draft `3e680d4c-…` / build `33f67cb5` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts (Ticks 30–137) + Tick 32/34 real `per_run_venv` / **uv** + **Tick 138** draft `0225f827-…` / build `36c10b0a` SUCCEEDED + proposed + `docs/icml_portal_save_target.json` (need Portal Save onto automation). No publishable **live** GPQA figures/tables yet.
 
 ## Abstract (draft — do not claim READY)
 
@@ -167,6 +167,8 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 124: Tick 123 draft again not inherited; re-linked `cfa45bdf-…` / `ac69edae` (uv 0.12.5 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Tick 125–131: successive cron boots again `environment: null`; re-linked through Tick 131 draft `b386c9a9-…` / `7dd2b14f` (uv 0.12.5 SUCCEEDED + proposed). Still **not** READY without live GPQA.
 - Tick 132: Tick 131 draft again not inherited; re-linked `3e680d4c-…` / `33f67cb5` (uv 0.12.5 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
+- Tick 133–137: successive cron boots again `environment: null`; re-linked through Tick 137 draft `e5d93035-…` / `0613302b` (uv 0.12.5 SUCCEEDED + proposed). Still **not** READY without live GPQA.
+- Tick 138: Tick 137 draft again not inherited; re-linked `0225f827-…` / `36c10b0a` (uv 0.12.5 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without live GPQA.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 
 ## Code pins
