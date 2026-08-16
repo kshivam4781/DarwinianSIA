@@ -1,15 +1,16 @@
 {
-  "updated_at": "2026-08-16T08:05:00Z",
-  "tick": 134,
+  "updated_at": "2026-08-16T10:05:00Z",
+  "tick": 135,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
-  "preferred_draft_environment_id": "f324774e-9948-11f1-ba66-0e7d0216e441",
-  "preferred_build_id": "bld-20260816-6b15cc9d-9b0f-4d40-a42f-cc0183f38aa7",
+  "preferred_draft_environment_id": "793f5f75-9959-11f1-ba66-0e7d0216e441",
+  "preferred_build_id": "bld-20260816-6f995d2d-956b-45d1-bbd6-0875b01abb1c",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.5",
   "supersedes_drafts": [
+    "f324774e-9948-11f1-ba66-0e7d0216e441",
     "30a347b7-9938-11f1-ba66-0e7d0216e441",
     "3e680d4c-9927-11f1-ba66-0e7d0216e441",
     "b386c9a9-9905-11f1-ba66-0e7d0216e441",
@@ -124,7 +125,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable draft (30a347b7-9938-11f1-ba66-0e7d0216e441, build bld-20260816-ea1872bd-\u2026). Do NOT use older Tick 30\u2013132 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable draft (793f5f75-9959-11f1-ba66-0e7d0216e441, build bld-20260816-6f995d2d-\u2026). Do NOT use older Tick 30\u2013134 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -135,7 +136,7 @@
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
   "notes": [
     "Cron boots with environment:null until Portal Save attaches an env to the automation.",
-    "Tick 133 re-linked after Tick 132 draft 3e680d4c-\u2026 was again not inherited (environment:null).",
+    "Tick 135 re-linked after Tick 134 draft f324774e-\u2026 was again not inherited (environment:null).",
     "Omit non-default git refs when building if the snapshot must stay promotable.",
     "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
   ]
