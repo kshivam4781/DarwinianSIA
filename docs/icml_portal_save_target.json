@@ -1,15 +1,16 @@
 {
-  "updated_at": "2026-08-21T00:05:00Z",
-  "tick": 171,
+  "updated_at": "2026-08-21T02:05:00Z",
+  "tick": 172,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
-  "preferred_draft_environment_id": "ac65a60c-9cf3-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260821-5c40fbd4-7a04-4cb9-a1a1-cc2a0288e7cb",
+  "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
+  "preferred_build_id": "bld-20260821-7f6cd7af-be1e-4419-8746-3ec9144fe3df",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.5",
   "supersedes_drafts": [
+    "ac65a60c-9cf3-11f1-a7d1-d6b4613131ce",
     "da28d14f-9ce2-11f1-ba66-0e7d0216e441",
     "3475a2ec-9cd2-11f1-ba66-0e7d0216e441",
     "95537bcc-9cb0-11f1-ba66-0e7d0216e441",
@@ -161,7 +162,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable draft (ac65a60c-9cf3-11f1-a7d1-d6b4613131ce, build bld-20260821-5c40fbd4-7a04-4cb9-a1a1-cc2a0288e7cb). Do NOT use older Tick 30\u2013170 drafts. Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260821-7f6cd7af-be1e-4419-8746-3ec9144fe3df). Do NOT use older Tick 30\u2013171 drafts (including ac65a60c-\u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -171,8 +172,8 @@
   ],
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
   "notes": [
-    "Cron boots with environment:null until Portal Save attaches an env to the automation.",
-    "Tick 171 re-linked after Tick 170 draft da28d14f-9ce2-11f1-ba66-0e7d0216e441 was again not inherited (environment:null).",
+    "Cron still lacks automation-attached env until Portal Save; this tick built uv onto personal env 31d13f14-\u2026 (RUNTIME_FORWARD_FILL) rather than a fresh greenfield draft.",
+    "Tick 172: SYSTEM/RECURRING build 44984b21 had no uv; AGENT draft 7f6cd7af installs uv 0.12.5 + proposed.",
     "Omit non-default git refs when building if the snapshot must stay promotable.",
     "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
   ]
