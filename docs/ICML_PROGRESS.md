@@ -4,6 +4,37 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-22T14:05Z — Tick 188 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-d210` (fast-forwarded Ticks 1–187 from `f19c`, then this tick)
+- Cursor environment: **re-linked** personal env `31d13f14-9d04-11f1-a7d1-d6b4613131ce` (build `bld-20260822-6712f42e-e799-43f3-9946-efc335fffc41` **SUCCEEDED** + proposed; installs **uv** 0.12.5)
+- Canonical Portal Save pointer: `docs/icml_portal_save_target.json` (Tick 188 IDs)
+- API keys in cloud env: **absent** (secrets + HF gpqa accept + Portal Save onto automation re-requested via setup actions)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Cron again lacked an automation-attached env (Tick 187 build/env not Portal Saved onto automation `bf73dff3-…`). This tick booted the same personal RUNTIME_FORWARD_FILL env `31d13f14-…` whose SYSTEM/RECURRING build still has **no** uv; Tick 187's AGENT build could not be re-proposed from this run. Paid PRIMARY still blocked. Highest leverage: build + propose a uv-capable snapshot on this run and keep the Portal Save pointer current.
+
+### What this tick did (ONE step)
+**Re-link uv-capable Cursor env + refresh Portal Save target (no API spend):**
+1. Fast-forwarded current branch ← `origin/cursor/icml-epistemic-evolution-results-f19c` (Tick 187 tip)
+2. Confirmed Tick 187 build `31ab9b56` not proposable from this run; triggered AGENT draft `6712f42e` with uv install on env `31d13f14-…` (no new greenfield draft; no non-default refs); **SUCCEEDED** (uv 0.12.5 in logs) + proposed; setup actions re-requested
+3. Updated `docs/icml_portal_save_target.json` to Tick 188 env/build; STATUS remains IN_PROGRESS (no live PRIMARY)
+
+### Metrics delta
+| Metric | Before (Tick 187) | After (Tick 188) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| Cursor env (uv) | `31d13f14-…` / `31ab9b56` (not proposable this run) | **`31d13f14-…` / `6712f42e` SUCCEEDED + proposed** |
+| Live PRIMARY / G2 | Blocked (keys + HF + automation attach) | Same human blockers; fresh proposable uv build |
+
+### Next recommended step
+User: Portal Save proposed uv-capable env `31d13f14-…` (build `6712f42e`) onto automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (see `docs/icml_portal_save_target.json`), add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`, accept HF `Idavidrein/gpqa`. Next cron: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-22T12:05Z — Tick 187 (automation cron)
 
 ### Status snapshot

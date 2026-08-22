@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-08-22T12:05:00Z",
-  "tick": 187,
+  "updated_at": "2026-08-22T14:05:00Z",
+  "tick": 188,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260822-31ab9b56-d21f-4f3c-bd1c-0c775c3a552e",
+  "preferred_build_id": "bld-20260822-6712f42e-e799-43f3-9946-efc335fffc41",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.5",
   "supersedes_drafts": [
@@ -162,7 +162,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260822-31ab9b56-d21f-4f3c-bd1c-0c775c3a552e). Do NOT use older Tick 30\u2013186 builds/drafts as the Save target (including d2af6e7e / c2e9eab5 / 5a64921b / e7045d35 / 7776257c / ec143be0 / 66195074 / \u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260822-6712f42e-e799-43f3-9946-efc335fffc41). Do NOT use older Tick 30\u2013187 builds/drafts as the Save target (including 31ab9b56 / d2af6e7e / \u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -173,8 +173,8 @@
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
   "notes": [
     "Cron still lacks automation-attached env until Portal Save; this tick rebuilt uv onto personal env 31d13f14-\u2026 (RUNTIME_FORWARD_FILL).",
-    "Tick 187: prior Tick 186 build d2af6e7e not proposable from this run (different run); AGENT draft 31ab9b56 installs uv 0.12.5 + proposed.",
-    "Supersedes Tick 186 preferred build bld-20260822-d2af6e7e-dcac-4486-ac87-af82b1dc751e on the same env.",
+    "Tick 188: prior Tick 187 build 31ab9b56 not proposable from this run (different run); AGENT draft 6712f42e installs uv 0.12.5 + proposed.",
+    "Supersedes Tick 187 preferred build bld-20260822-31ab9b56-d21f-4f3c-bd1c-0c775c3a552e on the same env.",
     "Omit non-default git refs when building if the snapshot must stay promotable.",
     "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
   ]
