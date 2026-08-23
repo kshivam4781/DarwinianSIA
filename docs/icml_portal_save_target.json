@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-08-23T20:06:00Z",
-  "tick": 203,
+  "updated_at": "2026-08-23T22:06:00Z",
+  "tick": 204,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b",
+  "preferred_build_id": "bld-20260823-87a6e3dd-c0bc-4377-bb99-8576e193c44e",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.5",
   "supersedes_drafts": [
@@ -171,11 +171,10 @@
     }
   ],
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
-  "notes": [
-    "Cron still lacks automation-attached env until Portal Save; this tick rebuilt uv onto personal env 31d13f14-\u2026 (RUNTIME_FORWARD_FILL).",
-    "Tick 203: prior Tick 202 build a18560b9 not proposable from this run (different run); AGENT draft 5f9c3070 installs uv 0.12.5 + proposed.",
-    "Supersedes Tick 202 preferred build bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4 on the same env.",
-    "Omit non-default git refs when building if the snapshot must stay promotable.",
-    "Never set docs/ICML_READY.md STATUS: READY from offline/preflight alone."
-  ]
+  "notes": "Tick 204: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot lacks uv; Tick 203 AGENT build 5f9c3070 not proposable from this run; fresh AGENT draft 87a6e3dd SUCCEEDED + proposed.",
+  "supersedes_builds": [
+    "bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4",
+    "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b"
+  ],
+  "run_bc_id": "bc-4e8737db-6a94-442a-a75f-43f31b287d4f"
 }
