@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-08-25T02:05:00Z",
-  "tick": 216,
+  "updated_at": "2026-08-25T04:06:00Z",
+  "tick": 217,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260825-35eb93cc-1c2d-448b-9d70-88f1aceb517b",
+  "preferred_build_id": "bld-20260825-de90de5d-f885-40f8-9787-340315caa901",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.5",
   "supersedes_drafts": [
@@ -162,7 +162,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce → Environment → Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260825-35eb93cc-1c2d-448b-9d70-88f1aceb517b). Do NOT use older Tick 30–215 builds/drafts as the Save target (including f83691ca / aa5a43de / …). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260825-de90de5d-f885-40f8-9787-340315caa901). Do NOT use older Tick 30\u2013216 builds/drafts as the Save target (including 35eb93cc / f83691ca / \u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -171,8 +171,9 @@
     }
   ],
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
-  "notes": "Tick 216: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot lacks uv; Tick 215 AGENT build f83691ca not proposable from this run; fresh AGENT draft 35eb93cc SUCCEEDED + proposed.",
+  "notes": "Tick 217: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot lacks uv; Tick 216 AGENT build 35eb93cc not proposable from this run; fresh AGENT draft de90de5d SUCCEEDED + proposed.",
   "supersedes_builds": [
+    "bld-20260825-35eb93cc-1c2d-448b-9d70-88f1aceb517b",
     "bld-20260825-f83691ca-6f92-4dbb-9905-b903c3ef5b34",
     "bld-20260824-aa5a43de-ad91-4b4e-ab4b-0aee51902def",
     "bld-20260824-706f8e21-671f-4aad-8bc1-89dc79da0411",
@@ -188,5 +189,5 @@
     "bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4",
     "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b"
   ],
-  "run_bc_id": "bc-fc5927c7-f3d1-4669-82da-a378aceb6746"
+  "run_bc_id": "bc-60dd105a-5586-416a-af8e-4c078268375e"
 }
