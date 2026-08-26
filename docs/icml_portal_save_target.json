@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-08-26T12:05:00Z",
-  "tick": 233,
+  "updated_at": "2026-08-26T14:05:00Z",
+  "tick": 234,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260826-8689ae57-a4d1-430d-b383-d14aaa15d7b7",
+  "preferred_build_id": "bld-20260826-1cc7c1d8-d082-468c-95a1-11aa7eabeef9",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.6",
   "supersedes_drafts": [
@@ -205,5 +205,8 @@
     "bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4",
     "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b"
   ],
-  "run_bc_id": "bc-c4f761ee-998b-46d3-8564-463787b55424"
+  "run_bc_id": "bc-c4f761ee-998b-46d3-8564-463787b55424",
+  "supersedes_agent_builds": [
+    "bld-20260826-8689ae57-a4d1-430d-b383-d14aaa15d7b7"
+  ]
 }
