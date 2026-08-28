@@ -263,6 +263,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 256 Portal Save re-link — env `31d13f14-…` / build `22a61cd6` **SUCCEEDED** + proposed (uv 0.12.7); Tick 255 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
 - [x] Tick 257 Portal Save re-link — env `31d13f14-…` / build `25c611c6` **SUCCEEDED** + proposed (uv 0.12.7); Tick 256 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
 - [x] Tick 258 Portal Save re-link — env `31d13f14-…` / build `88f4c19c` **SUCCEEDED** + proposed (uv 0.12.7); Tick 257 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 259 Portal Save re-link — env `31d13f14-…` / build `d543e805` **SUCCEEDED** + proposed (uv 0.12.7); Tick 258 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–258 uv drafts; live GPQA still pending (Portal Save **uv-capable** env `31d13f14-…` onto automation + API keys + HF token / gpqa accept)
@@ -286,7 +287,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - G3 sequential pilot: `scripts/run_g3_pilot.py` (Tick 26; preflight `docs/gate3_report.md` — live blocked on keys + real GPQA; run after G2)
 - G4 5-seed PRIMARY: `scripts/run_g4_multiseed.py` (Tick 27–28; preflight `docs/gate4_report.md` — live blocked on keys + real GPQA; run after G3; paper pack auto-fills Tables/Figs/READY)
 - Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear)
-- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 258 env `31d13f14-…` (build `88f4c19c` SUCCEEDED + proposed; must Portal Save onto automation — prior drafts not inherited); pointer `docs/icml_portal_save_target.json`
+- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 259 env `31d13f14-…` (build `d543e805` SUCCEEDED + proposed; must Portal Save onto automation — prior drafts not inherited); pointer `docs/icml_portal_save_target.json`
 - Per-run venv probe: `scripts/icml_env_checks.py` (Tick 32; Tick 34 subprocess / SystemExit-safe)
 
 ## Gate tracker (Section 21.5)
