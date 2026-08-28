@@ -1,14 +1,14 @@
 {
-  "updated_at": "2026-08-27T22:10:00Z",
-  "tick": 250,
+  "updated_at": "2026-08-28T00:12:00Z",
+  "tick": 251,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260827-e61298ff-03d4-4c75-911e-281270f92f6f",
+  "preferred_build_id": "bld-20260828-43427d67-cc85-47ea-afe2-7fbceab89cce",
   "install_requires_uv": true,
-  "uv_version_in_build_logs": "0.12.6",
+  "uv_version_in_build_logs": "0.12.7",
   "supersedes_drafts": [
     "ac65a60c-9cf3-11f1-a7d1-d6b4613131ce",
     "da28d14f-9ce2-11f1-ba66-0e7d0216e441",
@@ -162,7 +162,7 @@
     {
       "id": "portal_save_uv_env",
       "title": "Portal Save uv-capable env onto ICML automation",
-      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260827-e61298ff-03d4-4c75-911e-281270f92f6f). Do NOT use older Tick 30\u2013249 builds/drafts as the Save target (including 1f39e390 / ea2034f0 / \u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
+      "instructions": "Open https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce \u2192 Environment \u2192 Save/attach the latest uv-capable personal env 31d13f14-9d04-11f1-a7d1-d6b4613131ce (build bld-20260828-43427d67-cc85-47ea-afe2-7fbceab89cce). Do NOT use older Tick 30\u2013250 builds/drafts as the Save target (including e61298ff / 1f39e390 / \u2026). Personal transitional drafts are NOT inherited by cron until Portal Saved onto the automation."
     },
     {
       "id": "hf_gpqa_accept",
@@ -171,8 +171,9 @@
     }
   ],
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
-  "notes": "Tick 250: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot lacks uv; Tick 249 AGENT build 1f39e390 not proposable from this run; fresh AGENT draft e61298ff SUCCEEDED + proposed (uv 0.12.6).",
+  "notes": "Tick 251: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot lacks uv; Tick 250 AGENT build e61298ff not proposable from this run; fresh AGENT draft 43427d67 SUCCEEDED + proposed (uv 0.12.7).",
   "supersedes_builds": [
+    "bld-20260827-e61298ff-03d4-4c75-911e-281270f92f6f",
     "bld-20260827-1f39e390-add9-4d04-8863-88327e9fee90",
     "bld-20260827-ea2034f0-61cc-47d2-a533-2744d680a685",
     "bld-20260827-c3955e0b-02a2-4a04-b9d6-f6edb17680a9",
@@ -221,8 +222,9 @@
     "bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4",
     "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b"
   ],
-  "run_bc_id": "bc-d67fe46e-e8f2-4991-9397-29585b92bc3f",
+  "run_bc_id": "bc-92d0d184-f38b-49df-997e-8c9b76ca969b",
   "supersedes_agent_builds": [
+    "bld-20260827-e61298ff-03d4-4c75-911e-281270f92f6f",
     "bld-20260827-1f39e390-add9-4d04-8863-88327e9fee90",
     "bld-20260827-ea2034f0-61cc-47d2-a533-2744d680a685",
     "bld-20260827-c3955e0b-02a2-4a04-b9d6-f6edb17680a9",
