@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-08-26T20:03:19Z",
+  "mode": "preflight",
+  "ready_for_live": false,
+  "budget": {
+    "spent": 0.0,
+    "ceiling": 20.0,
+    "g2_estimate": 1.0,
+    "g3_estimate": 4.0,
+    "g4_estimate": 15.0,
+    "stack_estimate": 20.0,
+    "projected": 20.0,
+    "ok": true,
+    "g3_pairs": 1,
+    "g4_pairs": 5
+  },
+  "stages": [
+    {
+      "name": "G2",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked"
+    },
+    {
+      "name": "G3",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked"
+    },
+    {
+      "name": "G4",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked"
+    }
+  ],
+  "blockers": [
+    "G2: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
+    "G2: anthropic_key: ANTHROPIC_API_KEY missing",
+    "G2: nebius_key: NEBIUS_API_KEY missing",
+    "G2: per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.",
+    "G3: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
+    "G3: anthropic_key: ANTHROPIC_API_KEY missing",
+    "G3: nebius_key: NEBIUS_API_KEY missing",
+    "G3: per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.",
+    "G4: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
+    "G4: anthropic_key: ANTHROPIC_API_KEY missing",
+    "G4: nebius_key: NEBIUS_API_KEY missing",
+    "G4: per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip."
+  ],
+  "notes": [],
+  "g3_promising": null,
+  "stopped_after": null,
+  "icml_ready_status": "IN_PROGRESS"
+}
