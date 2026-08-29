@@ -43,6 +43,10 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import run_g2_smoke as g2  # noqa: E402
 import run_g3_pilot as g3  # noqa: E402
 import run_g4_multiseed as g4  # noqa: E402
+from icml_env_checks import (  # noqa: E402
+    live_pipeline_next_steps,
+    write_icml_secrets_status,
+)
 from prepare_gpqa_diamond import materialize_from_csv, materialize_from_hf  # noqa: E402
 
 DEFAULT_BUDGET_CEILING = 20.0
@@ -254,21 +258,16 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         lines.extend(["", "## Notes", ""])
         for n in report.notes:
             lines.append(f"- {n}")
-    lines.extend(
-        [
-            "",
-            "## Next",
-            "",
-            "1. Portal Save the uv-capable draft in `docs/icml_portal_save_target.json` "
-            "onto automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce, "
-            "then inject `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` "
-            "(accepted `Idavidrein/gpqa`).",
-            "2. Budget-check, then:",
-            "   `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
-            "3. Do **not** set STATUS: READY from offline / preflight alone.",
-            "",
-        ]
+    # Tick 268: secrets-first Next (Portal Save optional after Tick 265–267 bootstrap).
+    secrets_ok = not any(
+        ("anthropic_key" in b.lower()) or ("nebius_key" in b.lower()) or ("ANTHROPIC" in b) or ("NEBIUS" in b)
+        for b in report.blockers
     )
+    next_lines = live_pipeline_next_steps(secrets_ok=secrets_ok)
+    lines.extend(["", "## Next", ""])
+    for i, step in enumerate(next_lines, start=1):
+        lines.append(f"{i}. {step}")
+    lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     sidecar = path.with_suffix(".json")
     sidecar.write_text(
@@ -419,6 +418,13 @@ def run_preflight_stack(
         )
         ready_flags.append(False)
     report.ready_for_live = all(ready_flags) and bool(report.budget.get("ok"))
+
+    # Tick 268: presence-only secrets gate artifact (never writes secret values).
+    synthetic = any("synthetic" in b.lower() for b in report.blockers)
+    write_icml_secrets_status(
+        REPO_ROOT / "docs" / "icml_secrets_status.json",
+        gpqa_is_synthetic=True if synthetic else None,
+    )
 
 
 def run_live_stack(

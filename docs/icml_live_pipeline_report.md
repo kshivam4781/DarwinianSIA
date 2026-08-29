@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-29T18:05:51Z
+**Timestamp:** 2026-08-29T20:14:13Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -44,7 +44,7 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Next
 
-1. Portal Save the uv-capable draft in `docs/icml_portal_save_target.json` onto automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce, then inject `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).
-2. Budget-check, then:
-   `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`
-3. Do **not** set STATUS: READY from offline / preflight alone.
+1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.
+2. Budget-check, then: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`
+3. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
+4. Do **not** set STATUS: READY from offline / preflight alone.

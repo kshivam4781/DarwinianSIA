@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-08-29T18:09:00Z",
-  "tick": 267,
+  "updated_at": "2026-08-29T20:14:00Z",
+  "tick": 268,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
@@ -250,5 +250,9 @@
       "nebius_key",
       "gpqa_not_synthetic"
     ]
-  }
+  },
+  "tick_268_note": "No new AGENT build. Tick 268 prioritizes secrets human-unblock; Portal Save of preferred_build_id remains optional for warm boots.",
+  "portal_save_required_for_live": false,
+  "human_unblock_doc": "docs/ICML_HUMAN_UNBLOCK.md",
+  "secrets_status_doc": "docs/icml_secrets_status.json"
 }

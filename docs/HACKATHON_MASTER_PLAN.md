@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-29 (Section 21 ICML; Tick 267 secrets-only live gate verified + Portal Save target `0eb37243`)  
+**Last updated:** 2026-08-29 (Section 21 ICML; Tick 268 secrets-first gate + human unblock; Portal Save optional)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -830,10 +830,11 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 267: env `31d13f14-…` + build `bld-20260829-0eb37243-…` **SUCCEEDED** + proposed (uv 0.12.7); pointer `docs/icml_portal_save_target.json`; secrets still required |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 267 build `0eb37243` still preferred (optional warm boots); **Tick 268** stopped re-triggering Portal Save — secrets-first human unblock |
 | Per-run venv capability (Cursor) | **DONE** | Tick 32+34 probe; **Tick 265** `ensure_uv_on_path` + G2/G3/G4 `bootstrap_uv=True` (per_run_venv no longer Portal-Save-gated); **Tick 267** verified on SYSTEM boot |
 | ICML runtime deps bootstrap | **DONE** | Tick 266: `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps`; **Tick 267** verified secrets-only live blockers (`huggingface_hub` + SIA PYTHONPATH) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 267: packages bootstrapped; live gate = secrets + diamond); then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| ICML secrets-first gate (Tick 268) | **DONE** | `write_icml_secrets_status` → `docs/icml_secrets_status.json`; `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268: packages bootstrapped; live gate = secrets + diamond); then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1621,6 +1622,8 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 |----------|------|
 | Progress log | `docs/ICML_PROGRESS.md` |
 | Ready checklist | `docs/ICML_READY.md` |
+| Human secrets unblock | `docs/ICML_HUMAN_UNBLOCK.md` |
+| Secrets status (presence-only) | `docs/icml_secrets_status.json` |
 | Paper pack | `docs/paper_artifacts.md` |
 | Gate 3 report | `docs/gate3_report.md` |
 | Gate 4 report | `docs/gate4_report.md` |

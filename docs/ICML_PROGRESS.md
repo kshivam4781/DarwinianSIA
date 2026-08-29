@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-29T20:14Z — Tick 268 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-de52` (fast-forwarded Ticks 1–267 from `08c6`, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (SYSTEM boot `9e876ef2`); Tick 267 AGENT build `0eb37243` kept as optional Portal Save target — **no new AGENT build this tick**
+- Canonical Portal Save pointer: unchanged (`0eb37243`); human path → `docs/ICML_HUMAN_UNBLOCK.md`
+- API keys in cloud env: **absent** (secrets + HF gpqa accept re-requested; Portal Save demoted to optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker. Tick 267 already proved packages bootstrap without Portal Save; continuing AGENT re-links wastes cycles. Highest leverage without secrets: make the **human secrets path** machine-readable and stop pipeline docs from listing Portal Save first.
+
+### What this tick did (ONE step)
+**Secrets-first live gate + human unblock (no API spend; no new Portal Save build):**
+1. Fast-forwarded ← `origin/cursor/icml-epistemic-results-08c6` (Tick 267 tip; supersedes divergent `d93f` Portal-Save-only “Tick 268”)
+2. Added `collect_icml_secrets_status` / `write_icml_secrets_status` / `live_pipeline_next_steps` in `scripts/icml_env_checks.py`; pipeline writes `docs/icml_secrets_status.json` and secrets-first Next; `docs/ICML_HUMAN_UNBLOCK.md`; tests 12/12 green
+3. Re-requested secrets + HF accept setup actions (Portal Save marked optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 267) | After (Tick 268) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Pipeline “Next” priority | Portal Save first | **Secrets first**; Portal Save optional |
+| `docs/icml_secrets_status.json` | n/a | **ABSENT keys** (presence-only) |
+| New AGENT Portal Save build | `0eb37243` proposed | **None** (kept pointer) |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-29T18:09Z — Tick 267 (automation cron)
 
 ### Status snapshot

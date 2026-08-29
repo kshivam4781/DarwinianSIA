@@ -272,9 +272,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 265 uv auto-bootstrap — `ensure_uv_on_path` + G2/G3/G4 `probe_per_run_venv_capable(bootstrap_uv=True)` so `per_run_venv` no longer depends on Portal Save; env `31d13f14-…` / build `ec92739d` **SUCCEEDED** + proposed (uv 0.12.7)
 - [x] Tick 266 runtime-deps bootstrap — `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps` (`huggingface_hub` + SIA PYTHONPATH); env `31d13f14-…` / build `5a2d7f34` **SUCCEEDED** + proposed (uv 0.12.7)
 - [x] Tick 267 secrets-only live gate verified — SYSTEM-boot G2/G3/G4 preflight `per_run_venv` + `runtime_deps` **yes**; live blockers = API keys + real diamond only; env `31d13f14-…` / build `0eb37243` **SUCCEEDED** + proposed (uv 0.12.7)
+- [x] Tick 268 secrets-first human unblock — `docs/icml_secrets_status.json` + `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional; no new AGENT build)
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
-- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified**; live GPQA still pending (**API keys** + HF token / gpqa accept; Portal Save optional for warm boots)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock**; live GPQA still pending (**API keys** + HF token / gpqa accept; Portal Save optional for warm boots)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
@@ -294,17 +295,18 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - G2 diamond fetcher: `scripts/prepare_gpqa_diamond.py` (Tick 25; `--from-hf` / `--from-csv`; `run_g2_smoke.py --fetch-diamond`)
 - G3 sequential pilot: `scripts/run_g3_pilot.py` (Tick 26; preflight `docs/gate3_report.md` — live blocked on keys + real GPQA; run after G2)
 - G4 5-seed PRIMARY: `scripts/run_g4_multiseed.py` (Tick 27–28; preflight `docs/gate4_report.md` — live blocked on keys + real GPQA; run after G3; paper pack auto-fills Tables/Figs/READY)
-- Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear)
-- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed) + **Astral uv + runtime-deps bootstrap in G2/G3/G4** (Tick 267 verified secrets-only live blockers); pointer `docs/icml_portal_save_target.json`
-- Per-run venv / runtime deps: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266; Tick 32/34 SystemExit-safe probe)
+- Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear; **Tick 268** secrets-first Next + `docs/icml_secrets_status.json`)
+- Human unblock: `docs/ICML_HUMAN_UNBLOCK.md` (Tick 268)
+- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed; Tick 268 did **not** re-trigger) + **Astral uv + runtime-deps bootstrap in G2/G3/G4**; pointer `docs/icml_portal_save_target.json`
+- Per-run venv / runtime deps / secrets gate: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266; `write_icml_secrets_status` Tick 268; Tick 32/34 SystemExit-safe probe)
 
 ## Gate tracker (Section 21.5)
 
 | Gate | Status |
 |------|--------|
-| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 32 per_run_venv / uv + Tick 34 SystemExit-safe probe + Tick 265 Astral bootstrap + Tick 266 runtime-deps + Tick 267 secrets-only verify) |
+| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 32 per_run_venv / uv + Tick 34 SystemExit-safe probe + Tick 265 Astral bootstrap + Tick 266 runtime-deps + Tick 267 secrets-only verify + Tick 268 secrets status) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32/34/265/266/267 `per_run_venv` + `runtime_deps` verified on SYSTEM boot); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/icml_portal_save_target.json`) |
+| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32/34/265/266/267/268); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |

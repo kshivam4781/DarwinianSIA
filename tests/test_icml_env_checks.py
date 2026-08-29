@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -12,10 +13,13 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
+    collect_icml_secrets_status,
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    live_pipeline_next_steps,
     probe_per_run_venv_capable,
+    write_icml_secrets_status,
 )
 
 
@@ -177,3 +181,43 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
     assert ok is True
     assert "bootstrapped huggingface_hub" in detail
     assert state["hub"] is True
+
+
+def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 268: status reports PRESENT/ABSENT and never echoes values."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-secret-should-not-leak")
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    status = collect_icml_secrets_status()
+    blob = json.dumps(status)
+    assert "sk-ant-secret-should-not-leak" not in blob
+    assert status["secrets"]["ANTHROPIC_API_KEY"] == "PRESENT"
+    assert status["secrets"]["NEBIUS_API_KEY"] == "ABSENT"
+    assert status["portal_save_required_for_live"] is False
+    assert status["secrets_ok_for_paid_sia"] is False
+    assert any("NEBIUS" in b for b in status["blockers"])
+
+
+def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    out = tmp_path / "icml_secrets_status.json"
+    status = write_icml_secrets_status(out, gpqa_is_synthetic=True)
+    assert out.is_file()
+    loaded = json.loads(out.read_text(encoding="utf-8"))
+    assert loaded["secrets"]["ANTHROPIC_API_KEY"] == "ABSENT"
+    assert loaded["gpqa_is_synthetic"] is True
+    assert loaded["ready_for_live_pipeline"] is False
+    assert status["portal_save_required_for_live"] is False
+
+
+def test_live_pipeline_next_steps_secrets_first() -> None:
+    blocked = live_pipeline_next_steps(secrets_ok=False)
+    assert "ANTHROPIC_API_KEY" in blocked[0]
+    assert "optional" in blocked[2].lower()
+    ready = live_pipeline_next_steps(secrets_ok=True)
+    assert "Secrets present" in ready[0]
+    assert "--live" in ready[1]

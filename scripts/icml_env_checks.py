@@ -21,15 +21,21 @@ Tick 266: Same cron boots also lack ``huggingface_hub`` (needed for
 bootstraps those via ``pip install --user`` and prepends ``SIA/`` onto
 ``PYTHONPATH`` so live G2→G3→G4 only needs secrets + HF gpqa accept — not a
 Portal-Saved package snapshot.
+
+Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
+doc so cron ticks stop re-prioritizing Portal Save when packages already
+bootstrap in-preflight. Never records secret values.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
@@ -317,3 +323,135 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
         notes.append("huggingface_hub already importable")
 
     return True, "; ".join(notes)
+
+
+_SECRET_ENV_NAMES = (
+    "ANTHROPIC_API_KEY",
+    "NEBIUS_API_KEY",
+    "HF_TOKEN",
+    "HUGGINGFACE_HUB_TOKEN",
+)
+
+_AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
+_AUTOMATION_URL = f"https://cursor.com/automations/{_AUTOMATION_ID}"
+_ENV_DASHBOARD_URL = (
+    "https://cursor.com/dashboard/cloud-agents/environments/"
+    "e/31d13f14-9d04-11f1-a7d1-d6b4613131ce"
+)
+
+
+def _secret_present(name: str) -> bool:
+    """True when env var looks set (never returns or logs the value)."""
+    raw = os.environ.get(name, "")
+    if not isinstance(raw, str):
+        return False
+    value = raw.strip()
+    if not value:
+        return False
+    lowered = value.lower()
+    if lowered.startswith("your_") or lowered in {"...", "changeme", "todo"}:
+        return False
+    return True
+
+
+def collect_icml_secrets_status() -> dict:
+    """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268).
+
+    Does **not** include secret values. Portal Save is optional once Tick
+    265–266 bootstraps succeed; live blockers are API keys + real GPQA.
+    """
+    anthropic = _secret_present("ANTHROPIC_API_KEY")
+    nebius = _secret_present("NEBIUS_API_KEY")
+    hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
+    secrets_ok = anthropic and nebius
+    # HF needed for --fetch-diamond unless operator supplies CSV offline.
+    fetch_diamond_ok = secrets_ok and hf
+    blockers: list[str] = []
+    if not anthropic:
+        blockers.append("ANTHROPIC_API_KEY missing")
+    if not nebius:
+        blockers.append("NEBIUS_API_KEY missing")
+    if not hf:
+        blockers.append(
+            "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
+            "(required for --fetch-diamond; or provide --diamond-csv)"
+        )
+    return {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tick_note": (
+            "Tick 268: secrets-first live gate; Portal Save optional "
+            "(uv + runtime deps bootstrap in preflight)"
+        ),
+        "automation_id": _AUTOMATION_ID,
+        "automation_url": _AUTOMATION_URL,
+        "environment_dashboard_url": _ENV_DASHBOARD_URL,
+        "secrets": {
+            "ANTHROPIC_API_KEY": "PRESENT" if anthropic else "ABSENT",
+            "NEBIUS_API_KEY": "PRESENT" if nebius else "ABSENT",
+            "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "PRESENT" if hf else "ABSENT",
+        },
+        "packages_bootstrapped_in_preflight": True,
+        "portal_save_required_for_live": False,
+        "secrets_ok_for_paid_sia": secrets_ok,
+        "fetch_diamond_ok": fetch_diamond_ok,
+        "ready_for_live_pipeline": False,  # diamond + keys both required; caller may override
+        "blockers": blockers,
+        "human_next": [
+            f"Add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN to automation "
+            f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
+            "Accept HuggingFace access for Idavidrein/gpqa with that HF token",
+            "Next cron tick: python scripts/run_icml_live_pipeline.py "
+            "--live --fetch-diamond",
+            "Portal Save of docs/icml_portal_save_target.json is optional "
+            "(warm boots only; packages bootstrap without it)",
+        ],
+    }
+
+
+def write_icml_secrets_status(
+    path: Path | None = None,
+    *,
+    gpqa_is_synthetic: bool | None = None,
+) -> dict:
+    """Write ``docs/icml_secrets_status.json`` (presence-only; no secret values)."""
+    status = collect_icml_secrets_status()
+    if gpqa_is_synthetic is True:
+        status["blockers"] = list(status["blockers"]) + [
+            "gpqa still synthetic — need --fetch-diamond or real diamond CSV"
+        ]
+        status["gpqa_is_synthetic"] = True
+    elif gpqa_is_synthetic is False:
+        status["gpqa_is_synthetic"] = False
+    else:
+        status["gpqa_is_synthetic"] = None
+    status["ready_for_live_pipeline"] = bool(
+        status["secrets_ok_for_paid_sia"]
+        and status.get("gpqa_is_synthetic") is False
+    )
+    out = path or (_REPO_ROOT / "docs" / "icml_secrets_status.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    return status
+
+
+def live_pipeline_next_steps(*, secrets_ok: bool) -> list[str]:
+    """Human-facing Next bullets — secrets first; Portal Save optional (Tick 268)."""
+    if secrets_ok:
+        return [
+            "Secrets present — ensure real GPQA diamond "
+            "(`--fetch-diamond` or `--diamond-csv`), then:",
+            "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+            "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
+            "for warmer boots only.",
+            "Do **not** set STATUS: READY from offline / preflight alone.",
+        ]
+    return [
+        "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
+        f"{_AUTOMATION_URL} (or linked env dashboard). "
+        "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
+        "Budget-check, then: "
+        "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+        "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
+        "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
+        "Do **not** set STATUS: READY from offline / preflight alone.",
+    ]
