@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-29 (Section 21 ICML; Tick 268 secrets-first gate + human unblock; Portal Save optional)  
+**Last updated:** 2026-08-29 (Section 21 ICML; Tick 269 tip lineage recover + refuse `--live` on stale; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -834,7 +834,8 @@ Computed in `cabs/belief_engine.py`:
 | Per-run venv capability (Cursor) | **DONE** | Tick 32+34 probe; **Tick 265** `ensure_uv_on_path` + G2/G3/G4 `bootstrap_uv=True` (per_run_venv no longer Portal-Save-gated); **Tick 267** verified on SYSTEM boot |
 | ICML runtime deps bootstrap | **DONE** | Tick 266: `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps`; **Tick 267** verified secrets-only live blockers (`huggingface_hub` + SIA PYTHONPATH) |
 | ICML secrets-first gate (Tick 268) | **DONE** | `write_icml_secrets_status` → `docs/icml_secrets_status.json`; `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268: packages bootstrapped; live gate = secrets + diamond); then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| ICML tip lineage recover (Tick 269) | **DONE** | `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; pipeline refuses `--live` when local Tick lags / progress missing |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–269: packages + tip guard ready; live gate = secrets + diamond); then `icml_recover_tip.py --apply` if needed + `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1624,6 +1625,8 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 | Ready checklist | `docs/ICML_READY.md` |
 | Human secrets unblock | `docs/ICML_HUMAN_UNBLOCK.md` |
 | Secrets status (presence-only) | `docs/icml_secrets_status.json` |
+| Tip lineage status | `docs/icml_tip_status.json` |
+| Tip recover CLI | `scripts/icml_recover_tip.py` |
 | Paper pack | `docs/paper_artifacts.md` |
 | Gate 3 report | `docs/gate3_report.md` |
 | Gate 4 report | `docs/gate4_report.md` |
@@ -2157,3 +2160,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Runtime-deps bootstrap (2026-08-29 Tick 266):** Added `ensure_icml_runtime_deps` (`huggingface_hub` + SIA `PYTHONPATH`) and wired `runtime_deps` into G2/G3/G4 so `--fetch-diamond` no longer needs a Portal-Saved package snapshot. AGENT build `bld-20260829-5a2d7f34-…` **SUCCEEDED** (uv 0.12.7) + proposed.
 
 **Secrets-only live gate verified (2026-08-29 Tick 267):** On a fresh SYSTEM/RECURRING boot of env `31d13f14-…`, G2/G3/G4/pipeline preflight confirmed `per_run_venv` + `runtime_deps` **yes** via Tick 265–266 bootstraps; `ready_for_live=False` only for missing API keys + synthetic GPQA fixture. AGENT build `bld-20260829-0eb37243-…` **SUCCEEDED** (uv 0.12.7) + proposed; pointer updated. Live PRIMARY still blocked solely on secrets + HF gpqa accept.
+
+**Secrets-first human unblock (2026-08-29 Tick 268):** Added presence-only `docs/icml_secrets_status.json` + `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional). No new AGENT Portal Save build.
+
+**Tip lineage recover + refuse stale `--live` (2026-08-29 Tick 269):** Cron often boots from `main` without ICML docs. Added `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; `run_icml_live_pipeline.py --live` exits 3 when local Tick lags / `ICML_PROGRESS` missing (unless `--allow-stale-tip`). Prevents burning the ~$20 budget on pre-CABS code when secrets finally appear.

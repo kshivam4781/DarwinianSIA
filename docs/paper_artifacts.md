@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265 Astral uv bootstrap** (`ensure_uv_on_path`) + **Tick 266 runtime-deps bootstrap** (`ensure_icml_runtime_deps`) + **Tick 267 secrets-only live gate verified** on SYSTEM boot + Portal Save target env `31d13f14-…` / build `0eb37243`. No publishable **live** GPQA figures/tables yet (blocked on API secrets).
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265 Astral uv bootstrap** (`ensure_uv_on_path`) + **Tick 266 runtime-deps bootstrap** (`ensure_icml_runtime_deps`) + **Tick 267 secrets-only live gate verified** on SYSTEM boot + **Tick 268 secrets-first** + **Tick 269 tip lineage recover/refuse** (`icml_recover_tip.py` / `icml_tip_status.json`). No publishable **live** GPQA figures/tables yet (blocked on API secrets).
 
 ## Abstract (draft — do not claim READY)
 

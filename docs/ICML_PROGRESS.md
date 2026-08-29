@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-29T22:14Z — Tick 269 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-8e78` (fast-forwarded Ticks 1–268 from `de52`, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (SYSTEM boot `9e876ef2`); no new AGENT Portal Save build
+- Tip lineage: `docs/icml_tip_status.json` → local Tick **268** matches remote tip `de52` (after recover)
+- API keys in cloud env: **absent** (secrets + HF gpqa accept re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Separately, every cron still boots a fresh branch from **main** without ICML docs — if secrets appear mid-tick without tip recovery, `--live` could burn the ~$20 budget on pre-CABS code. Highest leverage without secrets: **tip lineage recover + refuse `--live` on stale trees**.
+
+### What this tick did (ONE step)
+**ICML tip lineage recovery + live refuse-on-stale (no API spend; no Portal Save):**
+1. Fast-forwarded ← `origin/cursor/icml-epistemic-results-de52` (Tick 268 tip)
+2. Added `parse_latest_icml_tick` / `collect_icml_tip_status` / `write_icml_tip_status` + `scripts/icml_recover_tip.py` (`--apply`); pipeline writes `docs/icml_tip_status.json` and **refuses `--live`** when local Tick lags / `ICML_PROGRESS` missing (`--allow-stale-tip` escape); Next lists tip recover before secrets when stale; tests **23/23** green
+3. Re-requested secrets + HF accept; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 268) | After (Tick 269) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Tip recover CLI | manual git memory | **`icml_recover_tip.py --apply`** + status JSON |
+| `--live` on main/stale | would spend | **refused** (exit 3) until tip recovered |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `python scripts/icml_recover_tip.py --apply` (if booted from main) then `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-29T20:14Z — Tick 268 (automation cron)
 
 ### Status snapshot

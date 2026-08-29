@@ -29,13 +29,19 @@ Machine-readable presence check (no values): `docs/icml_secrets_status.json`
 
 ## After secrets land
 
-Next automation cron (or a manual agent) should run:
+Next automation cron (or a manual agent) should:
 
 ```bash
+# Cron often boots from main — recover tip first (Tick 269)
+python scripts/icml_recover_tip.py --apply
+
 python scripts/run_icml_live_pipeline.py --live --fetch-diamond
 ```
 
 That chains G2 → G3 → G4 serially under the ~$20 budget ceiling and refreshes
 `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
+
+Machine-readable tip check: `docs/icml_tip_status.json` (pipeline refuses
+`--live` if local Tick lags remote tip / `ICML_PROGRESS` is missing).
 
 Do **not** set `ICML_READY` STATUS: READY from offline pilots alone.

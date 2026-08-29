@@ -25,12 +25,19 @@ Portal-Saved package snapshot.
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
+
+Tick 269: Tip lineage discovery / guard. Cron often boots a fresh branch from
+``main`` without ICML docs. ``collect_icml_tip_status`` +
+``scripts/icml_recover_tip.py`` recover the highest Tick tip; live pipeline
+refuses ``--live`` on a stale tree so paid GPQA cannot burn budget on pre-CABS
+code.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -434,24 +441,261 @@ def write_icml_secrets_status(
     return status
 
 
-def live_pipeline_next_steps(*, secrets_ok: bool) -> list[str]:
-    """Human-facing Next bullets — secrets first; Portal Save optional (Tick 268)."""
+def live_pipeline_next_steps(
+    *,
+    secrets_ok: bool,
+    tip_ok: bool | None = None,
+    tip_ref: str | None = None,
+) -> list[str]:
+    """Human-facing Next bullets — tip lineage + secrets first (Tick 268–269)."""
+    steps: list[str] = []
+    if tip_ok is False:
+        ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
+        steps.append(
+            "Stale / missing ICML tip — recover before paid runs: "
+            f"`python scripts/icml_recover_tip.py --apply` "
+            f"(expected tip ≈ `{ref}`). See `docs/icml_tip_status.json`."
+        )
     if secrets_ok:
-        return [
-            "Secrets present — ensure real GPQA diamond "
-            "(`--fetch-diamond` or `--diamond-csv`), then:",
+        steps.extend(
+            [
+                "Secrets present — ensure real GPQA diamond "
+                "(`--fetch-diamond` or `--diamond-csv`), then:",
+                "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+                "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
+                "for warmer boots only.",
+                "Do **not** set STATUS: READY from offline / preflight alone.",
+            ]
+        )
+        return steps
+    steps.extend(
+        [
+            "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
+            f"{_AUTOMATION_URL} (or linked env dashboard). "
+            "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
+            "Budget-check, then: "
             "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
-            "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
-            "for warmer boots only.",
+            "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
+            "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
             "Do **not** set STATUS: READY from offline / preflight alone.",
         ]
-    return [
-        "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
-        f"{_AUTOMATION_URL} (or linked env dashboard). "
-        "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
-        "Budget-check, then: "
-        "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
-        "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
-        "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
-        "Do **not** set STATUS: READY from offline / preflight alone.",
-    ]
+    )
+    return steps
+
+
+# --- Tick 269: ICML tip lineage (cron boots often start from main) -----------------
+
+_TICK_HEADING_RE = re.compile(
+    r"^##\s+.+\bTick\s+(\d+)\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+_TIP_REF_PREFIXES = (
+    "refs/remotes/origin/cursor/icml-epistemic-results-",
+    "refs/remotes/origin/cursor/icml-epistemic-evolution-",
+)
+# Prefer lineage that includes Tick 265–268 bootstraps; skip Portal-Save-only forks.
+_TIP_LINEAGE_MARKERS = (
+    "secrets-first",
+    "write_icml_secrets_status",
+    "ensure_icml_runtime_deps",
+    "ensure_uv_on_path",
+    "Astral uv",
+)
+
+
+def parse_latest_icml_tick(progress_text: str) -> int | None:
+    """Return the newest Tick N from ``ICML_PROGRESS.md`` (newest entries at top)."""
+    if not progress_text:
+        return None
+    match = _TICK_HEADING_RE.search(progress_text)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def _git_ok(args: list[str], *, cwd: Path | None = None) -> tuple[bool, str]:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=str(cwd or _REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        return False, err[:400] or f"git exit {proc.returncode}"
+    return True, (proc.stdout or "").strip()
+
+
+def _tip_lineage_score(progress_text: str) -> int:
+    """Higher = more likely the canonical secrets/bootstrap tip (not Portal-Save-only)."""
+    score = 0
+    lower = progress_text.lower()
+    for marker in _TIP_LINEAGE_MARKERS:
+        if marker.lower() in lower:
+            score += 1
+    # Penalize known divergent Portal-Save-only numbering collisions.
+    if "portal save re-link" in lower and "secrets-first" not in lower:
+        score -= 2
+    return score
+
+
+def list_remote_icml_tip_candidates(
+    *,
+    repo_root: Path | None = None,
+    fetch: bool = False,
+) -> list[dict]:
+    """Scan remote ICML branches for ``docs/ICML_PROGRESS.md`` Tick heads."""
+    root = repo_root or _REPO_ROOT
+    notes: list[str] = []
+    if fetch:
+        ok, detail = _git_ok(
+            [
+                "fetch",
+                "origin",
+                "+refs/heads/cursor/icml-epistemic-results-*"
+                ":refs/remotes/origin/cursor/icml-epistemic-results-*",
+                "+refs/heads/cursor/icml-epistemic-evolution-*"
+                ":refs/remotes/origin/cursor/icml-epistemic-evolution-*",
+            ],
+            cwd=root,
+        )
+        notes.append(f"fetch={'ok' if ok else 'fail'}: {detail[:200]}")
+
+    ok, refs_out = _git_ok(
+        [
+            "for-each-ref",
+            "--format=%(refname)\t%(committerdate:unix)\t%(objectname:short)",
+            "refs/remotes/origin/cursor/icml-epistemic-results-*",
+            "refs/remotes/origin/cursor/icml-epistemic-evolution-*",
+        ],
+        cwd=root,
+    )
+    if not ok:
+        return []
+
+    candidates: list[dict] = []
+    for line in refs_out.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        ref, ts_s, sha = parts[0], parts[1], parts[2]
+        if not any(ref.startswith(p) for p in _TIP_REF_PREFIXES):
+            continue
+        ok_show, progress = _git_ok(
+            ["show", f"{ref}:docs/ICML_PROGRESS.md"],
+            cwd=root,
+        )
+        if not ok_show:
+            continue
+        tick = parse_latest_icml_tick(progress)
+        if tick is None:
+            continue
+        try:
+            ts = int(ts_s)
+        except ValueError:
+            ts = 0
+        candidates.append(
+            {
+                "ref": ref,
+                "short_ref": ref.split("/", 3)[-1]
+                if ref.startswith("refs/remotes/")
+                else ref,
+                "sha": sha,
+                "tick": tick,
+                "committer_unix": ts,
+                "lineage_score": _tip_lineage_score(progress),
+            }
+        )
+    candidates.sort(
+        key=lambda c: (c["tick"], c["lineage_score"], c["committer_unix"]),
+        reverse=True,
+    )
+    if notes and candidates:
+        candidates[0] = {**candidates[0], "fetch_notes": notes}
+    return candidates
+
+
+def collect_icml_tip_status(
+    *,
+    repo_root: Path | None = None,
+    fetch: bool = False,
+) -> dict:
+    """Compare local ``ICML_PROGRESS`` Tick vs highest remote ICML tip (Tick 269)."""
+    root = repo_root or _REPO_ROOT
+    progress_path = root / "docs" / "ICML_PROGRESS.md"
+    local_tick: int | None = None
+    local_text = ""
+    if progress_path.is_file():
+        local_text = progress_path.read_text(encoding="utf-8", errors="replace")
+        local_tick = parse_latest_icml_tick(local_text)
+
+    candidates = list_remote_icml_tip_candidates(repo_root=root, fetch=fetch)
+    tip = candidates[0] if candidates else None
+    remote_tick = int(tip["tick"]) if tip else None
+    tip_ref = tip["ref"] if tip else None
+
+    blockers: list[str] = []
+    if local_tick is None:
+        blockers.append(
+            "docs/ICML_PROGRESS.md missing or has no Tick heading — "
+            "cron likely booted from main; recover tip before --live"
+        )
+    elif remote_tick is not None and local_tick < remote_tick:
+        blockers.append(
+            f"local Tick {local_tick} behind remote tip Tick {remote_tick} "
+            f"({tip_ref}) — recover before --live"
+        )
+
+    tip_ok = len(blockers) == 0 and local_tick is not None
+    # If remotes unavailable, still OK when local progress exists (offline agent).
+    if not candidates and local_tick is not None:
+        tip_ok = True
+
+    return {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tick_note": (
+            "Tick 269: tip lineage guard — cron often boots from main; "
+            "refuse --live on stale trees; recover via scripts/icml_recover_tip.py"
+        ),
+        "local_tick": local_tick,
+        "remote_tip_tick": remote_tick,
+        "remote_tip_ref": tip_ref,
+        "remote_tip_sha": tip["sha"] if tip else None,
+        "remote_tip_lineage_score": tip["lineage_score"] if tip else None,
+        "tip_ok_for_live": tip_ok,
+        "blockers": blockers,
+        "recover_command": "python scripts/icml_recover_tip.py --apply",
+        "candidates_scanned": len(candidates),
+        "top_candidates": [
+            {
+                "ref": c["ref"],
+                "tick": c["tick"],
+                "sha": c["sha"],
+                "lineage_score": c["lineage_score"],
+            }
+            for c in candidates[:5]
+        ],
+    }
+
+
+def write_icml_tip_status(
+    path: Path | None = None,
+    *,
+    fetch: bool = False,
+    repo_root: Path | None = None,
+) -> dict:
+    """Write ``docs/icml_tip_status.json`` (no secrets)."""
+    root = repo_root or _REPO_ROOT
+    status = collect_icml_tip_status(repo_root=root, fetch=fetch)
+    out = path or (root / "docs" / "icml_tip_status.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    return status

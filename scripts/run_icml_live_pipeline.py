@@ -46,6 +46,7 @@ import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     live_pipeline_next_steps,
     write_icml_secrets_status,
+    write_icml_tip_status,
 )
 from prepare_gpqa_diamond import materialize_from_csv, materialize_from_hf  # noqa: E402
 
@@ -258,12 +259,29 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         lines.extend(["", "## Notes", ""])
         for n in report.notes:
             lines.append(f"- {n}")
-    # Tick 268: secrets-first Next (Portal Save optional after Tick 265–267 bootstrap).
-    secrets_ok = not any(
-        ("anthropic_key" in b.lower()) or ("nebius_key" in b.lower()) or ("ANTHROPIC" in b) or ("NEBIUS" in b)
-        for b in report.blockers
+    # Tick 268–269: tip lineage + secrets-first Next (Portal Save optional).
+    from icml_env_checks import collect_icml_secrets_status
+
+    tip_blocker = any(
+        b.lower().startswith("tip:") or "ICML_PROGRESS" in b for b in report.blockers
     )
-    next_lines = live_pipeline_next_steps(secrets_ok=secrets_ok)
+    tip_ref = None
+    tip_path = REPO_ROOT / "docs" / "icml_tip_status.json"
+    if tip_path.is_file():
+        try:
+            tip_blob = json.loads(tip_path.read_text(encoding="utf-8"))
+            tip_ref = tip_blob.get("remote_tip_ref")
+            if tip_blob.get("tip_ok_for_live") is False:
+                tip_blocker = True
+        except (json.JSONDecodeError, OSError):
+            pass
+    secrets_status = collect_icml_secrets_status()
+    secrets_ok = bool(secrets_status.get("secrets_ok_for_paid_sia"))
+    next_lines = live_pipeline_next_steps(
+        secrets_ok=secrets_ok,
+        tip_ok=(False if tip_blocker else True),
+        tip_ref=tip_ref,
+    )
     lines.extend(["", "## Next", ""])
     for i, step in enumerate(next_lines, start=1):
         lines.append(f"{i}. {step}")
@@ -418,6 +436,16 @@ def run_preflight_stack(
         )
         ready_flags.append(False)
     report.ready_for_live = all(ready_flags) and bool(report.budget.get("ok"))
+
+    # Tick 269: tip lineage status (cron often boots from main).
+    tip_status = write_icml_tip_status(
+        REPO_ROOT / "docs" / "icml_tip_status.json",
+        fetch=False,
+    )
+    if not tip_status.get("tip_ok_for_live"):
+        for b in tip_status.get("blockers") or []:
+            report.blockers.append(f"tip: {b}")
+        report.ready_for_live = False
 
     # Tick 268: presence-only secrets gate artifact (never writes secret values).
     synthetic = any("synthetic" in b.lower() for b in report.blockers)
@@ -646,6 +674,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=REPO_ROOT / "docs" / "ICML_READY.md",
     )
+    p.add_argument(
+        "--allow-stale-tip",
+        action="store_true",
+        help="Allow --live even when local Tick lags remote tip (dangerous)",
+    )
     args = p.parse_args(argv)
 
     selected = "live" if args.live else "preflight"
@@ -655,6 +688,29 @@ def main(argv: list[str] | None = None) -> int:
         mode=selected,
         budget=project_budget(g3_pairs=g3_pairs, g4_pairs=5),
     )
+
+    # Tick 269: refuse paid stack on stale / missing ICML tip (unless override).
+    tip_status = write_icml_tip_status(
+        REPO_ROOT / "docs" / "icml_tip_status.json",
+        fetch=False,
+    )
+    if selected == "live" and not tip_status.get("tip_ok_for_live"):
+        if args.allow_stale_tip:
+            report.notes.append(
+                "tip: --allow-stale-tip set; proceeding despite lineage blockers"
+            )
+        else:
+            for b in tip_status.get("blockers") or ["stale ICML tip"]:
+                report.blockers.append(f"tip: {b}")
+            report.notes.append(
+                "Recover tip: python scripts/icml_recover_tip.py --apply"
+            )
+            report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
+            write_pipeline_report(report, args.report)
+            print(f"Pipeline refused --live (stale tip) → {args.report}")
+            for b in report.blockers:
+                print(f"  BLOCK: {b}")
+            return 3
 
     if selected == "preflight":
         # Optional diamond fetch during preflight (e.g. CSV path validation).

@@ -14,12 +14,15 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
+    collect_icml_tip_status,
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
     live_pipeline_next_steps,
+    parse_latest_icml_tick,
     probe_per_run_venv_capable,
     write_icml_secrets_status,
+    write_icml_tip_status,
 )
 
 
@@ -221,3 +224,47 @@ def test_live_pipeline_next_steps_secrets_first() -> None:
     ready = live_pipeline_next_steps(secrets_ok=True)
     assert "Secrets present" in ready[0]
     assert "--live" in ready[1]
+
+
+def test_live_pipeline_next_steps_tip_before_secrets() -> None:
+    steps = live_pipeline_next_steps(
+        secrets_ok=False,
+        tip_ok=False,
+        tip_ref="origin/cursor/icml-epistemic-results-de52",
+    )
+    assert "icml_recover_tip" in steps[0]
+    assert "ANTHROPIC_API_KEY" in steps[1]
+
+
+def test_parse_latest_icml_tick_prefers_top_heading() -> None:
+    text = (
+        "# ICML Thesis 1 — Progress log\n\n"
+        "## 2026-08-29T20:14Z — Tick 268 (automation cron)\n\n"
+        "### Status\n\n"
+        "## 2026-08-29T18:09Z — Tick 267 (automation cron)\n"
+    )
+    assert parse_latest_icml_tick(text) == 268
+    assert parse_latest_icml_tick("no ticks here") is None
+
+
+def test_collect_icml_tip_status_missing_progress(tmp_path: Path) -> None:
+    status = collect_icml_tip_status(repo_root=tmp_path, fetch=False)
+    assert status["local_tick"] is None
+    assert status["tip_ok_for_live"] is False
+    assert any("ICML_PROGRESS" in b for b in status["blockers"])
+
+
+def test_write_icml_tip_status_local_ok(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-08-29T22:00Z — Tick 269 (automation cron)\n\nsecrets-first\n",
+        encoding="utf-8",
+    )
+    # No remote candidates in empty git-less tmp → local-only OK path.
+    out = docs / "icml_tip_status.json"
+    status = write_icml_tip_status(out, fetch=False, repo_root=tmp_path)
+    assert out.is_file()
+    assert status["local_tick"] == 269
+    assert status["tip_ok_for_live"] is True
+    assert status["blockers"] == []
