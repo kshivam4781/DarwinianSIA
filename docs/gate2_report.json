@@ -1,14 +1,13 @@
 {
-  "timestamp": "2026-08-26T20:03:19Z",
+  "timestamp": "2026-08-29T14:20:33Z",
   "mode": "preflight",
-  "run_id": 1300,
+  "run_id": 1850,
   "ready_for_live": false,
-  "ready_for_dry_run": false,
+  "ready_for_dry_run": true,
   "blockers": [
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
     "anthropic_key: ANTHROPIC_API_KEY missing",
-    "nebius_key: NEBIUS_API_KEY missing",
-    "per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip."
+    "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
     {
@@ -49,12 +48,12 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1850 unused"
     },
     {
       "name": "per_run_venv",
-      "ok": false,
-      "detail": "stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip."
+      "ok": true,
+      "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
     }
   ],
   "command": [
@@ -74,7 +73,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1850",
     "--eval_subset",
     "5",
     "--no-web",

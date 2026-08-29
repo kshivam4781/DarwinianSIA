@@ -1,8 +1,8 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-26T20:03:19Z
+**Timestamp:** 2026-08-29T14:20:33Z
 **Mode:** `preflight`
-**Run ID:** `1300`
+**Run ID:** `1850`
 
 ## Preflight checks
 
@@ -15,16 +15,16 @@
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
-| `run_id_free` | yes | run_1300 unused |
-| `per_run_venv` | NO | stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip. |
+| `run_id_free` | yes | run_1850 unused |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
 
-**Ready for dry-run:** no
+**Ready for dry-run:** yes
 **Ready for live G2:** no
 
 ## Planned command
 
 ```bash
-/usr/bin/python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1300 --eval_subset 5 --no-web --seed 42 --dry-run
+/usr/bin/python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1850 --eval_subset 5 --no-web --seed 42 --dry-run
 ```
 
 ## Blockers
@@ -32,7 +32,6 @@
 - gpqa_not_synthetic: synthetic smoke fixture detected — replace with real GPQA diamond before paid G2
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
-- per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.
 
 ## Notes
 

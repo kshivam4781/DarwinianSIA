@@ -210,7 +210,8 @@ def run_preflight(
     else:
         report.add("seed_count", True, "5 seeds (G4 full multi-seed shape)")
 
-    venv_ok, venv_detail = probe_per_run_venv_capable()
+    # Tick 265: bootstrap Astral uv when missing so Portal Save is not required
+    venv_ok, venv_detail = probe_per_run_venv_capable(bootstrap_uv=True)
     report.add("per_run_venv", venv_ok, venv_detail)
 
     by_name = {c.name: c.ok for c in report.checks}

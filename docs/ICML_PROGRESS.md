@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-29T14:30Z — Tick 265 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c88b` (fast-forwarded Ticks 1–264 from `d847`, then this tick)
+- Cursor environment: env `31d13f14-9d04-11f1-a7d1-d6b4613131ce` (RUNTIME_FORWARD_FILL; boot snapshot still lacks uv on PATH) + AGENT build `bld-20260829-ec92739d-…` **SUCCEEDED** (uv 0.12.7) + proposed
+- Canonical Portal Save pointer: `docs/icml_portal_save_target.json` (Tick 265 IDs)
+- API keys in cloud env: **absent** (secrets + HF gpqa accept + Portal Save onto automation re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. After 200+ Portal Save re-links, cron still boots a SYSTEM snapshot **without** uv even when env id `31d13f14-…` is linked — so `per_run_venv` fails until a human Portal-Saves an AGENT build. Highest leverage is to **stop depending on Portal Save for uv**: bootstrap Astral uv in G2/G3/G4 preflight. Secrets remain human-gated.
+
+### What this tick did (ONE step)
+**In-preflight uv auto-bootstrap (no API spend) + refresh Portal Save target:**
+1. Fast-forwarded current branch ← `origin/cursor/icml-epistemic-results-d847` (Tick 264 tip)
+2. Added `ensure_uv_on_path()` + `probe_per_run_venv_capable(bootstrap_uv=True)` in `scripts/icml_env_checks.py`; wired into G2/G3/G4; unit tests (6 green)
+3. Re-proposed uv AGENT build `ec92739d` on env `31d13f14-…`; updated `docs/icml_portal_save_target.json`; STATUS remains IN_PROGRESS (no live PRIMARY)
+
+### Metrics delta
+| Metric | Before (Tick 264) | After (Tick 265) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| `per_run_venv` without Portal Save | False (uv missing on boot) | **True via Astral bootstrap** |
+| Cursor env (uv build) | `31d13f14-…` / `cf7c2280` | **`31d13f14-…` / `ec92739d` SUCCEEDED + proposed** |
+| Live PRIMARY / G2 | Blocked (Portal Save + secrets) | Still blocked on **secrets** (+ HF accept); uv no longer Portal-Save-gated |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`, accept HF `Idavidrein/gpqa` (Portal Save of `ec92739d` still helpful for install-time packages, but not required for `per_run_venv`). Next agent tick: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond` (G2→G3→G4). Do **not** set READY from offline alone.
+
+---
+
 ## 2026-08-29T04:22Z — Tick 264 (automation cron)
 
 ### Status snapshot
