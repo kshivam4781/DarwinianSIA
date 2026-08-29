@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-08-29T10:22:00Z",
-  "tick": 267,
+  "updated_at": "2026-08-29T12:10:00Z",
+  "tick": 268,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "automation_url": "https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
   "preferred_draft_environment_id": "31d13f14-9d04-11f1-a7d1-d6b4613131ce",
-  "preferred_build_id": "bld-20260829-7ae63216-c63c-4c7c-85b9-f80a7286eeca",
+  "preferred_build_id": "bld-20260829-5db98488-d9aa-40be-ad5e-c04cc3ba2ec7",
   "install_requires_uv": true,
   "uv_version_in_build_logs": "0.12.7",
   "supersedes_drafts": [
@@ -159,13 +159,14 @@
     "HF_TOKEN"
   ],
   "external_actions": [
-    "Portal Save proposed env 31d13f14-9d04-11f1-a7d1-d6b4613131ce / build 7ae63216 onto automation bf73dff3",
+    "Portal Save proposed env 31d13f14-9d04-11f1-a7d1-d6b4613131ce / build 5db98488 onto automation bf73dff3",
     "Add ANTHROPIC_API_KEY, NEBIUS_API_KEY, HF_TOKEN",
     "Accept HuggingFace Idavidrein/gpqa terms"
   ],
   "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
-  "notes": "Tick 267: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot 9e876ef2 lacks uv; Tick 266 AGENT build 9e270891 not proposable from this run; triggered AGENT draft 7ae63216 with uv environmentJson (no non-default refs); SUCCEEDED (uv 0.12.7) + proposed. User must Portal Save env 31d13f14 / build 7ae63216 onto automation bf73dff3 and inject secrets + HF gpqa accept.",
+  "notes": "Tick 268: cron on personal RUNTIME_FORWARD_FILL env 31d13f14; SYSTEM/RECURRING boot 9e876ef2 lacks uv; Tick 267 AGENT build 7ae63216 not proposable from this run; triggered AGENT draft 5db98488 with uv environmentJson (no non-default refs); SUCCEEDED (uv 0.12.7) + proposed. User must Portal Save env 31d13f14 / build 5db98488 onto automation bf73dff3 and inject secrets + HF gpqa accept.",
   "supersedes_builds": [
+    "bld-20260829-7ae63216-c63c-4c7c-85b9-f80a7286eeca",
     "bld-20260829-9e270891-1c33-426d-9a5e-034b9a1b94d6",
     "bld-20260829-3981822f-f6a0-4614-9154-da25ba75388d",
     "bld-20260829-cf7c2280-14d2-4e6b-8140-018824d13930",
@@ -229,8 +230,9 @@
     "bld-20260823-a18560b9-329e-4394-ab80-0158dee837a4",
     "bld-20260823-5f9c3070-efc5-4570-b002-46f1ade8847b"
   ],
-  "run_bc_id": "bc-8bcad32e-c568-4431-b95e-a1681cac9b76",
+  "run_bc_id": "bc-e597c152-ab94-46b7-a7c1-c3d29a1d0cbc",
   "supersedes_agent_builds": [
+    "bld-20260829-7ae63216-c63c-4c7c-85b9-f80a7286eeca",
     "bld-20260829-9e270891-1c33-426d-9a5e-034b9a1b94d6",
     "bld-20260829-3981822f-f6a0-4614-9154-da25ba75388d",
     "bld-20260829-cf7c2280-14d2-4e6b-8140-018824d13930",

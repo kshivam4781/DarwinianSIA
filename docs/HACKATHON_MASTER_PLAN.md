@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-29 (Section 21 ICML; Tick 267 re-link uv Cursor env `31d13f14` + Portal Save target)  
+**Last updated:** 2026-08-29 (Section 21 ICML; Tick 268 re-link uv Cursor env `31d13f14` + Portal Save target)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -830,7 +830,7 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 267: env `31d13f14-…` + build `bld-20260829-7ae63216-…` **SUCCEEDED** + proposed (installs **uv** 0.12.7); pointer `docs/icml_portal_save_target.json`; prior drafts not inherited — need Portal Save onto automation + secrets |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 268: env `31d13f14-…` + build `bld-20260829-5db98488-…` **SUCCEEDED** + proposed (installs **uv** 0.12.7); pointer `docs/icml_portal_save_target.json`; prior drafts not inherited — need Portal Save onto automation + secrets |
 | Per-run venv capability (Cursor) | **DONE** | Tick 32+34: `probe_per_run_venv_capable` (uv or real venv+ensurepip; stdlib path probed in subprocess so ensurepip `SystemExit` cannot kill preflight); G2/G3/G4 use `per_run_venv` |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on Portal Save of uv-capable env `31d13f14-…` onto automation + API keys + HF `Idavidrein/gpqa` accept; then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
@@ -2152,3 +2152,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Portal Save re-link (2026-08-29 Tick 266):** Cron again booted personal RUNTIME_FORWARD_FILL env `31d13f14-…` (Tick 265 not Portal Saved onto automation). Tick 265 build `3981822f` not proposable from this run; AGENT draft `bld-20260829-9e270891-1c33-426d-9a5e-034b9a1b94d6` **SUCCEEDED** (uv 0.12.7) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that env onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
 
 **Portal Save re-link (2026-08-29 Tick 267):** Cron again booted personal RUNTIME_FORWARD_FILL env `31d13f14-…` (Tick 266 not Portal Saved onto automation). Tick 266 build `9e270891` not proposable from this run; AGENT draft `bld-20260829-7ae63216-c63c-4c7c-85b9-f80a7286eeca` **SUCCEEDED** (uv 0.12.7) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that env onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
+
+**Portal Save re-link (2026-08-29 Tick 268):** Cron again booted personal RUNTIME_FORWARD_FILL env `31d13f14-…` (Tick 267 not Portal Saved onto automation). Tick 267 build `7ae63216` not proposable from this run; AGENT draft `bld-20260829-5db98488-d9aa-40be-ad5e-c04cc3ba2ec7` **SUCCEEDED** (uv 0.12.7) + proposed; `docs/icml_portal_save_target.json` updated. User must Portal Save that env onto automation `bf73dff3-…` and inject secrets, or every future cron will keep re-creating orphan drafts.
