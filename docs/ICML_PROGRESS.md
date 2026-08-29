@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-29T18:09Z — Tick 267 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-08c6` (fast-forwarded Ticks 1–266 from `308c`, then this tick)
+- Cursor environment: env `31d13f14-9d04-11f1-a7d1-d6b4613131ce` (RUNTIME_FORWARD_FILL; SYSTEM boot still lacks install packages) + AGENT build `bld-20260829-0eb37243-…` **SUCCEEDED** (uv 0.12.7) + proposed
+- Canonical Portal Save pointer: `docs/icml_portal_save_target.json` (Tick 267 IDs)
+- API keys in cloud env: **absent** (secrets + HF gpqa accept + optional Portal Save re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live G2→G3→G4 remain the READY blocker. Tick 265–266 removed Portal Save package gates; this tick **verified** on a fresh SYSTEM boot that `per_run_venv` + `runtime_deps` both pass via in-preflight bootstrap. Live blockers are now **only** secrets + real GPQA diamond (`--fetch-diamond` once `HF_TOKEN` + dataset accept exist). Highest leverage without secrets: prove secrets-only gate + refresh proposable Portal Save target for this run.
+
+### What this tick did (ONE step)
+**Verified secrets-only live gate + refresh Portal Save target (no API spend):**
+1. Fast-forwarded current branch ← `origin/cursor/icml-epistemic-results-308c` (Tick 266 tip)
+2. Confirmed `ensure_uv_on_path` + `ensure_icml_runtime_deps` succeed on SYSTEM boot; G2/G3/G4/pipeline `--preflight-only` → `per_run_venv`/`runtime_deps` **yes**; `ready_for_live=False` only for keys + synthetic diamond
+3. Triggered + proposed uv AGENT build `0eb37243` on env `31d13f14-…`; updated `docs/icml_portal_save_target.json`; re-requested secrets/HF accept/optional Portal Save; STATUS remains IN_PROGRESS (no live PRIMARY)
+
+### Metrics delta
+| Metric | Before (Tick 266) | After (Tick 267) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (no re-pilot) |
+| SYSTEM-boot `per_run_venv` + `runtime_deps` | Claimed via code | **Verified yes** in G2/G3/G4 preflight |
+| Live blockers | secrets + HF (+ packages optional) | **secrets + HF diamond only** (packages bootstrapped) |
+| Cursor env (uv build) | `31d13f14-…` / `5a2d7f34` | **`31d13f14-…` / `0eb37243` SUCCEEDED + proposed** |
+| Live PRIMARY / G2 | Blocked (secrets) | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`, accept HF `Idavidrein/gpqa` (Portal Save of `0eb37243` optional for warm boots). Next agent tick: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond` (G2→G3→G4). Do **not** set READY from offline / preflight alone.
+
+---
+
 ## 2026-08-29T16:25Z — Tick 266 (automation cron)
 
 ### Status snapshot
