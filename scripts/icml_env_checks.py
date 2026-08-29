@@ -15,6 +15,12 @@ Tick 265: Cron often boots a linked env whose SYSTEM snapshot still lacks uv
 install Astral uv into ``~/.local/bin`` and prepend it to ``PATH`` so G2/G3/G4
 preflight + subsequent ``sia run`` no longer depend on Portal Save for
 ``per_run_venv``.
+
+Tick 266: Same cron boots also lack ``huggingface_hub`` (needed for
+``--fetch-diamond``) and a host-level ``sia`` install. ``ensure_icml_runtime_deps``
+bootstraps those via ``pip install --user`` and prepends ``SIA/`` onto
+``PYTHONPATH`` so live G2→G3→G4 only needs secrets + HF gpqa accept — not a
+Portal-Saved package snapshot.
 """
 
 from __future__ import annotations
@@ -28,6 +34,9 @@ from pathlib import Path
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SIA_PKG_ROOT = _REPO_ROOT / "SIA"
+_RUNTIME_PIP_PACKAGES = ("huggingface_hub",)
 
 _VENV_PROBE_SCRIPT = r"""
 import sys
@@ -178,3 +187,133 @@ def probe_per_run_venv_capable(*, bootstrap_uv: bool = False) -> tuple[bool, str
 
 def sys_executable_label() -> str:
     return sys.executable
+
+
+def _module_importable(name: str) -> bool:
+    try:
+        __import__(name)
+        return True
+    except Exception:
+        return False
+
+
+def _pip_install_user(*packages: str) -> tuple[bool, str]:
+    """Install packages with ``python -m pip install --user`` (no sudo)."""
+    if not packages:
+        return True, "no packages requested"
+    cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--user",
+        "-q",
+        *packages,
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"pip install timed out for {', '.join(packages)}"
+    except Exception as exc:
+        return False, f"pip install failed ({type(exc).__name__}: {exc})"
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        return (
+            False,
+            f"pip install exit {proc.returncode} for {', '.join(packages)}: "
+            f"{err[:400] or 'no output'}",
+        )
+    return True, f"pip installed {', '.join(packages)}"
+
+
+def ensure_sia_on_pythonpath() -> tuple[bool, str]:
+    """Prepend monorepo ``SIA/`` to ``PYTHONPATH`` so ``python -m sia`` works.
+
+    Gate runners default ``cwd=SIA/``, which already makes ``-m sia`` work, but
+    child tools / preflight imports often run from the repo root. Mutating
+    ``os.environ['PYTHONPATH']`` (and ``sys.path``) keeps both consistent.
+    """
+    sia_root = _SIA_PKG_ROOT
+    if not (sia_root / "sia" / "__init__.py").is_file():
+        return False, f"SIA package missing at {sia_root}"
+
+    sia_s = str(sia_root)
+    if sia_s not in sys.path:
+        sys.path.insert(0, sia_s)
+
+    existing = os.environ.get("PYTHONPATH", "")
+    parts = [p for p in existing.split(os.pathsep) if p]
+    if sia_s in parts:
+        parts = [sia_s, *[p for p in parts if p != sia_s]]
+    else:
+        parts = [sia_s, *parts]
+    os.environ["PYTHONPATH"] = os.pathsep.join(parts)
+
+    if _module_importable("sia"):
+        return True, f"sia importable via PYTHONPATH={sia_s}"
+    return False, f"sia still not importable after PYTHONPATH prepend ({sia_s})"
+
+
+def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
+    """Ensure host deps for live G2→G3→G4 without a Portal-Saved install snapshot.
+
+    1. ``ensure_uv_on_path`` (per-run venvs)
+    2. ``ensure_sia_on_pythonpath`` (``python -m sia`` from repo root)
+    3. ``huggingface_hub`` for ``--fetch-diamond`` / HF gpqa materialization
+
+    Returns ``(ok, detail)``. When ``allow_install`` is False, missing pip
+    packages are reported as failures without attempting install.
+    """
+    notes: list[str] = []
+
+    ok_uv, uv_detail = ensure_uv_on_path(allow_install=allow_install)
+    if not ok_uv:
+        return False, f"uv required for SIA per-run venvs: {uv_detail}"
+    notes.append(uv_detail)
+
+    ok_sia, sia_detail = ensure_sia_on_pythonpath()
+    if not ok_sia:
+        return False, sia_detail
+    notes.append(sia_detail)
+
+    missing = [p for p in _RUNTIME_PIP_PACKAGES if not _module_importable(p)]
+    if missing:
+        if not allow_install:
+            return (
+                False,
+                f"missing runtime packages {missing} (install disabled); "
+                + "; ".join(notes),
+            )
+        ok_pip, pip_detail = _pip_install_user(*missing)
+        notes.append(pip_detail)
+        if not ok_pip:
+            return False, "; ".join(notes)
+        still = [p for p in missing if not _module_importable(p)]
+        if still:
+            # User-site may need a path refresh in this process.
+            user_site = None
+            try:
+                import site
+
+                user_site = site.getusersitepackages()
+            except Exception:
+                user_site = None
+            if user_site and user_site not in sys.path:
+                sys.path.append(user_site)
+            still = [p for p in missing if not _module_importable(p)]
+            if still:
+                return (
+                    False,
+                    f"packages still missing after pip: {still}; " + "; ".join(notes),
+                )
+        notes.append(f"bootstrapped {', '.join(missing)}")
+    else:
+        notes.append("huggingface_hub already importable")
+
+    return True, "; ".join(notes)

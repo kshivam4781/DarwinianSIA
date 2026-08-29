@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-08-29T14:20:33Z",
+  "timestamp": "2026-08-29T16:20:07Z",
   "mode": "preflight",
-  "run_id": 1850,
+  "run_id": 1300,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -48,12 +48,17 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1850 unused"
+      "detail": "run_1300 unused"
     },
     {
       "name": "per_run_venv",
       "ok": true,
       "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
+    },
+    {
+      "name": "runtime_deps",
+      "ok": true,
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable"
     }
   ],
   "command": [
@@ -73,7 +78,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1850",
+    "1300",
     "--eval_subset",
     "5",
     "--no-web",

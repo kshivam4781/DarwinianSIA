@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-29 (Section 21 ICML; Tick 265 uv auto-bootstrap + Portal Save target `ec92739d`)  
+**Last updated:** 2026-08-29 (Section 21 ICML; Tick 266 runtime-deps bootstrap + Portal Save target `5a2d7f34`)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -830,9 +830,10 @@ Computed in `cabs/belief_engine.py`:
 | Live G4 5-seed sequential runner | **DONE** | Tick 27: `scripts/run_g4_multiseed.py` — exactly 5 seeds; B then D serially; budget projection; `docs/gate4_report.md` |
 | G4 full paper-pack refresh | **DONE** | Tick 28: live H2 + Table 2 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery |
 | Unified live G2→G3→G4 pipeline | **DONE** | Tick 29: `scripts/run_icml_live_pipeline.py` — serial gates; stack budget; G3 promising→G4; `docs/icml_live_pipeline_report.md` |
-| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 265: env `31d13f14-…` + build `bld-20260829-ec92739d-…` **SUCCEEDED** + proposed (uv 0.12.7); pointer `docs/icml_portal_save_target.json`; secrets still required |
+| Cursor cloud environment (ICML live) | **PARTIAL** | Tick 266: env `31d13f14-…` + build `bld-20260829-5a2d7f34-…` **SUCCEEDED** + proposed (uv 0.12.7); pointer `docs/icml_portal_save_target.json`; secrets still required |
 | Per-run venv capability (Cursor) | **DONE** | Tick 32+34 probe; **Tick 265** `ensure_uv_on_path` + G2/G3/G4 `bootstrap_uv=True` (per_run_venv no longer Portal-Save-gated) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (uv bootstrap removes Portal Save gate for venv); then `run_icml_live_pipeline.py --live --fetch-diamond` |
+| ICML runtime deps bootstrap | **DONE** | Tick 266: `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps` (`huggingface_hub` + SIA PYTHONPATH; `--fetch-diamond` no longer Portal-Save-gated) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (uv + runtime-deps bootstrap remove Portal Save package gate); then `run_icml_live_pipeline.py --live --fetch-diamond` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |

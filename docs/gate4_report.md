@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-26T20:03:19Z
+**Timestamp:** 2026-08-29T16:20:07Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -18,7 +18,8 @@
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 5 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 5 seeds (G4 full multi-seed shape) |
-| `per_run_venv` | NO | stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip. |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable |
 
 ### Planned seed pairs
 
@@ -48,7 +49,6 @@
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
-- per_run_venv: stdlib venv.create(with_pip=True) failed (exit 1: venv.create SystemExit:1). Install uv (preferred on Cursor images) or python3-venv/ensurepip.
 
 **Live G4 status:** NOT RUN this tick
 
