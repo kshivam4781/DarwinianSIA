@@ -35,6 +35,9 @@ code.
 Tick 277: Load gitignored ``.env`` for missing secret names (presence only;
 never log values) and auto-detect a local ``gpqa_diamond.csv`` so cron can
 pass ``--diamond-csv`` and mark ``fetch_diamond_ok`` without ``HF_TOKEN``.
+
+Tick 278: G2/G3/G4/pipeline ``--fetch-diamond`` auto-wires the same local CSV
+via ``autowire_diamond_csv`` (cron no longer the only path that skips HF).
 """
 
 from __future__ import annotations
@@ -433,6 +436,29 @@ def resolve_diamond_csv_path(repo_root: Path | None = None) -> Path | None:
     return None
 
 
+def autowire_diamond_csv(
+    explicit: Path | None = None,
+    *,
+    fetch_diamond: bool = False,
+    repo_root: Path | None = None,
+) -> tuple[Path | None, bool]:
+    """Resolve ``--diamond-csv`` for ``--fetch-diamond`` (Tick 278).
+
+    Returns ``(path, auto_wired)``. When ``fetch_diamond`` is true and no
+    explicit CSV was passed, falls back to ``resolve_diamond_csv_path`` so
+    G2/G3/G4/pipeline skip HF the same way cron does (Tick 277). Does **not**
+    invent a CSV when ``fetch_diamond`` is false (avoids surprise materialize).
+    """
+    if explicit is not None:
+        return Path(explicit), False
+    if not fetch_diamond:
+        return None, False
+    auto = resolve_diamond_csv_path(repo_root)
+    if auto is None:
+        return None, False
+    return auto, True
+
+
 def _secret_present(name: str) -> bool:
     """True when env var looks set (never returns or logs the value)."""
     raw = os.environ.get(name, "")
@@ -606,9 +632,10 @@ def live_pipeline_next_steps(
 
     steps.extend(
         [
-            "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
+            "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + (`HF_TOKEN` **or** "
+            "local `gpqa_diamond.csv`) to automation "
             f"{_AUTOMATION_URL} (or linked env dashboard). "
-            "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
+            "Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
             "tip and runs live when `fetch_diamond_ok` (else preflight only).",
             "Portal Save of `docs/icml_portal_save_target.json` is **optional** "

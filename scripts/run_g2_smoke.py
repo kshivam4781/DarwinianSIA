@@ -48,6 +48,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_hf,
 )
 from icml_env_checks import (  # noqa: E402
+    autowire_diamond_csv,
     collect_icml_secrets_status,
     ensure_icml_runtime_deps,
     probe_per_run_venv_capable,
@@ -525,9 +526,14 @@ def main(argv: list[str] | None = None) -> int:
         run_id = args.run_id if args.run_id is not None else DEFAULT_DRY_RUN_ID
         seed = args.seed if args.seed is not None else 42
 
+    # Tick 278: auto-wire local diamond CSV under --fetch-diamond (match cron).
+    diamond_csv, csv_auto = autowire_diamond_csv(
+        args.diamond_csv, fetch_diamond=bool(args.fetch_diamond), repo_root=REPO_ROOT
+    )
+    args.diamond_csv = diamond_csv
     require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
 
-    # Tick 275: refuse --live --fetch-diamond without HF before materialize
+    # Tick 275/278: refuse --live --fetch-diamond without HF/CSV before materialize
     # (match pipeline/cron fetch_diamond_ok; CSV path skips HF).
     if selected == "live" and require_hf:
         secrets_status = collect_icml_secrets_status()
@@ -538,12 +544,13 @@ def main(argv: list[str] | None = None) -> int:
                 require_hf_for_diamond=True,
             )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + HF_TOKEN)"
+                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
+                "HF_TOKEN or local gpqa_diamond.csv)"
             ]:
                 report.notes.append(f"secrets: {b}")
             report.notes.append(
                 "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                "or pass --diamond-csv to skip HF."
+                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
             )
             report.command = build_sia_command(
                 run_id=run_id, seed=seed, dry_run=False
@@ -559,6 +566,10 @@ def main(argv: list[str] | None = None) -> int:
             return 4
 
     fetch_notes: list[str] = []
+    if csv_auto and args.diamond_csv is not None:
+        fetch_notes.append(
+            f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
+        )
     if args.fetch_diamond or args.diamond_csv is not None:
         try:
             if args.diamond_csv is not None:

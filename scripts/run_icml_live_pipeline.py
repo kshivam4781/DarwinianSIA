@@ -45,6 +45,7 @@ import run_g2_smoke as g2  # noqa: E402
 import run_g3_pilot as g3  # noqa: E402
 import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
+    autowire_diamond_csv,
     collect_icml_secrets_status,
     live_pipeline_next_steps,
     write_icml_secrets_status,
@@ -490,7 +491,8 @@ def run_preflight_stack(
             report.ready_for_live = False
         elif not secrets_status.get("fetch_diamond_ok"):
             report.blockers.append(
-                "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + HF_TOKEN"
+                "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + "
+                "HF_TOKEN or local gpqa_diamond.csv"
             )
             report.ready_for_live = False
 
@@ -722,12 +724,21 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     selected = "live" if args.live else "preflight"
+    # Tick 278: auto-wire local diamond CSV under --fetch-diamond (match cron).
+    diamond_csv, csv_auto = autowire_diamond_csv(
+        args.diamond_csv, fetch_diamond=bool(args.fetch_diamond), repo_root=REPO_ROOT
+    )
+    args.diamond_csv = diamond_csv
     g3_pairs = len(g3.parse_int_list(args.g3_seeds))
     report = PipelineReport(
         timestamp=_utc_now(),
         mode=selected,
         budget=project_budget(g3_pairs=g3_pairs, g4_pairs=5),
     )
+    if csv_auto and args.diamond_csv is not None:
+        report.notes.append(
+            f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
+        )
 
     # Tick 269: refuse paid stack on stale / missing ICML tip (unless override).
     tip_status = write_icml_tip_status(
@@ -752,9 +763,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  BLOCK: {b}")
             return 3
 
-    # Tick 274: refuse --live --fetch-diamond without HF (match cron CRON_LIVE_OK).
+    # Tick 274/278: refuse --live --fetch-diamond without HF/CSV (match cron).
     # Avoids attempting HF materialize (or confusing "keys OK" next-steps) on
-    # Anthropic+Nebius-only partial secrets.
+    # Anthropic+Nebius-only partial secrets. Local CSV auto-wire skips HF.
     if (
         selected == "live"
         and args.fetch_diamond
@@ -763,12 +774,13 @@ def main(argv: list[str] | None = None) -> int:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + HF_TOKEN)"
+                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
+                "HF_TOKEN or local gpqa_diamond.csv)"
             ]:
                 report.blockers.append(f"secrets: {b}")
             report.notes.append(
                 "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                "or pass --diamond-csv to skip HF."
+                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
             )
             report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
             write_pipeline_report(report, args.report)

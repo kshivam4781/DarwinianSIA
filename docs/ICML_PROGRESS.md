@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T16:05Z — Tick 278 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0c48` (recovered ← `c39b` Tick 277, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-c39b` (Tick 277); local Tick **277** → **278**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Tick 277 taught **cron** to pass `--diamond-csv` when a drop-path CSV exists, but G2/G3/G4/pipeline still set `require_hf=True` whenever `--diamond-csv` was omitted — so a direct `--fetch-diamond` (or a cron miss) still demanded HF. Highest leverage without paid keys: **auto-wire local CSV inside the runners**.
+
+### What this tick did (ONE step)
+**Runner-level diamond CSV autowire (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `c39b`; confirmed secrets absent → preflight only
+2. `autowire_diamond_csv()` in `icml_env_checks.py` — under `--fetch-diamond`, resolve drop-path CSV when CLI flag absent (no invent without fetch)
+3. Wired into `run_g2_smoke` / `run_g3_pilot` / `run_g4_multiseed` / `run_icml_live_pipeline` so `require_hf` flips off when CSV exists
+4. Refuse/next-step messages mention HF **or** local CSV; secrets setup actions re-filed (HF optional)
+5. Tests: `test_autowire_diamond_csv_under_fetch_diamond` + cron/env asserts; **45/45** focused gate/env/pipeline tests green
+6. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 277) | After (Tick 278) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron CSV → `--diamond-csv` | yes | unchanged |
+| G2/G3/G4/pipeline `--fetch-diamond` CSV | CLI flag only | **auto-wire via `autowire_diamond_csv`** |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
 ## 2026-08-30T14:20Z — Tick 277 (automation cron)
 
 ### Status snapshot

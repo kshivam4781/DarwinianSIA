@@ -230,6 +230,36 @@ def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
     assert status2["blockers"] == []
 
 
+def test_autowire_diamond_csv_under_fetch_diamond(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 278: --fetch-diamond auto-wires local CSV; no fetch ⇒ no invent."""
+    from icml_env_checks import autowire_diamond_csv
+
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text(
+        "Question,Correct Answer,Incorrect Answer 1,Incorrect Answer 2,"
+        "Incorrect Answer 3\n" + ("Q?,A,B,C,D\n" * 3),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ICML_DIAMOND_CSV", str(csv_path))
+
+    path, auto = autowire_diamond_csv(None, fetch_diamond=True)
+    assert auto is True
+    assert path == csv_path.resolve()
+
+    # Explicit path wins; not auto.
+    explicit = tmp_path / "explicit.csv"
+    explicit.write_text(csv_path.read_text(encoding="utf-8"), encoding="utf-8")
+    path2, auto2 = autowire_diamond_csv(explicit, fetch_diamond=True)
+    assert auto2 is False
+    assert path2 == explicit
+
+    # Without --fetch-diamond, do not invent a CSV (avoid surprise materialize).
+    path3, auto3 = autowire_diamond_csv(None, fetch_diamond=False)
+    assert path3 is None and auto3 is False
+
+
 def test_fetch_diamond_ok_with_local_csv_skips_hf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -385,7 +415,7 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271–277: recover→live/preflight; lineage tip pick; HF/CSV fetch_diamond gate."""
+    """Tick 271–278: recover→live/preflight; lineage tip pick; HF/CSV fetch_diamond gate."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
@@ -402,6 +432,10 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     # Tick 277: optional local CSV path into pipeline.
     assert "diamond-csv" in text or "DIAMOND_CSV" in text
     assert "Tick 277" in text
+    # Tick 278: runners also autowire CSV (helper lives in env_checks; cron still passes).
+    assert "autowire_diamond_csv" in (
+        (REPO / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    )
     import subprocess
 
     proc = subprocess.run(

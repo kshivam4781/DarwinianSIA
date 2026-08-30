@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–277).
+# ICML Thesis 1 — single cron entry (Tick 271–278).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -14,6 +14,8 @@
 # Tick 276: preflight also passes --fetch-diamond so gate2/3/4 reports require HF.
 # Tick 277: load gitignored .env; auto-detect local gpqa_diamond.csv and pass
 # --diamond-csv so HF is optional when a real CSV is present.
+# Tick 278: G2/G3/G4/pipeline also autowire the same CSV under --fetch-diamond
+# (cron --diamond-csv remains belt-and-suspenders).
 #
 # Preferred once tip tree exists:
 #   bash scripts/icml_cron_entry.sh
