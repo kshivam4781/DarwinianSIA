@@ -199,7 +199,28 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
     assert status["secrets"]["NEBIUS_API_KEY"] == "ABSENT"
     assert status["portal_save_required_for_live"] is False
     assert status["secrets_ok_for_paid_sia"] is False
+    assert status["fetch_diamond_ok"] is False
+    assert status["cron_live_ok"] is False
     assert any("NEBIUS" in b for b in status["blockers"])
+
+
+def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 273: anthropic+nebius alone must not mark cron --fetch-diamond live OK."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    status = collect_icml_secrets_status()
+    assert status["secrets_ok_for_paid_sia"] is True
+    assert status["fetch_diamond_ok"] is False
+    assert status["cron_live_ok"] is False
+    assert any("HF_TOKEN" in b for b in status["blockers"])
+
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    status2 = collect_icml_secrets_status()
+    assert status2["fetch_diamond_ok"] is True
+    assert status2["cron_live_ok"] is True
+    assert status2["blockers"] == []
 
 
 def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -264,7 +285,7 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271/272: single recover→live/preflight cron entry + lineage chicken-egg."""
+    """Tick 271–273: recover→live/preflight; lineage tip pick; HF fetch_diamond gate."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
@@ -273,6 +294,9 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     assert "run_icml_live_pipeline" in text
     assert "icml_pick_remote_tip" in text or "_pick_tip_ref" in text
     assert "committerdate-only" in text or "lineage" in text.lower()
+    # Tick 273: auto-live requires fetch_diamond_ok (HF), not API keys alone.
+    assert "fetch_diamond_ok" in text
+    assert "CRON_LIVE_OK" in text
     import subprocess
 
     proc = subprocess.run(

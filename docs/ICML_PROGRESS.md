@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T06:20Z — Tick 273 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-8a97` (recovered ← `7a13` Tick 272, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-7a13` (Tick 272); local Tick **272** → **273**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept still required; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Separately, Tick 271–272 cron auto-live gated only on `secrets_ok_for_paid_sia` (Anthropic+Nebius) while always passing `--fetch-diamond` — so HF-missing partial secrets could launch a broken live attempt. Highest leverage without secrets: **gate cron live on `fetch_diamond_ok`**.
+
+### What this tick did (ONE step)
+**Cron HF / `fetch_diamond_ok` live gate (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `7a13`; confirmed secrets absent → preflight only; verified lineage tip pick
+2. `icml_cron_entry.sh` auto/`--live` now requires `fetch_diamond_ok` (`CRON_LIVE_OK`); secrets status adds `cron_live_ok`
+3. Unit test `test_fetch_diamond_ok_requires_hf`; 20/20 env-check tests green; structured `request-environment-setup-actions` for ANTHROPIC/NEBIUS/HF + HF gpqa accept
+4. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 272) | After (Tick 273) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron auto-live gate | `secrets_ok_for_paid_sia` (no HF) | **`fetch_diamond_ok` / `cron_live_ok`** |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `bash scripts/icml_cron_entry.sh` (chicken-egg: lineage scan in AGENTS.md, then `git show <tip>:scripts/icml_cron_entry.sh | bash -s --`). Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-30T04:20Z — Tick 272 (automation cron)
 
 ### Status snapshot

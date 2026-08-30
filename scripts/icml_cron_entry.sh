@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271; Tick 272 lineage chicken-egg).
+# ICML Thesis 1 — single cron entry (Tick 271–273).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
 #   2. Writes tip + secrets status (presence only)
-#   3. If secrets + tip OK → live G2→G3→G4 (--fetch-diamond)
+#   3. If tip OK + fetch_diamond_ok (API keys + HF) → live G2→G3→G4 (--fetch-diamond)
 #   4. Else → preflight only; print blockers; exit 0 (not READY)
+#
+# Tick 273: do NOT launch --fetch-diamond live on anthropic+nebius alone —
+# missing HF_TOKEN would fail diamond materialization after tip recover.
 #
 # Preferred once tip tree exists:
 #   bash scripts/icml_cron_entry.sh
@@ -45,7 +48,7 @@ else
   exit 2
 fi
 
-echo "=== ICML cron entry (Tick 271/272) mode=${MODE} ==="
+echo "=== ICML cron entry (Tick 271–273) mode=${MODE} ==="
 
 # --- Tip recover (chicken-egg) -------------------------------------------------
 # Tick 272: pick tip by highest Tick + lineage among refs that actually contain
@@ -161,6 +164,7 @@ print(f"tip_ok_for_live={tip.get('tip_ok_for_live')} local_tick={tip.get('local_
 print(
     "secrets_ok_for_paid_sia="
     f"{sec.get('secrets_ok_for_paid_sia')} "
+    f"fetch_diamond_ok={sec.get('fetch_diamond_ok')} "
     f"anthropic={sec.get('anthropic_key_present')} "
     f"nebius={sec.get('nebius_key_present')} "
     f"hf={sec.get('hf_token_present')}"
@@ -172,9 +176,18 @@ SECRETS_OK=0
 if [[ -f docs/icml_secrets_status.json ]] && grep -q '"secrets_ok_for_paid_sia": true' docs/icml_secrets_status.json; then
   SECRETS_OK=1
 fi
+# Tick 273: cron always passes --fetch-diamond → require HF as well.
+FETCH_DIAMOND_OK=0
+if [[ -f docs/icml_secrets_status.json ]] && grep -q '"fetch_diamond_ok": true' docs/icml_secrets_status.json; then
+  FETCH_DIAMOND_OK=1
+fi
 TIP_OK=0
 if [[ -f docs/icml_tip_status.json ]] && grep -q '"tip_ok_for_live": true' docs/icml_tip_status.json; then
   TIP_OK=1
+fi
+CRON_LIVE_OK=0
+if [[ "$SECRETS_OK" -eq 1 && "$FETCH_DIAMOND_OK" -eq 1 ]]; then
+  CRON_LIVE_OK=1
 fi
 
 run_preflight() {
@@ -207,8 +220,9 @@ case "$MODE" in
       run_preflight
       exit 3
     fi
-    if [[ "$SECRETS_OK" -ne 1 ]]; then
-      echo "Refusing --live: secrets missing (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+    if [[ "$CRON_LIVE_OK" -ne 1 ]]; then
+      echo "Refusing --live: need API keys + HF_TOKEN for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+      echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}" >&2
       run_preflight
       exit 4
     fi
@@ -216,12 +230,12 @@ case "$MODE" in
     exit $?
     ;;
   auto)
-    if [[ "$TIP_OK" -eq 1 && "$SECRETS_OK" -eq 1 ]]; then
+    if [[ "$TIP_OK" -eq 1 && "$CRON_LIVE_OK" -eq 1 ]]; then
       run_live
       exit $?
     fi
-    echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK}) — preflight only"
-    echo "Human: add secrets per docs/ICML_HUMAN_UNBLOCK.md; accept HF Idavidrein/gpqa"
+    echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}) — preflight only"
+    echo "Human: add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN per docs/ICML_HUMAN_UNBLOCK.md; accept HF Idavidrein/gpqa"
     run_preflight
     exit 0
     ;;

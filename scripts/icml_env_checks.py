@@ -373,6 +373,8 @@ def collect_icml_secrets_status() -> dict:
     secrets_ok = anthropic and nebius
     # HF needed for --fetch-diamond unless operator supplies CSV offline.
     fetch_diamond_ok = secrets_ok and hf
+    # Tick 273: default cron always passes --fetch-diamond → require HF too.
+    cron_live_ok = fetch_diamond_ok
     blockers: list[str] = []
     if not anthropic:
         blockers.append("ANTHROPIC_API_KEY missing")
@@ -386,9 +388,10 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/272: secrets-first live gate; Portal Save optional; "
+            "Tick 268/273: secrets-first live gate; Portal Save optional; "
+            "cron auto-live requires fetch_diamond_ok (API keys + HF); "
             "human_next prefers bash scripts/icml_cron_entry.sh "
-            "(Tick 272 lineage-aware chicken-egg tip pick)"
+            "(Tick 272 lineage tip pick; Tick 273 HF gate)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -398,7 +401,7 @@ def collect_icml_secrets_status() -> dict:
             "NEBIUS_API_KEY": "PRESENT" if nebius else "ABSENT",
             "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "PRESENT" if hf else "ABSENT",
         },
-        # Top-level booleans for cron_entry / shell greps (Tick 272).
+        # Top-level booleans for cron_entry / shell greps (Tick 272–273).
         "anthropic_key_present": anthropic,
         "nebius_key_present": nebius,
         "hf_token_present": hf,
@@ -406,6 +409,7 @@ def collect_icml_secrets_status() -> dict:
         "portal_save_required_for_live": False,
         "secrets_ok_for_paid_sia": secrets_ok,
         "fetch_diamond_ok": fetch_diamond_ok,
+        "cron_live_ok": cron_live_ok,
         "ready_for_live_pipeline": False,  # diamond + keys both required; caller may override
         "blockers": blockers,
         "human_next": [
@@ -413,7 +417,7 @@ def collect_icml_secrets_status() -> dict:
             f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
             "Accept HuggingFace access for Idavidrein/gpqa with that HF token",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271/272 — recovers tip lineage-aware, then live or preflight)",
+            "(Tick 271–273 — recovers tip; auto-live only when fetch_diamond_ok)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],
