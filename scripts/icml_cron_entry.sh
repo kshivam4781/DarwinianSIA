@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–273).
+# ICML Thesis 1 — single cron entry (Tick 271–273 / 276).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
 #   2. Writes tip + secrets status (presence only)
 #   3. If tip OK + fetch_diamond_ok (API keys + HF) → live G2→G3→G4 (--fetch-diamond)
-#   4. Else → preflight only; print blockers; exit 0 (not READY)
+#   4. Else → preflight only WITH --fetch-diamond (Tick 276); print blockers; exit 0 (not READY)
 #
 # Tick 273: do NOT launch --fetch-diamond live on anthropic+nebius alone —
 # missing HF_TOKEN would fail diamond materialization after tip recover.
+# Tick 276: preflight also passes --fetch-diamond so gate2/3/4 reports require HF.
 #
 # Preferred once tip tree exists:
 #   bash scripts/icml_cron_entry.sh
@@ -191,9 +192,11 @@ if [[ "$SECRETS_OK" -eq 1 && "$FETCH_DIAMOND_OK" -eq 1 ]]; then
 fi
 
 run_preflight() {
-  echo "=== Preflight (no paid spend) ==="
+  echo "=== Preflight (no paid spend; --fetch-diamond to match live) ==="
   if [[ -f scripts/run_icml_live_pipeline.py ]]; then
-    python3 scripts/run_icml_live_pipeline.py --preflight-only || true
+    # Tick 276: same --fetch-diamond as live so G2/G3/G4 preflight reports
+    # surface HF via require_hf_for_diamond (not only aggregate pipeline).
+    python3 scripts/run_icml_live_pipeline.py --preflight-only --fetch-diamond || true
   else
     echo "run_icml_live_pipeline.py missing — tip recover incomplete" >&2
     return 1

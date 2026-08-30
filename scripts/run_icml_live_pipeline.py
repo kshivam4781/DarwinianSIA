@@ -350,17 +350,36 @@ def run_preflight_stack(
     g4_seeds: str,
     g4_b: str,
     g4_d: str,
+    fetch_diamond: bool = False,
+    diamond_csv: Path | None = None,
+    diamond_n: int = 5,
 ) -> None:
-    """Run G2/G3/G4 preflights (no paid API) and aggregate readiness."""
+    """Run G2/G3/G4 preflights (no paid API) and aggregate readiness.
+
+    Tick 276: when ``fetch_diamond`` (cron intended live path), pass
+    ``--fetch-diamond`` into each gate so individual gate2/3/4 reports
+    require HF via ``require_hf_for_diamond`` — not only the aggregate
+    pipeline blocker added below.
+    """
+    fetch_args: list[str] = []
+    if diamond_csv is not None:
+        fetch_args.extend(["--fetch-diamond", "--diamond-csv", str(diamond_csv)])
+        fetch_args.extend(["--diamond-n", str(diamond_n)])
+    elif fetch_diamond:
+        fetch_args.extend(["--fetch-diamond", "--diamond-n", str(diamond_n)])
+
     # G2
-    rc = g2.main(["--preflight-only", "--run-id", str(g2_run_id)])
+    rc = g2.main(
+        ["--preflight-only", "--run-id", str(g2_run_id), *fetch_args]
+    )
     report.add_stage(
         StageResult(
             name="G2",
             attempted=True,
             exit_code=rc,
             ok=rc == 0,
-            detail="preflight invoked",
+            detail="preflight invoked"
+            + (" (+fetch-diamond)" if fetch_args else ""),
         )
     )
     # G3
@@ -373,6 +392,7 @@ def run_preflight_stack(
             g3_b,
             "--d-run-ids",
             g3_d,
+            *fetch_args,
         ]
     )
     report.add_stage(
@@ -381,7 +401,8 @@ def run_preflight_stack(
             attempted=True,
             exit_code=rc,
             ok=rc == 0,
-            detail="preflight invoked",
+            detail="preflight invoked"
+            + (" (+fetch-diamond)" if fetch_args else ""),
         )
     )
     # G4
@@ -394,6 +415,7 @@ def run_preflight_stack(
             g4_b,
             "--d-run-ids",
             g4_d,
+            *fetch_args,
         ]
     )
     report.add_stage(
@@ -402,7 +424,8 @@ def run_preflight_stack(
             attempted=True,
             exit_code=rc,
             ok=rc == 0,
-            detail="preflight invoked",
+            detail="preflight invoked"
+            + (" (+fetch-diamond)" if fetch_args else ""),
         )
     )
 
@@ -455,18 +478,21 @@ def run_preflight_stack(
         REPO_ROOT / "docs" / "icml_secrets_status.json",
         gpqa_is_synthetic=True if synthetic else None,
     )
-    # Tick 274: intended live path is --fetch-diamond (cron); surface HF as blocker.
-    if not secrets_status.get("hf_token_present"):
-        report.blockers.append(
-            "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
-            "(required for --fetch-diamond / cron auto-live)"
-        )
-        report.ready_for_live = False
-    elif not secrets_status.get("fetch_diamond_ok"):
-        report.blockers.append(
-            "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + HF_TOKEN"
-        )
-        report.ready_for_live = False
+    # Tick 274/276: intended cron live path is --fetch-diamond → surface HF.
+    # CSV path / preflight without --fetch-diamond skips the aggregate HF demand
+    # (individual gates already got require_hf when fetch_args were passed).
+    if fetch_diamond and diamond_csv is None:
+        if not secrets_status.get("hf_token_present"):
+            report.blockers.append(
+                "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
+                "(required for --fetch-diamond / cron auto-live)"
+            )
+            report.ready_for_live = False
+        elif not secrets_status.get("fetch_diamond_ok"):
+            report.blockers.append(
+                "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + HF_TOKEN"
+            )
+            report.ready_for_live = False
 
 
 def run_live_stack(
@@ -776,6 +802,9 @@ def main(argv: list[str] | None = None) -> int:
             g4_seeds=args.g4_seeds,
             g4_b=args.g4_b_run_ids,
             g4_d=args.g4_d_run_ids,
+            fetch_diamond=bool(args.fetch_diamond),
+            diamond_csv=args.diamond_csv,
+            diamond_n=args.diamond_n,
         )
         report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
         write_pipeline_report(report, args.report)

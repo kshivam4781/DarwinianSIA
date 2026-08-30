@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-30T10:08:48Z
+**Timestamp:** 2026-08-30T12:20:06Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -41,7 +41,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G3 |
 | `anthropic_key` | NO | ANTHROPIC_API_KEY missing |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
-| `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
+| `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$4.00/pair × 1 → projected=$4.00 |
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
@@ -65,6 +65,11 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
+- hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
+
+## Notes
+
+- diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 **Live G3 status:** NOT RUN this tick
 

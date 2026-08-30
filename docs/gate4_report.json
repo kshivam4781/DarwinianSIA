@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-30T10:08:48Z",
+  "timestamp": "2026-08-30T12:20:06Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -36,7 +36,8 @@
   "blockers": [
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
     "anthropic_key: ANTHROPIC_API_KEY missing",
-    "nebius_key: NEBIUS_API_KEY missing"
+    "nebius_key: NEBIUS_API_KEY missing",
+    "hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
   ],
   "checks": [
     {
@@ -60,9 +61,9 @@
       "detail": "NEBIUS_API_KEY missing"
     },
     {
-      "name": "hf_token_optional",
-      "ok": true,
-      "detail": "missing (optional; needed for HF gpqa download)"
+      "name": "hf_token",
+      "ok": false,
+      "detail": "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
     },
     {
       "name": "budget",
@@ -331,7 +332,9 @@
   "h5_by_d_run": {},
   "h2_by_d_run": {},
   "figures_written": [],
-  "notes": [],
+  "notes": [
+    "diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token."
+  ],
   "executed": false,
   "paper_refreshed": false
 }

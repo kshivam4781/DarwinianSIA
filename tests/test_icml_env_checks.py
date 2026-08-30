@@ -318,7 +318,7 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271–273: recover→live/preflight; lineage tip pick; HF fetch_diamond gate."""
+    """Tick 271–276: recover→live/preflight; lineage tip pick; HF fetch_diamond gate."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
@@ -330,6 +330,8 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     # Tick 273: auto-live requires fetch_diamond_ok (HF), not API keys alone.
     assert "fetch_diamond_ok" in text
     assert "CRON_LIVE_OK" in text
+    # Tick 276: preflight also passes --fetch-diamond (match live intent).
+    assert "--preflight-only --fetch-diamond" in text
     import subprocess
 
     proc = subprocess.run(

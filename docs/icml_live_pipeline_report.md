@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-30T10:08:42Z
+**Timestamp:** 2026-08-30T12:20:05Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -22,9 +22,9 @@
 
 | Stage | Attempted | OK | Exit | Detail |
 |-------|-----------|----|------|--------|
-| G2 | yes | yes | 0 | preflight invoked |
-| G3 | yes | yes | 0 | preflight invoked |
-| G4 | yes | yes | 0 | preflight invoked |
+| G2 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
+| G3 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
+| G4 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
 
 ## G3→G4 gate
 
@@ -35,13 +35,20 @@ G3 promising: n/a (G3 not scored this run)
 - G2: gpqa_not_synthetic: synthetic smoke fixture detected — replace with real GPQA diamond before paid G2
 - G2: anthropic_key: ANTHROPIC_API_KEY missing
 - G2: nebius_key: NEBIUS_API_KEY missing
+- G2: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - G3: gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
 - G3: anthropic_key: ANTHROPIC_API_KEY missing
 - G3: nebius_key: NEBIUS_API_KEY missing
+- G3: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - G4: gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
 - G4: anthropic_key: ANTHROPIC_API_KEY missing
 - G4: nebius_key: NEBIUS_API_KEY missing
+- G4: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)
+
+## Notes
+
+- diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 ## Next
 

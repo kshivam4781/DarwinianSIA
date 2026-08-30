@@ -116,6 +116,82 @@ def test_preflight_stack_not_ready_without_keys(
     assert (tmp_path / "docs" / "gate4_report.md").is_file()
 
 
+def test_preflight_stack_fetch_diamond_surfaces_hf_in_gates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 276: --fetch-diamond preflight requires HF in gate2/3/4 + aggregate."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+    import run_g3_pilot as g3
+    import run_g4_multiseed as g4
+    from prepare_gpqa_smoke_data import prepare_task_tree
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Minimal tip/progress so tip lineage does not dominate blockers.
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-08-30T12:00Z — Tick 276 (test)\n", encoding="utf-8"
+    )
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+
+    for mod in (pipe, g2, g3, g4):
+        monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+
+    monkeypatch.setattr(g2, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g2, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g3, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g3, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g4, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g4, "_run_dir_for", lambda rid: None)
+
+    # Avoid real HF calls during preflight materialize attempts.
+    def _no_hf(*_a, **_k):
+        raise RuntimeError("HF unavailable in unit test")
+
+    monkeypatch.setattr(g2, "materialize_from_hf", _no_hf)
+    monkeypatch.setattr(g3, "materialize_from_hf", _no_hf)
+    monkeypatch.setattr(g4, "materialize_from_hf", _no_hf)
+
+    report = PipelineReport(
+        timestamp="2026-08-30T12:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+    )
+    run_preflight_stack(
+        report,
+        g2_run_id=1300,
+        g3_seeds="1",
+        g3_b="1201",
+        g3_d="1301",
+        g4_seeds="1,2,3,4,5",
+        g4_b="1211,1212,1213,1214,1215",
+        g4_d="1311,1312,1313,1314,1315",
+        fetch_diamond=True,
+    )
+    assert report.ready_for_live is False
+    # Aggregate pipeline blocker.
+    assert any("HF_TOKEN" in b for b in report.blockers)
+    # Individual gates must also require HF (require_hf_for_diamond).
+    for name in ("gate2_report.json", "gate3_report.json", "gate4_report.json"):
+        data = json.loads((tmp_path / "docs" / name).read_text(encoding="utf-8"))
+        assert data.get("ready_for_live") is False
+        blockers = " ".join(data.get("blockers") or [])
+        assert "HF" in blockers.upper() or "hf_token" in blockers.lower()
+    # Stage detail records fetch-diamond propagation.
+    assert any("+fetch-diamond" in (s.detail or "") for s in report.stages)
+
+
 def test_write_pipeline_report(tmp_path: Path) -> None:
     report = PipelineReport(
         timestamp="2026-08-06T06:00:00Z",
