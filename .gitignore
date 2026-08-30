@@ -10,3 +10,8 @@ build/
 .cursor/*
 !.cursor/environment.json
 *.log
+# Local GPQA diamond CSV drops (Tick 277) — never commit gated dataset exports
+docs/private/
+.local/gpqa_diamond.csv
+/tmp/gpqa_diamond.csv
+gpqa_diamond.csv

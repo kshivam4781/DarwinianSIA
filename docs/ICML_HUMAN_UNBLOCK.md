@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
-**STATUS:** Live G2→G3→G4 is blocked on **API secrets + HF gpqa accept only**.
+**STATUS:** Live G2→G3→G4 is blocked on **API secrets** (Anthropic + Nebius).  
+GPQA diamond needs **either** `HF_TOKEN` (+ dataset accept) **or** a local `gpqa_diamond.csv`.
 
 Package install / uv / Portal Save are **not** required for live after Tick 265–267
 (in-preflight Astral uv + `huggingface_hub` + SIA `PYTHONPATH` bootstrap).
@@ -14,9 +15,21 @@ Add these **Cloud Agent / automation secrets** (never commit them; never paste i
 |--------|-----|
 | `ANTHROPIC_API_KEY` | Meta + feedback agents (Claude) |
 | `NEBIUS_API_KEY` | Target agent inference |
-| `HF_TOKEN` | Download gated `Idavidrein/gpqa` for `--fetch-diamond` |
+| `HF_TOKEN` | Download gated `Idavidrein/gpqa` for `--fetch-diamond` (**or** skip via CSV below) |
 
-Also: accept the HuggingFace dataset **`Idavidrein/gpqa`** while logged in as the token owner.
+Also (if using HF): accept the HuggingFace dataset **`Idavidrein/gpqa`** while logged in as the token owner.
+
+### Optional: local diamond CSV (Tick 277 — skips HF)
+
+If you already have `gpqa_diamond.csv`, drop it at one of:
+
+- `/tmp/gpqa_diamond.csv`
+- `docs/private/gpqa_diamond.csv` (gitignored)
+- path in `$ICML_DIAMOND_CSV` / `$SIA_DIAMOND_CSV`
+
+Cron auto-detects it, sets `diamond_csv_present` in `docs/icml_secrets_status.json`, and passes `--diamond-csv` so `HF_TOKEN` is not required.
+
+You may also put API keys in a gitignored repo-root `.env` (Tick 277 loads missing names into the process env; values are never logged).
 
 ## Where to add them
 
@@ -55,8 +68,7 @@ git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 That recovers tip (lineage-aware via `icml_pick_remote_tip.sh` / boot recover), then chains G2 → G3 → G4 serially under the ~$20 budget ceiling
 and refreshes `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
 Without secrets it stops at preflight (no paid spend).
-**Tick 273:** auto-live also requires `HF_TOKEN` (`fetch_diamond_ok`) because the entry always passes `--fetch-diamond`.
-**Tick 274:** `run_icml_live_pipeline.py --live --fetch-diamond` itself refuses without HF; Next-steps no longer claim live-ready on Anthropic+Nebius alone.
+**Tick 273–277:** auto-live requires `fetch_diamond_ok` = API keys + (`HF_TOKEN` **or** local diamond CSV).
 
 Machine-readable tip check: `docs/icml_tip_status.json` (pipeline refuses
 `--live` if local Tick lags remote tip / `ICML_PROGRESS` is missing).

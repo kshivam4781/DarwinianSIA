@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-30 (Section 21 ICML; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-30 (Section 21 ICML; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -842,7 +842,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML pipeline HF/`fetch_diamond_ok` gate (Tick 274) | **DONE** | `run_icml_live_pipeline.py --live --fetch-diamond` refuses without HF; preflight surfaces HF blocker; Next-steps / `ready_for_live_pipeline` track `fetch_diamond_ok` |
 | ICML G2/G3/G4 HF/`fetch_diamond_ok` gate (Tick 275) | **DONE** | Individual runners refuse `--live --fetch-diamond` without HF (exit 4); `require_hf_for_diamond` real `hf_token` check; CSV path skips HF |
 | ICML cron/pipeline preflight `--fetch-diamond` (Tick 276) | **DONE** | `run_preflight_stack` + cron entry pass `--fetch-diamond` into G2/G3/G4 so gate reports require HF; aggregate HF only on fetch-diamond path |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–276: packages + tip guard + cron + lineage + HF gates ready); next: `bash scripts/icml_cron_entry.sh` |
+| ICML `.env` + local diamond CSV unlock (Tick 277) | **DONE** | `load_icml_dotenv` + `resolve_diamond_csv_path`; cron passes `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–277 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |

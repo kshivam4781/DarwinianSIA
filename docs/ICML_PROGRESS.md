@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T14:20Z — Tick 277 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c39b` (recovered ← `1231` Tick 276, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-1231` (Tick 276); local Tick **276** → **277**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV present; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). HF was a hard dependency even when an operator could supply `gpqa_diamond.csv`, and gitignored `.env` keys were ignored by cron (unlike `verify_keys.py`). Highest leverage without paid keys: **`.env` secret load + auto-detect local diamond CSV → `--diamond-csv`**.
+
+### What this tick did (ONE step)
+**Secrets/diamond unlock path hardening (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `1231`; confirmed secrets absent → preflight only
+2. `load_icml_dotenv()` loads missing ICML secret names from gitignored `.env` (never logs values)
+3. `resolve_diamond_csv_path()` detects `/tmp`, `docs/private/`, `.local/`, `$ICML_DIAMOND_CSV`; `fetch_diamond_ok` = API keys + (HF **or** CSV)
+4. `icml_cron_entry.sh` passes `--diamond-csv` when present; updates HUMAN_UNBLOCK; gitignores private CSV drops
+5. Tests: dotenv + CSV skip-HF + cron Tick 277 asserts; **24/24** `test_icml_env_checks` green
+6. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 276) | After (Tick 277) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron unlock for diamond | HF_TOKEN required | **HF **or** local `gpqa_diamond.csv`** |
+| `.env` for cron secrets | ignored | **loaded (missing names only)** |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **API secrets** (HF optional w/ CSV) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
 ## 2026-08-30T12:20Z — Tick 276 (automation cron)
 
 ### Status snapshot

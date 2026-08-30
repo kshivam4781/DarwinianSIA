@@ -31,6 +31,10 @@ Tick 269: Tip lineage discovery / guard. Cron often boots a fresh branch from
 ``scripts/icml_recover_tip.py`` recover the highest Tick tip; live pipeline
 refuses ``--live`` on a stale tree so paid GPQA cannot burn budget on pre-CABS
 code.
+
+Tick 277: Load gitignored ``.env`` for missing secret names (presence only;
+never log values) and auto-detect a local ``gpqa_diamond.csv`` so cron can
+pass ``--diamond-csv`` and mark ``fetch_diamond_ok`` without ``HF_TOKEN``.
 """
 
 from __future__ import annotations
@@ -50,6 +54,18 @@ _LOCAL_BIN = Path.home() / ".local" / "bin"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SIA_PKG_ROOT = _REPO_ROOT / "SIA"
 _RUNTIME_PIP_PACKAGES = ("huggingface_hub",)
+_SECRET_ENV_NAMES = (
+    "ANTHROPIC_API_KEY",
+    "NEBIUS_API_KEY",
+    "HF_TOKEN",
+    "HUGGINGFACE_HUB_TOKEN",
+)
+# Conventional diamond CSV drop paths (Tick 277). Prefer env override.
+_DIAMOND_CSV_CANDIDATES = (
+    "gpqa_diamond.csv",
+    "docs/private/gpqa_diamond.csv",
+    ".local/gpqa_diamond.csv",
+)
 
 _VENV_PROBE_SCRIPT = r"""
 import sys
@@ -347,6 +363,76 @@ _ENV_DASHBOARD_URL = (
 )
 
 
+def load_icml_dotenv(env_path: Path | None = None) -> list[str]:
+    """Load gitignored ``.env`` into ``os.environ`` for *missing* keys only.
+
+    Tick 277: cloud secrets inject as env vars; humans sometimes drop keys into
+    ``.env`` (already gitignored). Mirror ``scripts/verify_keys.py`` so cron /
+    preflight see the same keys. Returns names that were newly set — **never**
+    returns or logs values.
+    """
+    path = env_path or (_REPO_ROOT / ".env")
+    loaded: list[str] = []
+    if not path.is_file():
+        return loaded
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return loaded
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if not key or key not in _SECRET_ENV_NAMES:
+            # Only pull ICML-relevant secrets; ignore unrelated .env noise.
+            continue
+        if key in os.environ and str(os.environ.get(key, "")).strip():
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        if not value.strip():
+            continue
+        os.environ[key] = value
+        loaded.append(key)
+    return loaded
+
+
+def resolve_diamond_csv_path(repo_root: Path | None = None) -> Path | None:
+    """Return a usable local ``gpqa_diamond.csv`` if the operator dropped one.
+
+    Tick 277: ``HF_TOKEN`` is not required when a real CSV is present — cron
+    passes ``--diamond-csv`` into the live pipeline. Order:
+
+    1. ``ICML_DIAMOND_CSV`` / ``SIA_DIAMOND_CSV`` env path
+    2. ``/tmp/gpqa_diamond.csv``
+    3. repo-relative candidates under ``docs/private/``, ``.local/``, root
+    """
+    root = repo_root or _REPO_ROOT
+    env_override = (
+        os.environ.get("ICML_DIAMOND_CSV") or os.environ.get("SIA_DIAMOND_CSV") or ""
+    ).strip()
+    candidates: list[Path] = []
+    if env_override:
+        candidates.append(Path(env_override).expanduser())
+    candidates.append(Path("/tmp/gpqa_diamond.csv"))
+    for rel in _DIAMOND_CSV_CANDIDATES:
+        candidates.append(root / rel)
+    for path in candidates:
+        try:
+            if path.is_file() and path.stat().st_size >= 64:
+                return path.resolve()
+        except OSError:
+            continue
+    return None
+
+
 def _secret_present(name: str) -> bool:
     """True when env var looks set (never returns or logs the value)."""
     raw = os.environ.get(name, "")
@@ -362,36 +448,41 @@ def _secret_present(name: str) -> bool:
 
 
 def collect_icml_secrets_status() -> dict:
-    """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268).
+    """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268/277).
 
     Does **not** include secret values. Portal Save is optional once Tick
-    265–266 bootstraps succeed; live blockers are API keys + real GPQA.
+    265–266 bootstraps succeed; live blockers are API keys + real GPQA
+    (HF token **or** a local diamond CSV).
     """
+    load_icml_dotenv()
     anthropic = _secret_present("ANTHROPIC_API_KEY")
     nebius = _secret_present("NEBIUS_API_KEY")
     hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
+    diamond_csv = resolve_diamond_csv_path()
+    diamond_csv_ok = diamond_csv is not None
     secrets_ok = anthropic and nebius
     # HF needed for --fetch-diamond unless operator supplies CSV offline.
-    fetch_diamond_ok = secrets_ok and hf
-    # Tick 273: default cron always passes --fetch-diamond → require HF too.
+    fetch_diamond_ok = secrets_ok and (hf or diamond_csv_ok)
+    # Tick 273/277: cron passes --fetch-diamond (optionally with --diamond-csv).
     cron_live_ok = fetch_diamond_ok
     blockers: list[str] = []
     if not anthropic:
         blockers.append("ANTHROPIC_API_KEY missing")
     if not nebius:
         blockers.append("NEBIUS_API_KEY missing")
-    if not hf:
+    if not hf and not diamond_csv_ok:
         blockers.append(
             "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
-            "(required for --fetch-diamond; or provide --diamond-csv)"
+            "(required for --fetch-diamond; or provide --diamond-csv / "
+            "drop gpqa_diamond.csv at /tmp or docs/private/)"
         )
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273: secrets-first live gate; Portal Save optional; "
-            "cron auto-live requires fetch_diamond_ok (API keys + HF); "
-            "human_next prefers bash scripts/icml_cron_entry.sh "
-            "(Tick 272 lineage tip pick; Tick 273–274 HF gate in cron + pipeline)"
+            "Tick 268/273/277: secrets-first live gate; Portal Save optional; "
+            "cron auto-live requires fetch_diamond_ok (API keys + HF **or** "
+            "local diamond CSV); .env loaded for missing secret names; "
+            "human_next prefers bash scripts/icml_cron_entry.sh"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -401,10 +492,12 @@ def collect_icml_secrets_status() -> dict:
             "NEBIUS_API_KEY": "PRESENT" if nebius else "ABSENT",
             "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "PRESENT" if hf else "ABSENT",
         },
-        # Top-level booleans for cron_entry / shell greps (Tick 272–273).
+        # Top-level booleans for cron_entry / shell greps (Tick 272–277).
         "anthropic_key_present": anthropic,
         "nebius_key_present": nebius,
         "hf_token_present": hf,
+        "diamond_csv_present": diamond_csv_ok,
+        "diamond_csv_path": str(diamond_csv) if diamond_csv is not None else None,
         "packages_bootstrapped_in_preflight": True,
         "portal_save_required_for_live": False,
         "secrets_ok_for_paid_sia": secrets_ok,
@@ -415,9 +508,11 @@ def collect_icml_secrets_status() -> dict:
         "human_next": [
             f"Add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN to automation "
             f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
-            "Accept HuggingFace access for Idavidrein/gpqa with that HF token",
+            "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
+            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
+            "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–274 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "(Tick 271–277 — recovers tip; auto-live only when fetch_diamond_ok)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],
@@ -473,13 +568,15 @@ def live_pipeline_next_steps(
             "See `docs/icml_tip_status.json`."
         )
 
-    # Explicit False → HF gap even when API keys present.
+    # Explicit False → HF/CSV gap even when API keys present.
     if fetch_diamond_ok is False and secrets_ok:
         steps.extend(
             [
-                "API keys present but `HF_TOKEN` still required for "
-                "`--fetch-diamond` / cron auto-live (`fetch_diamond_ok=false`). "
-                f"Add HF_TOKEN to {_AUTOMATION_URL} and accept HF `Idavidrein/gpqa`. "
+                "API keys present but diamond still blocked "
+                "(`fetch_diamond_ok=false`): add `HF_TOKEN` + accept HF "
+                "`Idavidrein/gpqa`, **or** drop a real `gpqa_diamond.csv` at "
+                "`/tmp/gpqa_diamond.csv` / `docs/private/gpqa_diamond.csv` / "
+                f"`$ICML_DIAMOND_CSV`. Add HF to {_AUTOMATION_URL}. "
                 "See `docs/ICML_HUMAN_UNBLOCK.md`.",
                 "Next cron (or now): `bash scripts/icml_cron_entry.sh` — stays "
                 "preflight-only until `fetch_diamond_ok`.",

@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–273 / 276).
+# ICML Thesis 1 — single cron entry (Tick 271–277).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
-#   2. Writes tip + secrets status (presence only)
-#   3. If tip OK + fetch_diamond_ok (API keys + HF) → live G2→G3→G4 (--fetch-diamond)
-#   4. Else → preflight only WITH --fetch-diamond (Tick 276); print blockers; exit 0 (not READY)
+#   2. Writes tip + secrets status (presence only; loads .env for missing keys)
+#   3. If tip OK + fetch_diamond_ok (API keys + HF **or** local diamond CSV)
+#      → live G2→G3→G4 (--fetch-diamond [, --diamond-csv])
+#   4. Else → preflight only WITH --fetch-diamond (Tick 276) and optional
+#      --diamond-csv (Tick 277); print blockers; exit 0 (not READY)
 #
 # Tick 273: do NOT launch --fetch-diamond live on anthropic+nebius alone —
 # missing HF_TOKEN would fail diamond materialization after tip recover.
 # Tick 276: preflight also passes --fetch-diamond so gate2/3/4 reports require HF.
+# Tick 277: load gitignored .env; auto-detect local gpqa_diamond.csv and pass
+# --diamond-csv so HF is optional when a real CSV is present.
 #
 # Preferred once tip tree exists:
 #   bash scripts/icml_cron_entry.sh
@@ -31,7 +35,7 @@ for arg in "$@"; do
     --preflight-only) MODE="preflight" ;;
     --live) MODE="live" ;;
     -h|--help)
-      sed -n '2,24p' "$0"
+      sed -n '2,28p' "$0"
       exit 0
       ;;
     *)
@@ -168,8 +172,11 @@ print(
     f"fetch_diamond_ok={sec.get('fetch_diamond_ok')} "
     f"anthropic={sec.get('anthropic_key_present')} "
     f"nebius={sec.get('nebius_key_present')} "
-    f"hf={sec.get('hf_token_present')}"
+    f"hf={sec.get('hf_token_present')} "
+    f"diamond_csv={sec.get('diamond_csv_present')}"
 )
+if sec.get("diamond_csv_path"):
+    print(f"diamond_csv_path={sec.get('diamond_csv_path')}")
 PY
 fi
 
@@ -177,7 +184,7 @@ SECRETS_OK=0
 if [[ -f docs/icml_secrets_status.json ]] && grep -q '"secrets_ok_for_paid_sia": true' docs/icml_secrets_status.json; then
   SECRETS_OK=1
 fi
-# Tick 273: cron always passes --fetch-diamond → require HF as well.
+# Tick 273/277: cron --fetch-diamond needs HF **or** local diamond CSV.
 FETCH_DIAMOND_OK=0
 if [[ -f docs/icml_secrets_status.json ]] && grep -q '"fetch_diamond_ok": true' docs/icml_secrets_status.json; then
   FETCH_DIAMOND_OK=1
@@ -187,16 +194,45 @@ if [[ -f docs/icml_tip_status.json ]] && grep -q '"tip_ok_for_live": true' docs/
   TIP_OK=1
 fi
 CRON_LIVE_OK=0
-if [[ "$SECRETS_OK" -eq 1 && "$FETCH_DIAMOND_OK" -eq 1 ]]; then
+if [[ -f docs/icml_secrets_status.json ]] && grep -q '"cron_live_ok": true' docs/icml_secrets_status.json; then
+  CRON_LIVE_OK=1
+elif [[ "$SECRETS_OK" -eq 1 && "$FETCH_DIAMOND_OK" -eq 1 ]]; then
   CRON_LIVE_OK=1
 fi
+
+# Tick 277: optional local CSV path from secrets status (never commit the CSV).
+DIAMOND_CSV=""
+if [[ -f docs/icml_secrets_status.json ]]; then
+  DIAMOND_CSV="$(python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path("docs/icml_secrets_status.json")
+try:
+    data = json.loads(p.read_text(encoding="utf-8"))
+except Exception:
+    print("")
+else:
+    path = data.get("diamond_csv_path") or ""
+    print(path if data.get("diamond_csv_present") else "")
+PY
+)"
+fi
+
+_pipeline_diamond_args() {
+  # Always --fetch-diamond (Tick 276); add --diamond-csv when present (Tick 277).
+  local args=(--fetch-diamond)
+  if [[ -n "${DIAMOND_CSV}" && -f "${DIAMOND_CSV}" ]]; then
+    args+=(--diamond-csv "${DIAMOND_CSV}")
+  fi
+  printf '%s\n' "${args[@]}"
+}
 
 run_preflight() {
   echo "=== Preflight (no paid spend; --fetch-diamond to match live) ==="
   if [[ -f scripts/run_icml_live_pipeline.py ]]; then
-    # Tick 276: same --fetch-diamond as live so G2/G3/G4 preflight reports
-    # surface HF via require_hf_for_diamond (not only aggregate pipeline).
-    python3 scripts/run_icml_live_pipeline.py --preflight-only --fetch-diamond || true
+    # Tick 276/277: same diamond args as live so gate reports match intent.
+    mapfile -t _dargs < <(_pipeline_diamond_args)
+    python3 scripts/run_icml_live_pipeline.py --preflight-only "${_dargs[@]}" || true
   else
     echo "run_icml_live_pipeline.py missing — tip recover incomplete" >&2
     return 1
@@ -209,7 +245,8 @@ run_live() {
     echo "run_icml_live_pipeline.py missing — tip recover incomplete" >&2
     return 1
   fi
-  python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
+  mapfile -t _dargs < <(_pipeline_diamond_args)
+  python3 scripts/run_icml_live_pipeline.py --live "${_dargs[@]}"
 }
 
 case "$MODE" in
@@ -224,8 +261,8 @@ case "$MODE" in
       exit 3
     fi
     if [[ "$CRON_LIVE_OK" -ne 1 ]]; then
-      echo "Refusing --live: need API keys + HF_TOKEN for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
-      echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}" >&2
+      echo "Refusing --live: need API keys + (HF_TOKEN or local diamond CSV) for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+      echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK} diamond_csv=${DIAMOND_CSV:-none}" >&2
       run_preflight
       exit 4
     fi
@@ -238,7 +275,7 @@ case "$MODE" in
       exit $?
     fi
     echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}) — preflight only"
-    echo "Human: add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN per docs/ICML_HUMAN_UNBLOCK.md; accept HF Idavidrein/gpqa"
+    echo "Human: add ANTHROPIC_API_KEY + NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md"
     run_preflight
     exit 0
     ;;

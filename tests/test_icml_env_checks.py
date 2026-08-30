@@ -210,6 +210,13 @@ def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+    monkeypatch.delenv("SIA_DIAMOND_CSV", raising=False)
+    # Ensure no accidental /tmp CSV from other tests.
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
     status = collect_icml_secrets_status()
     assert status["secrets_ok_for_paid_sia"] is True
     assert status["fetch_diamond_ok"] is False
@@ -223,11 +230,78 @@ def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
     assert status2["blockers"] == []
 
 
+def test_fetch_diamond_ok_with_local_csv_skips_hf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 277: local diamond CSV + API keys ⇒ fetch_diamond_ok without HF."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text(
+        "Question,Correct Answer,Incorrect Answer 1,Incorrect Answer 2,"
+        "Incorrect Answer 3\n" + ("Q?,A,B,C,D\n" * 3),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ICML_DIAMOND_CSV", str(csv_path))
+    status = collect_icml_secrets_status()
+    assert status["diamond_csv_present"] is True
+    assert status["diamond_csv_path"] == str(csv_path.resolve())
+    assert status["hf_token_present"] is False
+    assert status["fetch_diamond_ok"] is True
+    assert status["cron_live_ok"] is True
+    assert status["blockers"] == []
+
+
+def test_load_icml_dotenv_fills_missing_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 277: gitignored .env supplies missing keys; never overwrites env."""
+    from icml_env_checks import load_icml_dotenv
+
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "ANTHROPIC_API_KEY=sk-from-dotenv\n"
+        "NEBIUS_API_KEY=nb-from-dotenv\n"
+        "HF_TOKEN=hf-from-dotenv\n"
+        "UNRELATED=ignore-me\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-already-set")
+    loaded = load_icml_dotenv(env_file)
+    assert "ANTHROPIC_API_KEY" in loaded
+    assert "HF_TOKEN" in loaded
+    assert "NEBIUS_API_KEY" not in loaded  # already set
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-from-dotenv"
+    assert os.environ["NEBIUS_API_KEY"] == "nb-already-set"
+    assert os.environ["HF_TOKEN"] == "hf-from-dotenv"
+    assert "UNRELATED" not in os.environ or os.environ.get("UNRELATED") != "ignore-me"
+
+
+def test_live_pipeline_next_steps_requires_fetch_diamond_ok() -> None:
+    """Tick 274: Anthropic+Nebius alone must not claim cron live OK."""
+    partial = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=False)
+    assert "HF_TOKEN" in partial[0] or "gpqa_diamond.csv" in partial[0]
+    assert "fetch_diamond_ok" in partial[0]
+    assert "preflight-only" in partial[1]
+    full = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=True)
+    assert "fetch_diamond_ok" in full[0]
+    assert "icml_cron_entry.sh" in full[1]
+
+
 def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
     out = tmp_path / "icml_secrets_status.json"
     status = write_icml_secrets_status(out, gpqa_is_synthetic=True)
     assert out.is_file()
@@ -251,6 +325,10 @@ def test_ready_for_live_pipeline_requires_fetch_diamond_ok(
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
     out = tmp_path / "icml_secrets_status.json"
     status = write_icml_secrets_status(out, gpqa_is_synthetic=True)
     assert status["secrets_ok_for_paid_sia"] is True
@@ -273,17 +351,6 @@ def test_live_pipeline_next_steps_secrets_first() -> None:
     ready = live_pipeline_next_steps(secrets_ok=True)
     assert "Secrets present" in ready[0]
     assert "icml_cron_entry.sh" in ready[1]
-
-
-def test_live_pipeline_next_steps_requires_fetch_diamond_ok() -> None:
-    """Tick 274: Anthropic+Nebius alone must not claim cron live OK."""
-    partial = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=False)
-    assert "HF_TOKEN" in partial[0]
-    assert "fetch_diamond_ok" in partial[0]
-    assert "preflight-only" in partial[1]
-    full = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=True)
-    assert "fetch_diamond_ok" in full[0]
-    assert "icml_cron_entry.sh" in full[1]
 
 
 def test_live_pipeline_next_steps_tip_before_secrets() -> None:
@@ -318,7 +385,7 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271–276: recover→live/preflight; lineage tip pick; HF fetch_diamond gate."""
+    """Tick 271–277: recover→live/preflight; lineage tip pick; HF/CSV fetch_diamond gate."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
@@ -331,7 +398,10 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     assert "fetch_diamond_ok" in text
     assert "CRON_LIVE_OK" in text
     # Tick 276: preflight also passes --fetch-diamond (match live intent).
-    assert "--preflight-only --fetch-diamond" in text
+    assert "--preflight-only" in text and "--fetch-diamond" in text
+    # Tick 277: optional local CSV path into pipeline.
+    assert "diamond-csv" in text or "DIAMOND_CSV" in text
+    assert "Tick 277" in text
     import subprocess
 
     proc = subprocess.run(
