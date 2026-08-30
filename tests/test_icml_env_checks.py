@@ -212,9 +212,14 @@ def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert out.is_file()
     loaded = json.loads(out.read_text(encoding="utf-8"))
     assert loaded["secrets"]["ANTHROPIC_API_KEY"] == "ABSENT"
+    assert loaded["anthropic_key_present"] is False
+    assert loaded["nebius_key_present"] is False
+    assert loaded["hf_token_present"] is False
     assert loaded["gpqa_is_synthetic"] is True
     assert loaded["ready_for_live_pipeline"] is False
     assert status["portal_save_required_for_live"] is False
+    # Tick 272: human_next prefers cron entry (not bare live_pipeline).
+    assert any("icml_cron_entry.sh" in s for s in loaded["human_next"])
 
 
 def test_live_pipeline_next_steps_secrets_first() -> None:
@@ -259,13 +264,15 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271: single recover→live/preflight cron entry."""
+    """Tick 271/272: single recover→live/preflight cron entry + lineage chicken-egg."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
     assert "Tick 271" in text
     assert "icml_boot_recover" in text
     assert "run_icml_live_pipeline" in text
+    assert "icml_pick_remote_tip" in text or "_pick_tip_ref" in text
+    assert "committerdate-only" in text or "lineage" in text.lower()
     import subprocess
 
     proc = subprocess.run(
@@ -277,6 +284,43 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     )
     assert proc.returncode == 0
     assert "icml_cron_entry" in (proc.stdout + proc.stderr)
+
+
+def test_icml_pick_remote_tip_script_picks_lineage() -> None:
+    """Tick 272: tip picker skips refs lacking cron_entry; prefers highest Tick."""
+    script = REPO / "scripts" / "icml_pick_remote_tip.sh"
+    assert script.is_file()
+    text = script.read_text(encoding="utf-8")
+    assert "Tick 272" in text or "lineage-aware" in text
+    assert "--require" in text
+    import subprocess
+
+    proc = subprocess.run(
+        ["bash", str(script), "--help"],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    # Against real remotes (fetched by prior ticks / this env): expect a tip.
+    pick = subprocess.run(
+        ["bash", str(script)],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if pick.returncode == 0:
+        ref = pick.stdout.strip()
+        assert "icml-epistemic" in ref
+        # Winning tip must contain cron_entry.
+        probe = subprocess.run(
+            ["git", "cat-file", "-e", f"{ref}:scripts/icml_cron_entry.sh"],
+            cwd=str(REPO),
+            check=False,
+        )
+        assert probe.returncode == 0
 
 
 def test_parse_latest_icml_tick_prefers_top_heading() -> None:

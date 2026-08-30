@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T04:20Z — Tick 272 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-7a13` (recovered ← `a271` Tick 271, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (SYSTEM boot `9e876ef2`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-a271` (Tick 271); local Tick **271** → **272**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept still required)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Tick 271's chicken-egg / AGENTS recipe still picked tip by **committerdate-only**, which fails once a greenfield main branch is newer than the real tip (or hard-resets onto a tip lacking recover scripts). Also `icml_secrets_status.json` `human_next` still pointed at bare `run_icml_live_pipeline.py`. Highest leverage without secrets: **lineage-aware tip pick for chicken-egg** + align secrets status to cron entry.
+
+### What this tick did (ONE step)
+**Lineage-aware chicken-egg tip pick (no API spend; no Portal Save):**
+1. Recovered tip ← `a271` via Tick 271 cron entry; confirmed secrets absent → preflight only
+2. Added `scripts/icml_pick_remote_tip.sh`; hardened `icml_cron_entry.sh` chicken-egg (`_pick_tip_ref`); updated AGENTS.md / `ICML_HUMAN_UNBLOCK.md` / boot_recover header to stop date-only `head -1`
+3. Fixed `collect_icml_secrets_status` `human_next` → cron entry + top-level key-presence booleans; 19/19 env-check tests green; picker returns `…/a271`
+4. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 271) | After (Tick 272) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Chicken-egg tip pick | committerdate `head -1` | **Tick + lineage + require blob** |
+| Secrets `human_next` | bare live_pipeline | **`icml_cron_entry.sh`** |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `bash scripts/icml_cron_entry.sh` (chicken-egg: lineage scan in AGENTS.md, then `git show <tip>:scripts/icml_cron_entry.sh | bash -s --`). Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-30T02:25Z — Tick 271 (automation cron)
 
 ### Status snapshot

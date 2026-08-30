@@ -11,10 +11,11 @@
 #   bash scripts/icml_boot_recover.sh --fetch      # refresh remote refs first
 #   bash scripts/icml_boot_recover.sh --apply      # git reset --hard to tip
 #
-# Chicken-egg from main (this script not present yet) — fetch script from tip:
+# Chicken-egg from main (this script not present yet) — Tick 272 lineage pick
+# (never committerdate-only; greenfield main branches can be newer than tip):
 #   git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
-#   TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
-#     'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+#   TIP_REF=$(bash scripts/icml_pick_remote_tip.sh --require scripts/icml_boot_recover.sh)  # if picker present
+#   # else: scan refs that contain this script + highest Tick (see AGENTS.md)
 #   git show "${TIP_REF}:scripts/icml_boot_recover.sh" | bash -s -- --fetch --apply
 #
 # Prefer once tip tree is present:

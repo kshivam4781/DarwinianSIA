@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-30T02:23:13Z
+**Timestamp:** 2026-08-30T04:12:58Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -16,8 +16,8 @@
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
 | `run_id_free` | yes | run_1300 unused |
-| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
-| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable |
+| `per_run_venv` | yes | uv installed at /home/ubuntu/.local/bin/uv (Astral bootstrap) (SIA per-run venv path) |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; pip installed huggingface_hub; bootstrapped huggingface_hub |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -33,6 +33,10 @@
 - gpqa_not_synthetic: synthetic smoke fixture detected — replace with real GPQA diamond before paid G2
 - anthropic_key: ANTHROPIC_API_KEY missing
 - nebius_key: NEBIUS_API_KEY missing
+
+## Notes
+
+- materialized synthetic GPQA smoke fixture under SIA/
 
 **G2 live status:** NOT RUN this tick
 

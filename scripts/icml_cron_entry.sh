@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271).
+# ICML Thesis 1 — single cron entry (Tick 271; Tick 272 lineage chicken-egg).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -12,10 +12,11 @@
 #   bash scripts/icml_cron_entry.sh --preflight-only
 #   bash scripts/icml_cron_entry.sh --live   # forces live attempt (still refuses without secrets)
 #
-# Chicken-egg from main (this script not present yet):
+# Chicken-egg from main (this script not present yet) — Tick 272 lineage pick
+# (do NOT use committerdate-only head -1; greenfield main branches are newer):
 #   git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
-#   TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
-#     'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+#   TIP_REF=$(bash scripts/icml_pick_remote_tip.sh 2>/dev/null)  # if already recovered
+#   # else inline: see AGENTS.md / docs/ICML_HUMAN_UNBLOCK.md Tick 272 recipe
 #   git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 
 set -euo pipefail
@@ -44,30 +45,69 @@ else
   exit 2
 fi
 
-echo "=== ICML cron entry (Tick 271) mode=${MODE} ==="
+echo "=== ICML cron entry (Tick 271/272) mode=${MODE} ==="
 
 # --- Tip recover (chicken-egg) -------------------------------------------------
+# Tick 272: pick tip by highest Tick + lineage among refs that actually contain
+# boot_recover / cron_entry — never committerdate-only (greenfield main traps).
+_pick_tip_ref() {
+  local require="${1:-scripts/icml_boot_recover.sh}"
+  if [[ -f scripts/icml_pick_remote_tip.sh ]]; then
+    bash scripts/icml_pick_remote_tip.sh --require "$require" 2>/dev/null || true
+    return 0
+  fi
+  # Inline fallback (picker script itself missing on main).
+  local best_tick=-1 best_score=-1 best_ref="" ref prog tick score
+  local tmp
+  tmp="$(mktemp -d)"
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    git cat-file -e "${ref}:${require}" 2>/dev/null || continue
+    prog="${tmp}/progress.txt"
+    git show "${ref}:docs/ICML_PROGRESS.md" >"$prog" 2>/dev/null || continue
+    [[ -s "$prog" ]] || continue
+    tick="$(grep -oE 'Tick[[:space:]]+[0-9]+' "$prog" 2>/dev/null | head -1 | grep -oE '[0-9]+' || true)"
+    [[ -z "$tick" ]] && continue
+    score=0
+    grep -qi 'secrets-first' "$prog" 2>/dev/null && score=$((score + 1)) || true
+    grep -qi 'ensure_uv_on_path' "$prog" 2>/dev/null && score=$((score + 1)) || true
+    grep -qi 'icml_cron_entry' "$prog" 2>/dev/null && score=$((score + 1)) || true
+    if [[ "$tick" -gt "$best_tick" ]] || \
+       { [[ "$tick" -eq "$best_tick" ]] && [[ "$score" -gt "$best_score" ]]; }; then
+      best_tick="$tick"
+      best_score="$score"
+      best_ref="$ref"
+    fi
+  done < <(
+    git for-each-ref --format='%(refname)' \
+      'refs/remotes/origin/cursor/icml-epistemic-results-*' \
+      'refs/remotes/origin/cursor/icml-epistemic-evolution-*' 2>/dev/null
+  )
+  rm -rf "$tmp"
+  echo "$best_ref"
+}
+
 recover_tip() {
   if [[ -f scripts/icml_boot_recover.sh ]]; then
     bash scripts/icml_boot_recover.sh --fetch --apply
     return $?
   fi
-  echo "scripts/icml_boot_recover.sh missing — chicken-egg fetch from tip"
+  echo "scripts/icml_boot_recover.sh missing — chicken-egg fetch from tip (Tick 272 lineage)"
   git fetch origin \
     '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
     '+refs/heads/cursor/icml-epistemic-evolution-*:refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
     2>/dev/null || git fetch origin --prune 2>/dev/null || true
   local tip_ref
-  tip_ref="$(
-    git for-each-ref --format='%(refname)' --sort=-committerdate \
-      'refs/remotes/origin/cursor/icml-epistemic-results-*' \
-      'refs/remotes/origin/cursor/icml-epistemic-evolution-*' 2>/dev/null | head -1
-  )"
+  tip_ref="$(_pick_tip_ref scripts/icml_boot_recover.sh)"
   if [[ -z "${tip_ref}" ]]; then
-    echo "No remote ICML tip found — cannot recover" >&2
+    tip_ref="$(_pick_tip_ref scripts/icml_cron_entry.sh)"
+  fi
+  if [[ -z "${tip_ref}" ]]; then
+    echo "No remote ICML tip with recover scripts — cannot recover" >&2
     return 5
   fi
-  # Prefer tip's lineage-aware recoverer over date-only checkout.
+  echo "Chicken-egg tip_ref=${tip_ref}"
+  # Prefer tip's lineage-aware recoverer over hard-reset.
   if git cat-file -e "${tip_ref}:scripts/icml_boot_recover.sh" 2>/dev/null; then
     git show "${tip_ref}:scripts/icml_boot_recover.sh" | bash -s -- --apply
     return $?

@@ -13,20 +13,30 @@ That document is the single source of truth for CABS architecture, APIs, hardwar
 Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*` or live runners.
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
-2. Run the **single cron entry** (Tick 271) — tip recover + secrets gate + live or preflight:
+2. Run the **single cron entry** (Tick 271/272) — tip recover + secrets gate + live or preflight:
 
 ```bash
 # Preferred once tip tree exists:
 bash scripts/icml_cron_entry.sh
 
-# Chicken-egg from main (entry script absent — Tick 270/271):
+# Chicken-egg from main (entry script absent) — Tick 272 lineage pick
+# (never committerdate-only: greenfield main branches can be newer than tip):
 git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
-TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
-  'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+TIP_REF=""
+BEST_TICK=-1
+TMP=$(mktemp -d)
+while IFS= read -r ref; do
+  git cat-file -e "${ref}:scripts/icml_cron_entry.sh" 2>/dev/null || continue
+  git show "${ref}:docs/ICML_PROGRESS.md" >"$TMP/p" 2>/dev/null || continue
+  tick=$(grep -oE 'Tick[[:space:]]+[0-9]+' "$TMP/p" | head -1 | grep -oE '[0-9]+' || true)
+  [[ -z "$tick" ]] && continue
+  if [[ "$tick" -gt "$BEST_TICK" ]]; then BEST_TICK=$tick; TIP_REF=$ref; fi
+done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/cursor/icml-epistemic-results-*')
+rm -rf "$TMP"
 git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 ```
 
-`icml_cron_entry.sh` recovers tip, writes `docs/icml_tip_status.json` + `docs/icml_secrets_status.json`, then either runs `run_icml_live_pipeline.py --live --fetch-diamond` (when secrets present) or preflight-only.
+`icml_cron_entry.sh` recovers tip (lineage-aware; `scripts/icml_pick_remote_tip.sh`), writes `docs/icml_tip_status.json` + `docs/icml_secrets_status.json`, then either runs `run_icml_live_pipeline.py --live --fetch-diamond` (when secrets present) or preflight-only.
 
 3. Follow Section 21 + `docs/ICML_PROGRESS.md` / `docs/ICML_HUMAN_UNBLOCK.md` for diagnosis if entry exits without READY.
 4. Never set READY from offline / preflight alone. Do not re-trigger Portal Save every tick.

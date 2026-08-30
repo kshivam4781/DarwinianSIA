@@ -386,8 +386,9 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268: secrets-first live gate; Portal Save optional "
-            "(uv + runtime deps bootstrap in preflight)"
+            "Tick 268/272: secrets-first live gate; Portal Save optional; "
+            "human_next prefers bash scripts/icml_cron_entry.sh "
+            "(Tick 272 lineage-aware chicken-egg tip pick)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -397,6 +398,10 @@ def collect_icml_secrets_status() -> dict:
             "NEBIUS_API_KEY": "PRESENT" if nebius else "ABSENT",
             "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "PRESENT" if hf else "ABSENT",
         },
+        # Top-level booleans for cron_entry / shell greps (Tick 272).
+        "anthropic_key_present": anthropic,
+        "nebius_key_present": nebius,
+        "hf_token_present": hf,
         "packages_bootstrapped_in_preflight": True,
         "portal_save_required_for_live": False,
         "secrets_ok_for_paid_sia": secrets_ok,
@@ -407,8 +412,8 @@ def collect_icml_secrets_status() -> dict:
             f"Add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN to automation "
             f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
             "Accept HuggingFace access for Idavidrein/gpqa with that HF token",
-            "Next cron tick: python scripts/run_icml_live_pipeline.py "
-            "--live --fetch-diamond",
+            "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
+            "(Tick 271/272 — recovers tip lineage-aware, then live or preflight)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],

@@ -29,20 +29,30 @@ Machine-readable presence check (no values): `docs/icml_secrets_status.json`
 
 ## After secrets land
 
-Next automation cron (or a manual agent) should run the **single entry** (Tick 271):
+Next automation cron (or a manual agent) should run the **single entry** (Tick 271/272):
 
 ```bash
 # Preferred once tip tree exists:
 bash scripts/icml_cron_entry.sh
 
-# Chicken-egg from main (scripts absent):
+# Chicken-egg from main (scripts absent) — Tick 272 lineage pick
+# (never committerdate-only; greenfield main branches can outdate the tip):
 git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
-TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
-  'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+TIP_REF=""
+BEST_TICK=-1
+TMP=$(mktemp -d)
+while IFS= read -r ref; do
+  git cat-file -e "${ref}:scripts/icml_cron_entry.sh" 2>/dev/null || continue
+  git show "${ref}:docs/ICML_PROGRESS.md" >"$TMP/p" 2>/dev/null || continue
+  tick=$(grep -oE 'Tick[[:space:]]+[0-9]+' "$TMP/p" | head -1 | grep -oE '[0-9]+' || true)
+  [[ -z "$tick" ]] && continue
+  if [[ "$tick" -gt "$BEST_TICK" ]]; then BEST_TICK=$tick; TIP_REF=$ref; fi
+done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/cursor/icml-epistemic-results-*')
+rm -rf "$TMP"
 git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 ```
 
-That recovers tip, then chains G2 → G3 → G4 serially under the ~$20 budget ceiling
+That recovers tip (lineage-aware via `icml_pick_remote_tip.sh` / boot recover), then chains G2 → G3 → G4 serially under the ~$20 budget ceiling
 and refreshes `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
 Without secrets it stops at preflight (no paid spend).
 
