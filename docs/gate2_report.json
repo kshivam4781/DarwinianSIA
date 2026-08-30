@@ -1,0 +1,90 @@
+{
+  "timestamp": "2026-08-30T04:12:58Z",
+  "mode": "preflight",
+  "run_id": 1300,
+  "ready_for_live": false,
+  "ready_for_dry_run": true,
+  "blockers": [
+    "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
+    "anthropic_key: ANTHROPIC_API_KEY missing",
+    "nebius_key: NEBIUS_API_KEY missing"
+  ],
+  "checks": [
+    {
+      "name": "gpqa_layout",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "gpqa_not_synthetic",
+      "ok": false,
+      "detail": "synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2"
+    },
+    {
+      "name": "gpqa_smoke_or_real",
+      "ok": true,
+      "detail": "synthetic smoke OK for dry-run/preflight"
+    },
+    {
+      "name": "anthropic_key",
+      "ok": false,
+      "detail": "ANTHROPIC_API_KEY missing"
+    },
+    {
+      "name": "nebius_key",
+      "ok": false,
+      "detail": "NEBIUS_API_KEY missing"
+    },
+    {
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
+    },
+    {
+      "name": "budget",
+      "ok": true,
+      "detail": "spent=$0.00 ceiling=$20.00"
+    },
+    {
+      "name": "run_id_free",
+      "ok": true,
+      "detail": "run_1300 unused"
+    },
+    {
+      "name": "per_run_venv",
+      "ok": true,
+      "detail": "uv installed at /home/ubuntu/.local/bin/uv (Astral bootstrap) (SIA per-run venv path)"
+    },
+    {
+      "name": "runtime_deps",
+      "ok": true,
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; pip installed huggingface_hub; bootstrapped huggingface_hub"
+    }
+  ],
+  "command": [
+    "/usr/bin/python3",
+    "-m",
+    "sia",
+    "run",
+    "--task",
+    "gpqa",
+    "--darwinian",
+    "--cabs",
+    "--cabs-inline",
+    "--population_size",
+    "2",
+    "--elite_count",
+    "1",
+    "--max_gen",
+    "2",
+    "--run_id",
+    "1300",
+    "--eval_subset",
+    "5",
+    "--no-web",
+    "--seed",
+    "42",
+    "--dry-run"
+  ],
+  "post": []
+}
