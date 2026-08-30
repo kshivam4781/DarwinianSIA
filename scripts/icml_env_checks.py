@@ -22,6 +22,12 @@ bootstraps those via ``pip install --user`` and prepends ``SIA/`` onto
 ``PYTHONPATH`` so live G2→G3→G4 only needs secrets + HF gpqa accept — not a
 Portal-Saved package snapshot.
 
+Tick 279: Runtime package bootstrap prefers ``uv pip install --python
+<sys.executable>`` before ``python -m pip install --user``. Cursor / Astral
+ephemeral envs often have no ``pip`` module; pip-only bootstrap falsely failed
+``runtime_deps`` (and blocked ``ready_for_live`` / ``ready_for_dry_run``) even
+when uv was already on PATH.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -229,10 +235,59 @@ def _module_importable(name: str) -> bool:
         return False
 
 
-def _pip_install_user(*packages: str) -> tuple[bool, str]:
-    """Install packages with ``python -m pip install --user`` (no sudo)."""
+def _uv_pip_install(*packages: str) -> tuple[bool, str]:
+    """Install packages into ``sys.executable`` via ``uv pip`` (no sudo)."""
     if not packages:
         return True, "no packages requested"
+    _prepend_local_bin_to_path()
+    uv = shutil.which("uv")
+    if not uv:
+        return False, "uv not on PATH for package install"
+    cmd = [
+        uv,
+        "pip",
+        "install",
+        "--python",
+        sys.executable,
+        "-q",
+        *packages,
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"uv pip install timed out for {', '.join(packages)}"
+    except Exception as exc:
+        return False, f"uv pip install failed ({type(exc).__name__}: {exc})"
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        return (
+            False,
+            f"uv pip install exit {proc.returncode} for {', '.join(packages)}: "
+            f"{err[:400] or 'no output'}",
+        )
+    return True, f"uv pip installed {', '.join(packages)} into {sys.executable}"
+
+
+def _pip_install_user(*packages: str) -> tuple[bool, str]:
+    """Install packages into the active interpreter (Tick 266 / 279).
+
+    Prefer ``uv pip install --python <sys.executable>`` when uv is available —
+    works on pip-less Astral ephemeral envs and Cursor images without ensurepip.
+    Fall back to ``python -m pip install --user``.
+    """
+    if not packages:
+        return True, "no packages requested"
+
+    ok_uv, uv_detail = _uv_pip_install(*packages)
+    if ok_uv:
+        return True, uv_detail
+
     cmd = [
         sys.executable,
         "-m",
@@ -251,17 +306,23 @@ def _pip_install_user(*packages: str) -> tuple[bool, str]:
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return False, f"pip install timed out for {', '.join(packages)}"
+        return (
+            False,
+            f"{uv_detail}; then pip install timed out for {', '.join(packages)}",
+        )
     except Exception as exc:
-        return False, f"pip install failed ({type(exc).__name__}: {exc})"
+        return (
+            False,
+            f"{uv_detail}; then pip install failed ({type(exc).__name__}: {exc})",
+        )
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "").strip()
         return (
             False,
-            f"pip install exit {proc.returncode} for {', '.join(packages)}: "
-            f"{err[:400] or 'no output'}",
+            f"{uv_detail}; then pip install exit {proc.returncode} for "
+            f"{', '.join(packages)}: {err[:400] or 'no output'}",
         )
-    return True, f"pip installed {', '.join(packages)}"
+    return True, f"pip installed {', '.join(packages)} (after uv miss: {uv_detail})"
 
 
 def ensure_sia_on_pythonpath() -> tuple[bool, str]:
@@ -350,13 +411,6 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
 
     return True, "; ".join(notes)
 
-
-_SECRET_ENV_NAMES = (
-    "ANTHROPIC_API_KEY",
-    "NEBIUS_API_KEY",
-    "HF_TOKEN",
-    "HUGGINGFACE_HUB_TOKEN",
-)
 
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
 _AUTOMATION_URL = f"https://cursor.com/automations/{_AUTOMATION_ID}"

@@ -156,7 +156,7 @@ def test_ensure_runtime_deps_install_disabled_reports_missing(
 def test_ensure_runtime_deps_bootstraps_missing_hub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tick 266: missing huggingface_hub triggers pip --user install."""
+    """Tick 266: missing huggingface_hub triggers package install helper."""
     monkeypatch.setattr(
         "icml_env_checks.ensure_uv_on_path",
         lambda *, allow_install=True: (True, "uv available at /tmp/uv"),
@@ -184,6 +184,54 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
     assert ok is True
     assert "bootstrapped huggingface_hub" in detail
     assert state["hub"] is True
+
+
+def test_pip_install_user_prefers_uv_pip(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 279: uv pip install used before python -m pip (pip-less envs)."""
+    from icml_env_checks import _pip_install_user
+
+    monkeypatch.setattr(
+        "icml_env_checks._uv_pip_install",
+        lambda *packages: (True, f"uv pip installed {', '.join(packages)} into /tmp/py"),
+    )
+
+    def _fail_pip(*_a, **_k):  # pragma: no cover - must not be called
+        raise AssertionError("python -m pip should not run when uv succeeds")
+
+    monkeypatch.setattr("icml_env_checks.subprocess.run", _fail_pip)
+    ok, detail = _pip_install_user("huggingface_hub")
+    assert ok is True
+    assert "uv pip installed huggingface_hub" in detail
+
+
+def test_pip_install_user_falls_back_to_pip_when_uv_misses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 279: if uv pip fails, fall back to python -m pip --user."""
+    from icml_env_checks import _pip_install_user
+
+    monkeypatch.setattr(
+        "icml_env_checks._uv_pip_install",
+        lambda *packages: (False, "uv not on PATH for package install"),
+    )
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    calls: list[list[str]] = []
+
+    def _run(cmd, **_kwargs):
+        calls.append(list(cmd))
+        return _Proc()
+
+    monkeypatch.setattr("icml_env_checks.subprocess.run", _run)
+    ok, detail = _pip_install_user("huggingface_hub")
+    assert ok is True
+    assert "pip installed huggingface_hub" in detail
+    assert calls and calls[0][:4] == [__import__("sys").executable, "-m", "pip", "install"]
+    assert "--user" in calls[0]
 
 
 def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -> None:

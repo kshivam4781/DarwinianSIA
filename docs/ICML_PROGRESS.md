@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T18:10Z — Tick 279 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-7aa5` (recovered ← `0c48` Tick 278, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-0c48` (Tick 278); local Tick **278** → **279**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, under Astral/`uv run` (and any pip-less interpreter) `ensure_icml_runtime_deps` tried only `python -m pip install --user`; missing `pip` falsely failed `runtime_deps` and cleared `ready_for_live` / `ready_for_dry_run` even when `uv` was on PATH — a latent live-blocker once secrets land on a pip-less boot. Highest leverage without paid keys: **uv-first runtime package bootstrap**.
+
+### What this tick did (ONE step)
+**Runtime deps: prefer `uv pip install` before `python -m pip` (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `0c48`; confirmed secrets absent → preflight only
+2. `_uv_pip_install` + `_pip_install_user` prefers `uv pip install --python <sys.executable>` then falls back to `pip --user`
+3. Deduped duplicate `_SECRET_ENV_NAMES`; tests for uv-prefer + pip-fallback
+4. Focused gate/env/pipeline tests: **68/68** green (was 2 G2 preflight fails under `uv run`)
+5. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 278) | After (Tick 279) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| `runtime_deps` on pip-less/`uv run` Python | fail (`No module named pip`) | **uv pip install into sys.executable** |
+| Focused ICML tests | 2 G2 fails under `uv run` | **68/68 pass** |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
 ## 2026-08-30T16:05Z — Tick 278 (automation cron)
 
 ### Status snapshot
