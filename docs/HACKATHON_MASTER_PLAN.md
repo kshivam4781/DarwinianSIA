@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-30 (Section 21 ICML; Tick 274 pipeline `fetch_diamond_ok` gate + Next-steps HF honesty; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-30 (Section 21 ICML; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -840,7 +840,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML lineage chicken-egg tip pick (Tick 272) | **DONE** | `scripts/icml_pick_remote_tip.sh` + cron_entry `_pick_tip_ref`; stop committerdate-only tip pick; secrets `human_next` → cron entry |
 | ICML cron HF/`fetch_diamond_ok` live gate (Tick 273) | **DONE** | Cron auto/`--live` requires `fetch_diamond_ok` (API keys + HF); `cron_live_ok` in secrets status; prevents partial-secrets live launch |
 | ICML pipeline HF/`fetch_diamond_ok` gate (Tick 274) | **DONE** | `run_icml_live_pipeline.py --live --fetch-diamond` refuses without HF; preflight surfaces HF blocker; Next-steps / `ready_for_live_pipeline` track `fetch_diamond_ok` |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–274: packages + tip guard + cron + lineage + HF gates ready); next: `bash scripts/icml_cron_entry.sh` |
+| ICML G2/G3/G4 HF/`fetch_diamond_ok` gate (Tick 275) | **DONE** | Individual runners refuse `--live --fetch-diamond` without HF (exit 4); `require_hf_for_diamond` real `hf_token` check; CSV path skips HF |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–275: packages + tip guard + cron + lineage + HF gates ready); next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2179,3 +2180,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Cron HF / `fetch_diamond_ok` live gate (2026-08-30 Tick 273):** Cron always launches `--fetch-diamond`, but Tick 271–272 gated auto-live on `secrets_ok_for_paid_sia` (Anthropic+Nebius only). Partial secrets would attempt live and fail diamond materialization. Cron now requires `fetch_diamond_ok` / `cron_live_ok` (API keys + HF). Structured secrets request re-filed for the human; no Portal Save build; STATUS remains IN_PROGRESS.
 
 **Pipeline HF / `fetch_diamond_ok` gate (2026-08-30 Tick 274):** Tick 273 gated cron only; `run_icml_live_pipeline.py --live --fetch-diamond` and Next-steps still treated Anthropic+Nebius as enough (`Secrets present`). Pipeline now refuses `--live --fetch-diamond` without HF (exit 4), preflight surfaces HF as a `ready_for_live` blocker, `ready_for_live_pipeline` tracks `fetch_diamond_ok`, and Next-steps distinguish partial keys vs full cron-live OK. 30/30 env+pipeline tests green; no Portal Save; STATUS remains IN_PROGRESS.
+
+**G2/G3/G4 HF / `fetch_diamond_ok` gate (2026-08-30 Tick 275):** Tick 274 gated pipeline only; individual `run_g2_smoke.py` / `run_g3_pilot.py` / `run_g4_multiseed.py` still treated HF as optional and failed inside materialize. Runners now refuse `--live --fetch-diamond` without HF (exit 4) before materialize; `require_hf_for_diamond` makes `hf_token` a real `ready_for_live` check (`--diamond-csv` still skips HF). 62/62 focused tests green; secrets setup actions re-filed; no Portal Save; STATUS remains IN_PROGRESS.

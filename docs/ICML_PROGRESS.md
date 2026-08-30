@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T10:20Z — Tick 275 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0f75` (recovered ← `aacb` Tick 274, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-aacb` (Tick 274); local Tick **274** → **275**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept still required; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Separately, Tick 273–274 gated **cron** + **pipeline** on `fetch_diamond_ok`, but individual G2/G3/G4 runners still treated HF as `hf_token_optional` and only failed inside HF materialize on `--live --fetch-diamond`. Highest leverage without secrets: **propagate `fetch_diamond_ok` into G2/G3/G4**.
+
+### What this tick did (ONE step)
+**G2/G3/G4 HF / `fetch_diamond_ok` gate (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `aacb`; confirmed secrets absent → preflight only
+2. `run_g2_smoke.py` / `run_g3_pilot.py` / `run_g4_multiseed.py`: `--live --fetch-diamond` refuses without HF (exit 4) before materialize; `require_hf_for_diamond` makes `hf_token` a real `ready_for_live` check; `--diamond-csv` still skips HF
+3. Tests: `test_main_live_fetch_diamond_refuses_without_hf` (G2/G3/G4) + `test_preflight_require_hf_for_diamond_blocks_without_hf`; **62/62** focused gate/env/pipeline tests green
+4. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 274) | After (Tick 275) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron / pipeline HF gate | present | unchanged |
+| G2/G3/G4 `--live --fetch-diamond` | fail inside HF materialize | **refuse exit 4 if `fetch_diamond_ok=false`** |
+| G2/G3/G4 preflight HF | always optional | **required when `--fetch-diamond` (no CSV)** |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `bash scripts/icml_cron_entry.sh` (chicken-egg: lineage scan in AGENTS.md, then `git show <tip>:scripts/icml_cron_entry.sh | bash -s --`). Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
 ## 2026-08-30T08:20Z — Tick 274 (automation cron)
 
 ### Status snapshot

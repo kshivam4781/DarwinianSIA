@@ -48,6 +48,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_hf,
 )
 from icml_env_checks import (  # noqa: E402
+    collect_icml_secrets_status,
     ensure_icml_runtime_deps,
     probe_per_run_venv_capable,
 )
@@ -183,6 +184,7 @@ def run_preflight(
     mode: str,
     run_id: int,
     ensure_smoke_layout: bool = True,
+    require_hf_for_diamond: bool = False,
 ) -> PreflightReport:
     report = PreflightReport(timestamp=_utc_now(), mode=mode, run_id=run_id)
     task = _task_dir("SIA")
@@ -224,11 +226,23 @@ def run_preflight(
     hf = _env_key("HF_TOKEN") or _env_key("HUGGINGFACE_HUB_TOKEN")
     report.add("anthropic_key", bool(anth), "set" if anth else "ANTHROPIC_API_KEY missing")
     report.add("nebius_key", bool(neb), "set" if neb else "NEBIUS_API_KEY missing")
-    report.add(
-        "hf_token_optional",
-        True,
-        "set (can fetch gated GPQA when authorized)" if hf else "missing (optional; needed for HF gpqa download)",
-    )
+    # Tick 275: --fetch-diamond (no CSV) requires HF; else optional.
+    if require_hf_for_diamond:
+        report.add(
+            "hf_token",
+            bool(hf),
+            "set"
+            if hf
+            else "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
+        )
+    else:
+        report.add(
+            "hf_token_optional",
+            True,
+            "set (can fetch gated GPQA when authorized)"
+            if hf
+            else "missing (optional; needed for HF gpqa download)",
+        )
 
     spent = _budget_spent()
     ceiling = _budget_ceiling()
@@ -261,7 +275,7 @@ def run_preflight(
     by_name = {c.name: c.ok for c in report.checks}
     dry_needed = ("gpqa_layout", "run_id_free", "per_run_venv", "runtime_deps")
     report.ready_for_dry_run = all(by_name.get(n, False) for n in dry_needed) and not missing
-    live_needed = (
+    live_needed_list = [
         "gpqa_layout",
         "gpqa_not_synthetic",
         "anthropic_key",
@@ -270,8 +284,10 @@ def run_preflight(
         "run_id_free",
         "per_run_venv",
         "runtime_deps",
-    )
-    report.ready_for_live = all(by_name.get(n, False) for n in live_needed)
+    ]
+    if require_hf_for_diamond:
+        live_needed_list.append("hf_token")
+    report.ready_for_live = all(by_name.get(n, False) for n in live_needed_list)
 
     dry = mode != "live"
     report.command = build_sia_command(run_id=run_id, seed=42, dry_run=dry)
@@ -509,6 +525,39 @@ def main(argv: list[str] | None = None) -> int:
         run_id = args.run_id if args.run_id is not None else DEFAULT_DRY_RUN_ID
         seed = args.seed if args.seed is not None else 42
 
+    require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+
+    # Tick 275: refuse --live --fetch-diamond without HF before materialize
+    # (match pipeline/cron fetch_diamond_ok; CSV path skips HF).
+    if selected == "live" and require_hf:
+        secrets_status = collect_icml_secrets_status()
+        if not secrets_status.get("fetch_diamond_ok"):
+            report = run_preflight(
+                mode=selected,
+                run_id=run_id,
+                require_hf_for_diamond=True,
+            )
+            for b in secrets_status.get("blockers") or [
+                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + HF_TOKEN)"
+            ]:
+                report.notes.append(f"secrets: {b}")
+            report.notes.append(
+                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                "or pass --diamond-csv to skip HF."
+            )
+            report.command = build_sia_command(
+                run_id=run_id, seed=seed, dry_run=False
+            )
+            write_gate2_report(report, args.report)
+            print(
+                "G2 refused --live --fetch-diamond "
+                f"(fetch_diamond_ok=false) → {args.report}",
+                file=sys.stderr,
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}", file=sys.stderr)
+            return 4
+
     fetch_notes: list[str] = []
     if args.fetch_diamond or args.diamond_csv is not None:
         try:
@@ -536,7 +585,11 @@ def main(argv: list[str] | None = None) -> int:
             if selected == "live":
                 print(f"G2 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
                 # Still write a preflight report for the tick.
-                report = run_preflight(mode=selected, run_id=run_id)
+                report = run_preflight(
+                    mode=selected,
+                    run_id=run_id,
+                    require_hf_for_diamond=require_hf,
+                )
                 report.notes.extend(fetch_notes)
                 report.command = build_sia_command(
                     run_id=run_id, seed=seed, dry_run=False
@@ -544,7 +597,11 @@ def main(argv: list[str] | None = None) -> int:
                 write_gate2_report(report, args.report)
                 return 3
 
-    report = run_preflight(mode=selected, run_id=run_id)
+    report = run_preflight(
+        mode=selected,
+        run_id=run_id,
+        require_hf_for_diamond=require_hf,
+    )
     report.notes.extend(fetch_notes)
     report.command = build_sia_command(
         run_id=run_id, seed=seed, dry_run=(selected != "live")

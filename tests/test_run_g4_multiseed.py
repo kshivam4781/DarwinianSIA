@@ -473,3 +473,66 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert len(payload["plans"]) == 5
     assert "h2_by_d_run" in payload
     assert "ready_status" in payload
+
+
+def test_main_live_fetch_diamond_refuses_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 275: G4 --live --fetch-diamond exits 4 before materialize without HF."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_g4_multiseed as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": 1,
+            "Question": "Real?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: None)
+
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF")
+
+    monkeypatch.setattr(mod, "materialize_from_hf", boom)
+    report_path = tmp_path / "docs" / "gate4_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--seeds",
+            "1,2,3,4,5",
+            "--b-run-ids",
+            "1211,1212,1213,1214,1215",
+            "--d-run-ids",
+            "1311,1312,1313,1314,1315",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()

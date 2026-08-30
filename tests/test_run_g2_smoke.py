@@ -245,3 +245,88 @@ def test_write_gate2_report(tmp_path: Path) -> None:
     assert "Gate 2 report" in text
     assert "ready_for_live" not in text.lower() or "Ready for live G2" in text
     assert out.with_suffix(".json").is_file()
+
+
+def test_preflight_require_hf_for_diamond_blocks_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 275: --fetch-diamond path requires HF in ready_for_live."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+        for i in range(5)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+
+    report = run_preflight(
+        mode="live", run_id=1300, ensure_smoke_layout=False, require_hf_for_diamond=True
+    )
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["hf_token"] is False
+    assert names["anthropic_key"] is True
+
+
+def test_main_live_fetch_diamond_refuses_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 275: G2 --live --fetch-diamond exits 4 before materialize without HF."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF")
+
+    monkeypatch.setattr(mod, "materialize_from_hf", boom)
+    report_path = tmp_path / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()

@@ -52,6 +52,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_hf,
 )
 from icml_env_checks import (  # noqa: E402
+    collect_icml_secrets_status,
     ensure_icml_runtime_deps,
     probe_per_run_venv_capable,
 )
@@ -141,6 +142,7 @@ def run_preflight(
     mode: str,
     plans: list[PilotPlan],
     pair_estimate_usd: float | None = None,
+    require_hf_for_diamond: bool = False,
 ) -> G4PreflightReport:
     report = G4PreflightReport(timestamp=_utc_now(), mode=mode, plans=list(plans))
     task = _task_dir("SIA")
@@ -167,11 +169,23 @@ def run_preflight(
     hf = _env_key("HF_TOKEN") or _env_key("HUGGINGFACE_HUB_TOKEN")
     report.add("anthropic_key", bool(anth), "set" if anth else "ANTHROPIC_API_KEY missing")
     report.add("nebius_key", bool(neb), "set" if neb else "NEBIUS_API_KEY missing")
-    report.add(
-        "hf_token_optional",
-        True,
-        "set (can fetch gated GPQA when authorized)" if hf else "missing (optional; needed for HF gpqa download)",
-    )
+    # Tick 275: --fetch-diamond (no CSV) requires HF; else optional.
+    if require_hf_for_diamond:
+        report.add(
+            "hf_token",
+            bool(hf),
+            "set"
+            if hf
+            else "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
+        )
+    else:
+        report.add(
+            "hf_token_optional",
+            True,
+            "set (can fetch gated GPQA when authorized)"
+            if hf
+            else "missing (optional; needed for HF gpqa download)",
+        )
 
     spent = _budget_spent()
     ceiling = _budget_ceiling()
@@ -222,7 +236,7 @@ def run_preflight(
     report.add("runtime_deps", deps_ok, deps_detail)
 
     by_name = {c.name: c.ok for c in report.checks}
-    live_needed = (
+    live_needed_list = [
         "gpqa_layout",
         "gpqa_not_synthetic",
         "anthropic_key",
@@ -232,8 +246,10 @@ def run_preflight(
         "seed_count",
         "per_run_venv",
         "runtime_deps",
-    )
-    report.ready_for_live = all(by_name.get(n, False) for n in live_needed)
+    ]
+    if require_hf_for_diamond:
+        live_needed_list.append("hf_token")
+    report.ready_for_live = all(by_name.get(n, False) for n in live_needed_list)
 
     for plan in plans:
         report.commands.append(
@@ -1045,6 +1061,33 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if report.comparison is not None else 4
 
     fetch_notes: list[str] = []
+    require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+
+    # Tick 275: refuse --live --fetch-diamond without HF before materialize.
+    if selected == "live" and require_hf:
+        secrets_status = collect_icml_secrets_status()
+        if not secrets_status.get("fetch_diamond_ok"):
+            report = run_preflight(
+                mode=selected, plans=plans, require_hf_for_diamond=True
+            )
+            for b in secrets_status.get("blockers") or [
+                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + HF_TOKEN)"
+            ]:
+                report.notes.append(f"secrets: {b}")
+            report.notes.append(
+                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                "or pass --diamond-csv to skip HF."
+            )
+            write_gate4_report(report, args.report)
+            print(
+                "G4 refused --live --fetch-diamond "
+                f"(fetch_diamond_ok=false) → {args.report}",
+                file=sys.stderr,
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}", file=sys.stderr)
+            return 4
+
     if args.fetch_diamond or args.diamond_csv is not None:
         try:
             if args.diamond_csv is not None:
@@ -1070,12 +1113,16 @@ def main(argv: list[str] | None = None) -> int:
             fetch_notes.append(f"diamond fetch failed: {exc}")
             if selected == "live":
                 print(f"G4 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
-                report = run_preflight(mode=selected, plans=plans)
+                report = run_preflight(
+                    mode=selected, plans=plans, require_hf_for_diamond=require_hf
+                )
                 report.notes.extend(fetch_notes)
                 write_gate4_report(report, args.report)
                 return 3
 
-    report = run_preflight(mode=selected, plans=plans)
+    report = run_preflight(
+        mode=selected, plans=plans, require_hf_for_diamond=require_hf
+    )
     report.notes.extend(fetch_notes)
 
     if selected == "preflight":
