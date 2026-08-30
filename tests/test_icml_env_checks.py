@@ -243,14 +243,47 @@ def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert any("icml_cron_entry.sh" in s for s in loaded["human_next"])
 
 
+def test_ready_for_live_pipeline_requires_fetch_diamond_ok(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 274: ready_for_live_pipeline tracks fetch_diamond_ok (not keys alone)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    out = tmp_path / "icml_secrets_status.json"
+    status = write_icml_secrets_status(out, gpqa_is_synthetic=True)
+    assert status["secrets_ok_for_paid_sia"] is True
+    assert status["fetch_diamond_ok"] is False
+    assert status["ready_for_live_pipeline"] is False
+
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    status2 = write_icml_secrets_status(out, gpqa_is_synthetic=True)
+    assert status2["fetch_diamond_ok"] is True
+    # Synthetic OK as start state when HF can --fetch-diamond.
+    assert status2["ready_for_live_pipeline"] is True
+
+
 def test_live_pipeline_next_steps_secrets_first() -> None:
     blocked = live_pipeline_next_steps(secrets_ok=False)
     assert "ANTHROPIC_API_KEY" in blocked[0]
     assert "icml_cron_entry.sh" in blocked[1]
     assert "optional" in blocked[2].lower()
+    # Legacy caller (no fetch_diamond_ok): secrets_ok still means "go".
     ready = live_pipeline_next_steps(secrets_ok=True)
     assert "Secrets present" in ready[0]
     assert "icml_cron_entry.sh" in ready[1]
+
+
+def test_live_pipeline_next_steps_requires_fetch_diamond_ok() -> None:
+    """Tick 274: Anthropic+Nebius alone must not claim cron live OK."""
+    partial = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=False)
+    assert "HF_TOKEN" in partial[0]
+    assert "fetch_diamond_ok" in partial[0]
+    assert "preflight-only" in partial[1]
+    full = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=True)
+    assert "fetch_diamond_ok" in full[0]
+    assert "icml_cron_entry.sh" in full[1]
 
 
 def test_live_pipeline_next_steps_tip_before_secrets() -> None:

@@ -10,6 +10,7 @@ Hard stops (delegated to gate runners; never violate here either):
   - no two GPQA jobs in parallel
   - no --focus weights / no LawBench
   - refuse without ANTHROPIC_API_KEY + NEBIUS_API_KEY for --live
+  - refuse --live --fetch-diamond without HF_TOKEN (Tick 274; match cron)
   - refuse synthetic smoke for --live (fetch real diamond once, n=15)
   - never overwrite existing run IDs
   - project full-stack spend ≤ SIA_BUDGET_CEILING_USD (~$20)
@@ -44,6 +45,7 @@ import run_g2_smoke as g2  # noqa: E402
 import run_g3_pilot as g3  # noqa: E402
 import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
+    collect_icml_secrets_status,
     live_pipeline_next_steps,
     write_icml_secrets_status,
     write_icml_tip_status,
@@ -259,9 +261,7 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         lines.extend(["", "## Notes", ""])
         for n in report.notes:
             lines.append(f"- {n}")
-    # Tick 268–269: tip lineage + secrets-first Next (Portal Save optional).
-    from icml_env_checks import collect_icml_secrets_status
-
+    # Tick 268–274: tip lineage + secrets-first Next (HF required for --fetch-diamond).
     tip_blocker = any(
         b.lower().startswith("tip:") or "ICML_PROGRESS" in b for b in report.blockers
     )
@@ -277,10 +277,12 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
             pass
     secrets_status = collect_icml_secrets_status()
     secrets_ok = bool(secrets_status.get("secrets_ok_for_paid_sia"))
+    fetch_diamond_ok = bool(secrets_status.get("fetch_diamond_ok"))
     next_lines = live_pipeline_next_steps(
         secrets_ok=secrets_ok,
         tip_ok=(False if tip_blocker else True),
         tip_ref=tip_ref,
+        fetch_diamond_ok=fetch_diamond_ok,
     )
     lines.extend(["", "## Next", ""])
     for i, step in enumerate(next_lines, start=1):
@@ -449,10 +451,22 @@ def run_preflight_stack(
 
     # Tick 268: presence-only secrets gate artifact (never writes secret values).
     synthetic = any("synthetic" in b.lower() for b in report.blockers)
-    write_icml_secrets_status(
+    secrets_status = write_icml_secrets_status(
         REPO_ROOT / "docs" / "icml_secrets_status.json",
         gpqa_is_synthetic=True if synthetic else None,
     )
+    # Tick 274: intended live path is --fetch-diamond (cron); surface HF as blocker.
+    if not secrets_status.get("hf_token_present"):
+        report.blockers.append(
+            "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
+            "(required for --fetch-diamond / cron auto-live)"
+        )
+        report.ready_for_live = False
+    elif not secrets_status.get("fetch_diamond_ok"):
+        report.blockers.append(
+            "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + HF_TOKEN"
+        )
+        report.ready_for_live = False
 
 
 def run_live_stack(
@@ -711,6 +725,34 @@ def main(argv: list[str] | None = None) -> int:
             for b in report.blockers:
                 print(f"  BLOCK: {b}")
             return 3
+
+    # Tick 274: refuse --live --fetch-diamond without HF (match cron CRON_LIVE_OK).
+    # Avoids attempting HF materialize (or confusing "keys OK" next-steps) on
+    # Anthropic+Nebius-only partial secrets.
+    if (
+        selected == "live"
+        and args.fetch_diamond
+        and args.diamond_csv is None
+    ):
+        secrets_status = collect_icml_secrets_status()
+        if not secrets_status.get("fetch_diamond_ok"):
+            for b in secrets_status.get("blockers") or [
+                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + HF_TOKEN)"
+            ]:
+                report.blockers.append(f"secrets: {b}")
+            report.notes.append(
+                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                "or pass --diamond-csv to skip HF."
+            )
+            report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
+            write_pipeline_report(report, args.report)
+            print(
+                f"Pipeline refused --live --fetch-diamond "
+                f"(fetch_diamond_ok=false) → {args.report}"
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}")
+            return 4
 
     if selected == "preflight":
         # Optional diamond fetch during preflight (e.g. CSV path validation).

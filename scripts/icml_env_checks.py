@@ -391,7 +391,7 @@ def collect_icml_secrets_status() -> dict:
             "Tick 268/273: secrets-first live gate; Portal Save optional; "
             "cron auto-live requires fetch_diamond_ok (API keys + HF); "
             "human_next prefers bash scripts/icml_cron_entry.sh "
-            "(Tick 272 lineage tip pick; Tick 273 HF gate)"
+            "(Tick 272 lineage tip pick; Tick 273–274 HF gate in cron + pipeline)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -417,7 +417,7 @@ def collect_icml_secrets_status() -> dict:
             f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
             "Accept HuggingFace access for Idavidrein/gpqa with that HF token",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–273 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "(Tick 271–274 — recovers tip; auto-live only when fetch_diamond_ok)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],
@@ -440,10 +440,9 @@ def write_icml_secrets_status(
         status["gpqa_is_synthetic"] = False
     else:
         status["gpqa_is_synthetic"] = None
-    status["ready_for_live_pipeline"] = bool(
-        status["secrets_ok_for_paid_sia"]
-        and status.get("gpqa_is_synthetic") is False
-    )
+    # Tick 274: cron / pipeline --live --fetch-diamond needs HF too.
+    # Synthetic fixture is OK as a starting point when fetch_diamond_ok (HF will replace it).
+    status["ready_for_live_pipeline"] = bool(status.get("fetch_diamond_ok"))
     out = path or (_REPO_ROOT / "docs" / "icml_secrets_status.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
@@ -455,8 +454,13 @@ def live_pipeline_next_steps(
     secrets_ok: bool,
     tip_ok: bool | None = None,
     tip_ref: str | None = None,
+    fetch_diamond_ok: bool | None = None,
 ) -> list[str]:
-    """Human-facing Next bullets — tip + secrets + single cron entry (Tick 268–271)."""
+    """Human-facing Next bullets — tip + secrets + HF + cron entry (Tick 268–274).
+
+    Tick 274: do **not** claim live-ready on Anthropic+Nebius alone — cron and
+    ``--live --fetch-diamond`` also need ``HF_TOKEN`` (``fetch_diamond_ok``).
+    """
     steps: list[str] = []
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
@@ -468,10 +472,32 @@ def live_pipeline_next_steps(
             f"`git show {ref}:scripts/icml_cron_entry.sh | bash -s --`. "
             "See `docs/icml_tip_status.json`."
         )
-    if secrets_ok:
+
+    # Explicit False → HF gap even when API keys present.
+    if fetch_diamond_ok is False and secrets_ok:
         steps.extend(
             [
-                "Secrets present — preferred single entry:",
+                "API keys present but `HF_TOKEN` still required for "
+                "`--fetch-diamond` / cron auto-live (`fetch_diamond_ok=false`). "
+                f"Add HF_TOKEN to {_AUTOMATION_URL} and accept HF `Idavidrein/gpqa`. "
+                "See `docs/ICML_HUMAN_UNBLOCK.md`.",
+                "Next cron (or now): `bash scripts/icml_cron_entry.sh` — stays "
+                "preflight-only until `fetch_diamond_ok`.",
+                "Do **not** set STATUS: READY from offline / preflight alone.",
+            ]
+        )
+        return steps
+
+    # True → full cron live OK. None + secrets_ok → legacy callers (pre-Tick-274).
+    if fetch_diamond_ok is True or (fetch_diamond_ok is None and secrets_ok):
+        label = (
+            "Cron live OK (`fetch_diamond_ok`)"
+            if fetch_diamond_ok is True
+            else "Secrets present"
+        )
+        steps.extend(
+            [
+                f"{label} — preferred single entry:",
                 "`bash scripts/icml_cron_entry.sh` "
                 "(or `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`)",
                 "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
@@ -480,13 +506,14 @@ def live_pipeline_next_steps(
             ]
         )
         return steps
+
     steps.extend(
         [
             "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
             f"{_AUTOMATION_URL} (or linked env dashboard). "
             "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
-            "tip and runs live when secrets appear (else preflight only).",
+            "tip and runs live when `fetch_diamond_ok` (else preflight only).",
             "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
             "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
             "Do **not** set STATUS: READY from offline / preflight alone.",

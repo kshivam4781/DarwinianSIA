@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T08:20Z — Tick 274 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-aacb` (recovered ← `8a97` Tick 273, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-8a97` (Tick 273); local Tick **273** → **274**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept still required; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Separately, Tick 273 gated **cron** on `fetch_diamond_ok`, but `run_icml_live_pipeline.py` Next-steps still said "Secrets present" on Anthropic+Nebius alone, `ready_for_live_pipeline` ignored HF, and `--live --fetch-diamond` only failed inside materialize. Highest leverage without secrets: **propagate `fetch_diamond_ok` into the pipeline + Next-steps**.
+
+### What this tick did (ONE step)
+**Pipeline HF / `fetch_diamond_ok` gate (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `8a97`; confirmed secrets absent → preflight only
+2. `run_icml_live_pipeline.py --live --fetch-diamond` refuses without HF (exit 4); preflight surfaces HF blocker; `live_pipeline_next_steps(fetch_diamond_ok=…)` distinguishes partial keys vs cron-live OK; `ready_for_live_pipeline` ← `fetch_diamond_ok`
+3. Tests: `test_live_pipeline_next_steps_requires_fetch_diamond_ok`, `test_ready_for_live_pipeline_requires_fetch_diamond_ok`, `test_live_fetch_diamond_refuses_without_hf`; **30/30** env+pipeline tests green
+4. STATUS remains IN_PROGRESS (never READY from offline / preflight)
+
+### Metrics delta
+| Metric | Before (Tick 273) | After (Tick 274) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron auto-live gate | `fetch_diamond_ok` | unchanged |
+| Pipeline `--live --fetch-diamond` | fail inside HF materialize | **refuse exit 4 if `fetch_diamond_ok=false`** |
+| Next-steps / `ready_for_live_pipeline` | keys-only "Secrets present" | **`fetch_diamond_ok`-aware** |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `bash scripts/icml_cron_entry.sh` (chicken-egg: lineage scan in AGENTS.md, then `git show <tip>:scripts/icml_cron_entry.sh | bash -s --`). Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-30T06:20Z — Tick 273 (automation cron)
 
 ### Status snapshot

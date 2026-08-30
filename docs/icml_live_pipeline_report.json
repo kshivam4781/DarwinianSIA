@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-30T06:18:16Z",
+  "timestamp": "2026-08-30T08:18:13Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -49,7 +49,8 @@
     "G3: nebius_key: NEBIUS_API_KEY missing",
     "G4: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
     "G4: anthropic_key: ANTHROPIC_API_KEY missing",
-    "G4: nebius_key: NEBIUS_API_KEY missing"
+    "G4: nebius_key: NEBIUS_API_KEY missing",
+    "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)"
   ],
   "notes": [],
   "g3_promising": null,

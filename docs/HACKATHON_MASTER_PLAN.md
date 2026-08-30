@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-30 (Section 21 ICML; Tick 273 cron HF/`fetch_diamond_ok` live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-30 (Section 21 ICML; Tick 274 pipeline `fetch_diamond_ok` gate + Next-steps HF honesty; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -839,7 +839,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML single cron entry (Tick 271) | **DONE** | `scripts/icml_cron_entry.sh` — tip recover + secrets gate + auto live or preflight; AGENTS.md / HUMAN_UNBLOCK prefer this one command |
 | ICML lineage chicken-egg tip pick (Tick 272) | **DONE** | `scripts/icml_pick_remote_tip.sh` + cron_entry `_pick_tip_ref`; stop committerdate-only tip pick; secrets `human_next` → cron entry |
 | ICML cron HF/`fetch_diamond_ok` live gate (Tick 273) | **DONE** | Cron auto/`--live` requires `fetch_diamond_ok` (API keys + HF); `cron_live_ok` in secrets status; prevents partial-secrets live launch |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–273: packages + tip guard + cron entry + lineage chicken-egg + HF live gate ready); next: `bash scripts/icml_cron_entry.sh` |
+| ICML pipeline HF/`fetch_diamond_ok` gate (Tick 274) | **DONE** | `run_icml_live_pipeline.py --live --fetch-diamond` refuses without HF; preflight surfaces HF blocker; Next-steps / `ready_for_live_pipeline` track `fetch_diamond_ok` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–274: packages + tip guard + cron + lineage + HF gates ready); next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2176,3 +2177,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Lineage-aware chicken-egg tip pick (2026-08-30 Tick 272):** Date-only `for-each-ref | head -1` can select a newer greenfield main branch that lacks recover scripts. Added `scripts/icml_pick_remote_tip.sh` and hardened `icml_cron_entry.sh` / AGENTS.md / HUMAN_UNBLOCK to require tip blobs + highest Tick + secrets-first lineage. Also aligned `icml_secrets_status.json` `human_next` to the cron entry. No new Portal Save build; live still blocked on secrets.
 
 **Cron HF / `fetch_diamond_ok` live gate (2026-08-30 Tick 273):** Cron always launches `--fetch-diamond`, but Tick 271–272 gated auto-live on `secrets_ok_for_paid_sia` (Anthropic+Nebius only). Partial secrets would attempt live and fail diamond materialization. Cron now requires `fetch_diamond_ok` / `cron_live_ok` (API keys + HF). Structured secrets request re-filed for the human; no Portal Save build; STATUS remains IN_PROGRESS.
+
+**Pipeline HF / `fetch_diamond_ok` gate (2026-08-30 Tick 274):** Tick 273 gated cron only; `run_icml_live_pipeline.py --live --fetch-diamond` and Next-steps still treated Anthropic+Nebius as enough (`Secrets present`). Pipeline now refuses `--live --fetch-diamond` without HF (exit 4), preflight surfaces HF as a `ready_for_live` blocker, `ready_for_live_pipeline` tracks `fetch_diamond_ok`, and Next-steps distinguish partial keys vs full cron-live OK. 30/30 env+pipeline tests green; no Portal Save; STATUS remains IN_PROGRESS.

@@ -56,6 +56,7 @@ That recovers tip (lineage-aware via `icml_pick_remote_tip.sh` / boot recover), 
 and refreshes `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
 Without secrets it stops at preflight (no paid spend).
 **Tick 273:** auto-live also requires `HF_TOKEN` (`fetch_diamond_ok`) because the entry always passes `--fetch-diamond`.
+**Tick 274:** `run_icml_live_pipeline.py --live --fetch-diamond` itself refuses without HF; Next-steps no longer claim live-ready on Anthropic+Nebius alone.
 
 Machine-readable tip check: `docs/icml_tip_status.json` (pipeline refuses
 `--live` if local Tick lags remote tip / `ICML_PROGRESS` is missing).

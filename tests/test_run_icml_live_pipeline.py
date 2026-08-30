@@ -160,3 +160,50 @@ def test_live_refuses_over_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert called == []  # refused before G2
     text = (tmp_path / "docs" / "pipe.md").read_text(encoding="utf-8")
     assert "within ceiling | NO" in text or "exceeds ceiling" in text.lower() or "projected" in text
+
+
+def test_live_fetch_diamond_refuses_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 274: --live --fetch-diamond refuses on API keys without HF_TOKEN."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Tip OK so we reach the HF gate (not tip refuse).
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-08-30 — Tick 274 (test)\n", encoding="utf-8"
+    )
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("g2")
+        return 0
+
+    monkeypatch.setattr(pipe.g2, "main", boom)
+    # Avoid real diamond materialize.
+    monkeypatch.setattr(
+        pipe,
+        "_fetch_diamond",
+        lambda **_k: (_ for _ in ()).throw(AssertionError("must not fetch")),
+    )
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
