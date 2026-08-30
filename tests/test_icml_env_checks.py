@@ -220,10 +220,11 @@ def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_live_pipeline_next_steps_secrets_first() -> None:
     blocked = live_pipeline_next_steps(secrets_ok=False)
     assert "ANTHROPIC_API_KEY" in blocked[0]
+    assert "icml_cron_entry.sh" in blocked[1]
     assert "optional" in blocked[2].lower()
     ready = live_pipeline_next_steps(secrets_ok=True)
     assert "Secrets present" in ready[0]
-    assert "--live" in ready[1]
+    assert "icml_cron_entry.sh" in ready[1]
 
 
 def test_live_pipeline_next_steps_tip_before_secrets() -> None:
@@ -232,8 +233,7 @@ def test_live_pipeline_next_steps_tip_before_secrets() -> None:
         tip_ok=False,
         tip_ref="origin/cursor/icml-epistemic-results-de52",
     )
-    assert "icml_recover_tip" in steps[0]
-    assert "icml_boot_recover.sh" in steps[0]
+    assert "icml_cron_entry.sh" in steps[0]
     assert "ANTHROPIC_API_KEY" in steps[1]
 
 
@@ -256,6 +256,27 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
     )
     assert proc.returncode == 0
     assert "icml_boot_recover" in (proc.stdout + proc.stderr)
+
+
+def test_icml_cron_entry_script_exists_and_help() -> None:
+    """Tick 271: single recover→live/preflight cron entry."""
+    script = REPO / "scripts" / "icml_cron_entry.sh"
+    assert script.is_file()
+    text = script.read_text(encoding="utf-8")
+    assert "Tick 271" in text
+    assert "icml_boot_recover" in text
+    assert "run_icml_live_pipeline" in text
+    import subprocess
+
+    proc = subprocess.run(
+        ["bash", str(script), "--help"],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    assert "icml_cron_entry" in (proc.stdout + proc.stderr)
 
 
 def test_parse_latest_icml_tick_prefers_top_heading() -> None:

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-30 (Section 21 ICML; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-30 (Section 21 ICML; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -836,7 +836,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML secrets-first gate (Tick 268) | **DONE** | `write_icml_secrets_status` → `docs/icml_secrets_status.json`; `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional) |
 | ICML tip lineage recover (Tick 269) | **DONE** | `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; pipeline refuses `--live` when local Tick lags / progress missing |
 | ICML main-boot bash tip recover (Tick 270) | **DONE** | `scripts/icml_boot_recover.sh` + AGENTS.md ICML section — pure bash tip discover/apply when tip Python helpers absent on main |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–270: packages + tip guard + main-boot recover ready; live gate = secrets + diamond); then tip recover if needed + `run_icml_live_pipeline.py --live --fetch-diamond` |
+| ICML single cron entry (Tick 271) | **DONE** | `scripts/icml_cron_entry.sh` — tip recover + secrets gate + auto live or preflight; AGENTS.md / HUMAN_UNBLOCK prefer this one command |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys + HF `Idavidrein/gpqa` accept (Tick 268–271: packages + tip guard + cron entry ready; live gate = secrets + diamond); next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2167,3 +2168,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Tip lineage recover + refuse stale `--live` (2026-08-29 Tick 269):** Cron often boots from `main` without ICML docs. Added `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; `run_icml_live_pipeline.py --live` exits 3 when local Tick lags / `ICML_PROGRESS` missing (unless `--allow-stale-tip`). Prevents burning the ~$20 budget on pre-CABS code when secrets finally appear.
 
 **Main-boot bash tip recover (2026-08-30 Tick 270):** Added pure-bash `scripts/icml_boot_recover.sh` (file-based lineage scoring; avoids `pipefail`+`grep -q` SIGPIPE) + AGENTS.md ICML cron section. Chicken-egg from main: `git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply`. No new Portal Save build.
+
+**Single cron entry (2026-08-30 Tick 271):** Added `scripts/icml_cron_entry.sh` — recovers tip (chicken-egg safe), writes tip/secrets status, then auto-runs `run_icml_live_pipeline.py --live --fetch-diamond` when secrets present else preflight-only. AGENTS.md + `ICML_HUMAN_UNBLOCK.md` + pipeline Next prefer this one command so the next secrets-injected cron finishes G2→G4 without multi-step diagnosis. No new Portal Save build.

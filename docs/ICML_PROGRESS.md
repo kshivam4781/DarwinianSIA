@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T02:25Z — Tick 271 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-a271` (fast-forwarded Ticks 1–270 from `5b50`, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (SYSTEM boot `9e876ef2`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-5b50` (Tick 270); local Tick **270** → **271**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Tick 270 made tip recover chicken-egg-safe, but agents still needed a multi-step path (recover → diagnose → maybe live). Highest leverage without secrets: **single cron entry** that recovers tip, gates on secrets, and auto-runs live when keys appear (else preflight only).
+
+### What this tick did (ONE step)
+**Single ICML cron entry (no API spend; no Portal Save):**
+1. Fast-forwarded ← `origin/cursor/icml-epistemic-results-5b50` (Tick 270 tip) via bash boot recover
+2. Added `scripts/icml_cron_entry.sh` (`--preflight-only` / `--live` / auto); updated AGENTS.md, `ICML_HUMAN_UNBLOCK.md`, `live_pipeline_next_steps`; env-check tests green
+3. Verified entry on tip tree: tip_ok=yes, secrets_ok=no → preflight only; STATUS remains IN_PROGRESS
+4. Re-requested secrets + HF accept
+
+### Metrics delta
+| Metric | Before (Tick 270) | After (Tick 271) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron path after secrets | recover + separate live cmd | **`bash scripts/icml_cron_entry.sh`** (auto live) |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: `bash scripts/icml_cron_entry.sh` (chicken-egg: `git show <tip>:scripts/icml_cron_entry.sh | bash -s --`). Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-30T00:15Z — Tick 270 (automation cron)
 
 ### Status snapshot

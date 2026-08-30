@@ -275,9 +275,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 268 secrets-first human unblock — `docs/icml_secrets_status.json` + `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional; no new AGENT build)
 - [x] Tick 269 tip lineage recovery — `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; live pipeline refuses `--live` on stale/main trees (cron often boots without ICML docs)
 - [x] Tick 270 main-boot bash tip recover — `scripts/icml_boot_recover.sh` + AGENTS.md ICML section; chicken-egg `git show <tip>:…/icml_boot_recover.sh | bash -s -- --apply`
+- [x] Tick 271 single cron entry — `scripts/icml_cron_entry.sh` tip recover + secrets gate + auto live/preflight; AGENTS.md / HUMAN_UNBLOCK prefer one command
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
-- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover**; live GPQA still pending (**API keys** + HF token / gpqa accept; Portal Save optional for warm boots)
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry**; live GPQA still pending (**API keys** + HF token / gpqa accept; Portal Save optional for warm boots)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
@@ -300,6 +301,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear; **Tick 268** secrets-first Next + `docs/icml_secrets_status.json`; **Tick 269** tip lineage guard + `docs/icml_tip_status.json`)
 - Human unblock: `docs/ICML_HUMAN_UNBLOCK.md` (Tick 268)
 - Tip recover: `scripts/icml_recover_tip.py` (Tick 269) + `scripts/icml_boot_recover.sh` (Tick 270 main-boot / chicken-egg)
+- Single cron entry: `scripts/icml_cron_entry.sh` (Tick 271 — recover tip → live or preflight)
 - Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed; Tick 268–269 did **not** re-trigger) + **Astral uv + runtime-deps bootstrap in G2/G3/G4**; pointer `docs/icml_portal_save_target.json`
 - Per-run venv / runtime deps / secrets / tip gate: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266; `write_icml_secrets_status` Tick 268; `write_icml_tip_status` Tick 269; Tick 32/34 SystemExit-safe probe)
 
@@ -307,9 +309,9 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 
 | Gate | Status |
 |------|--------|
-| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 32 per_run_venv / uv + Tick 34 SystemExit-safe probe + Tick 265 Astral bootstrap + Tick 266 runtime-deps + Tick 267 secrets-only verify + Tick 268 secrets status + Tick 269 tip lineage + Tick 270 bash boot recover) |
+| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 32 per_run_venv / uv + Tick 34 SystemExit-safe probe + Tick 265 Astral bootstrap + Tick 266 runtime-deps + Tick 267 secrets-only verify + Tick 268 secrets status + Tick 269 tip lineage + Tick 270 bash boot recover + Tick 271 cron entry) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32/34/265/266/267/268/269); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
+| G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32/34/265/266/267/268/269/271); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |

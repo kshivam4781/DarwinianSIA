@@ -13,22 +13,23 @@ That document is the single source of truth for CABS architecture, APIs, hardwar
 Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*` or live runners.
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
-2. If `docs/ICML_PROGRESS.md` is **missing** (main boot), recover the tip **before** any paid run:
+2. Run the **single cron entry** (Tick 271) — tip recover + secrets gate + live or preflight:
 
 ```bash
 # Preferred once tip tree exists:
-python3 scripts/icml_recover_tip.py --fetch --apply
+bash scripts/icml_cron_entry.sh
 
-# Pure bash (works even when Python tip helpers are absent — Tick 270):
+# Chicken-egg from main (entry script absent — Tick 270/271):
 git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
 TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
   'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
-git show "${TIP_REF}:scripts/icml_boot_recover.sh" | bash -s -- --apply
+git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 ```
 
-3. Then follow Section 21 + `docs/ICML_PROGRESS.md` / `docs/ICML_HUMAN_UNBLOCK.md`.
-4. Live stack (after secrets): `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`
-5. Never set READY from offline / preflight alone. Do not re-trigger Portal Save every tick.
+`icml_cron_entry.sh` recovers tip, writes `docs/icml_tip_status.json` + `docs/icml_secrets_status.json`, then either runs `run_icml_live_pipeline.py --live --fetch-diamond` (when secrets present) or preflight-only.
+
+3. Follow Section 21 + `docs/ICML_PROGRESS.md` / `docs/ICML_HUMAN_UNBLOCK.md` for diagnosis if entry exits without READY.
+4. Never set READY from offline / preflight alone. Do not re-trigger Portal Save every tick.
 
 ## Two-repo layout (this monorepo)
 

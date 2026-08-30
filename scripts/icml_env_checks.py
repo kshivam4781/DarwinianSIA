@@ -447,23 +447,24 @@ def live_pipeline_next_steps(
     tip_ok: bool | None = None,
     tip_ref: str | None = None,
 ) -> list[str]:
-    """Human-facing Next bullets — tip lineage + secrets first (Tick 268–269)."""
+    """Human-facing Next bullets — tip + secrets + single cron entry (Tick 268–271)."""
     steps: list[str] = []
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
         steps.append(
-            "Stale / missing ICML tip — recover before paid runs: "
-            f"`python3 scripts/icml_recover_tip.py --apply` "
+            "Stale / missing ICML tip — prefer single entry: "
+            "`bash scripts/icml_cron_entry.sh` (Tick 271; recovers tip then "
+            "live/preflight). Or: `python3 scripts/icml_recover_tip.py --apply` "
             f"(expected tip ≈ `{ref}`). Main boot without tip scripts: "
-            f"`git show {ref}:scripts/icml_boot_recover.sh | bash -s -- --apply`. "
+            f"`git show {ref}:scripts/icml_cron_entry.sh | bash -s --`. "
             "See `docs/icml_tip_status.json`."
         )
     if secrets_ok:
         steps.extend(
             [
-                "Secrets present — ensure real GPQA diamond "
-                "(`--fetch-diamond` or `--diamond-csv`), then:",
-                "`python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+                "Secrets present — preferred single entry:",
+                "`bash scripts/icml_cron_entry.sh` "
+                "(or `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`)",
                 "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
                 "for warmer boots only.",
                 "Do **not** set STATUS: READY from offline / preflight alone.",
@@ -475,8 +476,8 @@ def live_pipeline_next_steps(
             "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation "
             f"{_AUTOMATION_URL} (or linked env dashboard). "
             "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
-            "Budget-check, then: "
-            "`python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+            "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
+            "tip and runs live when secrets appear (else preflight only).",
             "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
             "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
             "Do **not** set STATUS: READY from offline / preflight alone.",

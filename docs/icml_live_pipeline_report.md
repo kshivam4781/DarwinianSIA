@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-29T22:17:47Z
+**Timestamp:** 2026-08-30T02:23:12Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -45,6 +45,6 @@ G3 promising: n/a (G3 not scored this run)
 ## Next
 
 1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.
-2. Budget-check, then: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`
+2. Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers tip and runs live when secrets appear (else preflight only).
 3. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
 4. Do **not** set STATUS: READY from offline / preflight alone.

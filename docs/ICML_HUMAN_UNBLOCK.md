@@ -29,22 +29,22 @@ Machine-readable presence check (no values): `docs/icml_secrets_status.json`
 
 ## After secrets land
 
-Next automation cron (or a manual agent) should:
+Next automation cron (or a manual agent) should run the **single entry** (Tick 271):
 
 ```bash
-# Cron often boots from main — recover tip first (Tick 269–270)
-python3 scripts/icml_recover_tip.py --fetch --apply
-# If that script is missing (main-only tree), use pure bash (Tick 270):
-#   git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
-#   TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
-#     'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
-#   git show "${TIP_REF}:scripts/icml_boot_recover.sh" | bash -s -- --apply
+# Preferred once tip tree exists:
+bash scripts/icml_cron_entry.sh
 
-python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
+# Chicken-egg from main (scripts absent):
+git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
+TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
+  'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 ```
 
-That chains G2 → G3 → G4 serially under the ~$20 budget ceiling and refreshes
-`docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
+That recovers tip, then chains G2 → G3 → G4 serially under the ~$20 budget ceiling
+and refreshes `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
+Without secrets it stops at preflight (no paid spend).
 
 Machine-readable tip check: `docs/icml_tip_status.json` (pipeline refuses
 `--live` if local Tick lags remote tip / `ICML_PROGRESS` is missing).
