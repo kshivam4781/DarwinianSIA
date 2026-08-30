@@ -233,7 +233,29 @@ def test_live_pipeline_next_steps_tip_before_secrets() -> None:
         tip_ref="origin/cursor/icml-epistemic-results-de52",
     )
     assert "icml_recover_tip" in steps[0]
+    assert "icml_boot_recover.sh" in steps[0]
     assert "ANTHROPIC_API_KEY" in steps[1]
+
+
+def test_icml_boot_recover_script_exists_and_help() -> None:
+    """Tick 270: pure-bash tip recover for main-only cron boots."""
+    script = REPO / "scripts" / "icml_boot_recover.sh"
+    assert script.is_file()
+    text = script.read_text(encoding="utf-8")
+    assert "Tick 270" in text
+    assert "--apply" in text
+    # Help exits 0 without needing remotes.
+    import subprocess
+
+    proc = subprocess.run(
+        ["bash", str(script), "--help"],
+        cwd=str(REPO),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0
+    assert "icml_boot_recover" in (proc.stdout + proc.stderr)
 
 
 def test_parse_latest_icml_tick_prefers_top_heading() -> None:

@@ -1,4 +1,4 @@
-# Agent guide — SIA-CABS hackathon
+# Agent guide — SIA-CABS / DarwinianSIA
 
 ## Start here (required)
 
@@ -6,40 +6,48 @@ Before planning, coding, or running commands, read:
 
 **[`docs/HACKATHON_MASTER_PLAN.md`](docs/HACKATHON_MASTER_PLAN.md)**
 
-That document is the single source of truth for CABS architecture, APIs, hardware, blockers, phases, budgets, and run commands. Section 18–19 cover the **split-repo strategy** and merge contracts with Darwinian. **Section 20** is the full CABS + Darwinian merge implementation plan (file-level tasks, phases, testing, demo).
+That document is the single source of truth for CABS architecture, APIs, hardware, blockers, phases, budgets, and run commands. **Section 21** is the ICML Thesis 1 epistemic-evolution protocol (persistent agent). Sections 18–20 cover Darwinian merge contracts.
 
-## Two-repo split (do not mix scope)
+## ICML persistent agent (cron / cloud)
 
-| Repo | Path | Build |
+Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*` or live runners.
+
+1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
+2. If `docs/ICML_PROGRESS.md` is **missing** (main boot), recover the tip **before** any paid run:
+
+```bash
+# Preferred once tip tree exists:
+python3 scripts/icml_recover_tip.py --fetch --apply
+
+# Pure bash (works even when Python tip helpers are absent — Tick 270):
+git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
+TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
+  'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+git show "${TIP_REF}:scripts/icml_boot_recover.sh" | bash -s -- --apply
+```
+
+3. Then follow Section 21 + `docs/ICML_PROGRESS.md` / `docs/ICML_HUMAN_UNBLOCK.md`.
+4. Live stack (after secrets): `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`
+5. Never set READY from offline / preflight alone. Do not re-trigger Portal Save every tick.
+
+## Two-repo layout (this monorepo)
+
+| Area | Path | Build |
 |------|------|-------|
-| **SIA2 (this repo)** | `c:\Users\MSPSA\Documents\SIA2` | CABS, Tavily, committee |
-| **Darwinian** | `c:\Users\MSPSA\Documents\SIA` | Population evolution, DNA, `civilization.json` |
-
-Work in parallel; merge in Phase 7 per **Section 20**. Do not implement Darwinian loop code here unless the user explicitly asks (SIA2 owns CABS-side merge: analyze, cross-agent contradictions, civilization ingest).
+| **CABS** | `cabs/`, `sia_cabs/` | Beliefs, contradictions, Tavily, committee |
+| **Darwinian** | `SIA/` | Population evolution, DNA, `civilization.json` |
 
 ## Quick rules
 
-1. **Phase order is mandatory:** 0 → 1 → 2 → 3. Never skip Phase 0 gates.
-2. **Money:** Do not run GPQA/LawBench without checking API keys and budget (Section 8). Never run full LawBench without user approval. Split budget ~60% SIA2 / ~40% SIA.
-3. **Hardware:** Local GPU is unused. Inference goes through Nebius API; orchestration runs on CPU.
-4. **Windows:** Windows venv fix is applied in `sia-upstream/sia/layout.py`.
-5. **Run IDs:** Must be **integers** (`901`, `902`, `903`, …). SIA will not overwrite runs.
-6. **Scope:** No weights/RL mode, no OpenClaw migration, no Darwinian in this repo.
-7. **Status:** After work, update Section 12 in `docs/HACKATHON_MASTER_PLAN.md`.
+1. **Phase order is mandatory:** 0 → 1 → 2 → 3 (hackathon). ICML: G0 → G5 per Section 21.5.
+2. **Money:** Do not run GPQA/LawBench without checking API keys and budget (Section 8 / 21.6). Never run full LawBench without user approval. ~$20 ICML ceiling unless docs raise it.
+3. **Hardware:** Local GPU unused. Inference via Nebius API; orchestration on CPU.
+4. **Run IDs:** Must be **integers**; never overwrite existing runs.
+5. **Scope:** No `--focus weights` / RL mode. Prefer `--no-web` for long runs. No parallel full GPQA jobs.
+6. **Status:** After work, update Section 12 + `docs/ICML_PROGRESS.md` + `docs/ICML_READY.md`.
 
 ## Project summary
 
-- **What:** SIA-CABS — Contradiction-Aware Belief System (Layer 1 of unified stack)
-- **Track:** Track 3 (Novel Self-Improvement Methodology)
-- **CLI:** `sia-cabs` (CABS enabled), `sia` (baseline), `sia-cabs-tools` (analyze/agenda)
-- **Workspace:** `c:\Users\MSPSA\Documents\SIA2`
-- **Python:** 3.13 in `.venv` (`py -3.13`)
-
-## Current status (2026-06-06)
-
-- Phase 0 **complete** — smoke runs `run_901` / `run_902`
-- **Next:** Phase 1 — structured beliefs, 3-gen validation (`run_id 903`)
-
-## Sibling repo pointer
-
-Darwinian work: `c:\Users\MSPSA\Documents\SIA` → read `SIA/docs/HACKATHON_FINISH_LINE.md` for submission sprint.
+- **What:** SIA-CABS — Contradiction-Aware Belief System + Darwinian epistemic steering (Condition D)
+- **Winning thesis:** Belief → Contradiction → Research question → Biased mutation / scoped feedback → Better sample efficiency than fitness-only Darwinian
+- **CLI:** `sia` / `sia-cabs` / `sia-cabs-tools`; live: `scripts/run_icml_live_pipeline.py`

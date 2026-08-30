@@ -4,6 +4,39 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T00:15Z — Tick 270 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-5b50` (fast-forwarded Ticks 1–269 from `8e78`, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (SYSTEM boot `9e876ef2`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-8e78` (Tick 269); local Tick **269** → **270**
+- API keys in cloud env: **absent** (secrets + HF gpqa accept re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Tick 269 added Python tip recover, but cron still boots from **main** where that script is absent — agents had to `git show` tip blobs or hard-reset by memory. Highest leverage without secrets: **pure-bash main-boot tip recover** + AGENTS.md ICML section so chicken-egg boots can apply tip without tip Python.
+
+### What this tick did (ONE step)
+**Main-boot bash tip recover (no API spend; no Portal Save):**
+1. Fast-forwarded ← `origin/cursor/icml-epistemic-results-8e78` (Tick 269 tip)
+2. Added `scripts/icml_boot_recover.sh` (pure bash; file-based lineage grep avoids `pipefail`+`grep -q` SIGPIPE false negatives); updated `AGENTS.md` with ICML cron recover path; `recover_command` / Next steps mention bash fallback; `ICML_HUMAN_UNBLOCK.md` + env-check tests (**17/17** green)
+3. Verified main worktree: missing progress → `--apply` resets to tip Tick 269; lineage_score **5**
+4. Re-requested secrets + HF accept; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 269) | After (Tick 270) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Main-boot tip recover | Python script only (absent on main) | **`icml_boot_recover.sh`** + AGENTS.md chicken-egg recipe |
+| Live PRIMARY / G2 | Blocked on secrets | Still blocked on **secrets** (+ HF accept) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN` per `docs/ICML_HUMAN_UNBLOCK.md`, accept HF `Idavidrein/gpqa`. Next agent tick: recover tip (`python3 scripts/icml_recover_tip.py --apply` or bash boot script) then `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-29T22:14Z — Tick 269 (automation cron)
 
 ### Status snapshot

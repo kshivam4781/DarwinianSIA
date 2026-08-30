@@ -111,7 +111,11 @@ def main(argv: list[str] | None = None) -> int:
         for b in status.get("blockers") or []:
             print(f"  BLOCK: {b}")
         if tip_ref and not tip_ok:
-            print(f"Recover: python scripts/icml_recover_tip.py --apply")
+            print("Recover: python3 scripts/icml_recover_tip.py --apply")
+            print(
+                "  (main boot: git show "
+                f"{tip_ref}:scripts/icml_boot_recover.sh | bash -s -- --apply)"
+            )
             print(f"  (or: git reset --hard {tip_ref})")
 
     if not args.apply:

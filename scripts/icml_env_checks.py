@@ -453,15 +453,17 @@ def live_pipeline_next_steps(
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
         steps.append(
             "Stale / missing ICML tip — recover before paid runs: "
-            f"`python scripts/icml_recover_tip.py --apply` "
-            f"(expected tip ≈ `{ref}`). See `docs/icml_tip_status.json`."
+            f"`python3 scripts/icml_recover_tip.py --apply` "
+            f"(expected tip ≈ `{ref}`). Main boot without tip scripts: "
+            f"`git show {ref}:scripts/icml_boot_recover.sh | bash -s -- --apply`. "
+            "See `docs/icml_tip_status.json`."
         )
     if secrets_ok:
         steps.extend(
             [
                 "Secrets present — ensure real GPQA diamond "
                 "(`--fetch-diamond` or `--diamond-csv`), then:",
-                "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+                "`python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
                 "Portal Save (`docs/icml_portal_save_target.json`) remains optional "
                 "for warmer boots only.",
                 "Do **not** set STATUS: READY from offline / preflight alone.",
@@ -474,7 +476,7 @@ def live_pipeline_next_steps(
             f"{_AUTOMATION_URL} (or linked env dashboard). "
             "Accept HF `Idavidrein/gpqa`. See `docs/ICML_HUMAN_UNBLOCK.md`.",
             "Budget-check, then: "
-            "`python scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
+            "`python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`",
             "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
             "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
             "Do **not** set STATUS: READY from offline / preflight alone.",
@@ -662,8 +664,9 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269: tip lineage guard — cron often boots from main; "
-            "refuse --live on stale trees; recover via scripts/icml_recover_tip.py"
+            "Tick 269–270: tip lineage guard — cron often boots from main; "
+            "refuse --live on stale trees; recover via "
+            "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -672,7 +675,11 @@ def collect_icml_tip_status(
         "remote_tip_lineage_score": tip["lineage_score"] if tip else None,
         "tip_ok_for_live": tip_ok,
         "blockers": blockers,
-        "recover_command": "python scripts/icml_recover_tip.py --apply",
+        "recover_command": (
+            "python3 scripts/icml_recover_tip.py --apply "
+            "(main boot / no tip scripts: "
+            "git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply)"
+        ),
         "candidates_scanned": len(candidates),
         "top_candidates": [
             {

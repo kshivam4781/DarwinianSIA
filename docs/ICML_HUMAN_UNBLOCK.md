@@ -32,10 +32,15 @@ Machine-readable presence check (no values): `docs/icml_secrets_status.json`
 Next automation cron (or a manual agent) should:
 
 ```bash
-# Cron often boots from main — recover tip first (Tick 269)
-python scripts/icml_recover_tip.py --apply
+# Cron often boots from main — recover tip first (Tick 269–270)
+python3 scripts/icml_recover_tip.py --fetch --apply
+# If that script is missing (main-only tree), use pure bash (Tick 270):
+#   git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
+#   TIP_REF=$(git for-each-ref --format='%(refname)' --sort=-committerdate \
+#     'refs/remotes/origin/cursor/icml-epistemic-results-*' | head -1)
+#   git show "${TIP_REF}:scripts/icml_boot_recover.sh" | bash -s -- --apply
 
-python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
 ```
 
 That chains G2 → G3 → G4 serially under the ~$20 budget ceiling and refreshes
