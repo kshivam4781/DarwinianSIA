@@ -309,16 +309,17 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - Human unblock: `docs/ICML_HUMAN_UNBLOCK.md` (Tick 268)
 - Tip recover: `scripts/icml_recover_tip.py` (Tick 269) + `scripts/icml_boot_recover.sh` (Tick 270 main-boot / chicken-egg)
 - Single cron entry: `scripts/icml_cron_entry.sh` (Tick 271 — recover tip → live or preflight; **Tick 272** lineage-aware chicken-egg via `scripts/icml_pick_remote_tip.sh`; **Tick 273** auto-live requires `fetch_diamond_ok` / HF; **Tick 274** pipeline mirrors HF gate; **Tick 275** G2/G3/G4 runners mirror HF gate; **Tick 276** preflight also passes `--fetch-diamond`; **Tick 277** `.env` load + local CSV → `--diamond-csv`; **Tick 278** runners autowire the same CSV under `--fetch-diamond`)
-- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed; Tick 268–279 did **not** re-trigger) + **Astral uv + runtime-deps bootstrap in G2/G3/G4**; pointer `docs/icml_portal_save_target.json`
-- Per-run venv / runtime deps / secrets / tip gate: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266/**279–280 uv-first + user-site target**; `write_icml_secrets_status` Tick 268/272/273/274/275/276 `cron_live_ok` + `ready_for_live_pipeline←fetch_diamond_ok`; `write_icml_tip_status` Tick 269; Tick 32/34 SystemExit-safe probe; Tick 278 `autowire_diamond_csv`)
+- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed; Tick 268–281 did **not** re-trigger) + **Astral uv + runtime-deps bootstrap in G2/G3/G4**; pointer `docs/icml_portal_save_target.json`
+- Per-run venv / runtime deps / secrets / tip gate: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266/**279–281 uv-first + user-site target + PYTHONPATH**; `write_icml_secrets_status` Tick 268/272/273/274/275/276 `cron_live_ok` + `ready_for_live_pipeline←fetch_diamond_ok`; `write_icml_tip_status` Tick 269; Tick 32/34 SystemExit-safe probe; Tick 278 `autowire_diamond_csv`)
 - [x] Tick 279 uv-first runtime package bootstrap — `_pip_install_user` prefers `uv pip install --python <sys.executable>` before `pip --user` (pip-less / `uv run` envs no longer false-fail `runtime_deps`)
 - [x] Tick 280 uv pip `--target` user site — `_uv_pip_install` installs into user site-packages (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps`
+- [x] Tick 281 user-site on PYTHONPATH — `_expose_user_site_on_pythonpath` so Tick 280 `--target` packages survive `PYTHONNOUSERSITE` / venv children (latent `--fetch-diamond` fix)
 
 ## Gate tracker (Section 21.5)
 
 | Gate | Status |
 |------|--------|
-| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–280 env/secrets/tip/CSV/uv-pip stack) |
+| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | **PREFLIGHT READY** (Tick 24/25 + Tick 32/34/265/266/267/268/269/271/272/273/274/275/276); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |

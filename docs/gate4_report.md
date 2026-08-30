@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-08-30T20:05:06Z
+**Timestamp:** 2026-08-30T22:05:59Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -19,7 +19,7 @@
 | `sequential_only` | yes | 5 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 5 seeds (G4 full multi-seed shape) |
 | `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
-| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
 
 ### Planned seed pairs
 

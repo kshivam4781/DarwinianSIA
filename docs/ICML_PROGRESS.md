@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T22:05Z — Tick 281 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-1179` (recovered ← `d511` Tick 280, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-d511` (Tick 280); local Tick **280** → **281**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, Tick 280's `uv pip --target <user_site>` only refreshed parent `sys.path`. Under `PYTHONNOUSERSITE=1` (or venvs that disable user site), a child inheriting `env=os.environ.copy()` cannot import `huggingface_hub` from that target — latent `--fetch-diamond` materialize failure once secrets land. Highest leverage without paid keys: **expose user site on PYTHONPATH**.
+
+### What this tick did (ONE step)
+**Runtime deps: `_expose_user_site_on_pythonpath` (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `d511`; confirmed secrets absent → preflight only
+2. `_expose_user_site_on_pythonpath` prepends user site onto `PYTHONPATH` + `sys.path` (mirrors `ensure_sia_on_pythonpath`)
+3. Called from `_uv_pip_install` and end of `ensure_icml_runtime_deps`
+4. Live smoke: `PYTHONNOUSERSITE=1` child imports `huggingface_hub` when PYTHONPATH carries user site
+5. Unit test `test_expose_user_site_on_pythonpath_survives_nousersite`; focused env/pipeline/G2–G4 tests: **70/70** green
+6. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 280) | After (Tick 281) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| `--target` pkgs under `PYTHONNOUSERSITE` | Import fails (sys.path-only) | **PYTHONPATH expose → import OK** |
+| Focused ICML tests | 69/69 | **70/70** (+ nousersite expose test) |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-30T20:05Z — Tick 280 (automation cron)
 
 ### Status snapshot

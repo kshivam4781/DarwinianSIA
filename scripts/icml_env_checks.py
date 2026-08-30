@@ -35,6 +35,14 @@ fails → ``runtime_deps`` clears. ``_uv_pip_install`` now uses ``--target``
 into the user site-packages (pip ``--user`` equivalent) and refreshes
 ``sys.path``.
 
+Tick 281: Tick 280 only patched the parent ``sys.path``. Under
+``PYTHONNOUSERSITE=1`` or venvs that disable user site, child processes
+(and a fresh interpreter) cannot import ``huggingface_hub`` from the
+``--target`` dir → ``--fetch-diamond`` materialize fails after secrets land.
+``_expose_user_site_on_pythonpath`` mirrors ``ensure_sia_on_pythonpath``:
+prepend the user site onto ``PYTHONPATH`` (and ``sys.path``) so G2/G3/G4
+subprocesses inherit bootstrapped runtime deps.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -262,6 +270,32 @@ def _ensure_path_entry(entry: str) -> None:
         sys.path.insert(0, entry)
 
 
+def _expose_user_site_on_pythonpath(user_site: Path | str | None = None) -> str:
+    """Expose user site-packages on ``sys.path`` *and* ``PYTHONPATH`` (Tick 281).
+
+    ``uv pip --target <user_site>`` (Tick 280) writes packages where a normal
+    host Python finds them via ``site.ENABLE_USER_SITE``. Child processes that
+    set ``PYTHONNOUSERSITE=1`` (or run inside a venv that disables user site)
+    do **not** see that directory unless it is also on ``PYTHONPATH``. G2/G3/G4
+    launch ``sia`` with ``env=os.environ.copy()``, so mutating ``PYTHONPATH``
+    here keeps ``huggingface_hub`` importable for diamond materialize / helpers
+    after secrets land.
+    """
+    target = Path(user_site) if user_site is not None else _user_site_packages()
+    entry = str(target)
+    if not entry:
+        return entry
+    _ensure_path_entry(entry)
+    existing = os.environ.get("PYTHONPATH", "")
+    parts = [p for p in existing.split(os.pathsep) if p]
+    if entry in parts:
+        parts = [entry, *[p for p in parts if p != entry]]
+    else:
+        parts = [entry, *parts]
+    os.environ["PYTHONPATH"] = os.pathsep.join(parts)
+    return entry
+
+
 def _uv_pip_install(*packages: str) -> tuple[bool, str]:
     """Install packages via ``uv pip`` into the *user* site (no sudo).
 
@@ -270,6 +304,9 @@ def _uv_pip_install(*packages: str) -> tuple[bool, str]:
     pip-less interpreters the pip ``--user`` fallback is also unavailable.
     ``--target <user_site>`` mirrors ``pip install --user`` into a writable
     location and keeps huggingface_hub bootstrap working without Portal Save.
+
+    Tick 281: also expose that target on ``PYTHONPATH`` (not only ``sys.path``)
+    so PYTHONNOUSERSITE / venv children inherit the install.
     """
     if not packages:
         return True, "no packages requested"
@@ -314,7 +351,7 @@ def _uv_pip_install(*packages: str) -> tuple[bool, str]:
             f"uv pip install exit {proc.returncode} for {', '.join(packages)}: "
             f"{err[:400] or 'no output'}",
         )
-    _ensure_path_entry(str(target))
+    _expose_user_site_on_pythonpath(target)
     return True, f"uv pip installed {', '.join(packages)} into {target}"
 
 
@@ -404,6 +441,8 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
     1. ``ensure_uv_on_path`` (per-run venvs)
     2. ``ensure_sia_on_pythonpath`` (``python -m sia`` from repo root)
     3. ``huggingface_hub`` for ``--fetch-diamond`` / HF gpqa materialization
+    4. Tick 281: expose user site on ``PYTHONPATH`` so PYTHONNOUSERSITE /
+       venv children still import ``--target`` bootstrapped packages
 
     Returns ``(ok, detail)``. When ``allow_install`` is False, missing pip
     packages are reported as failures without attempting install.
@@ -435,15 +474,7 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
         still = [p for p in missing if not _module_importable(p)]
         if still:
             # User-site may need a path refresh in this process.
-            user_site = None
-            try:
-                import site
-
-                user_site = site.getusersitepackages()
-            except Exception:
-                user_site = None
-            if user_site and user_site not in sys.path:
-                sys.path.append(user_site)
+            _expose_user_site_on_pythonpath()
             still = [p for p in missing if not _module_importable(p)]
             if still:
                 return (
@@ -453,6 +484,12 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
         notes.append(f"bootstrapped {', '.join(missing)}")
     else:
         notes.append("huggingface_hub already importable")
+
+    # Tick 281: always publish user site on PYTHONPATH (even when packages were
+    # already importable via ENABLE_USER_SITE) so child env copies inherit them.
+    exposed = _expose_user_site_on_pythonpath()
+    if exposed:
+        notes.append(f"user site on PYTHONPATH ({exposed})")
 
     return True, "; ".join(notes)
 

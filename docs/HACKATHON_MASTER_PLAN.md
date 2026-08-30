@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-30 (Section 21 ICML; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-30 (Section 21 ICML; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -846,7 +846,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML runner CSV autowire (Tick 278) | **DONE** | `autowire_diamond_csv` in G2/G3/G4/pipeline — `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path) |
 | ICML uv-first runtime package bootstrap (Tick 279) | **DONE** | `_pip_install_user` prefers `uv pip install --python <sys.executable>` before `pip --user`; fixes pip-less/`uv run` false `runtime_deps` fail |
 | ICML uv pip user-site target (Tick 280) | **DONE** | `_uv_pip_install` uses `--target <user_site>` (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps` without Portal Save |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–280 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML user-site on PYTHONPATH (Tick 281) | **DONE** | `_expose_user_site_on_pythonpath` — Tick 280 `--target` installs survive `PYTHONNOUSERSITE` / venv children via `PYTHONPATH` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–281 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2195,3 +2196,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Uv-first runtime package bootstrap (2026-08-30 Tick 279):** `_pip_install_user` / `ensure_icml_runtime_deps` preferred only `python -m pip install --user`. Astral ephemeral / pip-less interpreters (no `pip` module) falsely failed `runtime_deps` and cleared `ready_for_live` even with uv on PATH. Bootstrap now tries `uv pip install --python <sys.executable>` first, then pip `--user`. 68/68 focused tests green; secrets setup actions re-filed; no Portal Save; STATUS remains IN_PROGRESS.
 
 **Uv pip `--target` user site (2026-08-30 Tick 280):** Tick 279's bare `uv pip install --python <sys.executable>` wrote into `/usr/local/lib/.../dist-packages` and failed with Permission denied on read-only system Pythons; on pip-less boots the pip `--user` fallback also fails → `runtime_deps` clears. `_uv_pip_install` now uses `--target <user_site>` (pip `--user` equivalent) and refreshes `sys.path`. Live smoke: `sniffio` installs into `~/.local/.../site-packages`. 69/69 focused tests green; secrets setup actions re-filed; no Portal Save; STATUS remains IN_PROGRESS.
+
+**User-site on PYTHONPATH (2026-08-30 Tick 281):** Tick 280 only patched parent `sys.path`. Under `PYTHONNOUSERSITE=1` (or venvs that disable user site), child processes could not import `--target`-installed `huggingface_hub` → latent `--fetch-diamond` fail after secrets land. `_expose_user_site_on_pythonpath` prepends user site onto `PYTHONPATH` + `sys.path` (called from `_uv_pip_install` and `ensure_icml_runtime_deps`). 70/70 focused tests green; secrets setup actions re-filed; no Portal Save; STATUS remains IN_PROGRESS.

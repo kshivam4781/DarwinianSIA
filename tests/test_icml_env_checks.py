@@ -214,6 +214,7 @@ def test_uv_pip_install_targets_user_site(monkeypatch: pytest.MonkeyPatch, tmp_p
         lambda: target,
     )
     monkeypatch.setattr("icml_env_checks.shutil.which", lambda _name: "/tmp/fake-uv")
+    monkeypatch.delenv("PYTHONPATH", raising=False)
 
     class _Proc:
         returncode = 0
@@ -240,6 +241,62 @@ def test_uv_pip_install_targets_user_site(monkeypatch: pytest.MonkeyPatch, tmp_p
     # Must not rely on bare system install (Permission denied on /usr/local).
     assert "--system" not in cmd
     assert str(target) in __import__("sys").path
+    # Tick 281: also on PYTHONPATH for PYTHONNOUSERSITE / venv children.
+    assert str(target) in (os.environ.get("PYTHONPATH") or "")
+
+
+def test_expose_user_site_on_pythonpath_survives_nousersite(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 281: user-site --target packages remain importable under PYTHONNOUSERSITE."""
+    import subprocess
+
+    from icml_env_checks import _expose_user_site_on_pythonpath
+
+    site = tmp_path / "site-packages"
+    pkg = site / "icml_tick281_probe"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("MARKER = 'tick281'\n", encoding="utf-8")
+
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    exposed = _expose_user_site_on_pythonpath(site)
+    assert exposed == str(site)
+    assert str(site) in (os.environ.get("PYTHONPATH") or "")
+
+    env = os.environ.copy()
+    env["PYTHONNOUSERSITE"] = "1"
+    # Drop any prior PYTHONPATH pollution except our exposed site.
+    env["PYTHONPATH"] = str(site)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import icml_tick281_probe; print(icml_tick281_probe.MARKER)",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "tick281"
+
+    # Without PYTHONPATH, PYTHONNOUSERSITE must fail (documents the Tick 280 gap).
+    env_fail = os.environ.copy()
+    env_fail["PYTHONNOUSERSITE"] = "1"
+    env_fail.pop("PYTHONPATH", None)
+    fail = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import icml_tick281_probe",
+        ],
+        env=env_fail,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert fail.returncode != 0
 
 
 def test_pip_install_user_falls_back_to_pip_when_uv_misses(

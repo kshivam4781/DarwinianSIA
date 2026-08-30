@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-30T20:05:06Z",
+  "timestamp": "2026-08-30T22:05:59Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -93,7 +93,7 @@
     {
       "name": "runtime_deps",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable"
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
     }
   ],
   "commands": [

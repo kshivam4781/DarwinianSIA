@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-30T20:05:06Z
+**Timestamp:** 2026-08-30T22:05:59Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -47,7 +47,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 1 seed(s) (G3 pilot shape) |
 | `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
-| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
 
 ### Planned seed pairs
 
