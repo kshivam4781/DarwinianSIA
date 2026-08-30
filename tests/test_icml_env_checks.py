@@ -204,6 +204,44 @@ def test_pip_install_user_prefers_uv_pip(monkeypatch: pytest.MonkeyPatch) -> Non
     assert "uv pip installed huggingface_hub" in detail
 
 
+def test_uv_pip_install_targets_user_site(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """Tick 280: uv pip uses --target user site (not read-only system dist-packages)."""
+    from icml_env_checks import _uv_pip_install
+
+    target = tmp_path / "site-packages"
+    monkeypatch.setattr(
+        "icml_env_checks._user_site_packages",
+        lambda: target,
+    )
+    monkeypatch.setattr("icml_env_checks.shutil.which", lambda _name: "/tmp/fake-uv")
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    calls: list[list[str]] = []
+
+    def _run(cmd, **_kwargs):
+        calls.append(list(cmd))
+        return _Proc()
+
+    monkeypatch.setattr("icml_env_checks.subprocess.run", _run)
+    ok, detail = _uv_pip_install("huggingface_hub")
+    assert ok is True
+    assert str(target) in detail
+    assert calls, "uv pip should be invoked"
+    cmd = calls[0]
+    assert cmd[0] == "/tmp/fake-uv"
+    assert cmd[1:3] == ["pip", "install"]
+    assert "--target" in cmd
+    assert str(target) in cmd
+    assert "huggingface_hub" in cmd
+    # Must not rely on bare system install (Permission denied on /usr/local).
+    assert "--system" not in cmd
+    assert str(target) in __import__("sys").path
+
+
 def test_pip_install_user_falls_back_to_pip_when_uv_misses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

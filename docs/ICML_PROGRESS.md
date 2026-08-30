@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-30T20:05Z — Tick 280 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-d511` (recovered ← `7aa5` Tick 279, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-7aa5` (Tick 279); local Tick **279** → **280**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, Tick 279's bare `uv pip install --python <sys.executable>` tried to write into `/usr/local/lib/python3.12/dist-packages` and failed with **Permission denied** on this read-only system Python; recovery only worked because `pip --user` was still available. On a pip-less + read-only system boot (the Astral/`uv run` case Tick 279 targeted), **both** paths fail → `runtime_deps` clears `ready_for_live`. Highest leverage without paid keys: **uv pip `--target` user site**.
+
+### What this tick did (ONE step)
+**Runtime deps: `uv pip install --target <user_site>` (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `7aa5`; confirmed secrets absent → preflight only
+2. `_user_site_packages` + `_uv_pip_install` uses `--target` into user site-packages (pip `--user` equivalent) and refreshes `sys.path`
+3. Live smoke: `sniffio` installs into `~/.local/lib/python3.12/site-packages` (no Permission denied)
+4. Unit test `test_uv_pip_install_targets_user_site`; focused env/pipeline/G2–G4 tests: **69/69** green
+5. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 279) | After (Tick 280) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| `uv pip` on read-only system Python | Permission denied → pip fallback | **`--target` user site succeeds** |
+| Focused ICML tests | 68/68 | **69/69** (+ user-site target test) |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
 ## 2026-08-30T18:10Z — Tick 279 (automation cron)
 
 ### Status snapshot

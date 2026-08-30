@@ -28,6 +28,13 @@ ephemeral envs often have no ``pip`` module; pip-only bootstrap falsely failed
 ``runtime_deps`` (and blocked ``ready_for_live`` / ``ready_for_dry_run``) even
 when uv was already on PATH.
 
+Tick 280: Bare ``uv pip install --python <system>`` tries to write into
+``/usr/local/lib/.../dist-packages`` and fails with Permission denied on
+read-only system Pythons. On pip-less boots the Tick 279 pip fallback also
+fails → ``runtime_deps`` clears. ``_uv_pip_install`` now uses ``--target``
+into the user site-packages (pip ``--user`` equivalent) and refreshes
+``sys.path``.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -235,20 +242,56 @@ def _module_importable(name: str) -> bool:
         return False
 
 
+def _user_site_packages() -> Path:
+    """Return a writable user site-packages dir (pip ``--user`` equivalent)."""
+    try:
+        import site
+
+        user_site = site.getusersitepackages()
+        if isinstance(user_site, str) and user_site:
+            return Path(user_site)
+    except Exception:
+        pass
+    major, minor = sys.version_info[:2]
+    return Path.home() / ".local" / "lib" / f"python{major}.{minor}" / "site-packages"
+
+
+def _ensure_path_entry(entry: str) -> None:
+    """Prepend ``entry`` onto ``sys.path`` when missing (post user-site install)."""
+    if entry and entry not in sys.path:
+        sys.path.insert(0, entry)
+
+
 def _uv_pip_install(*packages: str) -> tuple[bool, str]:
-    """Install packages into ``sys.executable`` via ``uv pip`` (no sudo)."""
+    """Install packages via ``uv pip`` into the *user* site (no sudo).
+
+    Tick 280: system Pythons are often read-only (``/usr/local/lib/...``). Bare
+    ``uv pip install --python <exe>`` then fails with Permission denied; on
+    pip-less interpreters the pip ``--user`` fallback is also unavailable.
+    ``--target <user_site>`` mirrors ``pip install --user`` into a writable
+    location and keeps huggingface_hub bootstrap working without Portal Save.
+    """
     if not packages:
         return True, "no packages requested"
     _prepend_local_bin_to_path()
     uv = shutil.which("uv")
     if not uv:
         return False, "uv not on PATH for package install"
+
+    target = _user_site_packages()
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return False, f"cannot create user site {target}: {exc}"
+
     cmd = [
         uv,
         "pip",
         "install",
         "--python",
         sys.executable,
+        "--target",
+        str(target),
         "-q",
         *packages,
     ]
@@ -271,15 +314,17 @@ def _uv_pip_install(*packages: str) -> tuple[bool, str]:
             f"uv pip install exit {proc.returncode} for {', '.join(packages)}: "
             f"{err[:400] or 'no output'}",
         )
-    return True, f"uv pip installed {', '.join(packages)} into {sys.executable}"
+    _ensure_path_entry(str(target))
+    return True, f"uv pip installed {', '.join(packages)} into {target}"
 
 
 def _pip_install_user(*packages: str) -> tuple[bool, str]:
-    """Install packages into the active interpreter (Tick 266 / 279).
+    """Install packages into the active interpreter (Tick 266 / 279 / 280).
 
-    Prefer ``uv pip install --python <sys.executable>`` when uv is available —
-    works on pip-less Astral ephemeral envs and Cursor images without ensurepip.
-    Fall back to ``python -m pip install --user``.
+    Prefer ``uv pip install --python <sys.executable> --target <user_site>``
+    when uv is available — works on pip-less Astral ephemeral envs and
+    read-only system Pythons (Tick 280). Fall back to ``python -m pip
+    install --user``.
     """
     if not packages:
         return True, "no packages requested"

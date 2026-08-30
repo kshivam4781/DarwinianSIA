@@ -68,7 +68,7 @@ git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 That recovers tip (lineage-aware via `icml_pick_remote_tip.sh` / boot recover), then chains G2 → G3 → G4 serially under the ~$20 budget ceiling
 and refreshes `docs/paper_artifacts.md` / `docs/ICML_READY.md` when criteria pass.
 Without secrets it stops at preflight (no paid spend).
-**Tick 273–279:** auto-live requires `fetch_diamond_ok` = API keys + (`HF_TOKEN` **or** local diamond CSV). Tick 278 also auto-wires that CSV inside G2/G3/G4/pipeline when `--fetch-diamond` is set (cron flag optional). Tick 279 prefers `uv pip install` for runtime deps on pip-less interpreters.
+**Tick 273–280:** auto-live requires `fetch_diamond_ok` = API keys + (`HF_TOKEN` **or** local diamond CSV). Tick 278 also auto-wires that CSV inside G2/G3/G4/pipeline when `--fetch-diamond` is set (cron flag optional). Tick 279 prefers `uv pip install` for runtime deps on pip-less interpreters. Tick 280 installs those packages into the **user site** (`uv pip --target`), so read-only system Pythons no longer Permission-deny `runtime_deps`.
 
 Machine-readable tip check: `docs/icml_tip_status.json` (pipeline refuses
 `--live` if local Tick lags remote tip / `ICML_PROGRESS` is missing).

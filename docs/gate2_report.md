@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-30T18:07:01Z
+**Timestamp:** 2026-08-30T20:05:06Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -37,6 +37,7 @@
 
 ## Notes
 
+- materialized synthetic GPQA smoke fixture under SIA/
 - diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 **G2 live status:** NOT RUN this tick
