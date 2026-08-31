@@ -41,7 +41,9 @@ def test_build_sia_command_b_vs_d() -> None:
     assert "--cabs" not in b
     assert "--cabs-inline" not in b
     assert "1201" in b
-    assert "--eval_subset" in b and "15" in b
+    # Tick 293: Nebius budget-fit defaults (eval_subset=10, not Anthropic-era 15)
+    assert "--eval_subset" in b and "10" in b
+    assert "--population_size" in b and "3" in b
     assert "--meta-agent-profile" in b
     assert "kimi-nebius-pydantic-meta" in b
     assert "--target-agent-profile" in b

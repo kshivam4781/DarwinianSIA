@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """ICML Gate G3 — sequential Condition B vs D pilot runner.
 
-Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``--eval_subset 15``,
-``max_gen ≤ 5``, before full 5-seed G4 spend.
+Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``max_gen ≤ 5``, before
+full 5-seed G4 spend. Tick 293: default shape is Nebius budget-fit
+(``eval_subset=10``, pop=3, elite=1, max_gen=4); Anthropic meta keeps
+historical ``eval_subset=15`` / pop=4 / elite=2 / max_gen=5.
 
 Hard stops (never violate):
   - no two GPQA jobs in parallel (B then D, sequential)
@@ -51,8 +53,11 @@ from epistemic_results import compare_b_vs_d, compute_h5  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    default_g3_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_diamond_n_for_stack,
+    icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
@@ -63,11 +68,17 @@ from icml_env_checks import (  # noqa: E402
 )
 
 DEFAULT_BUDGET_CEILING = 20.0
-# Rough upper bound for one G3-shaped seed pair (B+D): pop4 × eval15 × max_gen5 × 2 conds
-DEFAULT_PAIR_ESTIMATE_USD = 4.0
+# Tick 293: Nebius-aware default (budget-fit shape); override via SIA_G3_PAIR_ESTIMATE_USD.
+DEFAULT_PAIR_ESTIMATE_USD = default_g3_pair_estimate_usd()
 DEFAULT_SEEDS = (1,)
 DEFAULT_B_RUN_IDS = (1201,)
 DEFAULT_D_RUN_IDS = (1301,)
+_DEFAULT_G3G4_SHAPE = icml_g3g4_live_shape()
+DEFAULT_EVAL_SUBSET = int(_DEFAULT_G3G4_SHAPE["eval_subset"])
+DEFAULT_POPULATION_SIZE = int(_DEFAULT_G3G4_SHAPE["population_size"])
+DEFAULT_ELITE_COUNT = int(_DEFAULT_G3G4_SHAPE["elite_count"])
+DEFAULT_MAX_GEN = int(_DEFAULT_G3G4_SHAPE["max_gen"])
+DEFAULT_DIAMOND_N = icml_diamond_n_for_stack()
 OFFLINE_MARKER = "<!-- OFFLINE_G3_PILOT_START -->"
 OFFLINE_MARKER_END = "<!-- OFFLINE_G3_PILOT_END -->"
 
@@ -131,11 +142,9 @@ def _budget_ceiling() -> float:
 
 
 def _pair_estimate_usd() -> float:
-    raw = (os.environ.get("SIA_G3_PAIR_ESTIMATE_USD") or str(DEFAULT_PAIR_ESTIMATE_USD)).strip()
-    try:
-        return float(raw)
-    except ValueError:
-        return DEFAULT_PAIR_ESTIMATE_USD
+    # Tick 293: resolve via helper so Nebius budget-fit defaults apply even if
+    # this module was imported under a different meta profile env.
+    return float(default_g3_pair_estimate_usd())
 
 
 def _task_dir(root_name: str = "SIA") -> Path:
@@ -203,13 +212,20 @@ def build_sia_command(
     run_id: int,
     seed: int,
     dry_run: bool = False,
-    eval_subset: int = 15,
-    population_size: int = 4,
-    elite_count: int = 2,
-    max_gen: int = 5,
+    eval_subset: int | None = None,
+    population_size: int | None = None,
+    elite_count: int | None = None,
+    max_gen: int | None = None,
 ) -> list[str]:
     if condition not in {"B", "D"}:
         raise ValueError(f"condition must be B or D, got {condition!r}")
+    shape = icml_g3g4_live_shape()
+    eval_subset = int(shape["eval_subset"] if eval_subset is None else eval_subset)
+    population_size = int(
+        shape["population_size"] if population_size is None else population_size
+    )
+    elite_count = int(shape["elite_count"] if elite_count is None else elite_count)
+    max_gen = int(shape["max_gen"] if max_gen is None else max_gen)
     if max_gen > 5:
         raise ValueError("G3 max_gen must be ≤ 5 (Section 21.5)")
     cmd = _find_sia_python() + [
@@ -647,10 +663,10 @@ def main(argv: list[str] | None = None) -> int:
         default="1301",
         help="Comma-separated unused Condition D run IDs (aligned with --seeds)",
     )
-    p.add_argument("--eval-subset", type=int, default=15)
-    p.add_argument("--population-size", type=int, default=4)
-    p.add_argument("--elite-count", type=int, default=2)
-    p.add_argument("--max-gen", type=int, default=5)
+    p.add_argument("--eval-subset", type=int, default=DEFAULT_EVAL_SUBSET)
+    p.add_argument("--population-size", type=int, default=DEFAULT_POPULATION_SIZE)
+    p.add_argument("--elite-count", type=int, default=DEFAULT_ELITE_COUNT)
+    p.add_argument("--max-gen", type=int, default=DEFAULT_MAX_GEN)
     p.add_argument(
         "--report",
         type=Path,
@@ -669,7 +685,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Materialize real GPQA diamond before preflight/live (HF or --diamond-csv)",
     )
     p.add_argument("--diamond-csv", type=Path, default=None)
-    p.add_argument("--diamond-n", type=int, default=15)
+    p.add_argument("--diamond-n", type=int, default=DEFAULT_DIAMOND_N)
     args = p.parse_args(argv)
 
     selected = "live" if args.live else "preflight"

@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-31T20:06:52Z
+**Timestamp:** 2026-08-31T22:08:37Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -42,7 +42,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `anthropic_key` | yes | optional (Nebius meta; ANTHROPIC unused) |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
 | `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
-| `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$4.00/pair × 1 → projected=$4.00 |
+| `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$3.00/pair × 1 → projected=$3.00 |
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 1 seed(s) (G3 pilot shape) |
@@ -59,8 +59,8 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 
 ### Planned commands (sequential: B then D per seed; never parallel)
 
-1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
-2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 5 --run_id 1301 --eval_subset 15 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 3 --elite_count 1 --max_gen 4 --run_id 1201 --eval_subset 10 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 3 --elite_count 1 --max_gen 4 --run_id 1301 --eval_subset 10 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
 
 ## Blockers (live G3)
 

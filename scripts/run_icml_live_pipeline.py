@@ -53,7 +53,12 @@ from icml_env_checks import (  # noqa: E402
     budget_spent_ledger_path,
     collect_icml_secrets_status,
     darwinian_run_complete,
+    default_g2_estimate_usd,
+    default_g3_pair_estimate_usd,
+    default_g4_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
+    icml_diamond_n_for_stack,
+    icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     ledger_stage_complete,
     live_pipeline_next_steps,
@@ -65,9 +70,11 @@ from icml_env_checks import (  # noqa: E402
 from prepare_gpqa_diamond import materialize_from_csv, materialize_from_hf  # noqa: E402
 
 DEFAULT_BUDGET_CEILING = 20.0
-DEFAULT_G2_ESTIMATE_USD = 1.0
-DEFAULT_G3_PAIR_ESTIMATE_USD = 4.0
-DEFAULT_G4_PAIR_ESTIMATE_USD = 3.0
+# Tick 293: Nebius-aware defaults (module import snapshot; helpers re-resolve).
+DEFAULT_G2_ESTIMATE_USD = default_g2_estimate_usd()
+DEFAULT_G3_PAIR_ESTIMATE_USD = default_g3_pair_estimate_usd()
+DEFAULT_G4_PAIR_ESTIMATE_USD = default_g4_pair_estimate_usd()
+DEFAULT_DIAMOND_N = icml_diamond_n_for_stack()
 
 DEFAULT_G2_RUN_ID = 1300
 DEFAULT_G3_SEEDS = "1"
@@ -134,15 +141,18 @@ def _env_float(name: str, default: float) -> float:
 
 
 def g2_estimate_usd() -> float:
-    return _env_float("SIA_G2_ESTIMATE_USD", DEFAULT_G2_ESTIMATE_USD)
+    # Prefer env override inside default_g2_estimate_usd; keep _env_float path
+    # only when callers set SIA_G2_ESTIMATE_USD to a non-default string that the
+    # helper already honors.
+    return float(default_g2_estimate_usd())
 
 
 def g3_pair_estimate_usd() -> float:
-    return _env_float("SIA_G3_PAIR_ESTIMATE_USD", DEFAULT_G3_PAIR_ESTIMATE_USD)
+    return float(default_g3_pair_estimate_usd())
 
 
 def g4_pair_estimate_usd() -> float:
-    return _env_float("SIA_G4_PAIR_ESTIMATE_USD", DEFAULT_G4_PAIR_ESTIMATE_USD)
+    return float(default_g4_pair_estimate_usd())
 
 
 def project_budget(
@@ -222,7 +232,8 @@ def bump_spent_reconciled(
 ) -> tuple[float, str]:
     """Tick 283: bump spend from actual run USD when present, else estimate.
 
-    Stack budget is exactly ~$20 (G2+$1 + G3+$4 + G4+$15). Bumping only by
+    Stack budget targets ~$20 (Tick 293 Nebius: G2+$2 + G3+$3 + G4+$14 = $19;
+    Anthropic-era was G2+$1 + G3+$4 + G4+$15). Bumping only by
     estimate can refuse G4 when G2/G3 came in under estimate, or under-count
     when they overran. Prefer ``total_cost_usd`` artifacts × meta overhead.
     Tick 284 also persists the bump to ``docs/icml_budget_spent.json``.
@@ -552,7 +563,7 @@ def run_preflight_stack(
     g4_d: str,
     fetch_diamond: bool = False,
     diamond_csv: Path | None = None,
-    diamond_n: int = 15,
+    diamond_n: int | None = None,
 ) -> None:
     """Run G2/G3/G4 preflights (no paid API) and aggregate readiness.
 
@@ -561,12 +572,25 @@ def run_preflight_stack(
     require HF via ``require_hf_for_diamond`` — not only the aggregate
     pipeline blocker added below.
 
-    Tick 283: default ``diamond_n=15`` matches G3/G4 ``eval_subset`` (was 5,
-    which could under-materialize if callers omitted ``diamond_n``).
+    Tick 283/293: default ``diamond_n`` matches G3/G4 ``eval_subset`` via
+    ``icml_diamond_n_for_stack`` (Nebius budget-fit → 10; Anthropic → 15).
 
     Tick 284: resume-aware — completed run IDs do not clear ``ready_for_live``;
     budget projection excludes finished gates and reloads persisted spend.
     """
+    if diamond_n is None:
+        diamond_n = icml_diamond_n_for_stack()
+    shape = icml_g3g4_live_shape()
+    shape_args = [
+        "--eval-subset",
+        str(shape["eval_subset"]),
+        "--population-size",
+        str(shape["population_size"]),
+        "--elite-count",
+        str(shape["elite_count"]),
+        "--max-gen",
+        str(shape["max_gen"]),
+    ]
     g3_b_ids = g3.parse_int_list(g3_b)
     g3_d_ids = g3.parse_int_list(g3_d)
     g4_b_ids = g4.parse_int_list(g4_b)
@@ -582,6 +606,11 @@ def run_preflight_stack(
         report.notes.append(
             "Tick 284 resume sync: " + "; ".join(resume["details"])
         )
+    report.notes.append(
+        "Tick 293 G3/G4 shape: "
+        f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
+        f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
+    )
     report.budget = project_budget(
         g3_pairs=len(g3.parse_int_list(g3_seeds)),
         g4_pairs=5,
@@ -622,6 +651,7 @@ def run_preflight_stack(
             g3_b,
             "--d-run-ids",
             g3_d,
+            *shape_args,
             *fetch_args,
         ]
     )
@@ -646,6 +676,7 @@ def run_preflight_stack(
             g4_b,
             "--d-run-ids",
             g4_d,
+            *shape_args,
             *fetch_args,
         ]
     )
@@ -763,6 +794,22 @@ def run_live_stack(
     Tick 285: also skip when committed ledger marks stages complete even if
     local ``runs/`` are absent (fresh cloud VM).
     """
+    shape = icml_g3g4_live_shape()
+    shape_args = [
+        "--eval-subset",
+        str(shape["eval_subset"]),
+        "--population-size",
+        str(shape["population_size"]),
+        "--elite-count",
+        str(shape["elite_count"]),
+        "--max-gen",
+        str(shape["max_gen"]),
+    ]
+    report.notes.append(
+        "Tick 293 G3/G4 shape: "
+        f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
+        f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
+    )
     g3_b_ids = g3.parse_int_list(g3_b)
     g3_d_ids = g3.parse_int_list(g3_d)
     g4_b_ids = g4.parse_int_list(g4_b)
@@ -887,6 +934,7 @@ def run_live_stack(
             g3_b,
             "--d-run-ids",
             g3_d,
+            *shape_args,
         ]
         rc = g3.main(g3_argv)
         g3_ok = rc == 0
@@ -984,6 +1032,7 @@ def run_live_stack(
         g4_b,
         "--d-run-ids",
         g4_d,
+        *shape_args,
     ]
     rc = g4.main(g4_argv)
     g4_ok = rc == 0
@@ -1046,10 +1095,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--fetch-diamond",
         action="store_true",
-        help="Materialize real GPQA diamond once (n=15) before live stack",
+        help="Materialize real GPQA diamond once (n=eval_subset) before live stack",
     )
     p.add_argument("--diamond-csv", type=Path, default=None)
-    p.add_argument("--diamond-n", type=int, default=15)
+    p.add_argument("--diamond-n", type=int, default=DEFAULT_DIAMOND_N)
     p.add_argument(
         "--report",
         type=Path,

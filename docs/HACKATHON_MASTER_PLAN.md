@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-31 (Section 21 ICML; Tick 292 Anthropic-optional human secrets messaging; Tick 291 Nebius Kimi USD pricing + token→USD budget reconcile + Nebius meta overhead; Tick 290 GPQA subset eval merges submission tokens/USD into results.json; Tick 289 Nebius pydantic-ai meta + Anthropic-optional secrets; Tick 288 Nebius target profile + GPQA reference retarget; Tick 287 host pandas-free GPQA eval_subset; Tick 286 ephemeral-dirt tip recover + zero budget ledger; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-31 (Section 21 ICML; Tick 293 Nebius budget-fit G3/G4 shape + estimates so full stack ≤$20 after Tick 291 Kimi metering; Tick 292 Anthropic-optional human secrets messaging; Tick 291 Nebius Kimi USD pricing + token→USD budget reconcile + Nebius meta overhead; Tick 290 GPQA subset eval merges submission tokens/USD into results.json; Tick 289 Nebius pydantic-ai meta + Anthropic-optional secrets; Tick 288 Nebius target profile + GPQA reference retarget; Tick 287 host pandas-free GPQA eval_subset; Tick 286 ephemeral-dirt tip recover + zero budget ledger; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -858,7 +858,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML GPQA cost merge into results.json (Tick 290) | **DONE** | `_evaluate_gpqa_subset` copies tokens/USD from `submission.json`; budget + PRIMARY cost helpers fall back to submission |
 | ICML Nebius Kimi USD + token→USD reconcile (Tick 291) | **DONE** | Reference `MODEL_PRICING` 0.95/4.0; `estimate_usd_from_tokens`; Nebius meta overhead 3.0; evolved-agent cost prompt |
 | ICML Anthropic-optional human messaging (Tick 292) | **DONE** | `icml_human_required_secrets_phrase`; cron + G2/G3/G4/pipeline Next/refuse match Tick 289 (no hard ANTHROPIC demand) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–292 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML Nebius budget-fit G3/G4 shape (Tick 293) | **DONE** | `icml_g3g4_live_shape` eval10/pop3/elite1/max_gen4; estimates G2+$2 + G3+$3 + G4+$14 = $19 ≤ $20 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–293 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1576,8 +1577,8 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 | **G0** | Unit tests green; mutation bias contradiction-scoped (not full enum) | Fix mechanism before paid runs |
 | **G1** | Dry-run Condition D writes belief_store + biased DNA on gen≥2 | Do not spend API |
 | **G2** | Smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2), one seed | Fix harness |
-| **G3** | Pilot B vs D, 1–2 seeds, `--eval_subset 15`, max_gen≤5 | Diagnose before 5-seed |
-| **G4** | Full 5-seed B vs D under budget; compute PRIMARY + H2 + H5 | Refresh paper artifacts |
+| **G3** | Pilot B vs D, 1–2 seeds, Nebius budget-fit shape (`eval_subset=10`, pop=3, elite=1, max_gen≤4; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5) | Diagnose before 5-seed |
+| **G4** | Full 5-seed B vs D under budget (same Nebius budget-fit shape); compute PRIMARY + H2 + H5 | Refresh paper artifacts |
 | **G5** | Paper pack + honest limitations → STATUS: READY | — |
 
 ### 21.6 Hard stops
@@ -1631,12 +1632,12 @@ python scripts/run_icml_live_pipeline.py --preflight-only
 python scripts/run_icml_live_pipeline.py --live --fetch-diamond
 
 # Condition B — darwinian-only (example IDs — pick unused integers)
-sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
-  --max_gen 5 --run_id 1201 --eval_subset 15 --no-web --seed 1
+sia run --task gpqa --darwinian --population_size 3 --elite_count 1 \
+  --max_gen 4 --run_id 1201 --eval_subset 10 --no-web --seed 1
 
-# Condition D — G3-shaped pilot
-sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
-  --max_gen 5 --run_id 1301 --eval_subset 15 --no-web --seed 1 \
+# Condition D — G3-shaped pilot (Tick 293 Nebius budget-fit)
+sia run --task gpqa --darwinian --population_size 3 --elite_count 1 \
+  --max_gen 4 --run_id 1301 --eval_subset 10 --no-web --seed 1 \
   --cabs --cabs-inline
 ```
 
@@ -2232,3 +2233,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Nebius Kimi USD pricing + token→USD budget reconcile (2026-08-31 Tick 291):** After Tick 289–290, live artifacts still wrote `total_cost_usd=0` (`MODEL_PRICING={0,0}` + prompt said set cost to 0) while recording tokens — Tick 283 reconcile then fell back to gate estimates and under-counted Nebius Kimi meta spend. Reference + Nebius meta prompt now use Token Factory rates ($0.95/$4.00 per 1M); `estimate_usd_from_tokens` recovers USD when cost is zero; default Nebius meta overhead is **3.0**. Focused suite **26/26** (+2 skipped); STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Anthropic-optional human secrets messaging (2026-08-31 Tick 292):** Gate logic already treated Anthropic as optional (Tick 289), but cron stdout and G2/G3/G4/pipeline Next/refuse strings still hard-coded `ANTHROPIC + NEBIUS`. Added `icml_human_required_secrets_phrase` and wired it through those surfaces so operators are not told to wait on a third vendor key. Focused suite **94/94**; STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Nebius budget-fit G3/G4 shape (2026-08-31 Tick 293):** After Tick 289–291, Anthropic-era G3/G4 shape (pop4×eval15×max_gen5) × Nebius meta overhead 3.0 cannot fit 5-seed G4 under ~$20 once reconcile meters real Kimi spend — preflight would green-light then mid-stack refuse/overrun. Added `icml_g3g4_live_shape` (Nebius → eval10/pop3/elite1/max_gen4; Anthropic → historical) + Nebius gate estimates (G2+$2 + G3+$3 + G4+$2.8×5 = **$19**). Wired into G3/G4/pipeline defaults + diamond_n. Focused suite **82/82**; STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

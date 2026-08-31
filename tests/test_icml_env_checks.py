@@ -17,11 +17,16 @@ from icml_env_checks import (  # noqa: E402
     DEFAULT_ICML_TARGET_AGENT_PROFILE,
     collect_icml_secrets_status,
     collect_icml_tip_status,
+    default_g2_estimate_usd,
+    default_g3_pair_estimate_usd,
+    default_g4_pair_estimate_usd,
     discard_ephemeral_icml_dirt,
     ensure_budget_spent_ledger_initialized,
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    icml_diamond_n_for_stack,
+    icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
@@ -871,3 +876,50 @@ def test_icml_human_required_secrets_phrase_anthropic_optional(
         for_fetch_diamond=False, profile="default-meta"
     )
     assert anth.startswith("ANTHROPIC_API_KEY + NEBIUS_API_KEY")
+
+
+def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 293: Nebius meta uses cheaper G3/G4 shape; Anthropic keeps historical."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+        "SIA_G2_ESTIMATE_USD",
+        "SIA_G3_PAIR_ESTIMATE_USD",
+        "SIA_G4_PAIR_ESTIMATE_USD",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    neb = icml_g3g4_live_shape()
+    assert neb == {
+        "eval_subset": 10,
+        "population_size": 3,
+        "elite_count": 1,
+        "max_gen": 4,
+    }
+    assert icml_diamond_n_for_stack() == 10
+    assert default_g2_estimate_usd() == pytest.approx(2.0)
+    assert default_g3_pair_estimate_usd() == pytest.approx(3.0)
+    assert default_g4_pair_estimate_usd() == pytest.approx(2.8)
+    # Full stack must fit under $20 with margin for reconcile noise.
+    stack = (
+        default_g2_estimate_usd()
+        + default_g3_pair_estimate_usd()
+        + 5 * default_g4_pair_estimate_usd()
+    )
+    assert stack <= 20.0
+    assert stack == pytest.approx(19.0)
+
+    anth = icml_g3g4_live_shape(profile="default-meta")
+    assert anth == {
+        "eval_subset": 15,
+        "population_size": 4,
+        "elite_count": 2,
+        "max_gen": 5,
+    }
+    assert default_g2_estimate_usd(profile="default-meta") == pytest.approx(1.0)
+    assert default_g3_pair_estimate_usd(profile="default-meta") == pytest.approx(4.0)
+    assert default_g4_pair_estimate_usd(profile="default-meta") == pytest.approx(3.0)

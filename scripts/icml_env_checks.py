@@ -142,6 +142,27 @@ DEFAULT_META_OVERHEAD_NEBIUS = 3.0
 # NEBIUS_API_KEY (+ HF/CSV) — Anthropic optional. Override with
 # ICML_META_AGENT_PROFILE or SIA_META_AGENT_PROFILE (e.g. default-meta).
 DEFAULT_ICML_META_AGENT_PROFILE = "kimi-nebius-pydantic-meta"
+# Tick 293: Anthropic-era G3/G4 shape (pop4 × eval15 × max_gen5) × Nebius meta
+# overhead 3.0 cannot fit full 5-seed G4 under the ~$20 ceiling once Tick 291
+# reconcile meters real Kimi spend. Nebius budget-fit shape keeps PRIMARY
+# (5 seeds, max_gen≥4 for H5 delta_horizon=2) while shrinking per-seed cost.
+# Override with SIA_G3G4_* env vars. Anthropic meta keeps the historical shape.
+ICML_NEBIUS_G3G4_EVAL_SUBSET = 10
+ICML_NEBIUS_G3G4_POPULATION_SIZE = 3
+ICML_NEBIUS_G3G4_ELITE_COUNT = 1
+ICML_NEBIUS_G3G4_MAX_GEN = 4
+ICML_ANTHROPIC_G3G4_EVAL_SUBSET = 15
+ICML_ANTHROPIC_G3G4_POPULATION_SIZE = 4
+ICML_ANTHROPIC_G3G4_ELITE_COUNT = 2
+ICML_ANTHROPIC_G3G4_MAX_GEN = 5
+# Gate USD estimates (include meta/feedback). Nebius defaults assume budget-fit
+# shape above; Anthropic defaults keep historical $1+$4+$15=$20 stack.
+DEFAULT_G2_ESTIMATE_USD_NEBIUS = 2.0
+DEFAULT_G3_PAIR_ESTIMATE_USD_NEBIUS = 3.0
+DEFAULT_G4_PAIR_ESTIMATE_USD_NEBIUS = 2.8
+DEFAULT_G2_ESTIMATE_USD_ANTHROPIC = 1.0
+DEFAULT_G3_PAIR_ESTIMATE_USD_ANTHROPIC = 4.0
+DEFAULT_G4_PAIR_ESTIMATE_USD_ANTHROPIC = 3.0
 # Conventional diamond CSV drop paths (Tick 277). Prefer env override.
 _DIAMOND_CSV_CANDIDATES = (
     "gpqa_diamond.csv",
@@ -782,6 +803,100 @@ def resolve_icml_meta_overhead(profile: str | None = None) -> float:
     if icml_meta_provider_id(profile) == "nebius":
         return DEFAULT_META_OVERHEAD_NEBIUS
     return DEFAULT_META_OVERHEAD_ANTHROPIC
+
+
+def _env_positive_int(name: str, default: int) -> int:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return int(default)
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return int(default)
+
+
+def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
+    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293).
+
+    Nebius meta → budget-fit shape so 5-seed G4 + G2/G3 stay under ~$20 after
+    Tick 291 Kimi metering. Anthropic meta → historical Section 21.5 shape.
+    Env overrides: ``SIA_G3G4_EVAL_SUBSET``, ``SIA_G3G4_POPULATION_SIZE``,
+    ``SIA_G3G4_ELITE_COUNT``, ``SIA_G3G4_MAX_GEN``.
+    """
+    if icml_meta_provider_id(profile) == "nebius":
+        return {
+            "eval_subset": _env_positive_int(
+                "SIA_G3G4_EVAL_SUBSET", ICML_NEBIUS_G3G4_EVAL_SUBSET
+            ),
+            "population_size": _env_positive_int(
+                "SIA_G3G4_POPULATION_SIZE", ICML_NEBIUS_G3G4_POPULATION_SIZE
+            ),
+            "elite_count": _env_positive_int(
+                "SIA_G3G4_ELITE_COUNT", ICML_NEBIUS_G3G4_ELITE_COUNT
+            ),
+            "max_gen": _env_positive_int(
+                "SIA_G3G4_MAX_GEN", ICML_NEBIUS_G3G4_MAX_GEN
+            ),
+        }
+    return {
+        "eval_subset": _env_positive_int(
+            "SIA_G3G4_EVAL_SUBSET", ICML_ANTHROPIC_G3G4_EVAL_SUBSET
+        ),
+        "population_size": _env_positive_int(
+            "SIA_G3G4_POPULATION_SIZE", ICML_ANTHROPIC_G3G4_POPULATION_SIZE
+        ),
+        "elite_count": _env_positive_int(
+            "SIA_G3G4_ELITE_COUNT", ICML_ANTHROPIC_G3G4_ELITE_COUNT
+        ),
+        "max_gen": _env_positive_int(
+            "SIA_G3G4_MAX_GEN", ICML_ANTHROPIC_G3G4_MAX_GEN
+        ),
+    }
+
+
+def default_g2_estimate_usd(profile: str | None = None) -> float:
+    """Default G2 smoke USD estimate (Tick 293: Nebius-aware)."""
+    raw = (os.environ.get("SIA_G2_ESTIMATE_USD") or "").strip()
+    if raw:
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            pass
+    if icml_meta_provider_id(profile) == "nebius":
+        return DEFAULT_G2_ESTIMATE_USD_NEBIUS
+    return DEFAULT_G2_ESTIMATE_USD_ANTHROPIC
+
+
+def default_g3_pair_estimate_usd(profile: str | None = None) -> float:
+    """Default G3 B+D pair USD estimate (Tick 293: Nebius-aware + budget-fit)."""
+    raw = (os.environ.get("SIA_G3_PAIR_ESTIMATE_USD") or "").strip()
+    if raw:
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            pass
+    if icml_meta_provider_id(profile) == "nebius":
+        return DEFAULT_G3_PAIR_ESTIMATE_USD_NEBIUS
+    return DEFAULT_G3_PAIR_ESTIMATE_USD_ANTHROPIC
+
+
+def default_g4_pair_estimate_usd(profile: str | None = None) -> float:
+    """Default G4 B+D pair USD estimate (Tick 293: Nebius-aware + budget-fit)."""
+    raw = (os.environ.get("SIA_G4_PAIR_ESTIMATE_USD") or "").strip()
+    if raw:
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            pass
+    if icml_meta_provider_id(profile) == "nebius":
+        return DEFAULT_G4_PAIR_ESTIMATE_USD_NEBIUS
+    return DEFAULT_G4_PAIR_ESTIMATE_USD_ANTHROPIC
+
+
+def icml_diamond_n_for_stack(profile: str | None = None) -> int:
+    """Diamond materialize ``n`` covering G2 smoke and G3/G4 eval_subset."""
+    shape = icml_g3g4_live_shape(profile)
+    return max(5, int(shape["eval_subset"]))
 
 
 def _usd_from_cost_payload(data: dict) -> float | None:

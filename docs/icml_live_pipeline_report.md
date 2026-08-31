@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-31T20:06:49Z
+**Timestamp:** 2026-08-31T22:08:35Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -10,11 +10,11 @@
 | Item | USD |
 |------|-----|
 | spent (env) | 0.00 |
-| G2 estimate | 1.00 |
-| G3 estimate | 4.00 |
-| G4 estimate | 15.00 |
-| stack estimate | 20.00 |
-| projected total | 20.00 |
+| G2 estimate | 2.00 |
+| G3 estimate | 3.00 |
+| G4 estimate | 14.00 |
+| stack estimate | 19.00 |
+| projected total | 19.00 |
 | ceiling | 20.00 |
 | within ceiling | yes |
 
@@ -46,6 +46,7 @@ G3 promising: n/a (G3 not scored this run)
 ## Notes
 
 - diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
+- Tick 293 G3/G4 shape: eval_subset=10 pop=3 elite=1 max_gen=4
 
 ## Next
 

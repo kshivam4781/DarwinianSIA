@@ -1,15 +1,15 @@
 {
-  "timestamp": "2026-08-31T20:06:49Z",
+  "timestamp": "2026-08-31T22:08:35Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
     "spent": 0.0,
     "ceiling": 20.0,
-    "g2_estimate": 1.0,
-    "g3_estimate": 4.0,
-    "g4_estimate": 15.0,
-    "stack_estimate": 20.0,
-    "projected": 20.0,
+    "g2_estimate": 2.0,
+    "g3_estimate": 3.0,
+    "g4_estimate": 14.0,
+    "stack_estimate": 19.0,
+    "projected": 19.0,
     "ok": true,
     "g3_pairs": 1,
     "g4_pairs": 5,
@@ -56,7 +56,8 @@
     "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)"
   ],
   "notes": [
-    "diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token."
+    "diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.",
+    "Tick 293 G3/G4 shape: eval_subset=10 pop=3 elite=1 max_gen=4"
   ],
   "g3_promising": null,
   "stopped_after": null,

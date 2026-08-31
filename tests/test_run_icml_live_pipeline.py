@@ -29,18 +29,27 @@ def test_project_budget_defaults_fit_ceiling(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.delenv("SIA_G2_ESTIMATE_USD", raising=False)
     monkeypatch.delenv("SIA_G3_PAIR_ESTIMATE_USD", raising=False)
     monkeypatch.delenv("SIA_G4_PAIR_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     bud = project_budget(g3_pairs=1, g4_pairs=5)
-    assert bud["stack_estimate"] == pytest.approx(1.0 + 4.0 + 15.0)
+    # Tick 293: Nebius defaults G2+$2 + G3+$3 + G4+$2.8×5 = $19
+    assert bud["stack_estimate"] == pytest.approx(2.0 + 3.0 + 14.0)
     assert bud["ok"] is True
-    assert bud["projected"] == pytest.approx(20.0)
+    assert bud["projected"] == pytest.approx(19.0)
 
 
 def test_project_budget_blocks_when_over(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "5")
     monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("SIA_G2_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("SIA_G3_PAIR_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("SIA_G4_PAIR_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     bud = project_budget(g3_pairs=1, g4_pairs=5)
+    # Tick 293 Nebius: spent 5 + stack 19 = 24
     assert bud["ok"] is False
-    assert bud["projected"] == pytest.approx(25.0)
+    assert bud["projected"] == pytest.approx(24.0)
 
 
 def test_bump_spent_updates_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -98,10 +107,16 @@ def test_project_budget_skips_completed_gates(monkeypatch: pytest.MonkeyPatch) -
     """Tick 284: resume projection excludes finished gates."""
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0.8")
     monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("SIA_G2_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("SIA_G3_PAIR_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("SIA_G4_PAIR_ESTIMATE_USD", raising=False)
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     bud = project_budget(g3_pairs=1, g4_pairs=5, skip_g2=True)
     assert bud["g2_estimate"] == pytest.approx(0.0)
-    assert bud["stack_estimate"] == pytest.approx(4.0 + 15.0)
-    assert bud["projected"] == pytest.approx(0.8 + 19.0)
+    # Tick 293 Nebius: G3+$3 + G4+$14
+    assert bud["stack_estimate"] == pytest.approx(3.0 + 14.0)
+    assert bud["projected"] == pytest.approx(0.8 + 17.0)
     assert bud["ok"] is True
 
 
@@ -373,14 +388,16 @@ def test_sum_run_dirs_cost_reads_submission_when_results_accuracy_only(
     assert "actual_target" in detail
 
 
-def test_run_preflight_stack_default_diamond_n_is_15() -> None:
-    """Tick 283: preflight stack default matches G3/G4 eval_subset=15."""
+def test_run_preflight_stack_default_diamond_n_is_budget_fit() -> None:
+    """Tick 283/293: preflight stack default matches G3/G4 eval_subset (Nebius→10)."""
     import inspect
 
+    from icml_env_checks import icml_diamond_n_for_stack
     from run_icml_live_pipeline import run_preflight_stack
 
     default = inspect.signature(run_preflight_stack).parameters["diamond_n"].default
-    assert default == 15
+    assert default is None
+    assert icml_diamond_n_for_stack() == 10
 
 
 def test_g3_pilot_promising_on_d_win() -> None:

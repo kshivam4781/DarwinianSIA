@@ -54,8 +54,11 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    default_g4_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_diamond_n_for_stack,
+    icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_meta_requires_anthropic,
     probe_icml_meta_profile,
@@ -78,11 +81,17 @@ from run_g3_pilot import (  # noqa: E402
 )
 
 DEFAULT_BUDGET_CEILING = 20.0
-# Slightly tighter than G3 default so 5 pairs fit under $20 when G2/G3 already spent some.
-DEFAULT_PAIR_ESTIMATE_USD = 3.0
+# Tick 293: Nebius budget-fit pair estimate so 5 pairs + G2/G3 fit under ~$20.
+DEFAULT_PAIR_ESTIMATE_USD = default_g4_pair_estimate_usd()
 DEFAULT_SEEDS = (1, 2, 3, 4, 5)
 DEFAULT_B_RUN_IDS = (1211, 1212, 1213, 1214, 1215)
 DEFAULT_D_RUN_IDS = (1311, 1312, 1313, 1314, 1315)
+_DEFAULT_G3G4_SHAPE = icml_g3g4_live_shape()
+DEFAULT_EVAL_SUBSET = int(_DEFAULT_G3G4_SHAPE["eval_subset"])
+DEFAULT_POPULATION_SIZE = int(_DEFAULT_G3G4_SHAPE["population_size"])
+DEFAULT_ELITE_COUNT = int(_DEFAULT_G3G4_SHAPE["elite_count"])
+DEFAULT_MAX_GEN = int(_DEFAULT_G3G4_SHAPE["max_gen"])
+DEFAULT_DIAMOND_N = icml_diamond_n_for_stack()
 LIVE_TABLE_MARKER = "### Live GPQA"
 LIVE_TABLE_END_MARKER = "## Table 2"
 TABLE2_LIVE_H2_MARKER = "<!-- LIVE_TABLE2_H2_START -->"
@@ -117,11 +126,7 @@ class G4PreflightReport:
 
 
 def _pair_estimate_usd() -> float:
-    raw = (os.environ.get("SIA_G4_PAIR_ESTIMATE_USD") or str(DEFAULT_PAIR_ESTIMATE_USD)).strip()
-    try:
-        return float(raw)
-    except ValueError:
-        return DEFAULT_PAIR_ESTIMATE_USD
+    return float(default_g4_pair_estimate_usd())
 
 
 def build_g4_plans(
@@ -970,10 +975,10 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="Existing Condition D run dirs (with --refresh-paper-from-runs)",
     )
-    p.add_argument("--eval-subset", type=int, default=15)
-    p.add_argument("--population-size", type=int, default=4)
-    p.add_argument("--elite-count", type=int, default=2)
-    p.add_argument("--max-gen", type=int, default=5)
+    p.add_argument("--eval-subset", type=int, default=DEFAULT_EVAL_SUBSET)
+    p.add_argument("--population-size", type=int, default=DEFAULT_POPULATION_SIZE)
+    p.add_argument("--elite-count", type=int, default=DEFAULT_ELITE_COUNT)
+    p.add_argument("--max-gen", type=int, default=DEFAULT_MAX_GEN)
     p.add_argument(
         "--report",
         type=Path,
@@ -1010,7 +1015,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Materialize real GPQA diamond before preflight/live (HF or --diamond-csv)",
     )
     p.add_argument("--diamond-csv", type=Path, default=None)
-    p.add_argument("--diamond-n", type=int, default=15)
+    p.add_argument("--diamond-n", type=int, default=DEFAULT_DIAMOND_N)
     p.add_argument(
         "--skip-paper-refresh",
         action="store_true",
