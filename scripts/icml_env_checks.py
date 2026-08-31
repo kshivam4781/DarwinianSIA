@@ -56,6 +56,12 @@ in run artifacts (× meta overhead) instead of only the gate estimate — so
 G4 is not refused when G2/G3 come in under estimate, and overruns are
 visible before the next gate.
 
+Tick 291: GPQA reference / evolved agents historically wrote
+``total_cost_usd=0`` (unknown pricing) while recording tokens. After Tick
+289 Nebius Kimi meta, blind estimate fallback under-counts live spend.
+``estimate_usd_from_tokens`` recovers USD from tokens × Nebius Kimi rates;
+``resolve_icml_meta_overhead`` raises default overhead for Nebius meta.
+
 Tick 284: Mid-stack crash after G2 left the next cron tick stuck —
 ``run_id_free`` fails on the completed G2 dir and in-process
 ``SIA_BUDGET_SPENT_USD`` resets to 0. ``darwinian_run_complete`` +
@@ -126,6 +132,12 @@ _SECRET_ENV_NAMES = (
 # Tinker-seeded GPQA reference — Section 6.8 + evolution_prompts require Nebius.
 # Override with ICML_TARGET_AGENT_PROFILE or SIA_TARGET_AGENT_PROFILE.
 DEFAULT_ICML_TARGET_AGENT_PROFILE = "kimi-nebius-target"
+# Tick 291: Nebius Token Factory catalog ($/1M) for moonshotai/Kimi-K2.6.
+NEBIUS_KIMI_USD_PER_MILLION = {"input": 0.95, "output": 4.0}
+DEFAULT_META_OVERHEAD_ANTHROPIC = 1.25
+# Nebius pydantic-ai meta/feedback uses the same expensive Kimi model for
+# multi-turn codegen — 1.25× target-eval USD under-counts badly.
+DEFAULT_META_OVERHEAD_NEBIUS = 3.0
 # Tick 289: Meta/feedback also on Nebius (pydantic-ai) so live G2–G4 need only
 # NEBIUS_API_KEY (+ HF/CSV) — Anthropic optional. Override with
 # ICML_META_AGENT_PROFILE or SIA_META_AGENT_PROFILE (e.g. default-meta).
@@ -693,8 +705,67 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     return ensure_icml_runtime_deps(allow_install=allow_install)
 
 
+def estimate_usd_from_tokens(data: dict) -> float | None:
+    """Estimate USD from token fields using Nebius Kimi-K2.6 rates (Tick 291).
+
+    Used when ``total_cost_usd`` is missing/zero but live agents still recorded
+    tokens (historical ``MODEL_PRICING={0,0}`` / prompt said \"set cost to 0\").
+    """
+    if not isinstance(data, dict):
+        return None
+    inp = data.get("total_input_tokens")
+    out = data.get("total_output_tokens")
+    reason = data.get("total_reasoning_tokens")
+    input_tokens = float(inp) if isinstance(inp, (int, float)) else 0.0
+    output_tokens = float(out) if isinstance(out, (int, float)) else 0.0
+    reasoning_tokens = float(reason) if isinstance(reason, (int, float)) else 0.0
+    if input_tokens <= 0.0 and output_tokens <= 0.0 and reasoning_tokens <= 0.0:
+        # Fall back to per-question detail rows.
+        for detail in data.get("details") or []:
+            if not isinstance(detail, dict):
+                continue
+            for key, bucket in (
+                ("input_tokens", "input"),
+                ("output_tokens", "output"),
+                ("reasoning_tokens", "output"),
+            ):
+                val = detail.get(key)
+                if isinstance(val, (int, float)):
+                    if bucket == "input":
+                        input_tokens += float(val)
+                    else:
+                        output_tokens += float(val)
+    if input_tokens <= 0.0 and output_tokens <= 0.0 and reasoning_tokens <= 0.0:
+        return None
+    rates = NEBIUS_KIMI_USD_PER_MILLION
+    return (input_tokens / 1e6) * rates["input"] + (
+        (output_tokens + reasoning_tokens) / 1e6
+    ) * rates["output"]
+
+
+def resolve_icml_meta_overhead(profile: str | None = None) -> float:
+    """Meta/feedback overhead multiplier for budget reconcile (Tick 291).
+
+    Override with ``SIA_META_OVERHEAD``. Default is higher for Nebius meta
+    (same Kimi model as target, multi-turn tool use) than Anthropic Haiku.
+    """
+    raw = (os.environ.get("SIA_META_OVERHEAD") or "").strip()
+    if raw:
+        try:
+            return max(1.0, float(raw))
+        except ValueError:
+            pass
+    if icml_meta_provider_id(profile) == "nebius":
+        return DEFAULT_META_OVERHEAD_NEBIUS
+    return DEFAULT_META_OVERHEAD_ANTHROPIC
+
+
 def _usd_from_cost_payload(data: dict) -> float | None:
-    """Extract positive USD from a results.json or submission.json payload."""
+    """Extract positive USD from a results.json or submission.json payload.
+
+    Tick 291: when USD is zero/absent but tokens are present, estimate USD from
+    Nebius Kimi rates so budget reconcile does not silently use gate estimates.
+    """
     if not isinstance(data, dict):
         return None
     usd = data.get("total_cost_usd")
@@ -709,7 +780,9 @@ def _usd_from_cost_payload(data: dict) -> float | None:
         if isinstance(c, (int, float)) and float(c) > 0.0:
             detail_total += float(c)
             found = True
-    return detail_total if found else None
+    if found:
+        return detail_total
+    return estimate_usd_from_tokens(data)
 
 
 def sum_run_dirs_cost_usd(run_dirs: list[Path]) -> float | None:
@@ -717,6 +790,8 @@ def sum_run_dirs_cost_usd(run_dirs: list[Path]) -> float | None:
 
     Tick 290: also fall back to ``agent_*/results/submission.json`` when
     ``results.json`` is accuracy-only (pre-merge eval artifacts).
+
+    Tick 291: when USD is zero but tokens exist, estimate via Nebius Kimi rates.
 
     Returns ``None`` when no positive USD fields are found (dry-run / missing
     artifacts). Target-eval costs only — meta/feedback spend is usually not in
@@ -760,19 +835,21 @@ def reconcile_gate_spend_usd(
     run_dirs: list[Path],
     *,
     fallback_estimate: float,
-    meta_overhead: float = 1.25,
+    meta_overhead: float | None = None,
 ) -> tuple[float, str]:
-    """Pick gate spend for ``SIA_BUDGET_SPENT_USD`` (Tick 283).
+    """Pick gate spend for ``SIA_BUDGET_SPENT_USD`` (Tick 283/291).
 
     Prefer actual target-eval USD × ``meta_overhead`` (covers unmetered
-    Anthropic meta/feedback). Fall back to the gate estimate when artifacts
-    lack USD. Returns ``(amount, detail)``.
+    meta/feedback). When ``meta_overhead`` is None, use
+    ``resolve_icml_meta_overhead()`` (Nebius meta → 3.0; Anthropic → 1.25).
+    Fall back to the gate estimate when artifacts lack USD/tokens.
+    Returns ``(amount, detail)``.
     """
     estimate = max(0.0, float(fallback_estimate))
     actual = sum_run_dirs_cost_usd(run_dirs)
     if actual is None:
-        return estimate, f"estimate=${estimate:.4f} (no total_cost_usd in run artifacts)"
-    overhead = max(1.0, float(meta_overhead))
+        return estimate, f"estimate=${estimate:.4f} (no total_cost_usd/tokens in run artifacts)"
+    overhead = resolve_icml_meta_overhead() if meta_overhead is None else max(1.0, float(meta_overhead))
     amount = actual * overhead
     return (
         amount,

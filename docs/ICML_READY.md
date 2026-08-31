@@ -323,6 +323,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 288 Nebius target profile + GPQA reference retarget — G2/G3/G4 `--target-agent-profile kimi-nebius-target` + `nebius_target_profile` preflight; GPQA seed uses Nebius/Kimi (not Tinker); dry-run `run_1855` PASS
 - [x] Tick 289 Nebius pydantic-ai meta — G2/G3/G4 `--meta-agent-profile kimi-nebius-pydantic-meta` + `nebius_meta_profile` preflight; Anthropic optional for live secrets; dry-run `run_1856` PASS
 - [x] Tick 290 GPQA subset eval cost merge — `_evaluate_gpqa_subset` copies tokens/USD/`details` from `submission.json` into `results.json`; `sum_run_dirs_cost_usd` + `load_gen_cost` fall back to submission (PRIMARY cost + budget reconcile)
+- [x] Tick 291 Nebius Kimi USD + token→USD budget reconcile — reference `MODEL_PRICING` 0.95/4.0; `estimate_usd_from_tokens` when USD=0; Nebius meta overhead 3.0; Nebius evolved-agent cost prompt (latent under-count after Tick 289 meta)
 
 ## Gate tracker (Section 21.5)
 

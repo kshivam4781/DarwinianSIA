@@ -33,7 +33,10 @@ MODEL_NAME = "moonshotai/Kimi-K2.6"
 NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
 DATASET_LABEL = "diamond_qna"
 CONCURRENCY = 5
-MODEL_PRICING = {"input": 0.0, "output": 0.0}
+# Tick 291: Nebius Token Factory catalog rates ($/1M tokens) for Kimi-K2.6.
+# Zero pricing previously left total_cost_usd=0 even when tokens were recorded,
+# so Tick 283 budget reconcile silently fell back to gate estimates.
+MODEL_PRICING = {"input": 0.95, "output": 4.0}
 
 
 # -----------------------------------------------------------------------------

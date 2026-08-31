@@ -283,18 +283,49 @@ def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: py
     assert "actual_target" in detail
 
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
-    # Patch resolver to use tmp run id mapping via creating under expected path is hard;
-    # call reconcile helper path through bump with monkeypatched _resolve_run_dirs.
+    # Tick 291: default Nebius meta overhead is 3.0 → 0.40 × 3.0 = 1.20
     import run_icml_live_pipeline as pipe
 
     monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
     (tmp_path / "docs").mkdir(exist_ok=True)
     monkeypatch.setattr(pipe, "_resolve_run_dirs", lambda _ids: [run])
     bumped, detail2 = bump_spent_reconciled([1300], fallback_estimate=1.0, stage="G2")
-    assert bumped == pytest.approx(0.50)
-    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(0.50)
+    assert bumped == pytest.approx(1.20)
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(1.20)
     assert "actual_target" in detail2
     assert (tmp_path / "docs" / "icml_budget_spent.json").is_file()
+
+
+def test_sum_run_dirs_cost_estimates_usd_from_tokens_when_usd_zero(tmp_path: Path) -> None:
+    """Tick 291: zero total_cost_usd + tokens → Nebius Kimi rate estimate."""
+    from icml_env_checks import (
+        NEBIUS_KIMI_USD_PER_MILLION,
+        estimate_usd_from_tokens,
+        reconcile_gate_spend_usd,
+        sum_run_dirs_cost_usd,
+    )
+
+    run = tmp_path / "run_tokens"
+    agent = run / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    payload = {
+        "accuracy": 0.2,
+        "total_cost_usd": 0.0,
+        "total_input_tokens": 1_000_000,
+        "total_output_tokens": 500_000,
+        "total_reasoning_tokens": 0,
+    }
+    (agent / "results.json").write_text(json.dumps(payload), encoding="utf-8")
+    expected = (
+        (1_000_000 / 1e6) * NEBIUS_KIMI_USD_PER_MILLION["input"]
+        + (500_000 / 1e6) * NEBIUS_KIMI_USD_PER_MILLION["output"]
+    )
+    assert estimate_usd_from_tokens(payload) == pytest.approx(expected)
+    assert sum_run_dirs_cost_usd([run]) == pytest.approx(expected)
+    amount, detail = reconcile_gate_spend_usd([run], fallback_estimate=9.0, meta_overhead=2.0)
+    assert amount == pytest.approx(expected * 2.0)
+    assert "actual_target" in detail
+    assert "estimate was $9" in detail
 
 
 def test_reconcile_gate_spend_falls_back_to_estimate(tmp_path: Path) -> None:

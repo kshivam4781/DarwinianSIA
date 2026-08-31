@@ -4,6 +4,44 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T18:10Z — Tick 291 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-06f4` (recovered tip ← `1780` Tick 290)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-1780` (Tick 290); local Tick **290** → **291**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, after Tick 289 Nebius Kimi meta + Tick 290 cost merge, live agents still wrote **`total_cost_usd=0`** (`MODEL_PRICING={0,0}` and prompts said “set cost to 0”) while recording tokens. Tick 283 budget reconcile then silently fell back to gate estimates and **under-counted** expensive Nebius meta/feedback — a latent ~$20 ceiling overrun once secrets land. Highest leverage without paid spend: **Nebius Kimi USD pricing + token→USD reconcile + Nebius meta overhead**.
+
+### What this tick did (ONE step)
+**Nebius Kimi USD metering + token→USD budget reconcile (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `1780`; confirmed secrets absent; G2 dry-run `run_1858` PASS
+2. GPQA reference `MODEL_PRICING` → Nebius Token Factory rates ($0.95 / $4.00 per 1M); synced `sia-upstream/`
+3. `build_target_client_setup`: Nebius providers instruct evolved agents to compute USD; other OpenAI-compatible providers keep cost=0
+4. `estimate_usd_from_tokens` + `_usd_from_cost_payload` fallback; `resolve_icml_meta_overhead` (Nebius→3.0, Anthropic→1.25, `SIA_META_OVERHEAD` override)
+5. Tests: +1 focused; suite **26/26** (2 lawbench skipped); golden `meta_prompt_openai.txt` updated
+6. Re-requested automation secrets (NEBIUS + HF required; ANTHROPIC optional)
+7. STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 290) | After (Tick 291) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live target `total_cost_usd` | Always **0** (pricing unknown) | **Nebius Kimi rates** in reference + evolved-agent prompt |
+| Budget reconcile when USD=0 + tokens | Fell back to **gate estimate** | **token→USD estimate** × Nebius meta overhead **3.0** |
+| Focused tests | 85/85 (prior related) | **26/26** this tick's related suite |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T16:10Z — Tick 290 (automation cron)
 
 ### Status snapshot
