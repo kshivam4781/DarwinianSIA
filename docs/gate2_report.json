@@ -1,14 +1,12 @@
 {
-  "timestamp": "2026-08-31T08:02:34Z",
-  "mode": "preflight",
-  "run_id": 1300,
+  "timestamp": "2026-08-31T14:07:51Z",
+  "mode": "dry-run",
+  "run_id": 1856,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
-    "anthropic_key: ANTHROPIC_API_KEY missing",
-    "nebius_key: NEBIUS_API_KEY missing",
-    "hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+    "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
     {
@@ -28,8 +26,8 @@
     },
     {
       "name": "anthropic_key",
-      "ok": false,
-      "detail": "ANTHROPIC_API_KEY missing"
+      "ok": true,
+      "detail": "optional (Nebius meta; ANTHROPIC unused)"
     },
     {
       "name": "nebius_key",
@@ -37,9 +35,9 @@
       "detail": "NEBIUS_API_KEY missing"
     },
     {
-      "name": "hf_token",
-      "ok": false,
-      "detail": "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
     },
     {
       "name": "budget",
@@ -49,7 +47,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1856 unused"
     },
     {
       "name": "per_run_venv",
@@ -59,7 +57,17 @@
     {
       "name": "runtime_deps",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
+    },
+    {
+      "name": "nebius_meta_profile",
+      "ok": true,
+      "detail": "kimi-nebius-pydantic-meta \u2192 nebius / pydantic-ai (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "nebius_target_profile",
+      "ok": true,
+      "detail": "kimi-nebius-target \u2192 nebius (moonshotai/Kimi-K2.6)"
     }
   ],
   "command": [
@@ -79,13 +87,43 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1856",
     "--eval_subset",
     "5",
     "--no-web",
     "--seed",
     "42",
-    "--dry-run"
+    "--dry-run",
+    "--meta-agent-profile",
+    "kimi-nebius-pydantic-meta",
+    "--target-agent-profile",
+    "kimi-nebius-target"
   ],
-  "post": []
+  "post": [
+    {
+      "name": "run_dir",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1856"
+    },
+    {
+      "name": "belief_store",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1856/belief_store"
+    },
+    {
+      "name": "epistemic_value_jsonl",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "cabs_json",
+      "ok": true,
+      "detail": "contradictions/beliefs present"
+    },
+    {
+      "name": "scoped_mutation_bias",
+      "ok": true,
+      "detail": "fields=['memory', 'tool_strategy']"
+    }
+  ]
 }

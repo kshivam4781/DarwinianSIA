@@ -111,7 +111,11 @@ UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SIA_PKG_ROOT = _REPO_ROOT / "SIA"
-_RUNTIME_PIP_PACKAGES = ("huggingface_hub",)
+_RUNTIME_PIP_PACKAGES = ("huggingface_hub", "pydantic_ai")
+# Pip distribution names when they differ from the import name (Tick 289).
+_RUNTIME_PIP_DIST_NAMES = {
+    "pydantic_ai": "pydantic-ai",
+}
 _SECRET_ENV_NAMES = (
     "ANTHROPIC_API_KEY",
     "NEBIUS_API_KEY",
@@ -122,6 +126,10 @@ _SECRET_ENV_NAMES = (
 # Tinker-seeded GPQA reference — Section 6.8 + evolution_prompts require Nebius.
 # Override with ICML_TARGET_AGENT_PROFILE or SIA_TARGET_AGENT_PROFILE.
 DEFAULT_ICML_TARGET_AGENT_PROFILE = "kimi-nebius-target"
+# Tick 289: Meta/feedback also on Nebius (pydantic-ai) so live G2–G4 need only
+# NEBIUS_API_KEY (+ HF/CSV) — Anthropic optional. Override with
+# ICML_META_AGENT_PROFILE or SIA_META_AGENT_PROFILE (e.g. default-meta).
+DEFAULT_ICML_META_AGENT_PROFILE = "kimi-nebius-pydantic-meta"
 # Conventional diamond CSV drop paths (Tick 277). Prefer env override.
 _DIAMOND_CSV_CANDIDATES = (
     "gpqa_diamond.csv",
@@ -174,6 +182,25 @@ def icml_target_profile_cli_flags(
     return ["--target-agent-profile", name]
 
 
+def _load_agent_profile_json(name_or_path: str) -> tuple[Path | None, dict | None, str]:
+    """Load a bundled/path profile JSON. Returns (path, data, error)."""
+    name = (name_or_path or "").strip()
+    if not name:
+        return None, None, "empty profile name"
+    path = Path(name)
+    if not path.is_file():
+        path = _SIA_PKG_ROOT / "sia" / "defaults" / "profiles" / f"{name}.json"
+    if not path.is_file():
+        return None, None, f"profile not found: {name}"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return path, None, f"profile unreadable ({name}): {exc}"
+    if not isinstance(data, dict):
+        return path, None, f"profile {name!r} is not a JSON object"
+    return path, data, ""
+
+
 def probe_icml_target_profile_nebius(
     profile: str | None = None,
 ) -> tuple[bool, str]:
@@ -187,15 +214,9 @@ def probe_icml_target_profile_nebius(
     name = (profile or resolve_icml_target_agent_profile()).strip()
     if not name:
         return False, "empty ICML target agent profile"
-    path = Path(name)
-    if not path.is_file():
-        path = _SIA_PKG_ROOT / "sia" / "defaults" / "profiles" / f"{name}.json"
-    if not path.is_file():
-        return False, f"target profile not found: {name}"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return False, f"target profile unreadable ({name}): {exc}"
+    _path, data, err = _load_agent_profile_json(name)
+    if data is None:
+        return False, err or f"target profile not found: {name}"
     provider = str(data.get("provider_id") or "").strip().lower()
     if provider != "nebius":
         return (
@@ -205,6 +226,75 @@ def probe_icml_target_profile_nebius(
         )
     model = str(data.get("model") or "").strip()
     return True, f"{name} → nebius ({model or 'model?'})"
+
+
+def resolve_icml_meta_agent_profile() -> str:
+    """Meta/feedback profile for ICML G2/G3/G4 ``sia run`` (Tick 289).
+
+    Prefer ``ICML_META_AGENT_PROFILE``, then ``SIA_META_AGENT_PROFILE``, else
+    ``kimi-nebius-pydantic-meta`` (Nebius-only; Anthropic optional).
+    """
+    for key in ("ICML_META_AGENT_PROFILE", "SIA_META_AGENT_PROFILE"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            return raw
+    return DEFAULT_ICML_META_AGENT_PROFILE
+
+
+def icml_meta_profile_cli_flags(profile: str | None = None) -> list[str]:
+    """Return ``[--meta-agent-profile, <profile>]`` for gate runners."""
+    name = (profile or resolve_icml_meta_agent_profile()).strip()
+    if not name:
+        name = DEFAULT_ICML_META_AGENT_PROFILE
+    return ["--meta-agent-profile", name]
+
+
+def icml_meta_provider_id(profile: str | None = None) -> str:
+    """Return ``provider_id`` for the resolved ICML meta profile (lowercased)."""
+    name = (profile or resolve_icml_meta_agent_profile()).strip()
+    _path, data, _err = _load_agent_profile_json(name)
+    if not data:
+        return ""
+    return str(data.get("provider_id") or "").strip().lower()
+
+
+def icml_meta_requires_anthropic(profile: str | None = None) -> bool:
+    """True when live G2–G4 still need ``ANTHROPIC_API_KEY`` for the meta agent."""
+    return icml_meta_provider_id(profile) == "anthropic"
+
+
+def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
+    """True when the resolved meta profile is loadable and coherent for ICML.
+
+    Default Nebius + pydantic-ai avoids OpenHands (heavy / Windows-broken) while
+    keeping paid meta/feedback on ``NEBIUS_API_KEY`` only.
+    """
+    name = (profile or resolve_icml_meta_agent_profile()).strip()
+    if not name:
+        return False, "empty ICML meta agent profile"
+    _path, data, err = _load_agent_profile_json(name)
+    if data is None:
+        return False, err or f"meta profile not found: {name}"
+    provider = str(data.get("provider_id") or "").strip().lower()
+    agent_impl = str(data.get("agent_impl") or "").strip().lower()
+    model = str(data.get("model") or "").strip()
+    if not provider:
+        return False, f"meta profile {name!r} missing provider_id"
+    if not agent_impl:
+        return False, f"meta profile {name!r} missing agent_impl"
+    if provider == "nebius" and agent_impl == "claude":
+        return (
+            False,
+            f"meta profile {name!r} pairs claude agent_impl with nebius "
+            "(use pydantic-ai or openhands)",
+        )
+    if provider == "anthropic" and agent_impl not in {"claude", "pydantic-ai"}:
+        return (
+            False,
+            f"meta profile {name!r} anthropic provider with unexpected "
+            f"agent_impl={agent_impl!r}",
+        )
+    return True, f"{name} → {provider} / {agent_impl} ({model or 'model?'})"
 
 
 def _prepend_local_bin_to_path() -> None:
@@ -561,7 +651,8 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
                 f"missing runtime packages {missing} (install disabled); "
                 + "; ".join(notes),
             )
-        ok_pip, pip_detail = _pip_install_user(*missing)
+        pip_names = [_RUNTIME_PIP_DIST_NAMES.get(p, p) for p in missing]
+        ok_pip, pip_detail = _pip_install_user(*pip_names)
         notes.append(pip_detail)
         if not ok_pip:
             return False, "; ".join(notes)
@@ -577,7 +668,7 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
                 )
         notes.append(f"bootstrapped {', '.join(missing)}")
     else:
-        notes.append("huggingface_hub already importable")
+        notes.append("huggingface_hub + pydantic_ai already importable")
 
     # Tick 281: always publish user site on PYTHONPATH (even when packages were
     # already importable via ENABLE_USER_SITE) so child env copies inherit them.
@@ -1064,11 +1155,12 @@ def _secret_present(name: str) -> bool:
 
 
 def collect_icml_secrets_status() -> dict:
-    """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268/277).
+    """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268/277/289).
 
     Does **not** include secret values. Portal Save is optional once Tick
     265–266 bootstraps succeed; live blockers are API keys + real GPQA
-    (HF token **or** a local diamond CSV).
+    (HF token **or** a local diamond CSV). Tick 289: Anthropic is required
+    only when the ICML meta profile uses ``provider_id=anthropic``.
     """
     load_icml_dotenv()
     anthropic = _secret_present("ANTHROPIC_API_KEY")
@@ -1076,13 +1168,14 @@ def collect_icml_secrets_status() -> dict:
     hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
     diamond_csv = resolve_diamond_csv_path()
     diamond_csv_ok = diamond_csv is not None
-    secrets_ok = anthropic and nebius
+    meta_needs_anthropic = icml_meta_requires_anthropic()
+    secrets_ok = bool(nebius) and (bool(anthropic) if meta_needs_anthropic else True)
     # HF needed for --fetch-diamond unless operator supplies CSV offline.
     fetch_diamond_ok = secrets_ok and (hf or diamond_csv_ok)
     # Tick 273/277: cron passes --fetch-diamond (optionally with --diamond-csv).
     cron_live_ok = fetch_diamond_ok
     blockers: list[str] = []
-    if not anthropic:
+    if meta_needs_anthropic and not anthropic:
         blockers.append("ANTHROPIC_API_KEY missing")
     if not nebius:
         blockers.append("NEBIUS_API_KEY missing")
@@ -1092,12 +1185,20 @@ def collect_icml_secrets_status() -> dict:
             "(required for --fetch-diamond; or provide --diamond-csv / "
             "drop gpqa_diamond.csv at /tmp or docs/private/)"
         )
+    if meta_needs_anthropic:
+        human_keys = "ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN"
+    else:
+        human_keys = (
+            "NEBIUS_API_KEY + HF_TOKEN "
+            "(ANTHROPIC optional — Tick 289 Nebius pydantic-ai meta)"
+        )
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277: secrets-first live gate; Portal Save optional; "
-            "cron auto-live requires fetch_diamond_ok (API keys + HF **or** "
-            "local diamond CSV); .env loaded for missing secret names; "
+            "Tick 268/273/277/289: secrets-first live gate; Portal Save optional; "
+            "cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
+            "ANTHROPIC only when meta provider is anthropic); "
+            ".env loaded for missing secret names; "
             "human_next prefers bash scripts/icml_cron_entry.sh"
         ),
         "automation_id": _AUTOMATION_ID,
@@ -1114,6 +1215,8 @@ def collect_icml_secrets_status() -> dict:
         "hf_token_present": hf,
         "diamond_csv_present": diamond_csv_ok,
         "diamond_csv_path": str(diamond_csv) if diamond_csv is not None else None,
+        "meta_requires_anthropic": meta_needs_anthropic,
+        "meta_agent_profile": resolve_icml_meta_agent_profile(),
         "packages_bootstrapped_in_preflight": True,
         "portal_save_required_for_live": False,
         "secrets_ok_for_paid_sia": secrets_ok,
@@ -1122,13 +1225,13 @@ def collect_icml_secrets_status() -> dict:
         "ready_for_live_pipeline": False,  # diamond + keys both required; caller may override
         "blockers": blockers,
         "human_next": [
-            f"Add ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN to automation "
+            f"Add {human_keys} to automation "
             f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
             "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–277 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "(Tick 271–289 — recovers tip; auto-live only when fetch_diamond_ok)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],
@@ -1222,9 +1325,11 @@ def live_pipeline_next_steps(
 
     steps.extend(
         [
-            "Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + (`HF_TOKEN` **or** "
-            "local `gpqa_diamond.csv`) to automation "
+            "Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) "
+            "to automation "
             f"{_AUTOMATION_URL} (or linked env dashboard). "
+            "`ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta "
+            "(required only if `ICML_META_AGENT_PROFILE=default-meta`). "
             "Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
             "tip and runs live when `fetch_diamond_ok` (else preflight only).",

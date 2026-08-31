@@ -1,16 +1,34 @@
 {
-  "updated_at": "2026-08-31T08:05:52Z",
+  "updated_at": "2026-08-31T14:08:39Z",
   "tick_note": "Tick 269\u2013270: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh",
-  "local_tick": 285,
-  "remote_tip_tick": 285,
-  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-37a2",
-  "remote_tip_sha": "e783795",
+  "local_tick": 289,
+  "remote_tip_tick": 288,
+  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9746",
+  "remote_tip_sha": "7068204",
   "remote_tip_lineage_score": 6,
   "tip_ok_for_live": true,
   "blockers": [],
   "recover_command": "python3 scripts/icml_recover_tip.py --apply (main boot / no tip scripts: git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply)",
-  "candidates_scanned": 280,
+  "candidates_scanned": 283,
   "top_candidates": [
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-9746",
+      "tick": 288,
+      "sha": "7068204",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-4333",
+      "tick": 287,
+      "sha": "63d37e7",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-aead",
+      "tick": 286,
+      "sha": "200a9c4",
+      "lineage_score": 6
+    },
     {
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-37a2",
       "tick": 285,
@@ -22,24 +40,6 @@
       "tick": 284,
       "sha": "82eeb95",
       "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-478f",
-      "tick": 283,
-      "sha": "a51e6ba",
-      "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-3c63",
-      "tick": 282,
-      "sha": "950b360",
-      "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-1179",
-      "tick": 281,
-      "sha": "d71e01f",
-      "lineage_score": 5
     }
   ]
 }

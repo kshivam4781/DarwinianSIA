@@ -56,6 +56,8 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_meta_requires_anthropic,
+    probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
 )
@@ -170,7 +172,22 @@ def run_preflight(
     anth = _env_key("ANTHROPIC_API_KEY")
     neb = _env_key("NEBIUS_API_KEY")
     hf = _env_key("HF_TOKEN") or _env_key("HUGGINGFACE_HUB_TOKEN")
-    report.add("anthropic_key", bool(anth), "set" if anth else "ANTHROPIC_API_KEY missing")
+    # Tick 289: Anthropic required only when meta provider is anthropic.
+    need_anth = icml_meta_requires_anthropic()
+    if need_anth:
+        report.add(
+            "anthropic_key",
+            bool(anth),
+            "set" if anth else "ANTHROPIC_API_KEY missing",
+        )
+    else:
+        report.add(
+            "anthropic_key",
+            True,
+            "optional (Nebius meta; "
+            + ("present but unused" if anth else "ANTHROPIC unused")
+            + ")",
+        )
     report.add("nebius_key", bool(neb), "set" if neb else "NEBIUS_API_KEY missing")
     # Tick 275: --fetch-diamond (no CSV) requires HF; else optional.
     if require_hf_for_diamond:
@@ -238,6 +255,10 @@ def run_preflight(
     deps_ok, deps_detail = ensure_icml_runtime_deps(allow_install=True)
     report.add("runtime_deps", deps_ok, deps_detail)
 
+    # Tick 289: Nebius pydantic-ai meta (refuse silent default-meta Anthropic)
+    meta_ok, meta_detail = probe_icml_meta_profile()
+    report.add("nebius_meta_profile", meta_ok, meta_detail)
+
     # Tick 288: Nebius target profile (refuse default-target / Tinker latent abort)
     profile_ok, profile_detail = probe_icml_target_profile_nebius()
     report.add("nebius_target_profile", profile_ok, profile_detail)
@@ -253,6 +274,7 @@ def run_preflight(
         "seed_count",
         "per_run_venv",
         "runtime_deps",
+        "nebius_meta_profile",
         "nebius_target_profile",
     ]
     if require_hf_for_diamond:

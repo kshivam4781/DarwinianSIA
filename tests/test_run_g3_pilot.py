@@ -42,10 +42,14 @@ def test_build_sia_command_b_vs_d() -> None:
     assert "--cabs-inline" not in b
     assert "1201" in b
     assert "--eval_subset" in b and "15" in b
+    assert "--meta-agent-profile" in b
+    assert "kimi-nebius-pydantic-meta" in b
     assert "--target-agent-profile" in b
     assert "kimi-nebius-target" in b
     d = build_sia_command(condition="D", run_id=1301, seed=1)
     assert "--cabs" in d and "--cabs-inline" in d
+    assert "--meta-agent-profile" in d
+    assert "kimi-nebius-pydantic-meta" in d
     assert "--target-agent-profile" in d
     assert "kimi-nebius-target" in d
     with pytest.raises(ValueError, match="max_gen"):
@@ -71,7 +75,7 @@ def test_preflight_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp_path
     report = run_preflight(mode="preflight", plans=plans)
     assert report.ready_for_live is False
     names = {c.name: c.ok for c in report.checks}
-    assert names["anthropic_key"] is False
+    assert names["anthropic_key"] is True  # Tick 289 optional under Nebius meta
     assert names["nebius_key"] is False
     assert names["gpqa_not_synthetic"] is False
     assert names["sequential_only"] is True

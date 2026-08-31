@@ -75,7 +75,7 @@ def test_preflight_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp_path
     report = run_preflight(mode="preflight", plans=plans)
     assert report.ready_for_live is False
     names = {c.name: c.ok for c in report.checks}
-    assert names["anthropic_key"] is False
+    assert names["anthropic_key"] is True  # Tick 289 optional under Nebius meta
     assert names["nebius_key"] is False
     assert names["gpqa_not_synthetic"] is False
     assert names["seed_count"] is True

@@ -53,11 +53,15 @@ def test_build_sia_command_flags() -> None:
     assert "--dry-run" in dry
     assert "--cabs-inline" in dry
     assert "1850" in dry
+    assert "--meta-agent-profile" in dry
+    assert "kimi-nebius-pydantic-meta" in dry
     assert "--target-agent-profile" in dry
     assert "kimi-nebius-target" in dry
     live = build_sia_command(run_id=1300, seed=1, dry_run=False)
     assert "--dry-run" not in live
     assert "1300" in live
+    assert "--meta-agent-profile" in live
+    assert "kimi-nebius-pydantic-meta" in live
     assert "--target-agent-profile" in live
     assert "kimi-nebius-target" in live
 
@@ -89,7 +93,8 @@ def test_preflight_live_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp
     report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
     assert report.ready_for_live is False
     names = {c.name: c.ok for c in report.checks}
-    assert names["anthropic_key"] is False
+    # Tick 289: Nebius meta → anthropic optional (check still present, ok=True)
+    assert names["anthropic_key"] is True
     assert names["nebius_key"] is False
     assert names["gpqa_not_synthetic"] is False  # smoke fixture
 
@@ -113,7 +118,8 @@ def test_preflight_mode_also_reports_live_not_ready(
     report = run_preflight(mode="preflight", run_id=1850, ensure_smoke_layout=False)
     assert report.ready_for_dry_run is True
     assert report.ready_for_live is False
-    assert any(not c.ok and c.name == "anthropic_key" for c in report.checks)
+    assert any(not c.ok and c.name == "nebius_key" for c in report.checks)
+    assert any(c.name == "nebius_meta_profile" and c.ok for c in report.checks)
 
 
 def test_preflight_live_ready_with_keys_and_real_gpqa(

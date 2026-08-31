@@ -4,6 +4,44 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T14:10Z — Tick 289 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-175c` (recovered tip ← `9746` Tick 288)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-9746` (Tick 288); local Tick **288** → **289**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker. Tick 288 wired Nebius **target** + GPQA reference, but meta/feedback still defaulted to `default-meta` (Anthropic Claude) — so live still hard-required **two** vendor secrets. Highest leverage without paid spend: **Nebius pydantic-ai meta** so paid stack needs only `NEBIUS_API_KEY` (+ HF/CSV).
+
+### What this tick did (ONE step)
+**Nebius pydantic-ai meta + Anthropic-optional secrets gate (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `9746`; confirmed secrets absent
+2. Bundled profile `kimi-nebius-pydantic-meta` (pydantic-ai + Nebius; avoids heavy OpenHands)
+3. `resolve_icml_meta_agent_profile` / `icml_meta_profile_cli_flags` / `probe_icml_meta_profile` / `icml_meta_requires_anthropic`
+4. G2/G3/G4 append `--meta-agent-profile …`; preflight `nebius_meta_profile`; Anthropic check optional when meta provider ≠ anthropic
+5. `collect_icml_secrets_status`: `secrets_ok` = NEBIUS (+ Anthropic only if meta is anthropic); bootstrap `pydantic-ai` in runtime deps
+6. Tests **91/91**; G2 dry-run `run_1856` PASS with meta+target Nebius flags
+7. STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 288) | After (Tick 289) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live G2/G3/G4 meta profile | **default-meta** (Anthropic required) | **`kimi-nebius-pydantic-meta`** |
+| Secrets for paid SIA | ANTHROPIC + NEBIUS + HF/CSV | **NEBIUS + HF/CSV** (ANTHROPIC optional) |
+| Focused tests | 71/71 | **91/91** |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T12:10Z — Tick 288 (automation cron)
 
 ### Status snapshot

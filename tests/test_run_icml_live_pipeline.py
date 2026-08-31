@@ -383,7 +383,8 @@ def test_preflight_stack_not_ready_without_keys(
         g4_d="1311,1312,1313,1314,1315",
     )
     assert report.ready_for_live is False
-    assert any("anthropic" in b.lower() or "ANTHROPIC" in b for b in report.blockers)
+    # Tick 289: default Nebius meta → Anthropic optional; NEBIUS still required.
+    assert any("nebius" in b.lower() or "NEBIUS" in b for b in report.blockers)
     assert (tmp_path / "docs" / "gate2_report.md").is_file()
     assert (tmp_path / "docs" / "gate3_report.md").is_file()
     assert (tmp_path / "docs" / "gate4_report.md").is_file()

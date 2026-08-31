@@ -13,6 +13,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
+    DEFAULT_ICML_META_AGENT_PROFILE,
     DEFAULT_ICML_TARGET_AGENT_PROFILE,
     collect_icml_secrets_status,
     collect_icml_tip_status,
@@ -21,12 +22,16 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    icml_meta_profile_cli_flags,
+    icml_meta_requires_anthropic,
     icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
     live_pipeline_next_steps,
     parse_latest_icml_tick,
+    probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    resolve_icml_meta_agent_profile,
     resolve_icml_target_agent_profile,
     write_icml_secrets_status,
     write_icml_tip_status,
@@ -172,25 +177,33 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
         "icml_env_checks.ensure_sia_on_pythonpath",
         lambda: (True, "sia importable via PYTHONPATH=/tmp/SIA"),
     )
-    state = {"hub": False}
+    state = {"hub": False, "pydantic_ai": False}
 
     def _imp(name: str) -> bool:
         if name == "huggingface_hub":
             return state["hub"]
+        if name == "pydantic_ai":
+            return state["pydantic_ai"]
         return False
 
     monkeypatch.setattr("icml_env_checks._module_importable", _imp)
 
     def _pip(*packages: str):
-        assert "huggingface_hub" in packages
-        state["hub"] = True
-        return True, "pip installed huggingface_hub"
+        # Tick 289: also bootstraps pydantic-ai (pip name) for Nebius meta.
+        assert "huggingface_hub" in packages or "pydantic-ai" in packages
+        if "huggingface_hub" in packages:
+            state["hub"] = True
+        if "pydantic-ai" in packages or "pydantic_ai" in packages:
+            state["pydantic_ai"] = True
+        return True, f"pip installed {', '.join(packages)}"
 
     monkeypatch.setattr("icml_env_checks._pip_install_user", _pip)
     ok, detail = ensure_icml_runtime_deps(allow_install=True)
     assert ok is True
-    assert "bootstrapped huggingface_hub" in detail
+    assert "bootstrapped" in detail
+    assert "huggingface_hub" in detail
     assert state["hub"] is True
+    assert state["pydantic_ai"] is True
 
 
 def test_ensure_deps_before_diamond_fetch_delegates(
@@ -543,7 +556,7 @@ def test_ready_for_live_pipeline_requires_fetch_diamond_ok(
 
 def test_live_pipeline_next_steps_secrets_first() -> None:
     blocked = live_pipeline_next_steps(secrets_ok=False)
-    assert "ANTHROPIC_API_KEY" in blocked[0]
+    assert "NEBIUS_API_KEY" in blocked[0]
     assert "icml_cron_entry.sh" in blocked[1]
     assert "optional" in blocked[2].lower()
     # Legacy caller (no fetch_diamond_ok): secrets_ok still means "go".
@@ -559,7 +572,7 @@ def test_live_pipeline_next_steps_tip_before_secrets() -> None:
         tip_ref="origin/cursor/icml-epistemic-results-de52",
     )
     assert "icml_cron_entry.sh" in steps[0]
-    assert "ANTHROPIC_API_KEY" in steps[1]
+    assert "NEBIUS_API_KEY" in steps[1]
 
 
 def test_icml_boot_recover_script_exists_and_help() -> None:
@@ -799,3 +812,43 @@ def test_probe_icml_target_profile_rejects_default_target(
     ok, detail = probe_icml_target_profile_nebius()
     assert ok is False
     assert "anthropic" in detail.lower() or "want nebius" in detail
+
+
+def test_resolve_icml_meta_agent_profile_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    assert resolve_icml_meta_agent_profile() == DEFAULT_ICML_META_AGENT_PROFILE
+    assert DEFAULT_ICML_META_AGENT_PROFILE == "kimi-nebius-pydantic-meta"
+    assert icml_meta_requires_anthropic() is False
+    flags = icml_meta_profile_cli_flags()
+    assert flags == ["--meta-agent-profile", "kimi-nebius-pydantic-meta"]
+    ok, detail = probe_icml_meta_profile()
+    assert ok is True
+    assert "nebius" in detail.lower()
+
+
+def test_icml_meta_default_meta_requires_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ICML_META_AGENT_PROFILE", "default-meta")
+    assert icml_meta_requires_anthropic() is True
+    ok, detail = probe_icml_meta_profile()
+    assert ok is True
+    assert "anthropic" in detail.lower()
+
+
+def test_secrets_ok_with_nebius_only_under_nebius_meta(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 289: Anthropic optional when Nebius pydantic-ai meta is default."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    # Avoid picking up repo .env
+    monkeypatch.setattr("icml_env_checks.load_icml_dotenv", lambda: [])
+    monkeypatch.setattr("icml_env_checks.resolve_diamond_csv_path", lambda: None)
+    status = collect_icml_secrets_status()
+    assert status["meta_requires_anthropic"] is False
+    assert status["secrets_ok_for_paid_sia"] is True
+    assert status["fetch_diamond_ok"] is True
+    assert "ANTHROPIC_API_KEY missing" not in status["blockers"]
