@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T10:08Z — Tick 287 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-4333` (recovered tip ← `aead` Tick 286)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-aead` (Tick 286); local Tick **286** → **287**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, G2 `--dry-run --eval_subset` on this warm-fork host aborted after per-run venv install with `ModuleNotFoundError: pandas` — `sia.eval_subset` imported pandas at module load even though GPQA subset paths are JSON-only. That would burn live budget at the same host-import point once secrets land. Highest leverage without paid keys: **lazy-import pandas for LawBench-only paths**.
+
+### What this tick did (ONE step)
+**Host pandas-free GPQA eval_subset (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `aead`; confirmed secrets absent
+2. Reproduced latent abort: `run_g2_smoke.py --dry-run --run-id 1851` → `import pandas` fail in host orchestrator after venv created
+3. `SIA/sia/eval_subset.py`: remove top-level `import pandas`; add `_require_pandas()` used only by LawBench materialize/eval
+4. Regression: `test_gpqa_subset_materialize_without_pandas` (blocks pandas import; GPQA subset OK)
+5. Verified: `run_g2_smoke.py --dry-run --run-id 1852` **PASS** (Condition D inline beliefs/contradictions/bias; 2 gens)
+6. STATUS remains IN_PROGRESS (live PRIMARY still needs secrets)
+
+### Metrics delta
+| Metric | Before (Tick 286) | After (Tick 287) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| G2 dry-run on host w/o pandas | **ABORT** (`ModuleNotFoundError`) | **PASS** `run_1852` |
+| Focused test | — | `test_gpqa_subset_materialize_without_pandas` green |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** (harness dry-run unblocked) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T08:06Z — Tick 286 (automation cron)
 
 ### Status snapshot

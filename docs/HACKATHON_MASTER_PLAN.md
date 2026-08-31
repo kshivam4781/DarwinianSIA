@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-31 (Section 21 ICML; Tick 286 ephemeral-dirt tip recover + zero budget ledger; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-31 (Section 21 ICML; Tick 287 host pandas-free GPQA eval_subset; Tick 286 ephemeral-dirt tip recover + zero budget ledger; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -852,7 +852,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML live resume + budget ledger (Tick 284) | **DONE** | `darwinian_run_complete` + `docs/icml_budget_spent.json`; pipeline skips completed G2/G3/G4 run IDs; reloads spend; projects remaining estimates only |
 | ICML cross-VM ledger resume (Tick 285) | **DONE** | Stop gitignoring ledger; `ledger_stage_complete` + ledger-only sync when `runs/` absent; commit ledger with tip after live gates |
 | ICML ephemeral-dirt tip recover (Tick 286) | **DONE** | `discard_ephemeral_icml_dirt` before tip `--apply`; zero `docs/icml_budget_spent.json` committed; cron/boot_recover wired |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–286 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML GPQA eval_subset host pandas (Tick 287) | **DONE** | Lazy-import pandas in `SIA/sia/eval_subset.py`; G2 dry-run `run_1852` green on host without pandas |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–287 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
