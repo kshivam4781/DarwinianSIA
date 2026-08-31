@@ -13,6 +13,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
+    DEFAULT_ICML_TARGET_AGENT_PROFILE,
     collect_icml_secrets_status,
     collect_icml_tip_status,
     discard_ephemeral_icml_dirt,
@@ -20,10 +21,13 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
     live_pipeline_next_steps,
     parse_latest_icml_tick,
+    probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    resolve_icml_target_agent_profile,
     write_icml_secrets_status,
     write_icml_tip_status,
 )
@@ -758,3 +762,40 @@ def test_discard_ephemeral_icml_dirt_clears_reports_only(
     assert ok2 is False
     assert "non-ephemeral" in detail2
     assert "dirty again" in (docs / "gate2_report.md").read_text(encoding="utf-8")
+
+
+def test_resolve_icml_target_agent_profile_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ICML_TARGET_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_TARGET_AGENT_PROFILE", raising=False)
+    assert resolve_icml_target_agent_profile() == DEFAULT_ICML_TARGET_AGENT_PROFILE
+    assert DEFAULT_ICML_TARGET_AGENT_PROFILE == "kimi-nebius-target"
+    flags = icml_target_profile_cli_flags()
+    assert flags == ["--target-agent-profile", "kimi-nebius-target"]
+
+
+def test_resolve_icml_target_agent_profile_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ICML_TARGET_AGENT_PROFILE", "qwen-nebius-target")
+    assert resolve_icml_target_agent_profile() == "qwen-nebius-target"
+    monkeypatch.delenv("ICML_TARGET_AGENT_PROFILE", raising=False)
+    monkeypatch.setenv("SIA_TARGET_AGENT_PROFILE", "gptoss-nebius-target")
+    assert resolve_icml_target_agent_profile() == "gptoss-nebius-target"
+
+
+def test_probe_icml_target_profile_nebius_default() -> None:
+    ok, detail = probe_icml_target_profile_nebius()
+    assert ok is True
+    assert "nebius" in detail.lower()
+    assert "kimi" in detail.lower() or "Kimi" in detail
+
+
+def test_probe_icml_target_profile_rejects_default_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ICML_TARGET_AGENT_PROFILE", "default-target")
+    ok, detail = probe_icml_target_profile_nebius()
+    assert ok is False
+    assert "anthropic" in detail.lower() or "want nebius" in detail

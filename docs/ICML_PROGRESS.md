@@ -4,6 +4,43 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T12:10Z — Tick 288 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-9746` (recovered tip ← `4333` Tick 287)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-4333` (Tick 287); local Tick **287** → **288**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, G2/G3/G4 checked `NEBIUS_API_KEY` but **omitted `--target-agent-profile`**, so the first paid run would use `default-target` (Anthropic Haiku) while the GPQA reference seed still called **Tinker** (`TINKER_API_KEY`) — Section 6.8 latent abort that would burn budget once secrets land. Highest leverage without paid keys: **wire Nebius target profile + retarget GPQA reference**.
+
+### What this tick did (ONE step)
+**Nebius target profile + GPQA reference retarget (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `4333`; confirmed secrets absent
+2. `resolve_icml_target_agent_profile` / `icml_target_profile_cli_flags` / `probe_icml_target_profile_nebius` (default `kimi-nebius-target`; env override)
+3. G2/G3/G4 `build_sia_command` append `--target-agent-profile …`; preflight requires `nebius_target_profile`
+4. `SIA/sia/tasks/gpqa/reference/reference_target_agent.py`: Tinker/Qwen → Nebius/Kimi + `results/submission.json` (aligned with `evolution_prompts`)
+5. Tests: +6 focused; suite **71/71**; G2 dry-run `run_1855` PASS with profile flag
+6. STATUS remains IN_PROGRESS (live PRIMARY still needs secrets)
+
+### Metrics delta
+| Metric | Before (Tick 287) | After (Tick 288) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live G2/G3/G4 target profile | **default-target** (Anthropic; latent) | **`kimi-nebius-target`** |
+| GPQA reference API | Tinker (`TINKER_API_KEY`) | **Nebius** (`NEBIUS_API_KEY`) |
+| Focused tests | env/g2/g3/g4 prior green | **71/71** |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** (wrong-API latent fixed) |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T10:08Z — Tick 287 (automation cron)
 
 ### Status snapshot

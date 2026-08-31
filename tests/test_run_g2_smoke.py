@@ -53,9 +53,22 @@ def test_build_sia_command_flags() -> None:
     assert "--dry-run" in dry
     assert "--cabs-inline" in dry
     assert "1850" in dry
+    assert "--target-agent-profile" in dry
+    assert "kimi-nebius-target" in dry
     live = build_sia_command(run_id=1300, seed=1, dry_run=False)
     assert "--dry-run" not in live
     assert "1300" in live
+    assert "--target-agent-profile" in live
+    assert "kimi-nebius-target" in live
+
+
+def test_build_sia_command_honors_icml_profile_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ICML_TARGET_AGENT_PROFILE", "qwen-nebius-target")
+    cmd = build_sia_command(run_id=1300, seed=1, dry_run=False)
+    assert "qwen-nebius-target" in cmd
+    assert "kimi-nebius-target" not in cmd
 
 
 def test_preflight_live_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

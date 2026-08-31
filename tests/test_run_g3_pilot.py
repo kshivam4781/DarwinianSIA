@@ -42,8 +42,12 @@ def test_build_sia_command_b_vs_d() -> None:
     assert "--cabs-inline" not in b
     assert "1201" in b
     assert "--eval_subset" in b and "15" in b
+    assert "--target-agent-profile" in b
+    assert "kimi-nebius-target" in b
     d = build_sia_command(condition="D", run_id=1301, seed=1)
     assert "--cabs" in d and "--cabs-inline" in d
+    assert "--target-agent-profile" in d
+    assert "kimi-nebius-target" in d
     with pytest.raises(ValueError, match="max_gen"):
         build_sia_command(condition="B", run_id=1, seed=1, max_gen=6)
 

@@ -118,6 +118,10 @@ _SECRET_ENV_NAMES = (
     "HF_TOKEN",
     "HUGGINGFACE_HUB_TOKEN",
 )
+# Tick 288: G2/G3/G4 must not silently use default-target (Anthropic Haiku) or
+# Tinker-seeded GPQA reference — Section 6.8 + evolution_prompts require Nebius.
+# Override with ICML_TARGET_AGENT_PROFILE or SIA_TARGET_AGENT_PROFILE.
+DEFAULT_ICML_TARGET_AGENT_PROFILE = "kimi-nebius-target"
 # Conventional diamond CSV drop paths (Tick 277). Prefer env override.
 _DIAMOND_CSV_CANDIDATES = (
     "gpqa_diamond.csv",
@@ -145,6 +149,62 @@ py = target / ("Scripts" if sys.platform == "win32" else "bin") / (
 )
 raise SystemExit(0 if py.is_file() else 3)
 """
+
+
+def resolve_icml_target_agent_profile() -> str:
+    """Nebius target profile for ICML G2/G3/G4 ``sia run`` commands (Tick 288).
+
+    Prefer ``ICML_TARGET_AGENT_PROFILE``, then ``SIA_TARGET_AGENT_PROFILE``, else
+    ``kimi-nebius-target`` (matches ``evolution_prompts`` Kimi-K2.6 + NEBIUS).
+    """
+    for key in ("ICML_TARGET_AGENT_PROFILE", "SIA_TARGET_AGENT_PROFILE"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            return raw
+    return DEFAULT_ICML_TARGET_AGENT_PROFILE
+
+
+def icml_target_profile_cli_flags(
+    profile: str | None = None,
+) -> list[str]:
+    """Return ``[--target-agent-profile, <profile>]`` for gate runners."""
+    name = (profile or resolve_icml_target_agent_profile()).strip()
+    if not name:
+        name = DEFAULT_ICML_TARGET_AGENT_PROFILE
+    return ["--target-agent-profile", name]
+
+
+def probe_icml_target_profile_nebius(
+    profile: str | None = None,
+) -> tuple[bool, str]:
+    """True when the resolved target profile uses the Nebius provider.
+
+    Latent live abort (Tick 288): runners checked ``NEBIUS_API_KEY`` but omitted
+    ``--target-agent-profile``, so paid runs used ``default-target`` (Anthropic)
+    while the GPQA seed still called Tinker. Refuse non-Nebius profiles in
+    preflight so the first live G2 cannot burn budget on the wrong API.
+    """
+    name = (profile or resolve_icml_target_agent_profile()).strip()
+    if not name:
+        return False, "empty ICML target agent profile"
+    path = Path(name)
+    if not path.is_file():
+        path = _SIA_PKG_ROOT / "sia" / "defaults" / "profiles" / f"{name}.json"
+    if not path.is_file():
+        return False, f"target profile not found: {name}"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, f"target profile unreadable ({name}): {exc}"
+    provider = str(data.get("provider_id") or "").strip().lower()
+    if provider != "nebius":
+        return (
+            False,
+            f"profile {name!r} provider_id={provider!r} (want nebius; "
+            "set ICML_TARGET_AGENT_PROFILE=kimi-nebius-target)",
+        )
+    model = str(data.get("model") or "").strip()
+    return True, f"{name} → nebius ({model or 'model?'})"
 
 
 def _prepend_local_bin_to_path() -> None:

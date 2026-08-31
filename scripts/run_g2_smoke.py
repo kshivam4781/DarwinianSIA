@@ -52,6 +52,8 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_target_profile_cli_flags,
+    probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
 )
 
@@ -178,6 +180,8 @@ def build_sia_command(
     ]
     if dry_run:
         cmd.append("--dry-run")
+    # Tick 288: Nebius target profile (not default-target / Tinker seed).
+    cmd.extend(icml_target_profile_cli_flags())
     return cmd
 
 
@@ -274,6 +278,10 @@ def run_preflight(
     deps_ok, deps_detail = ensure_icml_runtime_deps(allow_install=True)
     report.add("runtime_deps", deps_ok, deps_detail)
 
+    # Tick 288: Nebius target profile (refuse default-target / Tinker latent abort)
+    profile_ok, profile_detail = probe_icml_target_profile_nebius()
+    report.add("nebius_target_profile", profile_ok, profile_detail)
+
     by_name = {c.name: c.ok for c in report.checks}
     dry_needed = ("gpqa_layout", "run_id_free", "per_run_venv", "runtime_deps")
     report.ready_for_dry_run = all(by_name.get(n, False) for n in dry_needed) and not missing
@@ -286,6 +294,7 @@ def run_preflight(
         "run_id_free",
         "per_run_venv",
         "runtime_deps",
+        "nebius_target_profile",
     ]
     if require_hf_for_diamond:
         live_needed_list.append("hf_token")

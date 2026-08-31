@@ -320,6 +320,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 285 cross-VM ledger resume — stop gitignoring ledger; `ledger_stage_complete` skips gates when `runs/` absent but committed ledger matches run IDs
 - [x] Tick 286 ephemeral-dirt tip recover + zero ledger — `discard_ephemeral_icml_dirt` before tip `--apply`; committed zero `docs/icml_budget_spent.json`; cron/boot_recover wired
 - [x] Tick 287 host pandas-free GPQA `--eval_subset` — lazy `_require_pandas()` in `SIA/sia/eval_subset.py`; G2 dry-run `run_1852` PASS on system Python without host pandas (latent live abort fixed)
+- [x] Tick 288 Nebius target profile + GPQA reference retarget — G2/G3/G4 `--target-agent-profile kimi-nebius-target` + `nebius_target_profile` preflight; GPQA seed uses Nebius/Kimi (not Tinker); dry-run `run_1855` PASS
 
 ## Gate tracker (Section 21.5)
 
