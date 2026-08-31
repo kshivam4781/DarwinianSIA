@@ -693,12 +693,34 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     return ensure_icml_runtime_deps(allow_install=allow_install)
 
 
+def _usd_from_cost_payload(data: dict) -> float | None:
+    """Extract positive USD from a results.json or submission.json payload."""
+    if not isinstance(data, dict):
+        return None
+    usd = data.get("total_cost_usd")
+    if isinstance(usd, (int, float)) and float(usd) > 0.0:
+        return float(usd)
+    detail_total = 0.0
+    found = False
+    for detail in data.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+        c = detail.get("cost_usd")
+        if isinstance(c, (int, float)) and float(c) > 0.0:
+            detail_total += float(c)
+            found = True
+    return detail_total if found else None
+
+
 def sum_run_dirs_cost_usd(run_dirs: list[Path]) -> float | None:
     """Sum ``total_cost_usd`` across ``gen_*/agent_*/results.json`` (Tick 283).
 
+    Tick 290: also fall back to ``agent_*/results/submission.json`` when
+    ``results.json`` is accuracy-only (pre-merge eval artifacts).
+
     Returns ``None`` when no positive USD fields are found (dry-run / missing
-    artifacts). Target-eval costs only — meta/feedback Claude spend is usually
-    not in these files; callers should apply a small overhead factor.
+    artifacts). Target-eval costs only — meta/feedback spend is usually not in
+    these files; callers should apply a small overhead factor.
     """
     total = 0.0
     found = False
@@ -708,26 +730,29 @@ def sum_run_dirs_cost_usd(run_dirs: list[Path]) -> float | None:
         root = Path(run_dir)
         if not root.is_dir():
             continue
-        for results_path in root.glob("gen_*/agent_*/results.json"):
-            try:
-                data = json.loads(results_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError, TypeError):
+        for agent_dir in root.glob("gen_*/agent_*"):
+            if not agent_dir.is_dir():
                 continue
-            if not isinstance(data, dict):
-                continue
-            usd = data.get("total_cost_usd")
-            if isinstance(usd, (int, float)) and float(usd) > 0.0:
-                total += float(usd)
+            payloads: list[dict] = []
+            for rel in ("results.json", "results/submission.json"):
+                path = agent_dir / rel
+                if not path.is_file():
+                    continue
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError, TypeError):
+                    continue
+                if isinstance(data, dict):
+                    payloads.append(data)
+            # Prefer results.json (post-Tick-290 merged) then submission.
+            agent_usd = None
+            for data in payloads:
+                agent_usd = _usd_from_cost_payload(data)
+                if agent_usd is not None:
+                    break
+            if agent_usd is not None:
+                total += agent_usd
                 found = True
-            else:
-                # Fall back to per-question cost_usd if aggregate missing.
-                for detail in data.get("details") or []:
-                    if not isinstance(detail, dict):
-                        continue
-                    c = detail.get("cost_usd")
-                    if isinstance(c, (int, float)) and float(c) > 0.0:
-                        total += float(c)
-                        found = True
     return total if found else None
 
 

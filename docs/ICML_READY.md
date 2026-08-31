@@ -322,6 +322,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 287 host pandas-free GPQA `--eval_subset` — lazy `_require_pandas()` in `SIA/sia/eval_subset.py`; G2 dry-run `run_1852` PASS on system Python without host pandas (latent live abort fixed)
 - [x] Tick 288 Nebius target profile + GPQA reference retarget — G2/G3/G4 `--target-agent-profile kimi-nebius-target` + `nebius_target_profile` preflight; GPQA seed uses Nebius/Kimi (not Tinker); dry-run `run_1855` PASS
 - [x] Tick 289 Nebius pydantic-ai meta — G2/G3/G4 `--meta-agent-profile kimi-nebius-pydantic-meta` + `nebius_meta_profile` preflight; Anthropic optional for live secrets; dry-run `run_1856` PASS
+- [x] Tick 290 GPQA subset eval cost merge — `_evaluate_gpqa_subset` copies tokens/USD/`details` from `submission.json` into `results.json`; `sum_run_dirs_cost_usd` + `load_gen_cost` fall back to submission (PRIMARY cost + budget reconcile)
 
 ## Gate tracker (Section 21.5)
 

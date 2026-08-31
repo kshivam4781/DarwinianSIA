@@ -311,6 +311,37 @@ def test_reconcile_gate_spend_falls_back_to_estimate(tmp_path: Path) -> None:
     assert "estimate" in detail
 
 
+def test_sum_run_dirs_cost_reads_submission_when_results_accuracy_only(
+    tmp_path: Path,
+) -> None:
+    """Tick 290: pre-merge accuracy-only results.json still meters via submission.json."""
+    from icml_env_checks import reconcile_gate_spend_usd, sum_run_dirs_cost_usd
+
+    run = tmp_path / "run_legacy"
+    agent = run / "gen_1" / "agent_0"
+    results_dir = agent / "results"
+    results_dir.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "n_correct": 1, "n_total": 5, "eval_subset": 5}),
+        encoding="utf-8",
+    )
+    (results_dir / "submission.json").write_text(
+        json.dumps(
+            {
+                "total_cost_usd": 0.32,
+                "total_input_tokens": 900,
+                "total_output_tokens": 40,
+                "details": [{"question_id": 0, "model_answer": "A", "cost_usd": 0.32}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert sum_run_dirs_cost_usd([run]) == pytest.approx(0.32)
+    amount, detail = reconcile_gate_spend_usd([run], fallback_estimate=1.0, meta_overhead=1.25)
+    assert amount == pytest.approx(0.40)
+    assert "actual_target" in detail
+
+
 def test_run_preflight_stack_default_diamond_n_is_15() -> None:
     """Tick 283: preflight stack default matches G3/G4 eval_subset=15."""
     import inspect

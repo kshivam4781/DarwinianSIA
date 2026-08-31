@@ -163,6 +163,42 @@ def _evaluate_lawbench_subset(gen: Path, task_dir: str, n: int) -> dict:
     }
 
 
+# Cost / token keys written by GPQA reference + evolved target agents into
+# ``results/submission.json``. Tick 290: subset eval must copy these into
+# ``results.json`` so PRIMARY cost-to-threshold and budget reconcile see live
+# spend (previously accuracy-only results.json dropped all metering).
+_GPQA_COST_SCALAR_KEYS = (
+    "total_input_tokens",
+    "total_output_tokens",
+    "total_reasoning_tokens",
+    "total_cost_usd",
+    "total_questions",
+    "errors",
+    "model",
+)
+
+
+def cost_fields_from_submission(submission: dict) -> dict:
+    """Extract token/USD metering from a GPQA submission payload.
+
+    Returns a dict suitable for merging into ``results.json``. Includes
+    ``details`` when present so per-question token rows remain available to
+    ``scripts/epistemic_results._agent_eval_cost`` / budget helpers.
+    """
+    if not isinstance(submission, dict):
+        return {}
+    out: dict = {}
+    for key in _GPQA_COST_SCALAR_KEYS:
+        val = submission.get(key)
+        if isinstance(val, (int, float, str)):
+            out[key] = val
+    details = submission.get("details")
+    if isinstance(details, list) and details:
+        # Keep detail rows that carry answers and/or cost fields.
+        out["details"] = details
+    return out
+
+
 def _evaluate_gpqa_subset(gen: Path, task_dir: str, n: int) -> dict:
     truth_path = Path(task_dir) / "data" / "private" / "diamond_questions.json"
     questions = json.loads(truth_path.read_text(encoding="utf-8"))[:n]
@@ -213,9 +249,12 @@ def _evaluate_gpqa_subset(gen: Path, task_dir: str, n: int) -> dict:
         if submission_answers.get(qid) == letter:
             correct += 1
     total = len(correct_answers)
-    return {
+    results = {
         "accuracy": correct / total if total else 0.0,
         "n_correct": correct,
         "n_total": total,
         "eval_subset": n,
     }
+    # Tick 290: preserve live metering from submission.json (tokens/USD).
+    results.update(cost_fields_from_submission(submission))
+    return results

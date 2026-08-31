@@ -270,12 +270,55 @@ def _agent_eval_cost(results: dict[str, Any]) -> tuple[float, str]:
     return 1.0, "calls"
 
 
+def _load_agent_cost_payload(agent_dir: Path) -> dict[str, Any] | None:
+    """Load metering-bearing payload for one agent (Tick 290).
+
+    Prefer ``results.json`` (accuracy + merged tokens after Tick 290 eval).
+    Fall back to ``results/submission.json`` when results.json is accuracy-only
+    (pre-merge live artifacts).
+    """
+    primary = _load_json(agent_dir / "results.json")
+    if isinstance(primary, dict):
+        # Has real metering?
+        tokens = 0.0
+        for key in ("total_input_tokens", "total_output_tokens", "total_reasoning_tokens"):
+            val = primary.get(key)
+            if isinstance(val, (int, float)):
+                tokens += float(val)
+        usd = primary.get("total_cost_usd")
+        has_usd = isinstance(usd, (int, float)) and float(usd) > 0.0
+        if tokens > 0.0 or has_usd or primary.get("details"):
+            return primary
+    submission = _load_json(agent_dir / "results" / "submission.json")
+    if isinstance(submission, dict):
+        if primary and isinstance(primary, dict):
+            merged = dict(primary)
+            for key in (
+                "total_input_tokens",
+                "total_output_tokens",
+                "total_reasoning_tokens",
+                "total_cost_usd",
+                "total_questions",
+                "details",
+            ):
+                if key in submission and key not in merged:
+                    merged[key] = submission[key]
+                elif key in submission and key == "details" and not merged.get("details"):
+                    merged[key] = submission[key]
+            return merged
+        return submission
+    return primary if isinstance(primary, dict) else None
+
+
 def load_gen_cost(run_dir: Path) -> dict[int, dict[str, Any]]:
     """Map generation → cumulative-friendly cost units from agent results.
 
     Live GPQA writes token/USD fields; dry-run writes ``eval_subset`` / accuracy
     only, so cost falls back to per-agent eval calls. Unit is homogeneous within
     a run (tokens preferred over usd over calls).
+
+    Tick 290: also reads ``results/submission.json`` when ``results.json`` lacks
+    metering (latent pre-merge eval drop).
     """
     out: dict[int, dict[str, Any]] = {}
     for gen_dir in sorted(run_dir.glob("gen_*")):
@@ -286,8 +329,10 @@ def load_gen_cost(run_dir: Path) -> dict[int, dict[str, Any]]:
         total = 0.0
         unit = "calls"
         n_agents = 0
-        for results_path in gen_dir.glob("agent_*/results.json"):
-            data = _load_json(results_path)
+        for agent_dir in sorted(gen_dir.glob("agent_*")):
+            if not agent_dir.is_dir():
+                continue
+            data = _load_agent_cost_payload(agent_dir)
             if not data:
                 continue
             cost, u = _agent_eval_cost(data)

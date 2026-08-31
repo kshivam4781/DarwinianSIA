@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-08-31T14:07:51Z",
+  "timestamp": "2026-08-31T16:03:44Z",
   "mode": "dry-run",
-  "run_id": 1856,
+  "run_id": 1857,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -47,7 +47,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1856 unused"
+      "detail": "run_1857 unused"
     },
     {
       "name": "per_run_venv",
@@ -87,7 +87,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1856",
+    "1857",
     "--eval_subset",
     "5",
     "--no-web",
@@ -103,12 +103,12 @@
     {
       "name": "run_dir",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1856"
+      "detail": "/workspace/SIA/runs/run_1857"
     },
     {
       "name": "belief_store",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1856/belief_store"
+      "detail": "/workspace/SIA/runs/run_1857/belief_store"
     },
     {
       "name": "epistemic_value_jsonl",

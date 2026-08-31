@@ -302,3 +302,62 @@ def test_cost_win_requires_fifteen_percent():
     assert _cost_win(100.0, 85.0) == "B"
     assert _cost_win(50.0, None) == "D"
     assert _cost_win(None, 50.0) == "B"
+
+
+def test_cost_to_threshold_reads_submission_json_fallback(tmp_path: Path):
+    """Tick 290: accuracy-only results.json + metered submission.json → tokens unit."""
+    from epistemic_results import load_gen_cost
+
+    run = tmp_path / "run_legacy_cost"
+    for g, best in enumerate([0.20, 0.32], start=1):
+        agent = run / f"gen_{g}" / "agent_0"
+        results_dir = agent / "results"
+        results_dir.mkdir(parents=True)
+        (agent / "results.json").write_text(
+            json.dumps(
+                {
+                    "accuracy": best,
+                    "n_correct": 1,
+                    "n_total": 5,
+                    "eval_subset": 5,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (results_dir / "submission.json").write_text(
+            json.dumps(
+                {
+                    "total_input_tokens": 500,
+                    "total_output_tokens": 50,
+                    "total_reasoning_tokens": 0,
+                    "total_cost_usd": 0.01,
+                    "details": [
+                        {
+                            "question_id": 0,
+                            "model_answer": "A",
+                            "input_tokens": 500,
+                            "output_tokens": 50,
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+    (run / "civilization.json").write_text(
+        json.dumps(
+            {
+                "generations": [
+                    {"gen": 1, "best_fitness": 0.20, "mean_fitness": 0.20},
+                    {"gen": 2, "best_fitness": 0.32, "mean_fitness": 0.32},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    costs = load_gen_cost(run)
+    assert costs[1]["unit"] == "tokens"
+    assert costs[1]["cost"] == pytest.approx(550.0)
+    hit = cost_to_threshold(run, 0.30)
+    assert hit["generation"] == 2
+    assert hit["unit"] == "tokens"
+    assert hit["cost"] == pytest.approx(1100.0)

@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T16:10Z — Tick 290 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-1780` (recovered tip ← `175c` Tick 289)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-175c` (Tick 289); local Tick **289** → **290**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (secrets). Separately, GPQA `--eval_subset` wrote **accuracy-only** `results.json` and dropped all token/USD fields from `results/submission.json`. Once secrets land, PRIMARY criterion (b) cost-to-threshold and Tick 283 budget reconcile would silently fall back to eval-call / estimate metering — a latent live PRIMARY abort. Highest leverage without paid spend: **merge submission cost fields into results.json** (+ reader fallbacks).
+
+### What this tick did (ONE step)
+**GPQA subset eval cost/token merge (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `175c`; confirmed secrets absent; G2 dry-run `run_1857` PASS
+2. `SIA/sia/eval_subset.py`: `cost_fields_from_submission` + `_evaluate_gpqa_subset` copies tokens/USD/`details` into `results.json`
+3. `sum_run_dirs_cost_usd` + `epistemic_results.load_gen_cost` fall back to `results/submission.json` when results.json is accuracy-only
+4. Tests: +4 focused; suite **85/85** (2 lawbench skipped without pandas)
+5. STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 289) | After (Tick 290) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live GPQA `results.json` metering | **accuracy-only** (tokens dropped) | **tokens/USD merged from submission** |
+| Budget reconcile / PRIMARY cost30 | Would miss live USD/tokens | **reads merged results + submission fallback** |
+| Focused tests | 91/91 (prior suite) | **85/85** this tick's related suite |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T14:10Z — Tick 289 (automation cron)
 
 ### Status snapshot
