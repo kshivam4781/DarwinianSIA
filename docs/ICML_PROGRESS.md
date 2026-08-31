@@ -4,6 +4,43 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T08:06Z — Tick 286 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-aead` (recovered ← `37a2` Tick 285)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-37a2` (Tick 285); local Tick **285** → **286**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0; committed zero ledger `docs/icml_budget_spent.json`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, preflight rewrites gate/pipeline/secrets/tip reports and left the tree dirty — when a newer tip appeared, `icml_boot_recover.sh --apply` / cron entry refused recover and the agent could stay on a stale Tick. Highest leverage without paid keys: **discard ephemeral report dirt before tip apply + ship zero budget ledger**.
+
+### What this tick did (ONE step)
+**Ephemeral-dirt tip recover + zero ledger (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `37a2`; confirmed secrets absent → preflight only
+2. `discard_ephemeral_icml_dirt` + `EPHEMERAL_ICML_RELPATHS` — restore only gate/pipeline/secrets/tip reports before tip `--apply`; non-ephemeral edits still hard-stop
+3. Wired discard into `icml_boot_recover.sh --apply` and `icml_cron_entry.sh` recover path
+4. `ensure_budget_spent_ledger_initialized` + committed `docs/icml_budget_spent.json` (spent=$0, empty stages)
+5. Tests: +3 (ephemeral path / ledger init / discard); focused env+pipeline: **50/50** green
+6. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 285) | After (Tick 286) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Tip recover vs preflight dirt | refused if any dirty | **ephemeral-only dirt auto-discarded** |
+| Budget ledger on tip | un-gitignored but file absent | **zero ledger committed** |
+| Focused ICML tests | pipeline+env 47/47 | **50/50** (+3) |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T06:10Z — Tick 285 (automation cron)
 
 ### Status snapshot

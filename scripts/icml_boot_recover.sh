@@ -158,6 +158,25 @@ fi
 
 dirty="$(git status --porcelain 2>/dev/null || true)"
 if [[ -n "$dirty" ]]; then
+  # Tick 286: preflight dirties gate/pipeline/secrets/tip reports — discard
+  # those ephemerals so tip --apply is not stuck on a stale Tick.
+  if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+    if python3 - <<'PY'
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import discard_ephemeral_icml_dirt
+ok, detail = discard_ephemeral_icml_dirt()
+print(detail)
+raise SystemExit(0 if ok else 1)
+PY
+    then
+      dirty="$(git status --porcelain 2>/dev/null || true)"
+    else
+      echo "Ephemeral discard failed or non-ephemeral dirt remains" >&2
+    fi
+  fi
+fi
+if [[ -n "$dirty" ]]; then
   echo "Working tree dirty — refuse --apply (commit/stash first):" >&2
   echo "$dirty" | head -20 >&2
   exit 3

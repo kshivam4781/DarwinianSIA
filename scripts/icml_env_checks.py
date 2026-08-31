@@ -68,6 +68,14 @@ only. Stop gitignoring the ledger (USD amounts are not secrets) and trust
 ``stages_complete`` + ``run_ids`` when local run dirs are absent so the
 next tip commit can skip completed gates cross-VM.
 
+Tick 286: Preflight rewrites gate/pipeline/secrets/tip JSON+MD and left the
+working tree dirty. When a newer tip appeared, ``icml_boot_recover.sh
+--apply`` / cron entry refused recover ("Working tree dirty") and the
+agent stayed on a stale Tick. ``discard_ephemeral_icml_dirt`` restores only
+those ephemeral report/status paths so tip ``--apply`` can proceed; real
+code edits still block apply. Also ``ensure_budget_spent_ledger_initialized``
+commits a zero ledger schema when the file is absent.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -623,6 +631,153 @@ def budget_spent_ledger_path(repo_root: Path | None = None) -> Path:
     return root / "docs" / "icml_budget_spent.json"
 
 
+# Preflight / status writers only — safe to discard before tip --apply (Tick 286).
+EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
+    {
+        "docs/gate2_report.md",
+        "docs/gate2_report.json",
+        "docs/gate3_report.md",
+        "docs/gate3_report.json",
+        "docs/gate4_report.md",
+        "docs/gate4_report.json",
+        "docs/icml_live_pipeline_report.md",
+        "docs/icml_live_pipeline_report.json",
+        "docs/icml_secrets_status.json",
+        "docs/icml_tip_status.json",
+    }
+)
+
+
+def is_ephemeral_icml_path(rel_path: str) -> bool:
+    """True when ``rel_path`` is a preflight/status artifact (Tick 286)."""
+    norm = rel_path.replace("\\", "/").lstrip("./")
+    return norm in EPHEMERAL_ICML_RELPATHS
+
+
+def porcelain_dirty_paths(repo_root: Path | None = None) -> list[str]:
+    """Return repo-relative dirty paths from ``git status --porcelain``."""
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    try:
+        out = subprocess.check_output(
+            ["git", "status", "--porcelain", "-uall"],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    paths: list[str] = []
+    for line in out.splitlines():
+        if len(line) < 4:
+            continue
+        # XY PATH or XY ORIG -> PATH (rename)
+        rest = line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        rest = rest.strip().strip('"')
+        if rest:
+            paths.append(rest.replace("\\", "/"))
+    return paths
+
+
+def discard_ephemeral_icml_dirt(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Discard uncommitted changes limited to ephemeral ICML report/status files.
+
+    Tick 286: tip ``--apply`` used to refuse any dirty tree. Preflight alone
+    dirties gate/pipeline/secrets/tip reports, so a later tip could never be
+    recovered mid-cron. Restoring *only* ``EPHEMERAL_ICML_RELPATHS`` keeps
+    real code edits as a hard stop.
+
+    Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
+    the tree is clean after this call (or was already clean).
+    """
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    dirty = porcelain_dirty_paths(root)
+    if not dirty:
+        return True, "working tree clean"
+
+    ephemeral = [p for p in dirty if is_ephemeral_icml_path(p)]
+    other = [p for p in dirty if not is_ephemeral_icml_path(p)]
+    if other:
+        # Do not touch ephemerals when real edits exist — operator must
+        # commit/stash the whole tree before tip --apply.
+        return False, f"non-ephemeral dirty paths block tip apply: {other[:8]}"
+    if not ephemeral:
+        return True, "working tree clean"
+
+    restored: list[str] = []
+    for rel in ephemeral:
+        path = root / rel
+        # Tracked: git restore. Untracked: unlink if present.
+        try:
+            tracked = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", rel],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+            )
+            if tracked.returncode == 0:
+                subprocess.run(
+                    ["git", "restore", "--worktree", "--staged", "--", rel],
+                    cwd=str(root),
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                # Older git without restore --staged combo: also checkout
+                subprocess.run(
+                    ["git", "checkout", "--", rel],
+                    cwd=str(root),
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                restored.append(rel)
+            elif path.is_file():
+                path.unlink()
+                restored.append(rel + " (untracked removed)")
+        except OSError as exc:
+            return False, f"failed discarding {rel}: {exc}"
+
+    remaining = porcelain_dirty_paths(root)
+    if remaining:
+        non_ephem = [p for p in remaining if not is_ephemeral_icml_path(p)]
+        if non_ephem:
+            return (
+                False,
+                f"discarded {restored}; still dirty non-ephemeral: {non_ephem[:8]}",
+            )
+        # Only ephemeral remain (restore failed?) — try once more is useless
+        return False, f"discarded {restored}; ephemeral still dirty: {remaining[:8]}"
+    return True, f"discarded ephemeral dirt: {restored}"
+
+
+def ensure_budget_spent_ledger_initialized(
+    repo_root: Path | None = None,
+) -> tuple[Path, bool]:
+    """Create a zero spend ledger when missing (Tick 286). Never overwrites.
+
+    Returns ``(path, created)``.
+    """
+    p = budget_spent_ledger_path(repo_root)
+    if p.is_file():
+        return p, False
+    write_budget_spent_ledger(
+        spent_usd=0.0,
+        stages_complete=[],
+        run_ids=[],
+        detail="Tick 286: initialized zero ledger (no live spend yet)",
+        path=p,
+    )
+    return p, True
+
+
 def load_budget_spent_ledger(path: Path | None = None) -> dict[str, Any]:
     """Load persisted spend ledger (presence-only amounts; never secrets)."""
     p = path or budget_spent_ledger_path()
@@ -660,9 +815,10 @@ def write_budget_spent_ledger(
     payload = {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 284/285: persisted SIA_BUDGET_SPENT_USD across cron ticks; "
+            "Tick 284/285/286: persisted SIA_BUDGET_SPENT_USD across cron ticks; "
             "commit this file so cross-VM resume can skip completed G2/G3/G4 "
-            "(runs/ are gitignored and do not survive fresh boots)"
+            "(runs/ are gitignored and do not survive fresh boots); "
+            "Tick 286 ships a zero ledger when no live spend yet"
         ),
         "spent_usd": round(float(spent_usd), 4),
         "stages_complete": merged_stages,

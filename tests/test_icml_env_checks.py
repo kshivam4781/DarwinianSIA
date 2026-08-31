@@ -15,9 +15,12 @@ sys.path.insert(0, str(REPO / "scripts"))
 from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     collect_icml_tip_status,
+    discard_ephemeral_icml_dirt,
+    ensure_budget_spent_ledger_initialized,
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    is_ephemeral_icml_path,
     live_pipeline_next_steps,
     parse_latest_icml_tick,
     probe_per_run_venv_capable,
@@ -680,3 +683,78 @@ def test_write_icml_tip_status_local_ok(tmp_path: Path) -> None:
     assert status["local_tick"] == 269
     assert status["tip_ok_for_live"] is True
     assert status["blockers"] == []
+
+
+def test_is_ephemeral_icml_path() -> None:
+    assert is_ephemeral_icml_path("docs/gate2_report.md") is True
+    assert is_ephemeral_icml_path("./docs/icml_tip_status.json") is True
+    assert is_ephemeral_icml_path("scripts/icml_env_checks.py") is False
+    assert is_ephemeral_icml_path("docs/ICML_PROGRESS.md") is False
+
+
+def test_ensure_budget_spent_ledger_initialized(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    path, created = ensure_budget_spent_ledger_initialized(tmp_path)
+    assert created is True
+    assert path.is_file()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["spent_usd"] == 0.0
+    assert data["stages_complete"] == []
+    path2, created2 = ensure_budget_spent_ledger_initialized(tmp_path)
+    assert created2 is False
+    assert path2 == path
+    # Must not wipe a non-zero ledger
+    path.write_text(
+        json.dumps({"spent_usd": 3.5, "stages_complete": ["G2"], "run_ids": [1300]}),
+        encoding="utf-8",
+    )
+    _, created3 = ensure_budget_spent_ledger_initialized(tmp_path)
+    assert created3 is False
+    assert json.loads(path.read_text(encoding="utf-8"))["spent_usd"] == 3.5
+
+
+def test_discard_ephemeral_icml_dirt_clears_reports_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 286: only ephemeral report dirt is discarded."""
+    import subprocess
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.md").write_text("clean\n", encoding="utf-8")
+    (docs / "ICML_PROGRESS.md").write_text("## Tick 286\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (docs / "gate2_report.md").write_text("dirty preflight\n", encoding="utf-8")
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok is True
+    assert "gate2_report" in detail
+    assert (docs / "gate2_report.md").read_text(encoding="utf-8") == "clean\n"
+
+    (docs / "gate2_report.md").write_text("dirty again\n", encoding="utf-8")
+    (docs / "ICML_PROGRESS.md").write_text("## Tick 286 EDITED\n", encoding="utf-8")
+    ok2, detail2 = discard_ephemeral_icml_dirt(repo)
+    assert ok2 is False
+    assert "non-ephemeral" in detail2
+    assert "dirty again" in (docs / "gate2_report.md").read_text(encoding="utf-8")

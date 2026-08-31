@@ -144,6 +144,19 @@ fi
 
 if [[ "$need_recover" -eq 1 ]]; then
   if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+    # Tick 286: discard preflight-only dirt before refusing tip apply.
+    if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+      python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import discard_ephemeral_icml_dirt
+ok, detail = discard_ephemeral_icml_dirt()
+print(f"ephemeral_discard: ok={ok} {detail}")
+raise SystemExit(0 if ok else 1)
+PY
+    fi
+  fi
+  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
     echo "Working tree dirty — skip tip --apply; commit/stash first or recover manually" >&2
     echo "Dirty paths:" >&2
     git status --porcelain | head -20 >&2
@@ -163,10 +176,15 @@ if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; th
 from pathlib import Path
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import write_icml_secrets_status, write_icml_tip_status
+from icml_env_checks import (
+    write_icml_secrets_status,
+    write_icml_tip_status,
+    ensure_budget_spent_ledger_initialized,
+)
 root = Path(".").resolve()
 tip = write_icml_tip_status(root / "docs" / "icml_tip_status.json", fetch=False)
 sec = write_icml_secrets_status(root / "docs" / "icml_secrets_status.json")
+ledger_path, ledger_created = ensure_budget_spent_ledger_initialized(root)
 print(f"tip_ok_for_live={tip.get('tip_ok_for_live')} local_tick={tip.get('local_tick')}")
 print(
     "secrets_ok_for_paid_sia="
@@ -179,6 +197,7 @@ print(
 )
 if sec.get("diamond_csv_path"):
     print(f"diamond_csv_path={sec.get('diamond_csv_path')}")
+print(f"budget_ledger={ledger_path} created={ledger_created}")
 PY
 fi
 
