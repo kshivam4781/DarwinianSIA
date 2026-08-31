@@ -315,6 +315,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 280 uv pip `--target` user site — `_uv_pip_install` installs into user site-packages (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps`
 - [x] Tick 281 user-site on PYTHONPATH — `_expose_user_site_on_pythonpath` so Tick 280 `--target` packages survive `PYTHONNOUSERSITE` / venv children (latent `--fetch-diamond` fix)
 - [x] Tick 282 deps-before-diamond-fetch — `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` (cold-boot ImportError fix)
+- [x] Tick 283 live budget reconcile — `bump_spent_reconciled` from actual `total_cost_usd` × meta overhead after G2/G3/G4; preflight `diamond_n` default 15
 
 ## Gate tracker (Section 21.5)
 

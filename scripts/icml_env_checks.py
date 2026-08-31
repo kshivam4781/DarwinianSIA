@@ -50,6 +50,12 @@ preflight materialize attempts) fail at import before bootstrap can install
 it. ``ensure_deps_before_diamond_fetch`` runs the same bootstrap *before*
 HF/CSV materialize.
 
+Tick 283: ``sum_run_dirs_cost_usd`` / ``reconcile_gate_spend_usd`` let the
+live pipeline bump ``SIA_BUDGET_SPENT_USD`` from actual ``total_cost_usd``
+in run artifacts (× meta overhead) instead of only the gate estimate — so
+G4 is not refused when G2/G3 come in under estimate, and overruns are
+visible before the next gate.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -513,6 +519,69 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     still treat a failed bootstrap as a hard stop for the HF materialize path.
     """
     return ensure_icml_runtime_deps(allow_install=allow_install)
+
+
+def sum_run_dirs_cost_usd(run_dirs: list[Path]) -> float | None:
+    """Sum ``total_cost_usd`` across ``gen_*/agent_*/results.json`` (Tick 283).
+
+    Returns ``None`` when no positive USD fields are found (dry-run / missing
+    artifacts). Target-eval costs only — meta/feedback Claude spend is usually
+    not in these files; callers should apply a small overhead factor.
+    """
+    total = 0.0
+    found = False
+    for run_dir in run_dirs:
+        if run_dir is None:
+            continue
+        root = Path(run_dir)
+        if not root.is_dir():
+            continue
+        for results_path in root.glob("gen_*/agent_*/results.json"):
+            try:
+                data = json.loads(results_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(data, dict):
+                continue
+            usd = data.get("total_cost_usd")
+            if isinstance(usd, (int, float)) and float(usd) > 0.0:
+                total += float(usd)
+                found = True
+            else:
+                # Fall back to per-question cost_usd if aggregate missing.
+                for detail in data.get("details") or []:
+                    if not isinstance(detail, dict):
+                        continue
+                    c = detail.get("cost_usd")
+                    if isinstance(c, (int, float)) and float(c) > 0.0:
+                        total += float(c)
+                        found = True
+    return total if found else None
+
+
+def reconcile_gate_spend_usd(
+    run_dirs: list[Path],
+    *,
+    fallback_estimate: float,
+    meta_overhead: float = 1.25,
+) -> tuple[float, str]:
+    """Pick gate spend for ``SIA_BUDGET_SPENT_USD`` (Tick 283).
+
+    Prefer actual target-eval USD × ``meta_overhead`` (covers unmetered
+    Anthropic meta/feedback). Fall back to the gate estimate when artifacts
+    lack USD. Returns ``(amount, detail)``.
+    """
+    estimate = max(0.0, float(fallback_estimate))
+    actual = sum_run_dirs_cost_usd(run_dirs)
+    if actual is None:
+        return estimate, f"estimate=${estimate:.4f} (no total_cost_usd in run artifacts)"
+    overhead = max(1.0, float(meta_overhead))
+    amount = actual * overhead
+    return (
+        amount,
+        f"actual_target=${actual:.4f} × overhead={overhead:.2f} → ${amount:.4f} "
+        f"(estimate was ${estimate:.4f})",
+    )
 
 
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"

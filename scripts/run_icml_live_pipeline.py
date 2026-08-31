@@ -164,6 +164,37 @@ def bump_spent(delta: float) -> float:
     return new_spent
 
 
+def _resolve_run_dirs(run_ids: list[int]) -> list[Path]:
+    """Locate run dirs under monorepo ``runs/`` or ``SIA/runs/``."""
+    dirs: list[Path] = []
+    for rid in run_ids:
+        found = g2._run_dir_for(rid) or g3._run_dir_for(rid)
+        if found is not None:
+            dirs.append(found)
+    return dirs
+
+
+def bump_spent_reconciled(
+    run_ids: list[int],
+    *,
+    fallback_estimate: float,
+) -> tuple[float, str]:
+    """Tick 283: bump spend from actual run USD when present, else estimate.
+
+    Stack budget is exactly ~$20 (G2+$1 + G3+$4 + G4+$15). Bumping only by
+    estimate can refuse G4 when G2/G3 came in under estimate, or under-count
+    when they overran. Prefer ``total_cost_usd`` artifacts × meta overhead.
+    """
+    from icml_env_checks import reconcile_gate_spend_usd
+
+    dirs = _resolve_run_dirs(run_ids)
+    amount, detail = reconcile_gate_spend_usd(
+        dirs, fallback_estimate=fallback_estimate
+    )
+    bump_spent(amount)
+    return amount, detail
+
+
 def g3_pilot_promising(comparison: dict[str, Any] | None, h5_by_d_run: dict[str, Any]) -> bool:
     """Cheap G3→G4 gate: any PRIMARY-shaped D win on the pilot seed, or H5 ρ>0.3."""
     if comparison:
@@ -362,7 +393,7 @@ def run_preflight_stack(
     g4_d: str,
     fetch_diamond: bool = False,
     diamond_csv: Path | None = None,
-    diamond_n: int = 5,
+    diamond_n: int = 15,
 ) -> None:
     """Run G2/G3/G4 preflights (no paid API) and aggregate readiness.
 
@@ -370,6 +401,9 @@ def run_preflight_stack(
     ``--fetch-diamond`` into each gate so individual gate2/3/4 reports
     require HF via ``require_hf_for_diamond`` — not only the aggregate
     pipeline blocker added below.
+
+    Tick 283: default ``diamond_n=15`` matches G3/G4 ``eval_subset`` (was 5,
+    which could under-materialize if callers omitted ``diamond_n``).
     """
     fetch_args: list[str] = []
     if diamond_csv is not None:
@@ -574,7 +608,12 @@ def run_live_stack(
         report.blockers.append(f"G2 live failed (exit {rc})")
         report.stopped_after = "G2"
         return rc if rc else 4
-    bump_spent(float(report.budget.get("g2_estimate") or g2_estimate_usd()))
+    # Tick 283: reconcile from actual total_cost_usd when present (else estimate).
+    g2_amt, g2_spend_detail = bump_spent_reconciled(
+        [g2_run_id],
+        fallback_estimate=float(report.budget.get("g2_estimate") or g2_estimate_usd()),
+    )
+    report.notes.append(f"G2 spend reconcile: {g2_spend_detail} (bumped ${g2_amt:.4f})")
     if stop_after == "g2":
         report.stopped_after = "G2"
         report.notes.append("stop-after=g2")
@@ -605,7 +644,12 @@ def run_live_stack(
         report.blockers.append(f"G3 live failed (exit {rc})")
         report.stopped_after = "G3"
         return rc if rc else 4
-    bump_spent(float(report.budget.get("g3_estimate") or g3_pair_estimate_usd()))
+    g3_ids = g3.parse_int_list(g3_b) + g3.parse_int_list(g3_d)
+    g3_amt, g3_spend_detail = bump_spent_reconciled(
+        g3_ids,
+        fallback_estimate=float(report.budget.get("g3_estimate") or g3_pair_estimate_usd()),
+    )
+    report.notes.append(f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})")
 
     comparison, h5 = _load_gate3_sidecar(REPO_ROOT / "docs" / "gate3_report.md")
     promising = g3_pilot_promising(comparison, h5)
@@ -669,7 +713,12 @@ def run_live_stack(
             detail="5-seed B vs D + paper pack",
         )
     )
-    bump_spent(g4_need)
+    g4_ids = g4.parse_int_list(g4_b) + g4.parse_int_list(g4_d)
+    g4_amt, g4_spend_detail = bump_spent_reconciled(
+        g4_ids,
+        fallback_estimate=g4_need,
+    )
+    report.notes.append(f"G4 spend reconcile: {g4_spend_detail} (bumped ${g4_amt:.4f})")
     report.stopped_after = "G4"
     if not g4_ok:
         report.blockers.append(f"G4 live failed (exit {rc})")

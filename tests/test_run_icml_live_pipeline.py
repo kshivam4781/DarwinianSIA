@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 from run_icml_live_pipeline import (  # noqa: E402
     bump_spent,
+    bump_spent_reconciled,
     g3_pilot_promising,
     project_budget,
     run_preflight_stack,
@@ -45,7 +47,60 @@ def test_bump_spent_updates_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "1.5")
     new = bump_spent(2.0)
     assert new == pytest.approx(3.5)
-    assert float(__import__("os").environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(3.5)
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(3.5)
+
+
+def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 283: actual total_cost_usd × overhead beats blind estimate."""
+    from icml_env_checks import reconcile_gate_spend_usd, sum_run_dirs_cost_usd
+    from run_icml_live_pipeline import bump_spent_reconciled
+
+    run = tmp_path / "run_1300"
+    agent = run / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "total_cost_usd": 0.40}),
+        encoding="utf-8",
+    )
+    assert sum_run_dirs_cost_usd([run]) == pytest.approx(0.40)
+    amount, detail = reconcile_gate_spend_usd([run], fallback_estimate=1.0, meta_overhead=1.25)
+    assert amount == pytest.approx(0.50)
+    assert "actual_target" in detail
+
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    # Patch resolver to use tmp run id mapping via creating under expected path is hard;
+    # call reconcile helper path through bump with monkeypatched _resolve_run_dirs.
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "_resolve_run_dirs", lambda _ids: [run])
+    bumped, detail2 = bump_spent_reconciled([1300], fallback_estimate=1.0)
+    assert bumped == pytest.approx(0.50)
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(0.50)
+    assert "actual_target" in detail2
+
+
+def test_reconcile_gate_spend_falls_back_to_estimate(tmp_path: Path) -> None:
+    from icml_env_checks import reconcile_gate_spend_usd
+
+    run = tmp_path / "run_empty"
+    (run / "gen_1" / "agent_0").mkdir(parents=True)
+    (run / "gen_1" / "agent_0" / "results.json").write_text(
+        json.dumps({"accuracy": 0.1, "eval_subset": 5}),
+        encoding="utf-8",
+    )
+    amount, detail = reconcile_gate_spend_usd([run], fallback_estimate=4.0)
+    assert amount == pytest.approx(4.0)
+    assert "estimate" in detail
+
+
+def test_run_preflight_stack_default_diamond_n_is_15() -> None:
+    """Tick 283: preflight stack default matches G3/G4 eval_subset=15."""
+    import inspect
+
+    from run_icml_live_pipeline import run_preflight_stack
+
+    default = inspect.signature(run_preflight_stack).parameters["diamond_n"].default
+    assert default == 15
 
 
 def test_g3_pilot_promising_on_d_win() -> None:

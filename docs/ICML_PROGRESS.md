@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T02:10Z — Tick 283 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-478f` (recovered ← `3c63` Tick 282, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-3c63` (Tick 282); local Tick **282** → **283**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, the live pipeline bumped `SIA_BUDGET_SPENT_USD` by gate *estimates* only after each paid gate. Stack projection is exactly ~$20 (G2+$1 + G3+$4 + G4+$15): over-estimate refuses G4 with money left; under-estimate can start G4 after an overrun. Highest leverage without paid keys: **reconcile spend from actual run `total_cost_usd`**.
+
+### What this tick did (ONE step)
+**Live budget reconcile from run artifacts (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `3c63`; confirmed secrets absent → preflight only
+2. `sum_run_dirs_cost_usd` + `reconcile_gate_spend_usd` (actual × 1.25 meta overhead, else estimate)
+3. Pipeline `bump_spent_reconciled` after live G2/G3/G4; `run_preflight_stack` default `diamond_n=15`
+4. Tests: reconcile prefer-actual / fallback-estimate / diamond_n default; focused env/pipeline: **42/42** green
+5. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 282) | After (Tick 283) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live stack spend accounting | estimate-only bumps | **actual USD × 1.25 when present** |
+| Preflight `diamond_n` default | 5 (footgun) | **15** (matches G3/G4) |
+| Focused ICML tests | 72/72 (prior suite slice) | pipeline+env **42/42** (+3) |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T00:05Z — Tick 282 (automation cron)
 
 ### Status snapshot

@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-08-31T00:01:26Z
+**Timestamp:** 2026-08-31T02:02:06Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -69,6 +69,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 
 ## Notes
 
+- runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
 - diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 **Live G3 status:** NOT RUN this tick

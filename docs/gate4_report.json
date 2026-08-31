@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-31T00:01:26Z",
+  "timestamp": "2026-08-31T02:02:06Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -333,6 +333,7 @@
   "h2_by_d_run": {},
   "figures_written": [],
   "notes": [
+    "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
     "diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token."
   ],
   "executed": false,

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-31 (Section 21 ICML; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-31 (Section 21 ICML; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -848,6 +848,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML uv pip user-site target (Tick 280) | **DONE** | `_uv_pip_install` uses `--target <user_site>` (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps` without Portal Save |
 | ICML user-site on PYTHONPATH (Tick 281) | **DONE** | `_expose_user_site_on_pythonpath` — Tick 280 `--target` installs survive `PYTHONNOUSERSITE` / venv children via `PYTHONPATH` |
 | ICML deps-before-diamond-fetch (Tick 282) | **DONE** | `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` — cold boots no longer ImportError before bootstrap |
+| ICML live budget reconcile (Tick 283) | **DONE** | `sum_run_dirs_cost_usd` / `reconcile_gate_spend_usd` / `bump_spent_reconciled` — G2/G3/G4 bump `SIA_BUDGET_SPENT_USD` from actual `total_cost_usd` × meta overhead (else estimate); preflight `diamond_n` default 15 |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–282 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2201,3 +2202,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **User-site on PYTHONPATH (2026-08-30 Tick 281):** Tick 280 only patched parent `sys.path`. Under `PYTHONNOUSERSITE=1` (or venvs that disable user site), child processes could not import `--target`-installed `huggingface_hub` → latent `--fetch-diamond` fail after secrets land. `_expose_user_site_on_pythonpath` prepends user site onto `PYTHONPATH` + `sys.path` (called from `_uv_pip_install` and `ensure_icml_runtime_deps`). 70/70 focused tests green; secrets setup actions re-filed; no Portal Save; STATUS remains IN_PROGRESS.
 
 **Deps before diamond fetch (2026-08-31 Tick 282):** G2/G3/G4/pipeline called `ensure_icml_runtime_deps` only inside `run_preflight` *after* `materialize_from_hf`. Cold boots without `huggingface_hub` ImportError before bootstrap. `ensure_deps_before_diamond_fetch` now runs first; live HF path hard-stops if bootstrap fails. 72/72 focused tests; secrets re-filed; STATUS remains IN_PROGRESS.
+
+**Live budget reconcile (2026-08-31 Tick 283):** Stack budget is ~$20 exactly (G2+$1 + G3+$4 + G4+$15). Pipeline previously bumped `SIA_BUDGET_SPENT_USD` by gate *estimates* only — under-estimate overruns or over-estimate G4 refusals. After each live gate, `bump_spent_reconciled` prefers sum of `total_cost_usd` in run artifacts × 1.25 meta overhead (fallback: estimate). Also sets `run_preflight_stack` default `diamond_n=15`. Focused tests 42/42 (+3); secrets re-filed; STATUS remains IN_PROGRESS.
