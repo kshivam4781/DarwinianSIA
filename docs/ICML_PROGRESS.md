@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T20:05Z — Tick 292 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-9d1f` (recovered tip ← `06f4` Tick 291)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-06f4` (Tick 291); local Tick **291** → **292**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, Tick 289 made Anthropic optional in gate logic / `icml_secrets_status.json`, but cron stdout and G2/G3/G4/pipeline **Next / refuse** strings still hard-coded `ANTHROPIC + NEBIUS` — operators reading automation logs would wait on a third vendor key that is not required. Highest leverage without paid spend: **align human-facing secrets messaging with Tick 289**.
+
+### What this tick did (ONE step)
+**Anthropic-optional human secrets messaging (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `06f4`; confirmed secrets absent; preflight-only
+2. Added `icml_human_required_secrets_phrase()`; wired into `collect_icml_secrets_status`, cron auto-block Human line, G2/G3/G4 Next + refuse fallbacks, live pipeline blockers
+3. Tests: +1 focused; suite **94/94** (env + G2/G3/G4/pipeline)
+4. Re-requested automation secrets (NEBIUS + HF required; ANTHROPIC optional)
+5. STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 291) | After (Tick 292) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Cron / gate Human secrets line | Hard `ANTHROPIC + NEBIUS + HF` | **NEBIUS + HF/CSV; Anthropic optional** (meta-aware) |
+| Focused tests | 26/26 (prior related) | **94/94** this tick's related suite |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T18:10Z — Tick 291 (automation cron)
 
 ### Status snapshot

@@ -296,7 +296,24 @@ case "$MODE" in
       exit $?
     fi
     echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}) — preflight only"
-    echo "Human: add ANTHROPIC_API_KEY + NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md"
+    # Tick 292: print Anthropic-optional line from secrets status (not hard-coded).
+    if [[ -f docs/icml_secrets_status.json ]]; then
+      python3 - <<'PY'
+import json
+from pathlib import Path
+data = json.loads(Path("docs/icml_secrets_status.json").read_text(encoding="utf-8"))
+lines = data.get("human_next") or []
+if lines:
+    print(f"Human: {lines[0]}")
+else:
+    print(
+        "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) "
+        "per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+    )
+PY
+    else
+      echo "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+    fi
     run_preflight
     exit 0
     ;;

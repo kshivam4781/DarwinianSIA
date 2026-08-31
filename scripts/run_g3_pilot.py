@@ -6,7 +6,7 @@ Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``--eval_subset 15``,
 
 Hard stops (never violate):
   - no two GPQA jobs in parallel (B then D, sequential)
-  - ``--live`` requires ANTHROPIC_API_KEY + NEBIUS_API_KEY
+  - ``--live`` requires NEBIUS_API_KEY (ANTHROPIC optional under Nebius meta; Tick 289/292)
   - ``--live`` refuses synthetic smoke GPQA answers
   - refuses existing run IDs (never overwrite)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
@@ -53,6 +53,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
     icml_target_profile_cli_flags,
@@ -534,12 +535,13 @@ def write_gate3_report(
         )
         lines.append("")
 
+    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     lines.extend(
         [
             "## Next",
             "",
             "1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`).",
-            "2. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (+ `HF_TOKEN` for `--fetch-diamond`).",
+            f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
             "3. Budget-check, then:",
             "   `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
             "4. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).",
@@ -699,8 +701,9 @@ def main(argv: list[str] | None = None) -> int:
                 mode=selected, plans=plans, require_hf_for_diamond=True
             )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
-                "HF_TOKEN or local gpqa_diamond.csv)"
+                "fetch_diamond_ok=false (need "
+                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
+                + ")"
             ]:
                 report.notes.append(f"secrets: {b}")
             report.notes.append(

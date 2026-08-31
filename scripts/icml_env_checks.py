@@ -275,6 +275,30 @@ def icml_meta_requires_anthropic(profile: str | None = None) -> bool:
     return icml_meta_provider_id(profile) == "anthropic"
 
 
+def icml_human_required_secrets_phrase(
+    *,
+    for_fetch_diamond: bool = True,
+    profile: str | None = None,
+) -> str:
+    """Human-facing secrets line for cron / gate Next / refuse messages (Tick 292).
+
+    Gate logic already treats Anthropic as optional under Nebius pydantic-ai meta
+    (Tick 289), but several surfaces still said ``ANTHROPIC + NEBIUS`` — that
+    misled operators into waiting on a third vendor key. Keep wording in sync
+    with ``collect_icml_secrets_status`` / ``docs/ICML_HUMAN_UNBLOCK.md``.
+    """
+    if icml_meta_requires_anthropic(profile):
+        api = "ANTHROPIC_API_KEY + NEBIUS_API_KEY"
+    else:
+        api = (
+            "NEBIUS_API_KEY "
+            "(ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)"
+        )
+    if for_fetch_diamond:
+        return f"{api} + (HF_TOKEN or local gpqa_diamond.csv)"
+    return api
+
+
 def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
     """True when the resolved meta profile is loadable and coherent for ICML.
 
@@ -1287,19 +1311,15 @@ def collect_icml_secrets_status() -> dict:
             "(required for --fetch-diamond; or provide --diamond-csv / "
             "drop gpqa_diamond.csv at /tmp or docs/private/)"
         )
-    if meta_needs_anthropic:
-        human_keys = "ANTHROPIC_API_KEY + NEBIUS_API_KEY + HF_TOKEN"
-    else:
-        human_keys = (
-            "NEBIUS_API_KEY + HF_TOKEN "
-            "(ANTHROPIC optional — Tick 289 Nebius pydantic-ai meta)"
-        )
+    human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289: secrets-first live gate; Portal Save optional; "
+            "Tick 268/273/277/289/292: secrets-first live gate; Portal Save optional; "
             "cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
+            "human-facing cron/gate Next lines use "
+            "icml_human_required_secrets_phrase; "
             ".env loaded for missing secret names; "
             "human_next prefers bash scripts/icml_cron_entry.sh"
         ),
@@ -1333,7 +1353,7 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–289 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "(Tick 271–292 — recovers tip; auto-live only when fetch_diamond_ok)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ],

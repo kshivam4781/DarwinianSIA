@@ -324,6 +324,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 289 Nebius pydantic-ai meta — G2/G3/G4 `--meta-agent-profile kimi-nebius-pydantic-meta` + `nebius_meta_profile` preflight; Anthropic optional for live secrets; dry-run `run_1856` PASS
 - [x] Tick 290 GPQA subset eval cost merge — `_evaluate_gpqa_subset` copies tokens/USD/`details` from `submission.json` into `results.json`; `sum_run_dirs_cost_usd` + `load_gen_cost` fall back to submission (PRIMARY cost + budget reconcile)
 - [x] Tick 291 Nebius Kimi USD + token→USD budget reconcile — reference `MODEL_PRICING` 0.95/4.0; `estimate_usd_from_tokens` when USD=0; Nebius meta overhead 3.0; Nebius evolved-agent cost prompt (latent under-count after Tick 289 meta)
+- [x] Tick 292 Anthropic-optional human secrets messaging — `icml_human_required_secrets_phrase`; cron + G2/G3/G4/pipeline Next/refuse no longer hard-demand ANTHROPIC under Nebius meta
 
 ## Gate tracker (Section 21.5)
 

@@ -22,6 +22,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
     icml_target_profile_cli_flags,
@@ -852,3 +853,21 @@ def test_secrets_ok_with_nebius_only_under_nebius_meta(
     assert status["secrets_ok_for_paid_sia"] is True
     assert status["fetch_diamond_ok"] is True
     assert "ANTHROPIC_API_KEY missing" not in status["blockers"]
+
+
+def test_icml_human_required_secrets_phrase_anthropic_optional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 292: default Nebius meta must not demand Anthropic in human text."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    assert "NEBIUS_API_KEY" in line
+    assert "HF_TOKEN" in line or "gpqa_diamond.csv" in line
+    assert "optional" in line.lower()
+    # Must not lead with a hard Anthropic+Nebius conjunction.
+    assert not line.startswith("ANTHROPIC_API_KEY + NEBIUS_API_KEY")
+    anth = icml_human_required_secrets_phrase(
+        for_fetch_diamond=False, profile="default-meta"
+    )
+    assert anth.startswith("ANTHROPIC_API_KEY + NEBIUS_API_KEY")

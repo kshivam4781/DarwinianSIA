@@ -8,7 +8,7 @@ checklist when pairs complete (STATUS: READY only if criteria 1–4 all pass).
 Hard stops (never violate):
   - exactly 5 seeds (G3 is 1–2; do not mix)
   - no two GPQA jobs in parallel (B then D, sequential per seed)
-  - ``--live`` requires ANTHROPIC_API_KEY + NEBIUS_API_KEY
+  - ``--live`` requires NEBIUS_API_KEY (ANTHROPIC optional under Nebius meta; Tick 289/292)
   - ``--live`` refuses synthetic smoke GPQA answers
   - refuses existing run IDs (never overwrite)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
@@ -56,6 +56,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_human_required_secrets_phrase,
     icml_meta_requires_anthropic,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -818,12 +819,13 @@ def write_gate4_report(
         )
         lines.append("")
 
+    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     lines.extend(
         [
             "## Next",
             "",
             "1. Ensure live G2 smoke + G3 pilot passed before spending on G4.",
-            "2. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (+ `HF_TOKEN` for `--fetch-diamond`).",
+            f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
             "3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
             "   `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
             "--b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
@@ -1106,8 +1108,9 @@ def main(argv: list[str] | None = None) -> int:
                 mode=selected, plans=plans, require_hf_for_diamond=True
             )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
-                "HF_TOKEN or local gpqa_diamond.csv)"
+                "fetch_diamond_ok=false (need "
+                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
+                + ")"
             ]:
                 report.notes.append(f"secrets: {b}")
             report.notes.append(

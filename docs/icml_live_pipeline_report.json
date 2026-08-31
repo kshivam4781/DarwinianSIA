@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-31T08:02:31Z",
+  "timestamp": "2026-08-31T20:06:49Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -45,15 +45,12 @@
   ],
   "blockers": [
     "G2: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
-    "G2: anthropic_key: ANTHROPIC_API_KEY missing",
     "G2: nebius_key: NEBIUS_API_KEY missing",
     "G2: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
     "G3: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
-    "G3: anthropic_key: ANTHROPIC_API_KEY missing",
     "G3: nebius_key: NEBIUS_API_KEY missing",
     "G3: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
     "G4: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
-    "G4: anthropic_key: ANTHROPIC_API_KEY missing",
     "G4: nebius_key: NEBIUS_API_KEY missing",
     "G4: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
     "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)"

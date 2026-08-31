@@ -4,7 +4,7 @@
 Largest remaining ICML gap is live GPQA G2. This script makes the next tick
 turnkey and hard-stops unsafe paid runs:
 
-  - missing ANTHROPIC_API_KEY / NEBIUS_API_KEY for --live
+  - missing NEBIUS_API_KEY for --live (ANTHROPIC optional under Nebius meta; Tick 289/292)
   - synthetic smoke GPQA answers for --live (refuse paid eval on fake labels)
   - existing run directory (never overwrite)
   - optional budget ceiling via SIA_BUDGET_SPENT_USD / SIA_BUDGET_CEILING_USD
@@ -52,6 +52,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
     icml_target_profile_cli_flags,
@@ -462,12 +463,15 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         )
         lines.append("")
 
+    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     lines.extend(
         [
             "## Next",
             "",
-            "1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` to the cloud environment.",
-            "2. Accept HF access for `Idavidrein/gpqa`, set `HF_TOKEN`, then either:",
+            f"1. Add `{secrets_line}` to the cloud environment "
+            "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
+            "2. Accept HF access for `Idavidrein/gpqa` (or drop local "
+            "`gpqa_diamond.csv`), then either:",
             "   `python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
             "   or `python scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`",
             "3. Re-run live G2 after budget check (unused integer run_id).",
@@ -579,12 +583,14 @@ def main(argv: list[str] | None = None) -> int:
                 require_hf_for_diamond=True,
             )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
-                "HF_TOKEN or local gpqa_diamond.csv)"
+                "fetch_diamond_ok=false (need "
+                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
+                + ")"
             ]:
                 report.notes.append(f"secrets: {b}")
             report.notes.append(
-                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
+                f"({icml_human_required_secrets_phrase(for_fetch_diamond=True)}); "
                 "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
             )
             report.command = build_sia_command(

@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-31T08:02:31Z
+**Timestamp:** 2026-08-31T20:06:49Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -33,15 +33,12 @@ G3 promising: n/a (G3 not scored this run)
 ## Blockers
 
 - G2: gpqa_not_synthetic: synthetic smoke fixture detected — replace with real GPQA diamond before paid G2
-- G2: anthropic_key: ANTHROPIC_API_KEY missing
 - G2: nebius_key: NEBIUS_API_KEY missing
 - G2: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - G3: gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
-- G3: anthropic_key: ANTHROPIC_API_KEY missing
 - G3: nebius_key: NEBIUS_API_KEY missing
 - G3: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - G4: gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
-- G4: anthropic_key: ANTHROPIC_API_KEY missing
 - G4: nebius_key: NEBIUS_API_KEY missing
 - G4: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 - HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)
@@ -52,7 +49,7 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Next
 
-1. Add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.
+1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). `ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta (required only if `ICML_META_AGENT_PROFILE=default-meta`). Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.
 2. Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers tip and runs live when `fetch_diamond_ok` (else preflight only).
 3. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
 4. Do **not** set STATUS: READY from offline / preflight alone.

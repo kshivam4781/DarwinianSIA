@@ -9,7 +9,7 @@ unblocked tick can reach STATUS: READY.
 Hard stops (delegated to gate runners; never violate here either):
   - no two GPQA jobs in parallel
   - no --focus weights / no LawBench
-  - refuse without ANTHROPIC_API_KEY + NEBIUS_API_KEY for --live
+  - refuse without NEBIUS_API_KEY for --live (ANTHROPIC optional under Nebius meta; Tick 289/292)
   - refuse --live --fetch-diamond without HF_TOKEN (Tick 274; match cron)
   - refuse synthetic smoke for --live (fetch real diamond once, n=15)
   - never overwrite existing run IDs
@@ -54,6 +54,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     darwinian_run_complete,
     ensure_deps_before_diamond_fetch,
+    icml_human_required_secrets_phrase,
     ledger_stage_complete,
     live_pipeline_next_steps,
     load_budget_spent_ledger,
@@ -733,8 +734,8 @@ def run_preflight_stack(
             report.ready_for_live = False
         elif not secrets_status.get("fetch_diamond_ok"):
             report.blockers.append(
-                "fetch_diamond_ok=false — need ANTHROPIC + NEBIUS + "
-                "HF_TOKEN or local gpqa_diamond.csv"
+                "fetch_diamond_ok=false — need "
+                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
             )
             report.ready_for_live = False
 
@@ -1117,8 +1118,9 @@ def main(argv: list[str] | None = None) -> int:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need ANTHROPIC + NEBIUS + "
-                "HF_TOKEN or local gpqa_diamond.csv)"
+                "fetch_diamond_ok=false (need "
+                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
+                + ")"
             ]:
                 report.blockers.append(f"secrets: {b}")
             report.notes.append(
