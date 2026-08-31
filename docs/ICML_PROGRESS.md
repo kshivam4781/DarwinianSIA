@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-08-31T04:15Z — Tick 284 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-1f1c` (recovered ← `478f` Tick 283, then this tick)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `c7773362`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-478f` (Tick 283); local Tick **283** → **284**
+- API keys in cloud env: **absent** (secrets still required; HF optional if local diamond CSV; structured setup actions re-requested)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains the READY blocker (API secrets). Separately, after a mid-stack crash (G2 done, process dies) the next cron tick failed `run_id_free` on the completed G2 dir and reset in-process `SIA_BUDGET_SPENT_USD` to 0 — live stack could not resume. Highest leverage without paid keys: **resume-aware stage skip + persisted budget ledger**.
+
+### What this tick did (ONE step)
+**Live resume + `docs/icml_budget_spent.json` ledger (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `478f`; confirmed secrets absent → preflight only
+2. `darwinian_run_complete` / ledger load-write / `apply_persisted_spent_to_env` / `sync_spent_from_completed_stages`
+3. Pipeline skips completed G2/G3/G4 run IDs; projects remaining estimates only; bumps persist to ledger
+4. Tests: complete detection, ledger reload, skip-g2 projection, live skip G2 → G3; focused env/pipeline: **45/45** green
+5. Secrets setup actions re-filed (HF optional w/ CSV); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 283) | After (Tick 284) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Mid-stack resume | stuck on occupied G2 ID | **skip complete gates + ledger spend** |
+| Focused ICML tests | pipeline+env 42/42 | **45/45** (+3 resume) |
+| Live PRIMARY / G2 | Blocked on API secrets | Still blocked on **API secrets** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` (and `HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md`. Next agent tick: `bash scripts/icml_cron_entry.sh`. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-08-31T02:10Z — Tick 283 (automation cron)
 
 ### Status snapshot

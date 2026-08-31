@@ -14,7 +14,9 @@ Hard stops (delegated to gate runners; never violate here either):
   - refuse synthetic smoke for --live (fetch real diamond once, n=15)
   - never overwrite existing run IDs
   - project full-stack spend ≤ SIA_BUDGET_CEILING_USD (~$20)
-  - update SIA_BUDGET_SPENT_USD between stages from stage estimates
+  - update SIA_BUDGET_SPENT_USD between stages from actual run USD
+    (Tick 283) and persist to docs/icml_budget_spent.json (Tick 284)
+  - resume: skip completed G2/G3/G4 run IDs; never overwrite (Tick 284)
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -45,10 +47,14 @@ import run_g2_smoke as g2  # noqa: E402
 import run_g3_pilot as g3  # noqa: E402
 import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
+    apply_persisted_spent_to_env,
     autowire_diamond_csv,
+    budget_spent_ledger_path,
     collect_icml_secrets_status,
+    darwinian_run_complete,
     ensure_deps_before_diamond_fetch,
     live_pipeline_next_steps,
+    write_budget_spent_ledger,
     write_icml_secrets_status,
     write_icml_tip_status,
 )
@@ -135,12 +141,20 @@ def g4_pair_estimate_usd() -> float:
     return _env_float("SIA_G4_PAIR_ESTIMATE_USD", DEFAULT_G4_PAIR_ESTIMATE_USD)
 
 
-def project_budget(*, g3_pairs: int = 1, g4_pairs: int = 5) -> dict[str, Any]:
+def project_budget(
+    *,
+    g3_pairs: int = 1,
+    g4_pairs: int = 5,
+    skip_g2: bool = False,
+    skip_g3: bool = False,
+    skip_g4: bool = False,
+) -> dict[str, Any]:
+    """Project remaining stack spend (Tick 284: exclude completed gates)."""
     spent = _budget_spent()
     ceiling = _budget_ceiling()
-    g2_e = g2_estimate_usd()
-    g3_e = g3_pair_estimate_usd() * g3_pairs
-    g4_e = g4_pair_estimate_usd() * g4_pairs
+    g2_e = 0.0 if skip_g2 else g2_estimate_usd()
+    g3_e = 0.0 if skip_g3 else g3_pair_estimate_usd() * g3_pairs
+    g4_e = 0.0 if skip_g4 else g4_pair_estimate_usd() * g4_pairs
     total = g2_e + g3_e + g4_e
     projected = spent + total
     return {
@@ -154,13 +168,24 @@ def project_budget(*, g3_pairs: int = 1, g4_pairs: int = 5) -> dict[str, Any]:
         "ok": projected <= ceiling + 1e-9,
         "g3_pairs": g3_pairs,
         "g4_pairs": g4_pairs,
+        "skip_g2": skip_g2,
+        "skip_g3": skip_g3,
+        "skip_g4": skip_g4,
     }
 
 
-def bump_spent(delta: float) -> float:
+def bump_spent(delta: float, *, stage: str | None = None, run_ids: list[int] | None = None, detail: str = "") -> float:
     """Increment SIA_BUDGET_SPENT_USD so later gate preflights see remaining headroom."""
     new_spent = _budget_spent() + max(0.0, float(delta))
     os.environ["SIA_BUDGET_SPENT_USD"] = f"{new_spent:.4f}"
+    # Tick 284: persist across cron ticks / mid-stack crashes.
+    write_budget_spent_ledger(
+        spent_usd=new_spent,
+        stages_complete=[stage] if stage else None,
+        detail=detail or f"bumped +${max(0.0, float(delta)):.4f}",
+        run_ids=run_ids,
+        path=budget_spent_ledger_path(REPO_ROOT),
+    )
     return new_spent
 
 
@@ -174,16 +199,29 @@ def _resolve_run_dirs(run_ids: list[int]) -> list[Path]:
     return dirs
 
 
+def stage_runs_complete(run_ids: list[int]) -> bool:
+    """True when every listed run_id has a completed Darwinian results.json."""
+    if not run_ids:
+        return False
+    for rid in run_ids:
+        found = g2._run_dir_for(rid) or g3._run_dir_for(rid)
+        if not darwinian_run_complete(found):
+            return False
+    return True
+
+
 def bump_spent_reconciled(
     run_ids: list[int],
     *,
     fallback_estimate: float,
+    stage: str | None = None,
 ) -> tuple[float, str]:
     """Tick 283: bump spend from actual run USD when present, else estimate.
 
     Stack budget is exactly ~$20 (G2+$1 + G3+$4 + G4+$15). Bumping only by
     estimate can refuse G4 when G2/G3 came in under estimate, or under-count
     when they overran. Prefer ``total_cost_usd`` artifacts × meta overhead.
+    Tick 284 also persists the bump to ``docs/icml_budget_spent.json``.
     """
     from icml_env_checks import reconcile_gate_spend_usd
 
@@ -191,8 +229,80 @@ def bump_spent_reconciled(
     amount, detail = reconcile_gate_spend_usd(
         dirs, fallback_estimate=fallback_estimate
     )
-    bump_spent(amount)
+    bump_spent(amount, stage=stage, run_ids=run_ids, detail=detail)
     return amount, detail
+
+
+def sync_spent_from_completed_stages(
+    *,
+    g2_run_id: int,
+    g3_b_ids: list[int],
+    g3_d_ids: list[int],
+    g4_b_ids: list[int],
+    g4_d_ids: list[int],
+) -> dict[str, Any]:
+    """Authoritative resume sync: recompute spent from completed run artifacts.
+
+    Avoids double-counting when a prior tick already bumped and persisted.
+    """
+    from icml_env_checks import reconcile_gate_spend_usd
+
+    apply_persisted_spent_to_env(path=budget_spent_ledger_path(REPO_ROOT))
+    g2_done = stage_runs_complete([g2_run_id])
+    g3_done = stage_runs_complete(g3_b_ids + g3_d_ids)
+    g4_done = stage_runs_complete(g4_b_ids + g4_d_ids)
+
+    total = 0.0
+    details: list[str] = []
+    stages: list[str] = []
+    all_ids: list[int] = []
+
+    if g2_done:
+        amt, det = reconcile_gate_spend_usd(
+            _resolve_run_dirs([g2_run_id]),
+            fallback_estimate=g2_estimate_usd(),
+        )
+        total += amt
+        details.append(f"G2: {det}")
+        stages.append("G2")
+        all_ids.append(g2_run_id)
+    if g3_done:
+        ids = g3_b_ids + g3_d_ids
+        amt, det = reconcile_gate_spend_usd(
+            _resolve_run_dirs(ids),
+            fallback_estimate=g3_pair_estimate_usd() * max(1, len(g3_b_ids)),
+        )
+        total += amt
+        details.append(f"G3: {det}")
+        stages.append("G3")
+        all_ids.extend(ids)
+    if g4_done:
+        ids = g4_b_ids + g4_d_ids
+        amt, det = reconcile_gate_spend_usd(
+            _resolve_run_dirs(ids),
+            fallback_estimate=g4_pair_estimate_usd() * max(1, len(g4_b_ids)),
+        )
+        total += amt
+        details.append(f"G4: {det}")
+        stages.append("G4")
+        all_ids.extend(ids)
+
+    if stages:
+        os.environ["SIA_BUDGET_SPENT_USD"] = f"{total:.4f}"
+        write_budget_spent_ledger(
+            spent_usd=total,
+            stages_complete=stages,
+            detail="; ".join(details),
+            run_ids=all_ids,
+            path=budget_spent_ledger_path(REPO_ROOT),
+        )
+    return {
+        "g2_done": g2_done,
+        "g3_done": g3_done,
+        "g4_done": g4_done,
+        "spent": _budget_spent(),
+        "details": details,
+    }
 
 
 def g3_pilot_promising(comparison: dict[str, Any] | None, h5_by_d_run: dict[str, Any]) -> bool:
@@ -404,7 +514,33 @@ def run_preflight_stack(
 
     Tick 283: default ``diamond_n=15`` matches G3/G4 ``eval_subset`` (was 5,
     which could under-materialize if callers omitted ``diamond_n``).
+
+    Tick 284: resume-aware — completed run IDs do not clear ``ready_for_live``;
+    budget projection excludes finished gates and reloads persisted spend.
     """
+    g3_b_ids = g3.parse_int_list(g3_b)
+    g3_d_ids = g3.parse_int_list(g3_d)
+    g4_b_ids = g4.parse_int_list(g4_b)
+    g4_d_ids = g4.parse_int_list(g4_d)
+    resume = sync_spent_from_completed_stages(
+        g2_run_id=g2_run_id,
+        g3_b_ids=g3_b_ids,
+        g3_d_ids=g3_d_ids,
+        g4_b_ids=g4_b_ids,
+        g4_d_ids=g4_d_ids,
+    )
+    if resume.get("details"):
+        report.notes.append(
+            "Tick 284 resume sync: " + "; ".join(resume["details"])
+        )
+    report.budget = project_budget(
+        g3_pairs=len(g3.parse_int_list(g3_seeds)),
+        g4_pairs=5,
+        skip_g2=bool(resume.get("g2_done")),
+        skip_g3=bool(resume.get("g3_done")),
+        skip_g4=bool(resume.get("g4_done")),
+    )
+
     fetch_args: list[str] = []
     if diamond_csv is not None:
         fetch_args.extend(["--fetch-diamond", "--diamond-csv", str(diamond_csv)])
@@ -423,7 +559,8 @@ def run_preflight_stack(
             exit_code=rc,
             ok=rc == 0,
             detail="preflight invoked"
-            + (" (+fetch-diamond)" if fetch_args else ""),
+            + (" (+fetch-diamond)" if fetch_args else "")
+            + (" [resume:complete]" if resume.get("g2_done") else ""),
         )
     )
     # G3
@@ -446,7 +583,8 @@ def run_preflight_stack(
             exit_code=rc,
             ok=rc == 0,
             detail="preflight invoked"
-            + (" (+fetch-diamond)" if fetch_args else ""),
+            + (" (+fetch-diamond)" if fetch_args else "")
+            + (" [resume:complete]" if resume.get("g3_done") else ""),
         )
     )
     # G4
@@ -469,20 +607,33 @@ def run_preflight_stack(
             exit_code=rc,
             ok=rc == 0,
             detail="preflight invoked"
-            + (" (+fetch-diamond)" if fetch_args else ""),
+            + (" (+fetch-diamond)" if fetch_args else "")
+            + (" [resume:complete]" if resume.get("g4_done") else ""),
         )
     )
 
     # Live readiness: keys + non-smoke + budget stack + free IDs (from gate reports).
+    # Tick 284: completed stages ignore run_id_free blockers (resume path).
     g2_json = (REPO_ROOT / "docs" / "gate2_report.json")
     g3_json = (REPO_ROOT / "docs" / "gate3_report.json")
     g4_json = (REPO_ROOT / "docs" / "gate4_report.json")
     ready_flags: list[bool] = []
+    stage_done = {
+        "G2": bool(resume.get("g2_done")),
+        "G3": bool(resume.get("g3_done")),
+        "G4": bool(resume.get("g4_done")),
+    }
     for path, label in (
         (g2_json, "G2"),
         (g3_json, "G3"),
         (g4_json, "G4"),
     ):
+        if stage_done.get(label):
+            ready_flags.append(True)
+            report.notes.append(
+                f"Tick 284: {label} already complete — treating gate live-ready for resume"
+            )
+            continue
         if not path.is_file():
             report.blockers.append(f"{label}: missing {path.name}")
             ready_flags.append(False)
@@ -556,7 +707,34 @@ def run_live_stack(
     diamond_csv: Path | None,
     diamond_n: int,
 ) -> int:
-    """Execute G2→G3→G4 serially. Returns process exit code."""
+    """Execute G2→G3→G4 serially. Returns process exit code.
+
+    Tick 284: skip stages whose run IDs already have complete results
+    (mid-stack crash / cron boundary resume). Never overwrite existing runs.
+    """
+    g3_b_ids = g3.parse_int_list(g3_b)
+    g3_d_ids = g3.parse_int_list(g3_d)
+    g4_b_ids = g4.parse_int_list(g4_b)
+    g4_d_ids = g4.parse_int_list(g4_d)
+    resume = sync_spent_from_completed_stages(
+        g2_run_id=g2_run_id,
+        g3_b_ids=g3_b_ids,
+        g3_d_ids=g3_d_ids,
+        g4_b_ids=g4_b_ids,
+        g4_d_ids=g4_d_ids,
+    )
+    if resume.get("details"):
+        report.notes.append(
+            "Tick 284 resume sync: " + "; ".join(resume["details"])
+        )
+    report.budget = project_budget(
+        g3_pairs=len(g3.parse_int_list(g3_seeds)),
+        g4_pairs=5,
+        skip_g2=bool(resume.get("g2_done")),
+        skip_g3=bool(resume.get("g3_done")),
+        skip_g4=bool(resume.get("g4_done")),
+    )
+
     if not report.budget.get("ok"):
         report.blockers.append(
             f"budget: projected ${report.budget.get('projected', 0):.2f} "
@@ -591,65 +769,101 @@ def run_live_stack(
             return 3
 
     # --- G2 ---
-    g2_argv = ["--live", "--run-id", str(g2_run_id)]
-    # Diamond already materialized above at n=15; do not re-fetch with G2's n=5.
-    rc = g2.main(g2_argv)
-    g2_ok = rc == 0
-    report.add_stage(
-        StageResult(
-            name="G2",
-            attempted=True,
-            exit_code=rc,
-            ok=g2_ok,
-            detail="Condition D smoke",
+    if resume.get("g2_done"):
+        report.add_stage(
+            StageResult(
+                name="G2",
+                attempted=False,
+                exit_code=0,
+                ok=True,
+                skipped_reason=f"resume: run_{g2_run_id} already complete",
+                detail="Condition D smoke (skipped)",
+            )
         )
-    )
-    if not g2_ok:
-        report.blockers.append(f"G2 live failed (exit {rc})")
-        report.stopped_after = "G2"
-        return rc if rc else 4
-    # Tick 283: reconcile from actual total_cost_usd when present (else estimate).
-    g2_amt, g2_spend_detail = bump_spent_reconciled(
-        [g2_run_id],
-        fallback_estimate=float(report.budget.get("g2_estimate") or g2_estimate_usd()),
-    )
-    report.notes.append(f"G2 spend reconcile: {g2_spend_detail} (bumped ${g2_amt:.4f})")
+        report.notes.append(f"Tick 284: skipped G2 (run_{g2_run_id} complete)")
+    else:
+        g2_argv = ["--live", "--run-id", str(g2_run_id)]
+        # Diamond already materialized above at n=15; do not re-fetch with G2's n=5.
+        rc = g2.main(g2_argv)
+        g2_ok = rc == 0
+        report.add_stage(
+            StageResult(
+                name="G2",
+                attempted=True,
+                exit_code=rc,
+                ok=g2_ok,
+                detail="Condition D smoke",
+            )
+        )
+        if not g2_ok:
+            report.blockers.append(f"G2 live failed (exit {rc})")
+            report.stopped_after = "G2"
+            return rc if rc else 4
+        # Tick 283/284: reconcile + persist.
+        g2_amt, g2_spend_detail = bump_spent_reconciled(
+            [g2_run_id],
+            fallback_estimate=float(
+                report.budget.get("g2_estimate") or g2_estimate_usd()
+            ),
+            stage="G2",
+        )
+        report.notes.append(
+            f"G2 spend reconcile: {g2_spend_detail} (bumped ${g2_amt:.4f})"
+        )
     if stop_after == "g2":
         report.stopped_after = "G2"
         report.notes.append("stop-after=g2")
         return 0
 
     # --- G3 ---
-    g3_argv = [
-        "--live",
-        "--seeds",
-        g3_seeds,
-        "--b-run-ids",
-        g3_b,
-        "--d-run-ids",
-        g3_d,
-    ]
-    rc = g3.main(g3_argv)
-    g3_ok = rc == 0
-    report.add_stage(
-        StageResult(
-            name="G3",
-            attempted=True,
-            exit_code=rc,
-            ok=g3_ok,
-            detail="sequential B then D pilot",
+    if resume.get("g3_done"):
+        report.add_stage(
+            StageResult(
+                name="G3",
+                attempted=False,
+                exit_code=0,
+                ok=True,
+                skipped_reason="resume: G3 B/D run IDs already complete",
+                detail="sequential B then D pilot (skipped)",
+            )
         )
-    )
-    if not g3_ok:
-        report.blockers.append(f"G3 live failed (exit {rc})")
-        report.stopped_after = "G3"
-        return rc if rc else 4
-    g3_ids = g3.parse_int_list(g3_b) + g3.parse_int_list(g3_d)
-    g3_amt, g3_spend_detail = bump_spent_reconciled(
-        g3_ids,
-        fallback_estimate=float(report.budget.get("g3_estimate") or g3_pair_estimate_usd()),
-    )
-    report.notes.append(f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})")
+        report.notes.append("Tick 284: skipped G3 (pilot runs complete)")
+    else:
+        g3_argv = [
+            "--live",
+            "--seeds",
+            g3_seeds,
+            "--b-run-ids",
+            g3_b,
+            "--d-run-ids",
+            g3_d,
+        ]
+        rc = g3.main(g3_argv)
+        g3_ok = rc == 0
+        report.add_stage(
+            StageResult(
+                name="G3",
+                attempted=True,
+                exit_code=rc,
+                ok=g3_ok,
+                detail="sequential B then D pilot",
+            )
+        )
+        if not g3_ok:
+            report.blockers.append(f"G3 live failed (exit {rc})")
+            report.stopped_after = "G3"
+            return rc if rc else 4
+        g3_ids = g3_b_ids + g3_d_ids
+        g3_amt, g3_spend_detail = bump_spent_reconciled(
+            g3_ids,
+            fallback_estimate=float(
+                report.budget.get("g3_estimate") or g3_pair_estimate_usd()
+            ),
+            stage="G3",
+        )
+        report.notes.append(
+            f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})"
+        )
 
     comparison, h5 = _load_gate3_sidecar(REPO_ROOT / "docs" / "gate3_report.md")
     promising = g3_pilot_promising(comparison, h5)
@@ -661,7 +875,7 @@ def run_live_stack(
         report.notes.append("stop-after=g3")
         return 0
 
-    if not promising and not force_g4:
+    if not promising and not force_g4 and not resume.get("g4_done"):
         report.add_stage(
             StageResult(
                 name="G4",
@@ -676,7 +890,26 @@ def run_live_stack(
 
     # Remaining budget for G4
     remaining = _budget_ceiling() - _budget_spent()
-    g4_need = float(report.budget.get("g4_estimate") or (g4_pair_estimate_usd() * 5))
+    g4_need = float(
+        report.budget.get("g4_estimate")
+        if report.budget.get("g4_estimate") is not None
+        else (g4_pair_estimate_usd() * 5)
+    )
+    if resume.get("g4_done"):
+        report.add_stage(
+            StageResult(
+                name="G4",
+                attempted=False,
+                exit_code=0,
+                ok=True,
+                skipped_reason="resume: G4 B/D run IDs already complete",
+                detail="5-seed B vs D + paper pack (skipped)",
+            )
+        )
+        report.notes.append("Tick 284: skipped G4 (multiseed runs complete)")
+        report.stopped_after = "G4"
+        return 0
+
     if remaining + 1e-9 < g4_need:
         report.add_stage(
             StageResult(
@@ -713,12 +946,15 @@ def run_live_stack(
             detail="5-seed B vs D + paper pack",
         )
     )
-    g4_ids = g4.parse_int_list(g4_b) + g4.parse_int_list(g4_d)
+    g4_ids = g4_b_ids + g4_d_ids
     g4_amt, g4_spend_detail = bump_spent_reconciled(
         g4_ids,
         fallback_estimate=g4_need,
+        stage="G4",
     )
-    report.notes.append(f"G4 spend reconcile: {g4_spend_detail} (bumped ${g4_amt:.4f})")
+    report.notes.append(
+        f"G4 spend reconcile: {g4_spend_detail} (bumped ${g4_amt:.4f})"
+    )
     report.stopped_after = "G4"
     if not g4_ok:
         report.blockers.append(f"G4 live failed (exit {rc})")

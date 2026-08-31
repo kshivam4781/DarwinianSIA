@@ -43,11 +43,137 @@ def test_project_budget_blocks_when_over(monkeypatch: pytest.MonkeyPatch) -> Non
     assert bud["projected"] == pytest.approx(25.0)
 
 
-def test_bump_spent_updates_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bump_spent_updates_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "1.5")
-    new = bump_spent(2.0)
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    new = bump_spent(2.0, stage="G2", run_ids=[1300], detail="test bump")
     assert new == pytest.approx(3.5)
     assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(3.5)
+    ledger = json.loads((tmp_path / "docs" / "icml_budget_spent.json").read_text())
+    assert ledger["spent_usd"] == pytest.approx(3.5)
+    assert "G2" in ledger["stages_complete"]
+
+
+def test_darwinian_run_complete_and_ledger_roundtrip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 284: complete detection + ledger reload into env."""
+    from icml_env_checks import (
+        apply_persisted_spent_to_env,
+        darwinian_run_complete,
+        write_budget_spent_ledger,
+    )
+
+    empty = tmp_path / "run_empty"
+    empty.mkdir()
+    assert darwinian_run_complete(empty) is False
+    assert darwinian_run_complete(None) is False
+
+    run = tmp_path / "run_1300"
+    agent = run / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "total_cost_usd": 0.4}),
+        encoding="utf-8",
+    )
+    assert darwinian_run_complete(run) is True
+
+    ledger_path = tmp_path / "docs" / "icml_budget_spent.json"
+    write_budget_spent_ledger(
+        spent_usd=1.25,
+        stages_complete=["G2"],
+        detail="unit",
+        run_ids=[1300],
+        path=ledger_path,
+    )
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    spent, detail = apply_persisted_spent_to_env(path=ledger_path)
+    assert spent == pytest.approx(1.25)
+    assert "ledger=" in detail
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(1.25)
+
+
+def test_project_budget_skips_completed_gates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 284: resume projection excludes finished gates."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0.8")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    bud = project_budget(g3_pairs=1, g4_pairs=5, skip_g2=True)
+    assert bud["g2_estimate"] == pytest.approx(0.0)
+    assert bud["stack_estimate"] == pytest.approx(4.0 + 15.0)
+    assert bud["projected"] == pytest.approx(0.8 + 19.0)
+    assert bud["ok"] is True
+
+
+def test_live_skips_completed_g2(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 284: mid-stack resume skips G2 when run_1300 already complete."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-08-31 — Tick 284 (test)\n", encoding="utf-8"
+    )
+    # Completed G2 artifacts under SIA/runs (resolver order).
+    run = tmp_path / "SIA" / "runs" / "run_1300"
+    agent = run / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.15, "total_cost_usd": 0.32}),
+        encoding="utf-8",
+    )
+    # Point g2/g3 resolvers at tmp_path layout.
+    monkeypatch.setattr(pipe.g2, "_run_dir_for", lambda rid: (tmp_path / "SIA" / "runs" / f"run_{rid}") if (tmp_path / "SIA" / "runs" / f"run_{rid}").exists() else None)
+    monkeypatch.setattr(pipe.g3, "_run_dir_for", lambda rid: (tmp_path / "SIA" / "runs" / f"run_{rid}") if (tmp_path / "SIA" / "runs" / f"run_{rid}").exists() else None)
+    monkeypatch.setattr(pipe.g4, "_run_dir_for", lambda rid: (tmp_path / "SIA" / "runs" / f"run_{rid}") if (tmp_path / "SIA" / "runs" / f"run_{rid}").exists() else None)
+
+    called: list[str] = []
+
+    def g2_boom(*_a, **_k):
+        called.append("g2")
+        return 0
+
+    def g3_ok(*_a, **_k):
+        called.append("g3")
+        return 0
+
+    monkeypatch.setattr(pipe.g2, "main", g2_boom)
+    monkeypatch.setattr(pipe.g3, "main", g3_ok)
+    monkeypatch.setattr(pipe, "_fetch_diamond", lambda **_k: ["fetched"])
+    # Make G3 look promising without real sidecar.
+    monkeypatch.setattr(
+        pipe,
+        "_load_gate3_sidecar",
+        lambda _p: ({"d_wins_gens30": 1}, {"run_1301": {"spearman_rho": 0.5}}),
+    )
+    # Stop after G3 so we don't need G4.
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--stop-after",
+            "g3",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 0
+    assert "g2" not in called
+    assert "g3" in called
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "resume" in text.lower() or "skipped G2" in text or "already complete" in text
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text())
+    assert ledger["spent_usd"] > 0
+    assert "G2" in ledger["stages_complete"]
 
 
 def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -72,11 +198,14 @@ def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: py
     # call reconcile helper path through bump with monkeypatched _resolve_run_dirs.
     import run_icml_live_pipeline as pipe
 
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir(exist_ok=True)
     monkeypatch.setattr(pipe, "_resolve_run_dirs", lambda _ids: [run])
-    bumped, detail2 = bump_spent_reconciled([1300], fallback_estimate=1.0)
+    bumped, detail2 = bump_spent_reconciled([1300], fallback_estimate=1.0, stage="G2")
     assert bumped == pytest.approx(0.50)
     assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(0.50)
     assert "actual_target" in detail2
+    assert (tmp_path / "docs" / "icml_budget_spent.json").is_file()
 
 
 def test_reconcile_gate_spend_falls_back_to_estimate(tmp_path: Path) -> None:

@@ -56,6 +56,12 @@ in run artifacts (× meta overhead) instead of only the gate estimate — so
 G4 is not refused when G2/G3 come in under estimate, and overruns are
 visible before the next gate.
 
+Tick 284: Mid-stack crash after G2 left the next cron tick stuck —
+``run_id_free`` fails on the completed G2 dir and in-process
+``SIA_BUDGET_SPENT_USD`` resets to 0. ``darwinian_run_complete`` +
+``docs/icml_budget_spent.json`` ledger let the live pipeline resume
+(skip completed gates, reload spend, project only remaining estimates).
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -85,6 +91,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
@@ -582,6 +589,114 @@ def reconcile_gate_spend_usd(
         f"actual_target=${actual:.4f} × overhead={overhead:.2f} → ${amount:.4f} "
         f"(estimate was ${estimate:.4f})",
     )
+
+
+def darwinian_run_complete(run_dir: Path | None) -> bool:
+    """True when a Darwinian run dir has at least one agent ``results.json`` with accuracy.
+
+    Used by Tick 284 resume: completed run IDs must not block the next gate
+    via ``run_id_free``, and must not be re-executed (never overwrite).
+    """
+    if run_dir is None:
+        return False
+    root = Path(run_dir)
+    if not root.is_dir():
+        return False
+    for results_path in root.glob("gen_*/agent_*/results.json"):
+        try:
+            data = json.loads(results_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(data, dict) and "accuracy" in data:
+            return True
+    return False
+
+
+def budget_spent_ledger_path(repo_root: Path | None = None) -> Path:
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    return root / "docs" / "icml_budget_spent.json"
+
+
+def load_budget_spent_ledger(path: Path | None = None) -> dict[str, Any]:
+    """Load persisted spend ledger (presence-only amounts; never secrets)."""
+    p = path or budget_spent_ledger_path()
+    if not p.is_file():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_budget_spent_ledger(
+    *,
+    spent_usd: float,
+    stages_complete: list[str] | None = None,
+    detail: str = "",
+    run_ids: list[int] | None = None,
+    path: Path | None = None,
+) -> Path:
+    """Persist reconciled spend so the next cron tick can resume (Tick 284)."""
+    p = path or budget_spent_ledger_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    prev = load_budget_spent_ledger(p)
+    prev_stages = list(prev.get("stages_complete") or [])
+    merged_stages: list[str] = []
+    for name in list(prev_stages) + list(stages_complete or []):
+        if name and name not in merged_stages:
+            merged_stages.append(name)
+    prev_ids = [int(x) for x in (prev.get("run_ids") or []) if str(x).lstrip("-").isdigit()]
+    merged_ids: list[int] = []
+    for rid in prev_ids + list(run_ids or []):
+        if rid not in merged_ids:
+            merged_ids.append(rid)
+    payload = {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tick_note": (
+            "Tick 284: persisted SIA_BUDGET_SPENT_USD across cron ticks; "
+            "resume skips completed G2/G3/G4 run IDs"
+        ),
+        "spent_usd": round(float(spent_usd), 4),
+        "stages_complete": merged_stages,
+        "run_ids": merged_ids,
+        "detail": detail or prev.get("detail") or "",
+    }
+    p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return p
+
+
+def apply_persisted_spent_to_env(
+    *,
+    path: Path | None = None,
+    env_key: str = "SIA_BUDGET_SPENT_USD",
+) -> tuple[float, str]:
+    """Load ledger into env when ledger spent exceeds current env (Tick 284).
+
+    Returns ``(effective_spent, detail)``. Never lowers an explicitly higher
+    env value (manual override / in-process bumps win).
+    """
+    import os
+
+    raw = (os.environ.get(env_key) or "0").strip()
+    try:
+        env_spent = float(raw)
+    except ValueError:
+        env_spent = 0.0
+    ledger = load_budget_spent_ledger(path)
+    ledger_spent = ledger.get("spent_usd")
+    if not isinstance(ledger_spent, (int, float)):
+        return env_spent, f"env=${env_spent:.4f} (no ledger)"
+    ledger_f = float(ledger_spent)
+    if ledger_f > env_spent + 1e-9:
+        os.environ[env_key] = f"{ledger_f:.4f}"
+        stages = ",".join(ledger.get("stages_complete") or []) or "—"
+        return (
+            ledger_f,
+            f"ledger=${ledger_f:.4f} > env=${env_spent:.4f}; "
+            f"loaded stages=[{stages}]",
+        )
+    return env_spent, f"env=${env_spent:.4f} ≥ ledger=${ledger_f:.4f}"
 
 
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
