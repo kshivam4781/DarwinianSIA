@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-30T22:05:59Z",
+  "timestamp": "2026-08-31T00:01:25Z",
   "mode": "preflight",
   "run_id": 1300,
   "ready_for_live": false,
@@ -54,12 +54,12 @@
     {
       "name": "per_run_venv",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
+      "detail": "uv installed at /home/ubuntu/.local/bin/uv (Astral bootstrap) (SIA per-run venv path)"
     },
     {
       "name": "runtime_deps",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; uv pip installed huggingface_hub into /home/ubuntu/.local/lib/python3.12/site-packages; bootstrapped huggingface_hub; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
     }
   ],
   "command": [

@@ -47,6 +47,7 @@ import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    ensure_deps_before_diamond_fetch,
     live_pipeline_next_steps,
     write_icml_secrets_status,
     write_icml_tip_status,
@@ -319,6 +320,14 @@ def _fetch_diamond(
     seed: int,
 ) -> list[str]:
     notes: list[str] = []
+    # Tick 282: bootstrap huggingface_hub before HF materialize (CSV still
+    # benefits from uv/SIA path consistency).
+    deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+    notes.append(f"runtime deps before diamond: {deps_detail}")
+    if not deps_ok and diamond_csv is None:
+        raise RuntimeError(
+            f"runtime deps failed before HF materialize: {deps_detail}"
+        )
     if diamond_csv is not None:
         wrote = materialize_from_csv(
             diamond_csv,

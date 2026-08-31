@@ -43,6 +43,13 @@ Tick 281: Tick 280 only patched the parent ``sys.path``. Under
 prepend the user site onto ``PYTHONPATH`` (and ``sys.path``) so G2/G3/G4
 subprocesses inherit bootstrapped runtime deps.
 
+Tick 282: G2/G3/G4/pipeline historically called ``ensure_icml_runtime_deps``
+only inside ``run_preflight`` *after* ``materialize_from_hf``. On a fresh
+boot without ``huggingface_hub``, ``--live --fetch-diamond`` (and cron
+preflight materialize attempts) fail at import before bootstrap can install
+it. ``ensure_deps_before_diamond_fetch`` runs the same bootstrap *before*
+HF/CSV materialize.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -494,6 +501,20 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
     return True, "; ".join(notes)
 
 
+def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[bool, str]:
+    """Bootstrap runtime deps *before* ``--fetch-diamond`` materialize (Tick 282).
+
+    ``materialize_from_hf`` imports ``huggingface_hub`` immediately. Gate runners
+    used to call ``ensure_icml_runtime_deps`` only later inside ``run_preflight``,
+    so a cold boot without that package raised ``ImportError`` / ``RuntimeError``
+    and aborted live diamond fetch even though bootstrap would have installed it.
+
+    Returns ``(ok, detail)`` from ``ensure_icml_runtime_deps``. Callers should
+    still treat a failed bootstrap as a hard stop for the HF materialize path.
+    """
+    return ensure_icml_runtime_deps(allow_install=allow_install)
+
+
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
 _AUTOMATION_URL = f"https://cursor.com/automations/{_AUTOMATION_ID}"
 _ENV_DASHBOARD_URL = (
@@ -797,6 +818,7 @@ _TIP_LINEAGE_MARKERS = (
     "secrets-first",
     "write_icml_secrets_status",
     "ensure_icml_runtime_deps",
+    "ensure_deps_before_diamond_fetch",
     "ensure_uv_on_path",
     "Astral uv",
 )

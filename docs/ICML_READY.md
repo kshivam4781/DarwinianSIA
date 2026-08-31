@@ -314,6 +314,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 279 uv-first runtime package bootstrap — `_pip_install_user` prefers `uv pip install --python <sys.executable>` before `pip --user` (pip-less / `uv run` envs no longer false-fail `runtime_deps`)
 - [x] Tick 280 uv pip `--target` user site — `_uv_pip_install` installs into user site-packages (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps`
 - [x] Tick 281 user-site on PYTHONPATH — `_expose_user_site_on_pythonpath` so Tick 280 `--target` packages survive `PYTHONNOUSERSITE` / venv children (latent `--fetch-diamond` fix)
+- [x] Tick 282 deps-before-diamond-fetch — `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` (cold-boot ImportError fix)
 
 ## Gate tracker (Section 21.5)
 

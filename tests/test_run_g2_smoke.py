@@ -330,3 +330,52 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def test_main_fetch_diamond_bootstraps_deps_before_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 282: ensure_deps_before_diamond_fetch runs before materialize_from_hf."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g2_smoke as mod
+
+    order: list[str] = []
+
+    def _deps(*, allow_install: bool = True) -> tuple[bool, str]:
+        order.append("deps")
+        return True, "deps-ok"
+
+    def _hf(*_a, **_k):
+        order.append("hf")
+        return ["SIA/sia/tasks/gpqa"]
+
+    monkeypatch.setattr(mod, "ensure_deps_before_diamond_fetch", _deps)
+    monkeypatch.setattr(mod, "materialize_from_hf", _hf)
+    monkeypatch.setattr(
+        mod,
+        "run_preflight",
+        lambda **_k: mod.PreflightReport(
+            timestamp="t", mode="preflight", run_id=1399
+        ),
+    )
+    monkeypatch.setattr(mod, "write_gate2_report", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir(exist_ok=True)
+
+    rc = mod.main(
+        [
+            "--preflight-only",
+            "--run-id",
+            "1399",
+            "--fetch-diamond",
+            "--report",
+            str(tmp_path / "docs" / "gate2_report.md"),
+        ]
+    )
+    assert rc == 0
+    assert order == ["deps", "hf"]

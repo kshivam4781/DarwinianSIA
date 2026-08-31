@@ -186,6 +186,25 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
     assert state["hub"] is True
 
 
+def test_ensure_deps_before_diamond_fetch_delegates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 282: diamond-fetch helper is ensure_icml_runtime_deps (pre-materialize)."""
+    from icml_env_checks import ensure_deps_before_diamond_fetch
+
+    called: list[bool] = []
+
+    def _fake(*, allow_install: bool = True) -> tuple[bool, str]:
+        called.append(allow_install)
+        return True, "bootstrapped for diamond"
+
+    monkeypatch.setattr("icml_env_checks.ensure_icml_runtime_deps", _fake)
+    ok, detail = ensure_deps_before_diamond_fetch(allow_install=True)
+    assert ok is True
+    assert detail == "bootstrapped for diamond"
+    assert called == [True]
+
+
 def test_pip_install_user_prefers_uv_pip(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tick 279: uv pip install used before python -m pip (pip-less envs)."""
     from icml_env_checks import _pip_install_user

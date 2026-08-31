@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-08-30T22:05:59Z
+**Timestamp:** 2026-08-31T00:01:25Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -16,8 +16,8 @@
 | `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
 | `run_id_free` | yes | run_1300 unused |
-| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
-| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
+| `per_run_venv` | yes | uv installed at /home/ubuntu/.local/bin/uv (Astral bootstrap) (SIA per-run venv path) |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; uv pip installed huggingface_hub into /home/ubuntu/.local/lib/python3.12/site-packages; bootstrapped huggingface_hub; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -37,6 +37,7 @@
 
 ## Notes
 
+- materialized synthetic GPQA smoke fixture under SIA/
 - diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 **G2 live status:** NOT RUN this tick

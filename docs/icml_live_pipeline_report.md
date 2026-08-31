@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-30T22:05:58Z
+**Timestamp:** 2026-08-31T00:01:24Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS

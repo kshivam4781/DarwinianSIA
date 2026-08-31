@@ -51,6 +51,7 @@ from epistemic_results import compare_b_vs_d, compute_h5  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
     probe_per_run_venv_capable,
 )
@@ -688,6 +689,25 @@ def main(argv: list[str] | None = None) -> int:
             f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
         )
     if args.fetch_diamond or args.diamond_csv is not None:
+        # Tick 282: bootstrap huggingface_hub (+ uv/SIA) BEFORE materialize.
+        deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+        fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
+        if not deps_ok and args.diamond_csv is None:
+            fetch_notes.append(
+                "runtime_deps failed before HF materialize — "
+                "cannot import/bootstrap huggingface_hub"
+            )
+            if selected == "live":
+                print(
+                    f"G3 live refused — runtime deps before diamond failed: {deps_detail}",
+                    file=sys.stderr,
+                )
+                report = run_preflight(
+                    mode=selected, plans=plans, require_hf_for_diamond=require_hf
+                )
+                report.notes.extend(fetch_notes)
+                write_gate3_report(report, args.report)
+                return 3
         try:
             if args.diamond_csv is not None:
                 wrote = materialize_from_csv(
