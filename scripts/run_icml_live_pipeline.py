@@ -15,8 +15,9 @@ Hard stops (delegated to gate runners; never violate here either):
   - never overwrite existing run IDs
   - project full-stack spend ≤ SIA_BUDGET_CEILING_USD (~$20)
   - update SIA_BUDGET_SPENT_USD between stages from actual run USD
-    (Tick 283) and persist to docs/icml_budget_spent.json (Tick 284)
+    (Tick 283) and persist to docs/icml_budget_spent.json (Tick 284/285)
   - resume: skip completed G2/G3/G4 run IDs; never overwrite (Tick 284)
+  - cross-VM resume: trust committed ledger stages when runs/ absent (Tick 285)
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -53,7 +54,9 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     darwinian_run_complete,
     ensure_deps_before_diamond_fetch,
+    ledger_stage_complete,
     live_pipeline_next_steps,
+    load_budget_spent_ledger,
     write_budget_spent_ledger,
     write_icml_secrets_status,
     write_icml_tip_status,
@@ -241,67 +244,112 @@ def sync_spent_from_completed_stages(
     g4_b_ids: list[int],
     g4_d_ids: list[int],
 ) -> dict[str, Any]:
-    """Authoritative resume sync: recompute spent from completed run artifacts.
+    """Authoritative resume sync: artifacts when present, else committed ledger.
 
     Avoids double-counting when a prior tick already bumped and persisted.
+    Tick 285: if ``runs/`` are gone (fresh cron VM) but
+    ``docs/icml_budget_spent.json`` was committed with matching run IDs,
+    still mark those stages done and keep ledger spend (do not zero / re-run).
     """
     from icml_env_checks import reconcile_gate_spend_usd
 
-    apply_persisted_spent_to_env(path=budget_spent_ledger_path(REPO_ROOT))
-    g2_done = stage_runs_complete([g2_run_id])
-    g3_done = stage_runs_complete(g3_b_ids + g3_d_ids)
-    g4_done = stage_runs_complete(g4_b_ids + g4_d_ids)
+    ledger_path = budget_spent_ledger_path(REPO_ROOT)
+    apply_persisted_spent_to_env(path=ledger_path)
+    ledger = load_budget_spent_ledger(ledger_path)
+
+    g2_local = stage_runs_complete([g2_run_id])
+    g3_ids = g3_b_ids + g3_d_ids
+    g4_ids = g4_b_ids + g4_d_ids
+    g3_local = stage_runs_complete(g3_ids)
+    g4_local = stage_runs_complete(g4_ids)
+
+    g2_ledger = ledger_stage_complete("G2", [g2_run_id], path=ledger_path)
+    g3_ledger = ledger_stage_complete("G3", g3_ids, path=ledger_path)
+    g4_ledger = ledger_stage_complete("G4", g4_ids, path=ledger_path)
+
+    g2_done = g2_local or g2_ledger
+    g3_done = g3_local or g3_ledger
+    g4_done = g4_local or g4_ledger
 
     total = 0.0
     details: list[str] = []
     stages: list[str] = []
     all_ids: list[int] = []
+    any_local = False
 
     if g2_done:
-        amt, det = reconcile_gate_spend_usd(
-            _resolve_run_dirs([g2_run_id]),
-            fallback_estimate=g2_estimate_usd(),
-        )
+        dirs = _resolve_run_dirs([g2_run_id])
+        if dirs:
+            any_local = True
+            amt, det = reconcile_gate_spend_usd(
+                dirs, fallback_estimate=g2_estimate_usd()
+            )
+        else:
+            amt, det = g2_estimate_usd(), "ledger-only resume (no local run dir)"
         total += amt
         details.append(f"G2: {det}")
         stages.append("G2")
         all_ids.append(g2_run_id)
     if g3_done:
-        ids = g3_b_ids + g3_d_ids
-        amt, det = reconcile_gate_spend_usd(
-            _resolve_run_dirs(ids),
-            fallback_estimate=g3_pair_estimate_usd() * max(1, len(g3_b_ids)),
-        )
+        dirs = _resolve_run_dirs(g3_ids)
+        est = g3_pair_estimate_usd() * max(1, len(g3_b_ids))
+        if dirs:
+            any_local = True
+            amt, det = reconcile_gate_spend_usd(dirs, fallback_estimate=est)
+        else:
+            amt, det = est, "ledger-only resume (no local run dirs)"
         total += amt
         details.append(f"G3: {det}")
         stages.append("G3")
-        all_ids.extend(ids)
+        all_ids.extend(g3_ids)
     if g4_done:
-        ids = g4_b_ids + g4_d_ids
-        amt, det = reconcile_gate_spend_usd(
-            _resolve_run_dirs(ids),
-            fallback_estimate=g4_pair_estimate_usd() * max(1, len(g4_b_ids)),
-        )
+        dirs = _resolve_run_dirs(g4_ids)
+        est = g4_pair_estimate_usd() * max(1, len(g4_b_ids))
+        if dirs:
+            any_local = True
+            amt, det = reconcile_gate_spend_usd(dirs, fallback_estimate=est)
+        else:
+            amt, det = est, "ledger-only resume (no local run dirs)"
         total += amt
         details.append(f"G4: {det}")
         stages.append("G4")
-        all_ids.extend(ids)
+        all_ids.extend(g4_ids)
 
-    if stages:
+    if stages and any_local:
+        # Prefer artifact-reconciled spend when local runs exist.
         os.environ["SIA_BUDGET_SPENT_USD"] = f"{total:.4f}"
         write_budget_spent_ledger(
             spent_usd=total,
             stages_complete=stages,
             detail="; ".join(details),
             run_ids=all_ids,
-            path=budget_spent_ledger_path(REPO_ROOT),
+            path=ledger_path,
         )
+    elif stages and not any_local:
+        # Cross-VM: keep committed ledger spent (do not overwrite with estimates).
+        ledger_spent = ledger.get("spent_usd")
+        if isinstance(ledger_spent, (int, float)):
+            os.environ["SIA_BUDGET_SPENT_USD"] = f"{float(ledger_spent):.4f}"
+            details.append(
+                f"Tick 285 ledger-only spend=${float(ledger_spent):.4f} "
+                f"(stages={','.join(stages)}; runs/ absent)"
+            )
+        else:
+            os.environ["SIA_BUDGET_SPENT_USD"] = f"{total:.4f}"
+            write_budget_spent_ledger(
+                spent_usd=total,
+                stages_complete=stages,
+                detail="; ".join(details),
+                run_ids=all_ids,
+                path=ledger_path,
+            )
     return {
         "g2_done": g2_done,
         "g3_done": g3_done,
         "g4_done": g4_done,
         "spent": _budget_spent(),
         "details": details,
+        "ledger_only": bool(stages) and not any_local,
     }
 
 
@@ -711,6 +759,8 @@ def run_live_stack(
 
     Tick 284: skip stages whose run IDs already have complete results
     (mid-stack crash / cron boundary resume). Never overwrite existing runs.
+    Tick 285: also skip when committed ledger marks stages complete even if
+    local ``runs/`` are absent (fresh cloud VM).
     """
     g3_b_ids = g3.parse_int_list(g3_b)
     g3_d_ids = g3.parse_int_list(g3_d)
@@ -724,9 +774,8 @@ def run_live_stack(
         g4_d_ids=g4_d_ids,
     )
     if resume.get("details"):
-        report.notes.append(
-            "Tick 284 resume sync: " + "; ".join(resume["details"])
-        )
+        label = "Tick 285 ledger-only resume" if resume.get("ledger_only") else "Tick 284 resume sync"
+        report.notes.append(label + ": " + "; ".join(resume["details"]))
     report.budget = project_budget(
         g3_pairs=len(g3.parse_int_list(g3_seeds)),
         g4_pairs=5,

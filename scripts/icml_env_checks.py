@@ -62,6 +62,12 @@ Tick 284: Mid-stack crash after G2 left the next cron tick stuck —
 ``docs/icml_budget_spent.json`` ledger let the live pipeline resume
 (skip completed gates, reload spend, project only remaining estimates).
 
+Tick 285: Tick 284 gitignored the ledger while ``runs/`` stay gitignored,
+so a fresh cron VM had neither artifacts nor ledger — resume was same-VM
+only. Stop gitignoring the ledger (USD amounts are not secrets) and trust
+``stages_complete`` + ``run_ids`` when local run dirs are absent so the
+next tip commit can skip completed gates cross-VM.
+
 Tick 268: Machine-readable ``docs/icml_secrets_status.json`` + human unblock
 doc so cron ticks stop re-prioritizing Portal Save when packages already
 bootstrap in-preflight. Never records secret values.
@@ -654,8 +660,9 @@ def write_budget_spent_ledger(
     payload = {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 284: persisted SIA_BUDGET_SPENT_USD across cron ticks; "
-            "resume skips completed G2/G3/G4 run IDs"
+            "Tick 284/285: persisted SIA_BUDGET_SPENT_USD across cron ticks; "
+            "commit this file so cross-VM resume can skip completed G2/G3/G4 "
+            "(runs/ are gitignored and do not survive fresh boots)"
         ),
         "spent_usd": round(float(spent_usd), 4),
         "stages_complete": merged_stages,
@@ -698,6 +705,32 @@ def apply_persisted_spent_to_env(
         )
     return env_spent, f"env=${env_spent:.4f} ≥ ledger=${ledger_f:.4f}"
 
+
+def ledger_stage_complete(
+    stage: str,
+    required_run_ids: list[int],
+    *,
+    path: Path | None = None,
+) -> bool:
+    """Tick 285: True when committed ledger marks ``stage`` done for these IDs.
+
+    Cross-VM cron boots lose gitignored ``runs/``. After a live tick commits
+    ``docs/icml_budget_spent.json``, the next tip can still skip that gate
+    without local artifacts — but only when every required run_id is listed
+    in the ledger (avoids skipping after CLI run-id changes).
+    """
+    if not stage or not required_run_ids:
+        return False
+    ledger = load_budget_spent_ledger(path)
+    stages = {str(s) for s in (ledger.get("stages_complete") or []) if s}
+    if stage not in stages:
+        return False
+    ledger_ids = {
+        int(x)
+        for x in (ledger.get("run_ids") or [])
+        if str(x).lstrip("-").isdigit()
+    }
+    return all(int(rid) in ledger_ids for rid in required_run_ids)
 
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
 _AUTOMATION_URL = f"https://cursor.com/automations/{_AUTOMATION_ID}"

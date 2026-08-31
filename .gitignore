@@ -15,5 +15,6 @@ docs/private/
 .local/gpqa_diamond.csv
 /tmp/gpqa_diamond.csv
 gpqa_diamond.csv
-# Tick 284: live stack spend ledger (rewritten by pipeline; do not commit amounts)
-docs/icml_budget_spent.json
+# Tick 285: docs/icml_budget_spent.json is NOT gitignored — amounts are not
+# secrets; committing the ledger is required for cross-VM cron resume
+# (runs/ stay gitignored and do not survive fresh cloud boots).

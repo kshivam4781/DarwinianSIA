@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-08-31 (Section 21 ICML; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-08-31 (Section 21 ICML; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -850,7 +850,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML deps-before-diamond-fetch (Tick 282) | **DONE** | `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` — cold boots no longer ImportError before bootstrap |
 | ICML live budget reconcile (Tick 283) | **DONE** | `sum_run_dirs_cost_usd` / `reconcile_gate_spend_usd` / `bump_spent_reconciled` — G2/G3/G4 bump `SIA_BUDGET_SPENT_USD` from actual `total_cost_usd` × meta overhead (else estimate); preflight `diamond_n` default 15 |
 | ICML live resume + budget ledger (Tick 284) | **DONE** | `darwinian_run_complete` + `docs/icml_budget_spent.json`; pipeline skips completed G2/G3/G4 run IDs; reloads spend; projects remaining estimates only |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–282 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML cross-VM ledger resume (Tick 285) | **DONE** | Stop gitignoring ledger; `ledger_stage_complete` + ledger-only sync when `runs/` absent; commit ledger with tip after live gates |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on API keys (HF optional if local diamond CSV); Tick 268–285 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1646,6 +1647,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 | Gate 3 report | `docs/gate3_report.md` |
 | Gate 4 report | `docs/gate4_report.md` |
 | Live pipeline report | `docs/icml_live_pipeline_report.md` |
+| Live spend / resume ledger | `docs/icml_budget_spent.json` (commit after live gates; Tick 285) |
 | Result figures | `docs/figures/` (when generated) |
 
 ### 21.9 Known mechanism bug (fixed 2026-08-03)
@@ -2207,3 +2209,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Live budget reconcile (2026-08-31 Tick 283):** Stack budget is ~$20 exactly (G2+$1 + G3+$4 + G4+$15). Pipeline previously bumped `SIA_BUDGET_SPENT_USD` by gate *estimates* only — under-estimate overruns or over-estimate G4 refusals. After each live gate, `bump_spent_reconciled` prefers sum of `total_cost_usd` in run artifacts × 1.25 meta overhead (fallback: estimate). Also sets `run_preflight_stack` default `diamond_n=15`. Focused tests 42/42 (+3); secrets re-filed; STATUS remains IN_PROGRESS.
 
 **Live resume + budget ledger (2026-08-31 Tick 284):** Mid-stack crash after G2 left the next cron tick stuck — gate `run_id_free` fails on the completed dir and in-process `SIA_BUDGET_SPENT_USD` resets to 0. Added `darwinian_run_complete`, persisted `docs/icml_budget_spent.json`, and resume-aware `run_live_stack` / `run_preflight_stack` (skip completed gates; reload spend; project only remaining estimates). Focused pipeline+env tests **45/45**; secrets re-filed; STATUS remains IN_PROGRESS.
+
+**Cross-VM ledger resume (2026-08-31 Tick 285):** Tick 284 gitignored `docs/icml_budget_spent.json` while `runs/` stay gitignored — fresh cron VMs had neither artifacts nor ledger, so resume was same-VM only. Stopped gitignoring the ledger (USD amounts are not secrets); `ledger_stage_complete` + `sync_spent_from_completed_stages` trust committed `stages_complete`+`run_ids` when local dirs are absent and keep ledger spend. Focused pipeline+env tests **47/47**; secrets re-filed; STATUS remains IN_PROGRESS.

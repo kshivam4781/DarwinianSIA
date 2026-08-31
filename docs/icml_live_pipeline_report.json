@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-31T04:01:04Z",
+  "timestamp": "2026-08-31T06:03:43Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -12,7 +12,10 @@
     "projected": 20.0,
     "ok": true,
     "g3_pairs": 1,
-    "g4_pairs": 5
+    "g4_pairs": 5,
+    "skip_g2": false,
+    "skip_g3": false,
+    "skip_g4": false
   },
   "stages": [
     {

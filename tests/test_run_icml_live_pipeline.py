@@ -176,6 +176,95 @@ def test_live_skips_completed_g2(
     assert "G2" in ledger["stages_complete"]
 
 
+def test_ledger_stage_complete_requires_matching_run_ids(tmp_path: Path) -> None:
+    """Tick 285: ledger skip only when stage + all required run IDs match."""
+    from icml_env_checks import ledger_stage_complete, write_budget_spent_ledger
+
+    path = tmp_path / "docs" / "icml_budget_spent.json"
+    write_budget_spent_ledger(
+        spent_usd=0.9,
+        stages_complete=["G2"],
+        run_ids=[1300],
+        detail="unit",
+        path=path,
+    )
+    assert ledger_stage_complete("G2", [1300], path=path) is True
+    assert ledger_stage_complete("G2", [1301], path=path) is False
+    assert ledger_stage_complete("G3", [1201, 1301], path=path) is False
+
+
+def test_live_skips_g2_from_committed_ledger_without_run_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 285: cross-VM resume — ledger committed, runs/ absent → skip G2."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+
+    import run_icml_live_pipeline as pipe
+    from icml_env_checks import write_budget_spent_ledger
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-08-31 — Tick 285 (test)\n", encoding="utf-8"
+    )
+    # Prior tick committed ledger; this VM has no runs/ artifacts.
+    write_budget_spent_ledger(
+        spent_usd=0.85,
+        stages_complete=["G2"],
+        detail="prior tick G2",
+        run_ids=[1300],
+        path=docs / "icml_budget_spent.json",
+    )
+    monkeypatch.setattr(pipe.g2, "_run_dir_for", lambda _rid: None)
+    monkeypatch.setattr(pipe.g3, "_run_dir_for", lambda _rid: None)
+    monkeypatch.setattr(pipe.g4, "_run_dir_for", lambda _rid: None)
+
+    called: list[str] = []
+
+    def g2_boom(*_a, **_k):
+        called.append("g2")
+        return 0
+
+    def g3_ok(*_a, **_k):
+        called.append("g3")
+        return 0
+
+    monkeypatch.setattr(pipe.g2, "main", g2_boom)
+    monkeypatch.setattr(pipe.g3, "main", g3_ok)
+    monkeypatch.setattr(pipe, "_fetch_diamond", lambda **_k: ["fetched"])
+    monkeypatch.setattr(
+        pipe,
+        "_load_gate3_sidecar",
+        lambda _p: ({"d_wins_gens30": 1}, {"run_1301": {"spearman_rho": 0.5}}),
+    )
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--stop-after",
+            "g3",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 0
+    assert "g2" not in called
+    assert "g3" in called
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) >= 0.85
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "ledger" in text.lower() or "skipped G2" in text or "already complete" in text
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text())
+    # G2 spend preserved from ledger; G3 bump may add estimate after live G3.
+    assert ledger["spent_usd"] >= 0.85
+    assert "G2" in ledger["stages_complete"]
+    assert "G3" in ledger["stages_complete"]
+
+
 def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Tick 283: actual total_cost_usd × overhead beats blind estimate."""
     from icml_env_checks import reconcile_gate_spend_usd, sum_run_dirs_cost_usd

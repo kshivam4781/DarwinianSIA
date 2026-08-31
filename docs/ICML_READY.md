@@ -317,6 +317,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 282 deps-before-diamond-fetch — `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` (cold-boot ImportError fix)
 - [x] Tick 283 live budget reconcile — `bump_spent_reconciled` from actual `total_cost_usd` × meta overhead after G2/G3/G4; preflight `diamond_n` default 15
 - [x] Tick 284 live resume + budget ledger — `darwinian_run_complete` + `docs/icml_budget_spent.json`; skip completed G2/G3/G4 run IDs; reload spend across cron ticks
+- [x] Tick 285 cross-VM ledger resume — stop gitignoring ledger; `ledger_stage_complete` skips gates when `runs/` absent but committed ledger matches run IDs
 
 ## Gate tracker (Section 21.5)
 
