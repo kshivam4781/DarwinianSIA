@@ -1,0 +1,8 @@
+{
+  "updated_at": "2026-08-31T08:05:50Z",
+  "tick_note": "Tick 284/285/286: persisted SIA_BUDGET_SPENT_USD across cron ticks; commit this file so cross-VM resume can skip completed G2/G3/G4 (runs/ are gitignored and do not survive fresh boots); Tick 286 ships a zero ledger when no live spend yet",
+  "spent_usd": 0.0,
+  "stages_complete": [],
+  "run_ids": [],
+  "detail": "Tick 286: initialized zero ledger (no live spend yet)"
+}
