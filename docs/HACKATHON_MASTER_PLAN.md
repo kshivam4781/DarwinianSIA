@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 300 offline Bvd↔live-shape lock + re-pilot at pop4×eval5×max_gen6; Tick 299 wires Tick-298 recipe↔shape lock into live pipeline refuse/preflight; Tick 298 locked committed gate/Section-21.7 recipes to live G3/G4 shape; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-01 (Section 21 ICML; Tick 301 offline Bvd paper-ID lock; Tick 300 offline Bvd↔live-shape lock + re-pilot at pop4×eval5×max_gen6; Tick 299 wires Tick-298 recipe↔shape lock into live pipeline refuse/preflight; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -819,7 +819,7 @@ Computed in `cabs/belief_engine.py`:
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9 additive latent; **Tick 16** ceiling 0.34 (was 0.38) so gens-to-30% stay discriminative |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% + **cost-to-threshold** (Tick 22); Tick 18–19 H5 protocol |
-| Offline B vs D case-study pilot | **DONE** | Latest Tick 23 `1830–1834` / `1840–1844` (`max_gen=6`); case study `docs/case_study_offline.md` (`run_1840`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp; post-steer H2 share **0.75** at gen3 |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick 300 live-shape `1890–1894` / `1900–1904` (pop4×eval5×max_gen6); case study `docs/case_study_offline.md` (`run_1900`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; mean gap ~6.15pp; post-steer H2 share **0.75** at gen3 (Tick-23 `1830–1844` superseded) |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -866,7 +866,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML committed recipe↔shape lock (Tick 298) | **DONE** | `committed_g3g4_recipes_match_live_shape` + tests lock gate3/4 JSON + pipeline note + Section 21.7 B/D examples to `icml_g3g4_live_shape()` (prevents Tick-297 stale-recipe burn) |
 | ICML recipe lock in live pipeline (Tick 299) | **DONE** | Pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused **66/66** pipeline+env |
 | ICML offline Bvd↔live-shape lock (Tick 300) | **DONE** | Re-pilot offline at pop4×eval5×max_gen6 (`1890–1904`); `committed_offline_bvd_matches_live_shape` + pipeline refuse; paper/gate3 refreshed |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–300 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML offline Bvd paper-ID lock (Tick 301) | **DONE** | Lock extends to `paper_artifacts` / `ICML_READY` / Section 12 / case study citing summary `b_run_ids`/`d_run_ids` (no Tick-23 ID drift) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–301 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2256,3 +2257,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Recipe lock enforced on live path (2026-09-01 Tick 299):** Tick 298 left the lock tests-only — cron/`--live` could still spend after a shape change whose Section 21.7 lagged. Wired `committed_g3g4_recipes_match_live_shape` into `run_preflight_stack` (clears `ready_for_live`) and `main --live` (hard refuse before G2). Focused pipeline+env suite **66/66**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Offline Bvd↔live-shape lock (2026-09-01 Tick 300):** Committed offline tables still showed Tick-23 **eval_subset=3** while live G3/G4 spends on **eval5**. Re-piloted offline B vs D at exact Nebius live shape (`1890–1894` / `1900–1904`) → gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, gap ~**6.15pp**; case study `run_1900`. Added `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse. Focused env+pipeline+g3+g4 **89/89**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Offline Bvd paper-ID lock (2026-09-01 Tick 301):** After Tick 300, `paper_artifacts` case-study summary / `ICML_READY` VALIDITY / Section 12 still cited superseded Tick-23 IDs (`run_1840` / `1830–1844`). Extended `committed_offline_bvd_matches_live_shape` to require current summary `b_run_ids`/`d_run_ids` in those docs + case study; synced citations to `1890–1904` / `run_1900`. Focused env+pipeline **24/24**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

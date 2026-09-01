@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T14:15Z — Tick 301 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-76be` (recovered tip ← `4c76` Tick 300)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-4c76` (Tick 300); local Tick **300** → **301**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 300 re-piloted offline at live shape (`1890–1904`) but paper pack / `ICML_READY` VALIDITY / Section 12 still cited superseded Tick-23 IDs (`run_1840` / `1830–1844`) as current — risk of publishing stale evidence paths. Highest leverage without paid spend: **extend offline Bvd lock to paper-ID citations**.
+
+### What this tick did (ONE step)
+**Offline Bvd paper-ID consistency lock (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `4c76`; confirmed secrets absent
+2. Extended `committed_offline_bvd_matches_live_shape` to require `case_study_offline.md`, `paper_artifacts.md`, `ICML_READY.md`, and Section 12 cite summary `b_run_ids`/`d_run_ids` (refuse Tick-23 ID drift)
+3. Synced stale `run_1840` / `1830–1844` citations → Tick 300 `run_1900` / `1890–1904`
+4. Tests: `test_committed_offline_bvd_rejects_stale_paper_ids` + fixture updates; focused env+pipeline **24/24**
+5. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 300) | After (Tick 301) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Paper/READY/Section12 current pilot IDs | mixed Tick-23 + Tick-300 | **all cite `1890–1904` / `run_1900`** |
+| Offline Bvd lock scope | summary shape + gate3 table | **+ paper/READY/Section12/case-study IDs** |
+| Focused tests (env+pipeline) | 89 @ Tick 300 broader suite | **24/24** (env offline lock + full pipeline) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T12:15Z — Tick 300 (automation cron)
 
 ### Status snapshot

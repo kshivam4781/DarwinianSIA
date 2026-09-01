@@ -98,9 +98,20 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
             json.dumps({"commands": [cmd, cmd]}, indent=2) + "\n",
             encoding="utf-8",
         )
-    # Tick 300: offline Bvd live-shape lock fixtures.
+    # Tick 300–301: offline Bvd live-shape + paper-ID lock fixtures.
+    b_ids = [1890, 1891, 1892, 1893, 1894]
+    d_ids = [1900, 1901, 1902, 1903, 1904]
     (docs / "offline_bvd_summary.json").write_text(
-        json.dumps({"shape": dict(flags), "seeds": [11]}, indent=2) + "\n",
+        json.dumps(
+            {
+                "shape": dict(flags),
+                "seeds": [11, 22, 33, 44, 55],
+                "b_run_ids": b_ids,
+                "d_run_ids": d_ids,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     (docs / "gate3_report.md").write_text(
@@ -109,10 +120,36 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
         "| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
         "|------|-------|-----|-------|---------|-------------|---------|"
         f"\n| B | 11 | {flags['population_size']} | {flags['elite_count']} | "
-        f"{flags['max_gen']} | {flags['eval_subset']} | `1890` |\n"
+        f"{flags['max_gen']} | {flags['eval_subset']} | `1890–1894` |\n"
         f"| D | 11 | {flags['population_size']} | {flags['elite_count']} | "
-        f"{flags['max_gen']} | {flags['eval_subset']} | `1900` |\n"
+        f"{flags['max_gen']} | {flags['eval_subset']} | `1900–1904` |\n"
         "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    (docs / "case_study_offline.md").write_text(
+        f"**Run:** `runs/run_{d_ids[0]}`\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text(
+        f"Offline pilot `1890–1894` / `1900–1904`\n\n"
+        "## Case study (offline)\n\n"
+        f"Lift +0.0436 (`run_{d_ids[0]}`, Tick 300).\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text(
+        "### 1. PRIMARY\n"
+        "- Evidence: offline `1890–1894` vs `1900–1904`\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- Evidence: offline D `1900–1904` → ρ>0.3 on 5/5\n",
+        encoding="utf-8",
+    )
+    # Append Section 12 offline pilot row without wiping Section 21.7 recipes.
+    master_path = docs / "HACKATHON_MASTER_PLAN.md"
+    prior = master_path.read_text(encoding="utf-8") if master_path.is_file() else ""
+    master_path.write_text(
+        prior
+        + "\n| Offline B vs D case-study pilot | **DONE** | "
+        "Latest Tick 300 `1890–1894` / `1900–1904` |\n",
         encoding="utf-8",
     )
     return flags
@@ -568,7 +605,9 @@ def test_preflight_stack_not_ready_without_keys(
     assert any("Tick 299: committed G3/G4 recipes match" in n for n in report.notes)
     # Tick 300: offline Bvd live-shape lock green when fixtures match.
     assert not any(b.startswith("offline_bvd:") for b in report.blockers)
-    assert any("Tick 300: offline Bvd summary matches" in n for n in report.notes)
+    assert any(
+        "Tick 300" in n and "offline Bvd summary matches" in n for n in report.notes
+    )
     assert (tmp_path / "docs" / "gate2_report.md").is_file()
     assert (tmp_path / "docs" / "gate3_report.md").is_file()
     assert (tmp_path / "docs" / "gate4_report.md").is_file()
@@ -906,4 +945,4 @@ def test_preflight_stack_blocks_stale_offline_bvd(
     )
     assert report.ready_for_live is False
     assert any(b.startswith("offline_bvd:") for b in report.blockers)
-    assert any("Tick 300: refuse live" in n for n in report.notes)
+    assert any("Tick 300" in n and "refuse live" in n for n in report.notes)

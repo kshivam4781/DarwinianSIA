@@ -283,13 +283,13 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 276 cron/pipeline preflight `--fetch-diamond` — `run_preflight_stack` + cron entry forward `--fetch-diamond` into G2/G3/G4 so gate reports require HF; aggregate HF only on fetch-diamond path
 - [x] Tick 277 `.env` + local diamond CSV unlock — `load_icml_dotenv` / `resolve_diamond_csv_path`; cron `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV)
 - [x] Tick 278 runner CSV autowire — `autowire_diamond_csv` in G2/G3/G4/pipeline so `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path)
-- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1840` (`selective` preferred → gen3 share **0.75**; lift +0.0436)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1900` (Tick 300 live shape; `selective` preferred → gen3 share **0.75**; lift +0.0436; Tick-23 `run_1840` superseded)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
-- Evidence: offline multi-seed Condition D `1840–1844` (`max_gen=6`) → ρ>0.3 on **5/5** seeds (0.4 / 0.8 / 0.8 / 1.0 / 0.4) using population-mean forward Δfitness (`delta_horizon=2`) and gen≥2 pairs. Still **not** live GPQA.
+- Evidence: offline multi-seed Condition D `1900–1904` (Tick 300 live shape pop4×eval5×max_gen6) → ρ>0.3 on **5/5** seeds (0.4 / 0.8 / 0.8 / 1.0 / 0.4) using population-mean forward Δfitness (`delta_horizon=2`) and gen≥2 pairs. Still **not** live GPQA.
 
 ### 4. PAPER
 - [x] Figure 1 draft (offline B vs D learning curves) — `docs/figures/fig1_learning_curves.png`
@@ -333,6 +333,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 298 committed recipe↔shape lock — `committed_g3g4_recipes_match_live_shape` locks gate3/4 JSON + pipeline note + Section 21.7 B/D examples to live shape (prevents Tick-297 stale-recipe burn); focused **98/98**
 - [x] Tick 299 recipe lock on live path — pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused pipeline+env **66/66**
 - [x] Tick 300 offline Bvd↔live-shape lock — re-pilot `1890–1894`/`1900–1904` at pop4×eval5×max_gen6; `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse; paper/gate3 offline tables refreshed
+- [x] Tick 301 offline Bvd paper-ID lock — extend lock to `paper_artifacts` / `ICML_READY` / Section 12 / case study citing summary IDs; sync stale `run_1840`/`1830–1844` → `run_1900`/`1890–1904`
 
 ## Gate tracker (Section 21.5)
 
@@ -341,6 +342,6 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + …); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
-| G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
+| G3 pilot B vs D | Offline synthetic pilot preserved (Tick 300 live-shape `1890–1904`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2 on `run_1900`); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |

@@ -2021,6 +2021,27 @@ def committed_g3g4_recipes_match_live_shape(
 # Paper/gate offline tables must advertise the shape we will spend $20 on.
 
 
+def _offline_id_range_strings(ids: Sequence[int]) -> list[str]:
+    """Human-facing ID range spellings (en-dash / hyphen, bare / backticked)."""
+    nums = [int(x) for x in ids]
+    if not nums:
+        return []
+    lo, hi = min(nums), max(nums)
+    if lo == hi:
+        bare = [str(lo)]
+    else:
+        bare = [f"{lo}–{hi}", f"{lo}-{hi}"]
+    out: list[str] = []
+    for b in bare:
+        out.append(b)
+        out.append(f"`{b}`")
+    return out
+
+
+def _text_cites_any(text: str, variants: Sequence[str]) -> bool:
+    return any(v and v in text for v in variants)
+
+
 def committed_offline_bvd_matches_live_shape(
     *,
     repo_root: Path | None = None,
@@ -2031,6 +2052,10 @@ def committed_offline_bvd_matches_live_shape(
     Tick 300: after a Nebius shape change, refuse to treat stale eval=3 offline
     PRIMARY tables as live-shape evidence. Summary must carry an explicit
     ``shape`` block matching ``icml_g3g4_live_shape()``.
+
+    Tick 301: also require paper_artifacts / ICML_READY / Section 12 / case study
+    to cite the summary's current B/D run ID ranges (not superseded Tick-23 IDs
+    as the "latest" offline pilot).
     """
     root = repo_root or _REPO_ROOT
     expected = icml_g3g4_live_shape(profile)
@@ -2092,5 +2117,103 @@ def committed_offline_bvd_matches_live_shape(
                 problems.append(
                     f"docs/gate3_report.md offline B row {table_got} != live {expected}"
                 )
+
+    # Tick 301: paper pack / READY / Section 12 / case study must cite current IDs.
+    b_ids = [int(x) for x in (payload.get("b_run_ids") or [])]
+    d_ids = [int(x) for x in (payload.get("d_run_ids") or [])]
+    if len(b_ids) < 1 or len(d_ids) < 1:
+        problems.append(
+            "docs/offline_bvd_summary.json: missing b_run_ids / d_run_ids "
+            "(Tick 301 paper-ID lock)"
+        )
+    else:
+        b_variants = _offline_id_range_strings(b_ids)
+        d_variants = _offline_id_range_strings(d_ids)
+        case_run = f"run_{min(d_ids)}"
+        case_path = root / "docs" / "case_study_offline.md"
+        if case_path.is_file():
+            case_text = case_path.read_text(encoding="utf-8")
+            if case_run not in case_text and f"runs/{case_run}" not in case_text:
+                problems.append(
+                    f"docs/case_study_offline.md: missing current case study "
+                    f"{case_run} (Tick 301)"
+                )
+        else:
+            problems.append("missing docs/case_study_offline.md")
+
+        paper = root / "docs" / "paper_artifacts.md"
+        if paper.is_file():
+            paper_text = paper.read_text(encoding="utf-8")
+            if not _text_cites_any(paper_text, b_variants):
+                problems.append(
+                    "docs/paper_artifacts.md: missing current offline B ID range "
+                    f"{b_variants[0]} (Tick 301)"
+                )
+            if not _text_cites_any(paper_text, d_variants):
+                problems.append(
+                    "docs/paper_artifacts.md: missing current offline D ID range "
+                    f"{d_variants[0]} (Tick 301)"
+                )
+            # Case-study summary must point at the live-shape run, not only
+            # superseded Tick-23 IDs (e.g. run_1840 while summary is 1900).
+            cs_idx = paper_text.find("## Case study (offline)")
+            cs_block = paper_text[cs_idx : cs_idx + 800] if cs_idx != -1 else ""
+            if cs_block and case_run not in cs_block:
+                problems.append(
+                    "docs/paper_artifacts.md case study summary: missing "
+                    f"{case_run} (stale Tick-23 ID drift; Tick 301)"
+                )
+        else:
+            problems.append("missing docs/paper_artifacts.md")
+
+        ready = root / "docs" / "ICML_READY.md"
+        if ready.is_file():
+            ready_text = ready.read_text(encoding="utf-8")
+            # PRIMARY evidence line should cite current ranges.
+            if not _text_cites_any(ready_text, b_variants) or not _text_cites_any(
+                ready_text, d_variants
+            ):
+                problems.append(
+                    "docs/ICML_READY.md: PRIMARY evidence missing current "
+                    f"offline B/D ranges {b_variants[0]} / {d_variants[0]} "
+                    "(Tick 301)"
+                )
+            # VALIDITY / mechanism evidence must not advertise superseded
+            # D range as the sole current offline H5 pilot when IDs moved.
+            # Require current D range (or case_run) near H5 evidence.
+            h5_idx = ready_text.find("### 3. VALIDITY")
+            h5_block = ready_text[h5_idx : h5_idx + 600] if h5_idx != -1 else ""
+            if h5_block and not _text_cites_any(h5_block, d_variants):
+                problems.append(
+                    "docs/ICML_READY.md VALIDITY evidence: missing current "
+                    f"offline D range {d_variants[0]} (Tick 301)"
+                )
+        else:
+            problems.append("missing docs/ICML_READY.md")
+
+        master = root / "docs" / "HACKATHON_MASTER_PLAN.md"
+        if master.is_file():
+            master_text = master.read_text(encoding="utf-8")
+            # Section 12 offline pilot row — find the table cell after the
+            # component name and require current ID ranges.
+            row_m = re.search(
+                r"\|\s*Offline B vs D case-study pilot\s*\|[^|]*\|([^|]*)\|",
+                master_text,
+            )
+            if row_m is None:
+                problems.append(
+                    "docs/HACKATHON_MASTER_PLAN.md Section 12: missing "
+                    "Offline B vs D case-study pilot row (Tick 301)"
+                )
+            else:
+                notes = row_m.group(1)
+                if not _text_cites_any(notes, b_variants) or not _text_cites_any(
+                    notes, d_variants
+                ):
+                    problems.append(
+                        "docs/HACKATHON_MASTER_PLAN.md Section 12 offline "
+                        f"pilot row missing current IDs {b_variants[0]} / "
+                        f"{d_variants[0]} (Tick 301)"
+                    )
 
     return (len(problems) == 0, problems)

@@ -797,24 +797,25 @@ def run_preflight_stack(
             "shape note match icml_g3g4_live_shape() (see Tick 297–298)"
         )
 
-    # Tick 300: offline Bvd summary / gate3 offline table must match live shape
-    # (prevents spending $20 after a shape change while paper still shows eval=3).
+    # Tick 300–301: offline Bvd summary / gate3 table / paper ID citations must
+    # match live shape (prevents $20 spend after shape change or Tick-23 ID drift).
     offline_ok, offline_problems = committed_offline_bvd_matches_live_shape(
         repo_root=REPO_ROOT
     )
     if offline_ok:
         report.notes.append(
-            "Tick 300: offline Bvd summary matches live shape "
+            "Tick 300–301: offline Bvd summary matches live shape "
             f"{shape['eval_subset']}/{shape['population_size']}/"
-            f"{shape['elite_count']}/{shape['max_gen']}"
+            f"{shape['elite_count']}/{shape['max_gen']} "
+            "(paper/READY/Section12 ID citations locked)"
         )
     else:
         for problem in offline_problems:
             report.blockers.append(f"offline_bvd: {problem}")
         report.ready_for_live = False
         report.notes.append(
-            "Tick 300: refuse live until docs/offline_bvd_summary.json + "
-            "gate3 offline table match icml_g3g4_live_shape()"
+            "Tick 300–301: refuse live until offline_bvd_summary + gate3 offline "
+            "table + paper/READY/Section12 cite current live-shape IDs"
         )
 
 

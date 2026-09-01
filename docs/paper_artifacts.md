@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–300** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–301** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**; **Tick 301 paper-ID citation lock**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 
@@ -86,7 +86,7 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 
 ## Case study (offline)
 
-See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → preferred share gen1/2/3 = **0.25→0.5→0.75** (gen3 = first steered gen under delay-all) → fitness lift **+0.0436** vs loser side (`run_1840`, Tick 23).
+See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → preferred share gen1/2/3 = **0.25→0.5→0.75** (gen3 = first steered gen under delay-all) → fitness lift **+0.0436** vs loser side (`run_1900`, Tick 300 live shape; Tick-23 `run_1840` superseded).
 
 ## Limitations (honest, keep updated)
 

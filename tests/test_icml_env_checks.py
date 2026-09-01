@@ -1024,7 +1024,7 @@ def test_committed_g3g4_recipes_match_live_shape(monkeypatch: pytest.MonkeyPatch
 def test_committed_offline_bvd_matches_live_shape(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 300: offline summary + gate3 table must match live G3/G4 shape."""
+    """Tick 300–301: offline summary + gate3 + paper ID citations match live."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
     monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     for key in (
@@ -1035,7 +1035,7 @@ def test_committed_offline_bvd_matches_live_shape(
     ):
         monkeypatch.delenv(key, raising=False)
 
-    # Repo tip should already be locked after Tick 300 artifact refresh.
+    # Repo tip should already be locked after Tick 300–301 artifact refresh.
     ok, problems = committed_offline_bvd_matches_live_shape()
     assert ok, problems
 
@@ -1050,7 +1050,9 @@ def test_committed_offline_bvd_matches_live_shape(
                     "population_size": 4,
                     "elite_count": 2,
                     "max_gen": 6,
-                }
+                },
+                "b_run_ids": [1890, 1891, 1892, 1893, 1894],
+                "d_run_ids": [1900, 1901, 1902, 1903, 1904],
             }
         ),
         encoding="utf-8",
@@ -1065,3 +1067,66 @@ def test_committed_offline_bvd_matches_live_shape(
     bad_ok, bad_problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
     assert bad_ok is False
     assert any("offline_bvd_summary.json shape" in p for p in bad_problems)
+
+
+def test_committed_offline_bvd_rejects_stale_paper_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 301: shape-ok summary still fails if paper pack cites Tick-23 IDs."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": shape,
+                "b_run_ids": [1890, 1891, 1892, 1893, 1894],
+                "d_run_ids": [1900, 1901, 1902, 1903, 1904],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        f"| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
+        f"| B | 11 | {shape['population_size']} | {shape['elite_count']} | "
+        f"{shape['max_gen']} | {shape['eval_subset']} | `1890–1894` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    # Stale Tick-23 citations only (no current 1890/1900 ranges).
+    (docs / "case_study_offline.md").write_text(
+        "**Run:** `runs/run_1840`\n", encoding="utf-8"
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "Offline pilot 1830–1834 / 1840–1844\n\n"
+        "## Case study (offline)\n\n"
+        "See docs; lift +0.0436 (`run_1840`, Tick 23).\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text(
+        "### 1. PRIMARY\n- Evidence: offline `1830–1834` vs `1840–1844`\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- Evidence: offline D `1840–1844` → ρ>0.3 on 5/5\n",
+        encoding="utf-8",
+    )
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "| Offline B vs D case-study pilot | **DONE** | "
+        "Latest Tick 23 `1830–1834` / `1840–1844` |\n",
+        encoding="utf-8",
+    )
+    ok, problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
+    assert ok is False
+    joined = " ".join(problems)
+    assert "case_study_offline.md" in joined or "paper_artifacts.md" in joined
+    assert "Tick 301" in joined
