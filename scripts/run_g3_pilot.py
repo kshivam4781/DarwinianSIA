@@ -3,7 +3,7 @@
 
 Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``max_gen ≤ 5``, before
 full 5-seed G4 spend. Tick 293: default shape is Nebius budget-fit
-(``eval_subset=10``, pop=3, elite=2, max_gen=4); Anthropic meta keeps
+(``eval_subset=8``, pop=3, elite=2, max_gen=5); Anthropic meta keeps
 historical ``eval_subset=15`` / pop=4 / elite=2 / max_gen=5.
 
 Hard stops (never violate):

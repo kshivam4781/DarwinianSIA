@@ -607,7 +607,7 @@ def run_preflight_stack(
             "Tick 284 resume sync: " + "; ".join(resume["details"])
         )
     report.notes.append(
-        "Tick 293 G3/G4 shape: "
+        "Tick 293–295 G3/G4 shape: "
         f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
         f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
     )
@@ -806,7 +806,7 @@ def run_live_stack(
         str(shape["max_gen"]),
     ]
     report.notes.append(
-        "Tick 293 G3/G4 shape: "
+        "Tick 293–295 G3/G4 shape: "
         f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
         f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
     )

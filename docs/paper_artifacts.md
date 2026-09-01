@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–293** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 293 Nebius budget-fit G3/G4 shape**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–295** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 293–295 Nebius budget-fit shape: eval8/pop3/elite2/max_gen5**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 

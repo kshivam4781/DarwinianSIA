@@ -389,7 +389,7 @@ def test_sum_run_dirs_cost_reads_submission_when_results_accuracy_only(
 
 
 def test_run_preflight_stack_default_diamond_n_is_budget_fit() -> None:
-    """Tick 283/293: preflight stack default matches G3/G4 eval_subset (Nebius→10)."""
+    """Tick 283/293/295: preflight stack default matches G3/G4 eval_subset (Nebius→8)."""
     import inspect
 
     from icml_env_checks import icml_diamond_n_for_stack
@@ -397,7 +397,7 @@ def test_run_preflight_stack_default_diamond_n_is_budget_fit() -> None:
 
     default = inspect.signature(run_preflight_stack).parameters["diamond_n"].default
     assert default is None
-    assert icml_diamond_n_for_stack() == 10
+    assert icml_diamond_n_for_stack() == 8
 
 
 def test_g3_pilot_promising_on_d_win() -> None:

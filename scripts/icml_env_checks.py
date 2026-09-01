@@ -145,15 +145,19 @@ DEFAULT_ICML_META_AGENT_PROFILE = "kimi-nebius-pydantic-meta"
 # Tick 293: Anthropic-era G3/G4 shape (pop4 × eval15 × max_gen5) × Nebius meta
 # overhead 3.0 cannot fit full 5-seed G4 under the ~$20 ceiling once Tick 291
 # reconcile meters real Kimi spend. Nebius budget-fit shape keeps PRIMARY
-# (5 seeds, max_gen≥4 for H5 delta_horizon=2) while shrinking per-seed cost.
+# (5 seeds) while shrinking per-seed cost.
 # Tick 294: elite_count must be ≥2 — cost is pop×eval×gens (elite does not
 # change agent-eval count); elite=1 makes crossover same-parent clones and
 # collapses H2 / Condition D steering under delay-all bias (gen≥2).
+# Tick 295: cost-neutral rebalance eval10/max_gen4 → eval8/max_gen5
+# (3×8×5 = 3×10×4 = 120 agent-evals). Under delay-all, offline seed 22 hits
+# gens30 at gen **5**; max_gen=4 would truncate PRIMARY gens30/cost30 and
+# leave only two steered breeding rounds (gen2→3, gen3→4).
 # Override with SIA_G3G4_* env vars. Anthropic meta keeps the historical shape.
-ICML_NEBIUS_G3G4_EVAL_SUBSET = 10
+ICML_NEBIUS_G3G4_EVAL_SUBSET = 8
 ICML_NEBIUS_G3G4_POPULATION_SIZE = 3
 ICML_NEBIUS_G3G4_ELITE_COUNT = 2
-ICML_NEBIUS_G3G4_MAX_GEN = 4
+ICML_NEBIUS_G3G4_MAX_GEN = 5
 ICML_ANTHROPIC_G3G4_EVAL_SUBSET = 15
 ICML_ANTHROPIC_G3G4_POPULATION_SIZE = 4
 ICML_ANTHROPIC_G3G4_ELITE_COUNT = 2
@@ -819,7 +823,7 @@ def _env_positive_int(name: str, default: int) -> int:
 
 
 def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
-    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293/294).
+    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293–295).
 
     Nebius meta → budget-fit shape so 5-seed G4 + G2/G3 stay under ~$20 after
     Tick 291 Kimi metering. Anthropic meta → historical Section 21.5 shape.
@@ -829,6 +833,9 @@ def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
     Tick 294: when ``population_size >= 2``, ``elite_count`` is floored at 2
     (and capped at pop). Elite does not change agent-eval cost; elite=1 makes
     crossover same-parent clones and collapses H2 under delay-all steering.
+
+    Tick 295: Nebius defaults are eval8 / max_gen5 (cost-neutral vs Tick 293's
+    eval10 / max_gen4) so PRIMARY gens30 can reach the offline seed-22 horizon.
     """
     if icml_meta_provider_id(profile) == "nebius":
         shape = {
