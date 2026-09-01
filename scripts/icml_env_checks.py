@@ -2014,3 +2014,83 @@ def committed_g3g4_recipes_match_live_shape(
         problems.append("missing docs/HACKATHON_MASTER_PLAN.md")
 
     return (len(problems) == 0, problems)
+
+
+# --- Tick 300: committed offline Bvd summary ↔ live-shape lock ---------------------
+# Tick 23 artifacts used eval_subset=3 while live G3/G4 is eval5 (same pop4×max_gen6).
+# Paper/gate offline tables must advertise the shape we will spend $20 on.
+
+
+def committed_offline_bvd_matches_live_shape(
+    *,
+    repo_root: Path | None = None,
+    profile: str | None = None,
+) -> tuple[bool, list[str]]:
+    """Return whether ``docs/offline_bvd_summary.json`` shape matches live G3/G4.
+
+    Tick 300: after a Nebius shape change, refuse to treat stale eval=3 offline
+    PRIMARY tables as live-shape evidence. Summary must carry an explicit
+    ``shape`` block matching ``icml_g3g4_live_shape()``.
+    """
+    root = repo_root or _REPO_ROOT
+    expected = icml_g3g4_live_shape(profile)
+    problems: list[str] = []
+    path = root / "docs" / "offline_bvd_summary.json"
+    if not path.is_file():
+        return False, ["missing docs/offline_bvd_summary.json"]
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, [f"docs/offline_bvd_summary.json: {exc}"]
+
+    shape = payload.get("shape")
+    if not isinstance(shape, dict):
+        problems.append(
+            "docs/offline_bvd_summary.json: missing shape "
+            "{eval_subset,population_size,elite_count,max_gen} "
+            "(Tick 300 live-shape lock)"
+        )
+        return False, problems
+
+    got = {
+        "eval_subset": int(shape.get("eval_subset", -1)),
+        "population_size": int(shape.get("population_size", -1)),
+        "elite_count": int(shape.get("elite_count", -1)),
+        "max_gen": int(shape.get("max_gen", -1)),
+    }
+    if got != expected:
+        problems.append(
+            f"docs/offline_bvd_summary.json shape {got} != live {expected}"
+        )
+
+    # Gate3 offline narrative table must also advertise the live eval_subset.
+    gate3 = root / "docs" / "gate3_report.md"
+    if gate3.is_file():
+        text = gate3.read_text(encoding="utf-8")
+        start = text.find("<!-- OFFLINE_G3_PILOT_START -->")
+        end = text.find("<!-- OFFLINE_G3_PILOT_END -->")
+        block = text[start:end] if start != -1 and end != -1 else ""
+        # Table row like: | B | … | 4 | 2 | 6 | 5 | `1890–1894` |
+        row_re = re.compile(
+            r"\|\s*B\s*\|[^|]*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|",
+            re.IGNORECASE,
+        )
+        m = row_re.search(block)
+        if m is None:
+            problems.append(
+                "docs/gate3_report.md offline block: missing B shape table row "
+                "(pop|elite|max_gen|eval_subset)"
+            )
+        else:
+            table_got = {
+                "population_size": int(m.group(1)),
+                "elite_count": int(m.group(2)),
+                "max_gen": int(m.group(3)),
+                "eval_subset": int(m.group(4)),
+            }
+            if table_got != expected:
+                problems.append(
+                    f"docs/gate3_report.md offline B row {table_got} != live {expected}"
+                )
+
+    return (len(problems) == 0, problems)

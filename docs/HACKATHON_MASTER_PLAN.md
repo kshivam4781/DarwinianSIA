@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 299 wires Tick-298 recipe↔shape lock into live pipeline refuse/preflight; Tick 298 locked committed gate/Section-21.7 recipes to live G3/G4 shape; Tick 297 synced Section 21.7 + gate/pipeline reports to Tick 296 **pop4×eval5×max_gen6**; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-01 (Section 21 ICML; Tick 300 offline Bvd↔live-shape lock + re-pilot at pop4×eval5×max_gen6; Tick 299 wires Tick-298 recipe↔shape lock into live pipeline refuse/preflight; Tick 298 locked committed gate/Section-21.7 recipes to live G3/G4 shape; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -865,11 +865,12 @@ Computed in `cabs/belief_engine.py`:
 | ICML Tick-296 shape recipe/report sync (Tick 297) | **DONE** | Section 21.7 + gate3/4/pipeline reports now advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note label → Tick 296 |
 | ICML committed recipe↔shape lock (Tick 298) | **DONE** | `committed_g3g4_recipes_match_live_shape` + tests lock gate3/4 JSON + pipeline note + Section 21.7 B/D examples to `icml_g3g4_live_shape()` (prevents Tick-297 stale-recipe burn) |
 | ICML recipe lock in live pipeline (Tick 299) | **DONE** | Pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused **66/66** pipeline+env |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–297 stack ready; next: `bash scripts/icml_cron_entry.sh` |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
+| ICML offline Bvd↔live-shape lock (Tick 300) | **DONE** | Re-pilot offline at pop4×eval5×max_gen6 (`1890–1904`); `committed_offline_bvd_matches_live_shape` + pipeline refuse; paper/gate3 refreshed |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–300 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
-| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 cost stub; live automatable via Tick 28 pack — see `docs/paper_artifacts.md` |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
+| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 at live shape (Tick 300); live automatable via Tick 28 pack — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
 ---
@@ -2253,3 +2254,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Committed recipe↔shape lock (2026-09-01 Tick 298):** After Tick 297 manually synced recipes, added `committed_g3g4_recipes_match_live_shape` (+ unit tests) so gate3/4 JSON commands, pipeline shape note, and Section 21.7 Condition B/D examples cannot silently drift from `icml_g3g4_live_shape()` again (would burn the ~$20 ceiling on a PRIMARY-failing shape). Focused suite **98/98**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Recipe lock enforced on live path (2026-09-01 Tick 299):** Tick 298 left the lock tests-only — cron/`--live` could still spend after a shape change whose Section 21.7 lagged. Wired `committed_g3g4_recipes_match_live_shape` into `run_preflight_stack` (clears `ready_for_live`) and `main --live` (hard refuse before G2). Focused pipeline+env suite **66/66**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Offline Bvd↔live-shape lock (2026-09-01 Tick 300):** Committed offline tables still showed Tick-23 **eval_subset=3** while live G3/G4 spends on **eval5**. Re-piloted offline B vs D at exact Nebius live shape (`1890–1894` / `1900–1904`) → gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, gap ~**6.15pp**; case study `run_1900`. Added `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse. Focused env+pipeline+g3+g4 **89/89**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

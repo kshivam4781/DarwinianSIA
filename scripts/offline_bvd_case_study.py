@@ -486,13 +486,14 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
+    # Tick 300: defaults match Nebius live G3/G4 shape (icml_g3g4_live_shape).
     p.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33, 44, 55])
     p.add_argument("--pop", type=int, default=4)
     p.add_argument("--elite", type=int, default=2)
-    p.add_argument("--max-gen", type=int, default=4)
-    p.add_argument("--eval-subset", type=int, default=3)
-    p.add_argument("--b-id-start", type=int, default=1410)
-    p.add_argument("--d-id-start", type=int, default=1420)
+    p.add_argument("--max-gen", type=int, default=6)
+    p.add_argument("--eval-subset", type=int, default=5)
+    p.add_argument("--b-id-start", type=int, default=1890)
+    p.add_argument("--d-id-start", type=int, default=1900)
     p.add_argument("--runs-root", type=Path, default=ROOT / "runs")
     p.add_argument("--work-root", type=Path, default=ROOT / "runs" / "_offline_bvd_work")
     p.add_argument("--json-out", type=Path, default=ROOT / "docs" / "offline_bvd_summary.json")
@@ -574,6 +575,12 @@ def main(argv: list[str] | None = None) -> int:
     figs = _maybe_figures(b_runs, d_runs, args.figures_dir)
     payload = {
         "seeds": args.seeds,
+        "shape": {
+            "eval_subset": int(args.eval_subset),
+            "population_size": int(args.pop),
+            "elite_count": int(args.elite),
+            "max_gen": int(args.max_gen),
+        },
         "b_run_ids": [args.b_id_start + i for i in range(len(args.seeds))],
         "d_run_ids": [args.d_id_start + i for i in range(len(args.seeds))],
         "compare": {k: v for k, v in compare.items() if k != "rows"},

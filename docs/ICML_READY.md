@@ -10,7 +10,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**
 - [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**
 - [ ] Non-trivial mean final accuracy gap (not ~1pp noise)
-- Evidence: offline synthetic pilot `1830–1834` vs `1840–1844` (Tick 23; post-steering case study) — D gens30 wins **4/5** (B: 0), D cost30 wins **4/5** (B: 0; eval-call proxy), D final wins **5/5**, mean final gap ~**6.15pp**. Offline PRIMARY-shaped signal only — **not** live GPQA; leave unchecked for READY. Live → `docs/paper_artifacts.md` Table 1
+- Evidence: offline synthetic pilot `1890–1894` vs `1900–1904` (Tick 300; **live Nebius shape** pop4×eval5×max_gen6) — D gens30 wins **4/5** (B: 0), D cost30 wins **4/5** (B: 0; eval-call proxy), D final wins **5/5**, mean final gap ~**6.15pp**. Offline PRIMARY-shaped signal only — **not** live GPQA; leave unchecked for READY. Live → `docs/paper_artifacts.md` Table 1
 
 ### 2. MECHANISM — H2 or case study
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
@@ -332,6 +332,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 297 Tick-296 shape recipe/report sync — Section 21.7 + gate3/4/pipeline reports advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note → Tick 296; focused **82/82**
 - [x] Tick 298 committed recipe↔shape lock — `committed_g3g4_recipes_match_live_shape` locks gate3/4 JSON + pipeline note + Section 21.7 B/D examples to live shape (prevents Tick-297 stale-recipe burn); focused **98/98**
 - [x] Tick 299 recipe lock on live path — pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused pipeline+env **66/66**
+- [x] Tick 300 offline Bvd↔live-shape lock — re-pilot `1890–1894`/`1900–1904` at pop4×eval5×max_gen6; `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse; paper/gate3 offline tables refreshed
 
 ## Gate tracker (Section 21.5)
 

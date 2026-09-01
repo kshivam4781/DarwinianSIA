@@ -6,19 +6,25 @@
     44,
     55
   ],
+  "shape": {
+    "eval_subset": 5,
+    "population_size": 4,
+    "elite_count": 2,
+    "max_gen": 6
+  },
   "b_run_ids": [
-    1830,
-    1831,
-    1832,
-    1833,
-    1834
+    1890,
+    1891,
+    1892,
+    1893,
+    1894
   ],
   "d_run_ids": [
-    1840,
-    1841,
-    1842,
-    1843,
-    1844
+    1900,
+    1901,
+    1902,
+    1903,
+    1904
   ],
   "compare": {
     "n_pairs": 5,
@@ -47,9 +53,9 @@
       "B_gens30": null,
       "D_gens30": 4,
       "B_cost30": null,
-      "D_cost30": 48.0,
+      "D_cost30": 80.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.39999999999999997,
+      "D_h5_rho": 0.3999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
@@ -64,9 +70,9 @@
       "B_gens30": null,
       "D_gens30": 5,
       "B_cost30": null,
-      "D_cost30": 60.0,
+      "D_cost30": 100.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.7999999999999999,
+      "D_h5_rho": 0.7999999999999998,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
@@ -81,9 +87,9 @@
       "B_gens30": null,
       "D_gens30": 3,
       "B_cost30": null,
-      "D_cost30": 36.0,
+      "D_cost30": 60.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.7999999999999999,
+      "D_h5_rho": 0.7999999999999998,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
@@ -97,10 +103,10 @@
       "D_gens25": 1,
       "B_gens30": 2,
       "D_gens30": 2,
-      "B_cost30": 24.0,
-      "D_cost30": 24.0,
+      "B_cost30": 40.0,
+      "D_cost30": 40.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 1.0,
+      "D_h5_rho": 0.9999999999999998,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
@@ -115,9 +121,9 @@
       "B_gens30": null,
       "D_gens30": 4,
       "B_cost30": null,
-      "D_cost30": 48.0,
+      "D_cost30": 80.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.39999999999999997,
+      "D_h5_rho": 0.3999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
@@ -125,7 +131,7 @@
     }
   ],
   "case_study": {
-    "run_dir": "runs/run_1840",
+    "run_dir": "runs/run_1900",
     "field": "tool_strategy",
     "preferred_value": "selective",
     "bias_order": [
@@ -368,10 +374,7 @@
     "belief_count": 15,
     "agenda_prefers_first": "selective"
   },
-  "figures": [
-    "docs/figures/fig1_learning_curves.png",
-    "docs/figures/fig2_mechanism.png"
-  ],
+  "figures": [],
   "h5_protocol": {
     "min_generation": 2,
     "fitness_key": "mean",

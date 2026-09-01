@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-09-01T10:08:00Z
+**Timestamp:** 2026-09-01T12:09:16Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -38,7 +38,6 @@
 
 ## Notes
 
-- materialized synthetic GPQA smoke fixture under SIA/
 - runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
 - diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 

@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–299** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape: eval5/pop4/elite2/max_gen6**; **Tick 297 synced Section 21.7 + gate reports**; **Tick 298 recipe↔shape lock**; **Tick 299 lock enforced on `--live`/preflight**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–300** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 
@@ -21,26 +21,28 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B / D (Tick 20 directed explore) | 11–55 | 1780–1784 / 1790–1794 | gens30 **4/5**; H5 **5/5**; superseded by Tick 22 IDs for cost columns |
 | D epistemic_full (CLI dry-run harness Tick 21) | 42 | 1800 | Real `sia run --task gpqa --cabs --cabs-inline --dry-run` after `prepare_gpqa_smoke_data.py`; belief_store + scoped bias; **not** live GPQA |
 | B / D (Tick 22 cost-to-threshold) | 11–55 | 1810–1814 / 1820–1824 | First offline cost30 **4/5**; case study `1823` (gen2 share era) |
-| B darwinian-only (offline pilot Tick 23) | 11/22/33/44/55 | 1830–1834 | Post-steering case-study H2 (`max_gen=6`); gitignored `runs/` |
-| D epistemic_full (offline pilot Tick 23) | 11/22/33/44/55 | 1840–1844 | Final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; case study on `1840` (gen3 steered share **0.75**) |
+| B darwinian-only (offline pilot Tick 23) | 11/22/33/44/55 | 1830–1834 | Post-steering case-study H2 (`max_gen=6`, **eval3**); superseded by Tick 300 for live-shape lock |
+| D epistemic_full (offline pilot Tick 23) | 11/22/33/44/55 | 1840–1844 | Final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; case study on `1840` (eval3 era) |
+| B darwinian-only (offline Tick 300 live-shape) | 11/22/33/44/55 | 1890–1894 | Exact Nebius live shape **pop4×eval5×elite2×max_gen6** |
+| D epistemic_full (offline Tick 300 live-shape) | 11/22/33/44/55 | 1900–1904 | Same PRIMARY/H5 as Tick 23; cost@30% scaled to eval5; case study `1900` (gen3 share **0.75**) |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1850. Preferred when keys + linked env present: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond` (Tick 29; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1910. Preferred when keys + linked env present: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond` (Tick 29; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
 
 ## Table 1 — Primary (B vs D)
 
-### Offline synthetic pilot (Tick 23 — not live PRIMARY)
+### Offline synthetic pilot (Tick 300 — live Nebius shape; not live PRIMARY)
 
 | Seed | B final | D final | B gens@30% | D gens@30% | B cost@30% | D cost@30% | Winner (final>1pp / gens30 / cost30) |
 |------|---------|---------|------------|------------|------------|------------|--------------------------------------|
-| 11 | 0.2652 | 0.3035 | — | 4 | — | 48 calls | D / D / D |
-| 22 | 0.2258 | 0.3060 | — | 5 | — | 60 calls | D / D / D |
-| 33 | 0.2950 | 0.3235 | — | 3 | — | 36 calls | D / D / D |
-| 44 | 0.2220 | 0.3109 | 2 | 2 | 24 | 24 calls | D / tie / tie |
-| 55 | 0.2550 | 0.3266 | — | 4 | — | 48 calls | D / D / D |
+| 11 | 0.2652 | 0.3035 | — | 4 | — | 80 calls | D / D / D |
+| 22 | 0.2258 | 0.3060 | — | 5 | — | 100 calls | D / D / D |
+| 33 | 0.2950 | 0.3235 | — | 3 | — | 60 calls | D / D / D |
+| 44 | 0.2220 | 0.3109 | 2 | 2 | 40 | 40 calls | D / tie / tie |
+| 55 | 0.2550 | 0.3266 | — | 4 | — | 80 calls | D / D / D |
 
-Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b)). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json`.
+Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b) at **pop4×eval5×max_gen6**). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json` (Tick 300). Tick-23 eval3 pilot retained historically as `1830–1844`.
 
 ### Live GPQA
 
@@ -59,7 +61,7 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 | H5 Spearman ρ (live) | — | — |
 <!-- LIVE_TABLE2_H5_END -->
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
-| H2 offline pilot D (Tick 23) | directed ε-explore + live harvest; **post-steer** gen3 preferred share **0.75** (`run_1840`; gen1/2/3 = 0.25→0.5→0.75) | informative (dry-run) |
+| H2 offline pilot D (Tick 300) | directed ε-explore + live harvest; **post-steer** gen3 preferred share **0.75** (`run_1900`; gen1/2/3 = 0.25→0.5→0.75) at live shape | informative (dry-run) |
 | H2 unit skew test | pass (+ preferred anchoring + bias-aware / delayed XO + tempered early mutate + delay-all + ε-greedy + directed explore) | yes (unit) |
 | Fitness-weighted bias order | higher-fitness side first; exponential rank weights | yes (unit) |
 | Singleton bias skip | `load_mutation_bias` requires ≥2 distinct candidates | yes (unit, Tick 10) |
@@ -71,8 +73,8 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 | Directed ε-explore | explore samples only outsiders of disputed pool (Tick 20) | yes (unit + offline) |
 | Cost-to-threshold | tokens/USD preferred; else eval-calls; ≥15% savings or reach-vs-never (Tick 22) | yes (unit + offline **4/5**) |
 | H5 protocol | `min_generation=2`, `fitness_key=mean`, `delta_horizon=2` (Tick 18–19) | yes (unit + offline) |
-| Case study chain | `docs/case_study_offline.md` (`run_1840`) | yes (offline; post-steer gen≥3) |
-| H5 Spearman ρ (offline) | offline D `1840–1844`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live row above | offline pass; live need > 0.3 |
+| Case study chain | `docs/case_study_offline.md` (`run_1900`) | yes (offline; post-steer gen≥3; live shape) |
+| H5 Spearman ρ (offline) | offline D `1900–1904`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live row above | offline pass; live need > 0.3 |
 | Steering opportunity term | `fitness_gap × (1 − preferred share)` in epi | yes (unit + offline) |
 
 ## Figures

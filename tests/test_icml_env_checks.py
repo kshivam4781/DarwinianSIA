@@ -18,6 +18,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     collect_icml_tip_status,
     committed_g3g4_recipes_match_live_shape,
+    committed_offline_bvd_matches_live_shape,
     default_g2_estimate_usd,
     default_g3_pair_estimate_usd,
     default_g4_pair_estimate_usd,
@@ -1018,3 +1019,49 @@ def test_committed_g3g4_recipes_match_live_shape(monkeypatch: pytest.MonkeyPatch
         }
     ]
     assert stale_shapes[0] != icml_g3g4_live_shape()
+
+
+def test_committed_offline_bvd_matches_live_shape(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 300: offline summary + gate3 table must match live G3/G4 shape."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    # Repo tip should already be locked after Tick 300 artifact refresh.
+    ok, problems = committed_offline_bvd_matches_live_shape()
+    assert ok, problems
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": {
+                    "eval_subset": 3,
+                    "population_size": 4,
+                    "elite_count": 2,
+                    "max_gen": 6,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        f"| B | 11 | {shape['population_size']} | {shape['elite_count']} | "
+        f"{shape['max_gen']} | 3 | `1830` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    bad_ok, bad_problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
+    assert bad_ok is False
+    assert any("offline_bvd_summary.json shape" in p for p in bad_problems)

@@ -53,6 +53,7 @@ from icml_env_checks import (  # noqa: E402
     budget_spent_ledger_path,
     collect_icml_secrets_status,
     committed_g3g4_recipes_match_live_shape,
+    committed_offline_bvd_matches_live_shape,
     darwinian_run_complete,
     default_g2_estimate_usd,
     default_g3_pair_estimate_usd,
@@ -796,6 +797,26 @@ def run_preflight_stack(
             "shape note match icml_g3g4_live_shape() (see Tick 297–298)"
         )
 
+    # Tick 300: offline Bvd summary / gate3 offline table must match live shape
+    # (prevents spending $20 after a shape change while paper still shows eval=3).
+    offline_ok, offline_problems = committed_offline_bvd_matches_live_shape(
+        repo_root=REPO_ROOT
+    )
+    if offline_ok:
+        report.notes.append(
+            "Tick 300: offline Bvd summary matches live shape "
+            f"{shape['eval_subset']}/{shape['population_size']}/"
+            f"{shape['elite_count']}/{shape['max_gen']}"
+        )
+    else:
+        for problem in offline_problems:
+            report.blockers.append(f"offline_bvd: {problem}")
+        report.ready_for_live = False
+        report.notes.append(
+            "Tick 300: refuse live until docs/offline_bvd_summary.json + "
+            "gate3 offline table match icml_g3g4_live_shape()"
+        )
+
 
 def run_live_stack(
     report: PipelineReport,
@@ -1231,6 +1252,25 @@ def main(argv: list[str] | None = None) -> int:
             write_pipeline_report(report, args.report)
             print(
                 f"Pipeline refused --live (stale G3/G4 recipes) → {args.report}"
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}")
+            return 3
+
+        offline_ok, offline_problems = committed_offline_bvd_matches_live_shape(
+            repo_root=REPO_ROOT
+        )
+        if not offline_ok:
+            for problem in offline_problems:
+                report.blockers.append(f"offline_bvd: {problem}")
+            report.notes.append(
+                "Refresh offline Bvd at icml_g3g4_live_shape() before paid "
+                "G2→G3→G4 (Tick 300)."
+            )
+            report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
+            write_pipeline_report(report, args.report)
+            print(
+                f"Pipeline refused --live (stale offline Bvd shape) → {args.report}"
             )
             for b in report.blockers:
                 print(f"  BLOCK: {b}")

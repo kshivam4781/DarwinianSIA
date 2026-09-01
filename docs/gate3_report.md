@@ -1,18 +1,18 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-09-01T10:08:00Z
+**Timestamp:** 2026-09-01T12:09:16Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
 <!-- OFFLINE_G3_PILOT_START -->
-## Offline synthetic pilot (Tick 23 — not a live G3 substitute)
+## Offline synthetic pilot (Tick 300 live-shape — not a live G3 substitute)
 
 | Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |
 |------|-------|-----|-------|---------|-------------|---------|
-| B | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1830–1834` |
-| D | 11,22,33,44,55 | 4 | 2 | 6 | 3 | `1840–1844` |
+| B | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1890–1894` |
+| D | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1900–1904` |
 
-Harness: `scripts/offline_bvd_case_study.py` (compressed additive latent dry-run fitness [0.02, 0.34] + delay-all mutation bias until gen≥2 + directed ε-explore outside disputed pools + latest-gen bias harvest + delayed soft bias-aware crossover). H5 via `scripts/epistemic_results.compute_h5(min_generation=2, fitness_key="mean", delta_horizon=2)`. Cost via `cost_to_threshold` (eval-call proxy offline; tokens/USD preferred when present). Case study measures preferred DNA share at **gen≥3** (first steered generation).
+Harness: `scripts/offline_bvd_case_study.py` at **Nebius live G3/G4 shape** (`icml_g3g4_live_shape`: pop4 × eval5 × elite2 × max_gen6). Compressed additive latent dry-run fitness [0.02, 0.34] + delay-all mutation bias until gen≥2 + directed ε-explore outside disputed pools + latest-gen bias harvest + delayed soft bias-aware crossover. H5 via `scripts/epistemic_results.compute_h5(min_generation=2, fitness_key="mean", delta_horizon=2)`. Cost via `cost_to_threshold` (eval-call proxy offline; tokens/USD preferred when present). Case study measures preferred DNA share at **gen≥3** (first steered generation).
 
 | Metric | Result |
 |--------|--------|
@@ -20,17 +20,17 @@ Harness: `scripts/offline_bvd_case_study.py` (compressed additive latent dry-run
 | B final-fitness wins (>1pp) | **0/5** |
 | Mean final (B / D) | ~0.253 / ~0.314 (~**6.15pp**) |
 | D gens-to-30% wins | **4/5** (B: 0) — offline PRIMARY gens30; seed 44 tie |
-| D cost-to-30% wins (≥15% / reach-vs-never) | **4/5** (B: 0) — offline PRIMARY cost30 (Tick 22 metric) |
+| D cost-to-30% wins (≥15% / reach-vs-never) | **4/5** (B: 0) — offline PRIMARY cost30 (eval=5 call proxy) |
 | Gens-to-25% | Both hit gen1 (still saturated at 25%) |
 | Gen-1 ≥30% | **0/5** seeds (saturation still fixed) |
 | H5 ρ>0.3 (D seeds) | **5/5** (0.4 / 0.8 / 0.8 / 1.0 / 0.4) — mean forward Δ; gen≥2; horizon=2 |
-| Case study | `docs/case_study_offline.md` (`run_1840`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
+| Case study | `docs/case_study_offline.md` (`run_1900`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
 | Figures | `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png` |
-| Summary JSON | `docs/offline_bvd_summary.json` |
+| Summary JSON | `docs/offline_bvd_summary.json` (`shape` locked to live) |
 
-**Finding:** Tick 22 left case-study H2 measured at fair-bred gen2 (~0.25 share). Tick 23 aligns the case study with delay-all: first steered generation is gen3. On `run_1840`, contradiction `selective` vs `aggressive` → preferred `selective` share rises **0.25→0.5→0.75** with fitness lift **+0.0436**. Offline PRIMARY/H5 rates unchanged (gens30/cost30 **4/5**, H5 **5/5**, mean gap ~**6.15pp**).
+**Finding:** Tick 300 re-pilots offline B vs D at the **exact live Nebius shape** (eval5, not Tick-23 eval3). Fitness/gens/H5 identical to Tick 23; cost@30% scales with eval_subset (e.g. seed 11: 80 calls vs prior 48). Confirms PRIMARY-shaped offline signal before paid G2→G3→G4. Case study on `run_1900`: contradiction `selective` vs `aggressive` → preferred `selective` share **0.25→0.5→0.75** with lift **+0.0436**.
 
-Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost30 **4/5** snapshot. Tick-20 `1780–1784` / `1790–1794` remains the first offline gens30 **4/5** snapshot. Tick-19 `1750–1754` / `1760–1764` remains the first offline H5 **5/5** snapshot. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
+Prior Tick-23 pilot `1830–1834` / `1840–1844` remains the first post-steering H2 snapshot (eval3). Tick-22 `1810–1814` / `1820–1824` remains the first offline cost30 **4/5** snapshot. Tick-20 `1780–1784` / `1790–1794` remains the first offline gens30 **4/5** snapshot. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
 <!-- OFFLINE_G3_PILOT_END -->
 
 ## Live G3 preflight

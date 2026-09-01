@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T12:15Z — Tick 300 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-4c76` (recovered tip ← `d252` Tick 299)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-d252` (Tick 299); local Tick **299** → **300**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 296 validated offline at live shape **ephemerally**, but committed paper/gate3 offline tables still advertised Tick-23 **eval_subset=3** while live G3/G4 spends on **eval5**. Highest leverage without paid spend: **re-pilot offline B vs D at exact live shape + lock artifacts**.
+
+### What this tick did (ONE step)
+**Offline Bvd↔live-shape lock + committed re-pilot (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `d252`; confirmed secrets absent
+2. Re-ran `scripts/offline_bvd_case_study.py` at pop4×eval5×elite2×max_gen6 → B `1890–1894` / D `1900–1904` — gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, gap ~**6.15pp**; case study `run_1900`
+3. Defaults + `shape` field in summary JSON; `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse
+4. Refreshed `docs/gate3_report.md` offline block, `docs/paper_artifacts.md` Table 1/run IDs, `ICML_READY` evidence
+5. Focused suite **89/89**; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 299) | After (Tick 300) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ eval3 IDs | **same rates @ live eval5** (`1890–1904`) |
+| Offline summary `shape` | absent (eval3 implied) | **{5,4,2,6}** locked |
+| Offline↔live-shape guard | none | **`committed_offline_bvd_matches_live_shape` + live refuse** |
+| Focused tests (env+pipeline+g3+g4) | 66 pipeline+env @ Tick 299 | **89/89** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T10:15Z — Tick 299 (automation cron)
 
 ### Status snapshot

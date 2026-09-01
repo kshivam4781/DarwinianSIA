@@ -25,10 +25,11 @@ from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
 
 
 def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]:
-    """Write Section 21.7 + pipeline note + gate3/4 JSON for Tick 299.
+    """Write Section 21.7 + pipeline note + gate3/4 JSON for Tick 299–300.
 
     Gate JSON are normally produced by G3/G4 preflight; ``--live`` refuses
     before those writers run, so tmp-repo live tests must seed them too.
+    Tick 300 also seeds offline Bvd summary + gate3 offline table shape.
     """
     docs.mkdir(parents=True, exist_ok=True)
     shape = icml_g3g4_live_shape()
@@ -97,6 +98,23 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
             json.dumps({"commands": [cmd, cmd]}, indent=2) + "\n",
             encoding="utf-8",
         )
+    # Tick 300: offline Bvd live-shape lock fixtures.
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps({"shape": dict(flags), "seeds": [11]}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        "## Offline synthetic pilot\n\n"
+        "| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
+        "|------|-------|-----|-------|---------|-------------|---------|"
+        f"\n| B | 11 | {flags['population_size']} | {flags['elite_count']} | "
+        f"{flags['max_gen']} | {flags['eval_subset']} | `1890` |\n"
+        f"| D | 11 | {flags['population_size']} | {flags['elite_count']} | "
+        f"{flags['max_gen']} | {flags['eval_subset']} | `1900` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
     return flags
 
 
@@ -548,6 +566,9 @@ def test_preflight_stack_not_ready_without_keys(
     # Tick 299: matching recipe lock should not add recipe blockers.
     assert not any(b.startswith("recipes:") for b in report.blockers)
     assert any("Tick 299: committed G3/G4 recipes match" in n for n in report.notes)
+    # Tick 300: offline Bvd live-shape lock green when fixtures match.
+    assert not any(b.startswith("offline_bvd:") for b in report.blockers)
+    assert any("Tick 300: offline Bvd summary matches" in n for n in report.notes)
     assert (tmp_path / "docs" / "gate2_report.md").is_file()
     assert (tmp_path / "docs" / "gate3_report.md").is_file()
     assert (tmp_path / "docs" / "gate4_report.md").is_file()
@@ -815,3 +836,74 @@ def test_preflight_stack_blocks_stale_recipes(
     assert report.ready_for_live is False
     assert any(b.startswith("recipes:") for b in report.blockers)
     assert any("Tick 299: refuse live" in n for n in report.notes)
+
+
+def test_preflight_stack_blocks_stale_offline_bvd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 300: preflight clears ready_for_live when offline Bvd shape drifts."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+    import run_g3_pilot as g3
+    import run_g4_multiseed as g4
+    from prepare_gpqa_smoke_data import prepare_task_tree
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-09-01T12:00Z — Tick 300 (test)\n", encoding="utf-8"
+    )
+    # Matching recipes, but stale eval=3 offline summary (Tick 23 artifact era).
+    _seed_recipe_lock_docs(docs, stale=False)
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": {
+                    "eval_subset": 3,
+                    "population_size": 4,
+                    "elite_count": 2,
+                    "max_gen": 6,
+                }
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+
+    for mod in (pipe, g2, g3, g4):
+        monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g2, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g2, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g3, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g3, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g4, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g4, "_run_dir_for", lambda rid: None)
+
+    report = PipelineReport(
+        timestamp="2026-09-01T12:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+    )
+    run_preflight_stack(
+        report,
+        g2_run_id=1300,
+        g3_seeds="1",
+        g3_b="1201",
+        g3_d="1301",
+        g4_seeds="1,2,3,4,5",
+        g4_b="1211,1212,1213,1214,1215",
+        g4_d="1311,1312,1313,1314,1315",
+    )
+    assert report.ready_for_live is False
+    assert any(b.startswith("offline_bvd:") for b in report.blockers)
+    assert any("Tick 300: refuse live" in n for n in report.notes)
