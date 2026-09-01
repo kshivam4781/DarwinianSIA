@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–302** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**; **Tick 301 paper-ID citation lock**; **Tick 302 offline Figs 1–2 regen + figures lock**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–303** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**; **Tick 301 paper-ID citation lock**; **Tick 302 offline Figs 1–2 regen + figures lock**; **Tick 303 G3/G4 direct-live shape locks**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 
@@ -188,6 +188,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 - Tick 295 Nebius pop=3 (elite=2) was cost-correct (120 agent-evals) but offline-collapsed PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**); Tick 296 restored **pop4×eval5×max_gen6** (still 120) matching Tick 23. Live still blocked on NEBIUS + HF/CSV.
 - Tick 297: Tick 296 code defaults were live, but Section 21.7 + committed gate reports still showed collapsed pop3 recipes until refreshed — operators must use **pop4×eval5×max_gen6**, not older pop3 examples.
+- Tick 299–302 locked recipe/offline Bvd on the **pipeline** only; Tick 303 closes the bypass so direct G3/G4 `--live` also refuses stale shape artifacts. Live PRIMARY still blocked on NEBIUS + HF/CSV.
 
 ## Code pins
 

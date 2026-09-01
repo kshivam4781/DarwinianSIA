@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T18:15Z — Tick 303 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-bc02` (recovered tip ← `1893` Tick 302)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-1893` (Tick 302); local Tick **302** → **303**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 299–302 wired recipe + offline Bvd locks into the **pipeline** only — direct `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` could still burn the ~$20 ceiling after a stale tip or shape drift. Highest leverage without paid spend: **enforce the same locks on G3/G4 preflight**.
+
+### What this tick did (ONE step)
+**G3/G4 direct-live shape locks (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `1893`; confirmed secrets absent; ran cron preflight (live blocked)
+2. Wired `committed_g3g4_recipes_match_live_shape` + `committed_offline_bvd_matches_live_shape` into `run_g3_pilot.run_preflight` and `run_g4_multiseed.run_preflight` (`ready_for_live` requires both)
+3. Tests: `test_preflight_refuses_stale_recipe_or_offline_bvd` (G3+G4) + live-ready stubs for tmp REPO_ROOT; focused g3+g4+env **71/71**
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 302) | After (Tick 303) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Recipe/offline locks on pipeline `--live` | yes (Tick 299–302) | yes |
+| Recipe/offline locks on G3/G4 `--live` | **no** (bypass) | **yes** (preflight refuse) |
+| Focused tests (g3+g4+env) | — | **71/71** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T16:05Z — Tick 302 (automation cron)
 
 ### Status snapshot

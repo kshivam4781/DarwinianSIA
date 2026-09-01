@@ -10,6 +10,8 @@ Hard stops (never violate):
   - no two GPQA jobs in parallel (B then D, sequential per seed)
   - ``--live`` requires NEBIUS_API_KEY (ANTHROPIC optional under Nebius meta; Tick 289/292)
   - ``--live`` refuses synthetic smoke GPQA answers
+  - ``--live`` refuses when committed G3/G4 recipes or offline Bvd artifacts
+    mismatch live shape (Tick 303; same guards as pipeline Tick 298–302)
   - refuses existing run IDs (never overwrite)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × 5 ≤ remaining budget
@@ -54,6 +56,8 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    committed_g3g4_recipes_match_live_shape,
+    committed_offline_bvd_matches_live_shape,
     default_g4_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
@@ -269,6 +273,28 @@ def run_preflight(
     profile_ok, profile_detail = probe_icml_target_profile_nebius()
     report.add("nebius_target_profile", profile_ok, profile_detail)
 
+    # Tick 303: recipe + offline Bvd locks on direct G4 --live (not only pipeline).
+    recipes_ok, recipe_problems = committed_g3g4_recipes_match_live_shape(
+        repo_root=REPO_ROOT
+    )
+    report.add(
+        "g3g4_recipes_match_live_shape",
+        recipes_ok,
+        "committed gate3/4 + Section 21.7 match icml_g3g4_live_shape()"
+        if recipes_ok
+        else "; ".join(recipe_problems) or "stale G3/G4 recipes",
+    )
+    offline_ok, offline_problems = committed_offline_bvd_matches_live_shape(
+        repo_root=REPO_ROOT
+    )
+    report.add(
+        "offline_bvd_matches_live_shape",
+        offline_ok,
+        "offline Bvd summary + paper IDs + figures match live shape"
+        if offline_ok
+        else "; ".join(offline_problems) or "stale offline Bvd artifacts",
+    )
+
     by_name = {c.name: c.ok for c in report.checks}
     live_needed_list = [
         "gpqa_layout",
@@ -282,6 +308,8 @@ def run_preflight(
         "runtime_deps",
         "nebius_meta_profile",
         "nebius_target_profile",
+        "g3g4_recipes_match_live_shape",
+        "offline_bvd_matches_live_shape",
     ]
     if require_hf_for_diamond:
         live_needed_list.append("hf_token")

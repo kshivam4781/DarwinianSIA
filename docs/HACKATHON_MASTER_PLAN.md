@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 302 offline Bvd figures lock + regen; Tick 301 paper-ID lock; Tick 300 offline Bvd↔live-shape lock; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-01 (Section 21 ICML; Tick 303 G3/G4 direct-live shape locks; Tick 302 offline Bvd figures lock; Tick 301 paper-ID lock; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -868,7 +868,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML offline Bvd↔live-shape lock (Tick 300) | **DONE** | Re-pilot offline at pop4×eval5×max_gen6 (`1890–1904`); `committed_offline_bvd_matches_live_shape` + pipeline refuse; paper/gate3 refreshed |
 | ICML offline Bvd paper-ID lock (Tick 301) | **DONE** | Lock extends to `paper_artifacts` / `ICML_READY` / Section 12 / case study citing summary `b_run_ids`/`d_run_ids` (no Tick-23 ID drift) |
 | ICML offline Bvd figures lock (Tick 302) | **DONE** | Regen Figs 1–2 at live shape; summary `figures` paths; lock requires fig1+fig2 on disk + paper cites (fixes empty `figures: []`) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–301 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML G3/G4 direct-live shape locks (Tick 303) | **DONE** | `run_g3_pilot` / `run_g4_multiseed` preflight refuse `--live` on stale recipes or offline Bvd (was pipeline-only Tick 299–302) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–303 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2262,3 +2263,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Offline Bvd paper-ID lock (2026-09-01 Tick 301):** After Tick 300, `paper_artifacts` case-study summary / `ICML_READY` VALIDITY / Section 12 still cited superseded Tick-23 IDs (`run_1840` / `1830–1844`). Extended `committed_offline_bvd_matches_live_shape` to require current summary `b_run_ids`/`d_run_ids` in those docs + case study; synced citations to `1890–1904` / `run_1900`. Focused env+pipeline **24/24**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Offline Bvd figures lock (2026-09-01 Tick 302):** Tick 300 left `docs/offline_bvd_summary.json` with `figures: []` (matplotlib absent), so paper Figs 1–2 could drift from the live-shape pilot. Re-ran offline Bvd with matplotlib; populated relative fig paths; extended lock to require fig1+fig2 on disk (≥1KB) + paper cites; offline writer stores repo-relative paths. Focused env+pipeline **25/25**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**G3/G4 direct-live shape locks (2026-09-01 Tick 303):** Tick 299–302 wired recipe + offline Bvd locks into the **pipeline** only — `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` could still spend after a stale tip or shape drift. Added the same `committed_g3g4_recipes_match_live_shape` + `committed_offline_bvd_matches_live_shape` checks to G3/G4 preflight `ready_for_live`. Focused g3+g4+env **71/71**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

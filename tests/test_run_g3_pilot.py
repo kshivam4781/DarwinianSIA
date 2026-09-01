@@ -119,12 +119,87 @@ def test_preflight_live_ready_with_keys_and_real_gpqa(
     monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
     monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
     monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    # Tick 303: tmp REPO_ROOT lacks tip lock artifacts — stub locks green.
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
 
     plans = [PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)]
     report = run_preflight(mode="live", plans=plans, pair_estimate_usd=4.0)
     assert report.ready_for_live is True
     assert report.blockers == []
     assert is_synthetic_smoke(task) is False
+
+
+def test_preflight_refuses_stale_recipe_or_offline_bvd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 303: direct G3 --live refuses when shape locks fail (not only pipeline)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g3_pilot as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+            "source": "gpqa_diamond",
+        }
+        for i in range(15)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod,
+        "committed_g3g4_recipes_match_live_shape",
+        lambda **_k: (False, ["docs/gate3_report.json commands[0] shape stale"]),
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+
+    plans = [PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)]
+    report = run_preflight(mode="live", plans=plans, pair_estimate_usd=4.0)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["g3g4_recipes_match_live_shape"] is False
+    assert names["offline_bvd_matches_live_shape"] is True
+    assert names["nebius_key"] is True
+    assert names["gpqa_not_synthetic"] is True
+
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "committed_offline_bvd_matches_live_shape",
+        lambda **_k: (False, ["docs/offline_bvd_summary.json: figures must list ≥2"]),
+    )
+    report2 = run_preflight(mode="live", plans=plans, pair_estimate_usd=4.0)
+    assert report2.ready_for_live is False
+    names2 = {c.name: c.ok for c in report2.checks}
+    assert names2["offline_bvd_matches_live_shape"] is False
+    assert names2["g3g4_recipes_match_live_shape"] is True
 
 
 def test_budget_projection_blocks_over_ceiling(
@@ -158,6 +233,12 @@ def test_budget_projection_blocks_over_ceiling(
     monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
     monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
     monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
 
     plans = [
         PilotPlan(seed=1, b_run_id=1201, d_run_id=1301),
