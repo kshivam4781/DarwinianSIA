@@ -1,0 +1,143 @@
+{
+  "timestamp": "2026-09-01T00:06:17Z",
+  "mode": "preflight",
+  "ready_for_live": false,
+  "plans": [
+    {
+      "seed": 1,
+      "b_run_id": 1201,
+      "d_run_id": 1301
+    }
+  ],
+  "blockers": [
+    "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
+    "nebius_key: NEBIUS_API_KEY missing"
+  ],
+  "checks": [
+    {
+      "name": "gpqa_layout",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "gpqa_not_synthetic",
+      "ok": false,
+      "detail": "synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3"
+    },
+    {
+      "name": "anthropic_key",
+      "ok": true,
+      "detail": "optional (Nebius meta; ANTHROPIC unused)"
+    },
+    {
+      "name": "nebius_key",
+      "ok": false,
+      "detail": "NEBIUS_API_KEY missing"
+    },
+    {
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
+    },
+    {
+      "name": "budget",
+      "ok": true,
+      "detail": "spent=$0.00 ceiling=$20.00 estimate=$3.00/pair \u00d7 1 \u2192 projected=$3.00"
+    },
+    {
+      "name": "run_ids_free",
+      "ok": true,
+      "detail": "all planned run IDs unused"
+    },
+    {
+      "name": "sequential_only",
+      "ok": true,
+      "detail": "1 seed pair(s); runner executes B then D serially (no parallel GPQA)"
+    },
+    {
+      "name": "seed_count",
+      "ok": true,
+      "detail": "1 seed(s) (G3 pilot shape)"
+    },
+    {
+      "name": "per_run_venv",
+      "ok": true,
+      "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
+    },
+    {
+      "name": "runtime_deps",
+      "ok": true,
+      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
+    },
+    {
+      "name": "nebius_meta_profile",
+      "ok": true,
+      "detail": "kimi-nebius-pydantic-meta \u2192 nebius / pydantic-ai (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "nebius_target_profile",
+      "ok": true,
+      "detail": "kimi-nebius-target \u2192 nebius (moonshotai/Kimi-K2.6)"
+    }
+  ],
+  "commands": [
+    [
+      "/usr/bin/python3",
+      "-m",
+      "sia",
+      "run",
+      "--task",
+      "gpqa",
+      "--darwinian",
+      "--population_size",
+      "3",
+      "--elite_count",
+      "2",
+      "--max_gen",
+      "4",
+      "--run_id",
+      "1201",
+      "--eval_subset",
+      "10",
+      "--no-web",
+      "--seed",
+      "1",
+      "--meta-agent-profile",
+      "kimi-nebius-pydantic-meta",
+      "--target-agent-profile",
+      "kimi-nebius-target"
+    ],
+    [
+      "/usr/bin/python3",
+      "-m",
+      "sia",
+      "run",
+      "--task",
+      "gpqa",
+      "--darwinian",
+      "--population_size",
+      "3",
+      "--elite_count",
+      "2",
+      "--max_gen",
+      "4",
+      "--run_id",
+      "1301",
+      "--eval_subset",
+      "10",
+      "--no-web",
+      "--seed",
+      "1",
+      "--cabs",
+      "--cabs-inline",
+      "--meta-agent-profile",
+      "kimi-nebius-pydantic-meta",
+      "--target-agent-profile",
+      "kimi-nebius-target"
+    ]
+  ],
+  "comparison": null,
+  "h5_by_d_run": {},
+  "notes": [],
+  "executed": false
+}
