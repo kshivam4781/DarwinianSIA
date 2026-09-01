@@ -462,7 +462,11 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
-    written.append(str(path))
+    # Tick 302: store repo-relative paths so summary locks are portable.
+    try:
+        written.append(str(path.resolve().relative_to(ROOT.resolve())))
+    except ValueError:
+        written.append(str(path))
 
     # Fig 2 from first D run H2 histogram via summarize
     if d_runs:
@@ -480,7 +484,10 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
             fig.tight_layout()
             fig.savefig(path, dpi=120)
             plt.close(fig)
-            written.append(str(path))
+            try:
+                written.append(str(path.resolve().relative_to(ROOT.resolve())))
+            except ValueError:
+                written.append(str(path))
     return written
 
 

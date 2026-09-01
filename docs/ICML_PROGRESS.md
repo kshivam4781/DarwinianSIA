@@ -4,6 +4,43 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T16:05Z — Tick 302 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-1893` (recovered tip ← `76be` Tick 301)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-76be` (Tick 301); local Tick **301** → **302**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 300–301 left `docs/offline_bvd_summary.json` with **`figures: []`** (matplotlib absent on that VM), so paper Figs 1–2 could drift from the live-shape pilot while still being cited. Highest leverage without paid spend: **regenerate offline Figs 1–2 at live shape + lock summary figures**.
+
+### What this tick did (ONE step)
+**Offline Bvd figures regen + fig lock (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `76be`; confirmed secrets absent
+2. Installed matplotlib; re-ran `scripts/offline_bvd_case_study.py` at pop4×eval5×elite2×max_gen6 (`1890–1904`) — PRIMARY/H5 unchanged (gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, gap ~**6.15pp**); case study `run_1900`
+3. Populated summary `figures` with repo-relative Fig 1–2 paths; offline writer now stores relative paths
+4. Extended `committed_offline_bvd_matches_live_shape` to require ≥2 figure paths (fig1+fig2 names), on-disk files ≥1KB, and paper_artifacts cites
+5. Tests: `test_committed_offline_bvd_rejects_empty_figures` + fixture updates; focused env+pipeline **25/25**
+6. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 301) | After (Tick 302) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Summary `figures` | **[]** (matplotlib miss) | **fig1+fig2 relative paths + files on disk** |
+| Offline Bvd lock scope | shape + gate3 + paper/READY/Section12/case IDs | **+ figures present + paper cites** |
+| Focused tests (env+pipeline) | 24 @ Tick 301 | **25/25** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T14:15Z — Tick 301 (automation cron)
 
 ### Status snapshot

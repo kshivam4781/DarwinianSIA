@@ -334,6 +334,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 299 recipe lock on live path — pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused pipeline+env **66/66**
 - [x] Tick 300 offline Bvd↔live-shape lock — re-pilot `1890–1894`/`1900–1904` at pop4×eval5×max_gen6; `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse; paper/gate3 offline tables refreshed
 - [x] Tick 301 offline Bvd paper-ID lock — extend lock to `paper_artifacts` / `ICML_READY` / Section 12 / case study citing summary IDs; sync stale `run_1840`/`1830–1844` → `run_1900`/`1890–1904`
+- [x] Tick 302 offline Bvd figures lock — regen Figs 1–2 at live shape (`1890–1904`); summary `figures` relative paths; lock requires fig1+fig2 on disk + paper cites (fixes Tick 300 `figures: []`)
 
 ## Gate tracker (Section 21.5)
 

@@ -374,7 +374,10 @@
     "belief_count": 15,
     "agenda_prefers_first": "selective"
   },
-  "figures": [],
+  "figures": [
+    "docs/figures/fig1_learning_curves.png",
+    "docs/figures/fig2_mechanism.png"
+  ],
   "h5_protocol": {
     "min_generation": 2,
     "fitness_key": "mean",

@@ -1069,10 +1069,10 @@ def test_committed_offline_bvd_matches_live_shape(
     assert any("offline_bvd_summary.json shape" in p for p in bad_problems)
 
 
-def test_committed_offline_bvd_rejects_stale_paper_ids(
+def test_committed_offline_bvd_rejects_empty_figures(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 301: shape-ok summary still fails if paper pack cites Tick-23 IDs."""
+    """Tick 302: shape+IDs ok still fails when figures list is empty."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
     monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     for key in (
@@ -1092,6 +1092,79 @@ def test_committed_offline_bvd_rejects_stale_paper_ids(
                 "shape": shape,
                 "b_run_ids": [1890, 1891, 1892, 1893, 1894],
                 "d_run_ids": [1900, 1901, 1902, 1903, 1904],
+                "figures": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        f"| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
+        f"| B | 11 | {shape['population_size']} | {shape['elite_count']} | "
+        f"{shape['max_gen']} | {shape['eval_subset']} | `1890–1894` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    (docs / "case_study_offline.md").write_text(
+        "**Run:** `runs/run_1900`\n", encoding="utf-8"
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "Offline pilot `1890–1894` / `1900–1904`\n\n"
+        "## Case study (offline)\n\n"
+        "Lift (`run_1900`).\n"
+        "fig1_learning_curves.png fig2_mechanism.png\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text(
+        "### 1. PRIMARY\n- Evidence: offline `1890–1894` vs `1900–1904`\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- Evidence: offline D `1900–1904` → ρ>0.3 on 5/5\n",
+        encoding="utf-8",
+    )
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "| Offline B vs D case-study pilot | **DONE** | "
+        "Latest Tick 300 `1890–1894` / `1900–1904` |\n",
+        encoding="utf-8",
+    )
+    ok, problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
+    assert ok is False
+    assert any("figures" in p for p in problems)
+    assert any("Tick 302" in p for p in problems)
+
+
+def test_committed_offline_bvd_rejects_stale_paper_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 301: shape-ok summary still fails if paper pack cites Tick-23 IDs."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    figs = docs / "figures"
+    figs.mkdir()
+    f1 = figs / "fig1_learning_curves.png"
+    f2 = figs / "fig2_mechanism.png"
+    f1.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 1200)
+    f2.write_bytes(b"\x89PNG\r\n\x1a\n" + b"1" * 1200)
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": shape,
+                "b_run_ids": [1890, 1891, 1892, 1893, 1894],
+                "d_run_ids": [1900, 1901, 1902, 1903, 1904],
+                "figures": [
+                    "docs/figures/fig1_learning_curves.png",
+                    "docs/figures/fig2_mechanism.png",
+                ],
             }
         ),
         encoding="utf-8",

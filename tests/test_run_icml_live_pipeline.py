@@ -98,9 +98,20 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
             json.dumps({"commands": [cmd, cmd]}, indent=2) + "\n",
             encoding="utf-8",
         )
-    # Tick 300–301: offline Bvd live-shape + paper-ID lock fixtures.
+    # Tick 300–302: offline Bvd live-shape + paper-ID + figures lock fixtures.
     b_ids = [1890, 1891, 1892, 1893, 1894]
     d_ids = [1900, 1901, 1902, 1903, 1904]
+    figs_dir = docs / "figures"
+    figs_dir.mkdir(parents=True, exist_ok=True)
+    fig1 = figs_dir / "fig1_learning_curves.png"
+    fig2 = figs_dir / "fig2_mechanism.png"
+    # Tick 302 lock requires real-looking files (≥1000 bytes).
+    fig1.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 1200)
+    fig2.write_bytes(b"\x89PNG\r\n\x1a\n" + b"1" * 1200)
+    fig_paths = [
+        "docs/figures/fig1_learning_curves.png",
+        "docs/figures/fig2_mechanism.png",
+    ]
     (docs / "offline_bvd_summary.json").write_text(
         json.dumps(
             {
@@ -108,6 +119,7 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
                 "seeds": [11, 22, 33, 44, 55],
                 "b_run_ids": b_ids,
                 "d_run_ids": d_ids,
+                "figures": fig_paths,
             },
             indent=2,
         )
@@ -133,7 +145,11 @@ def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]
     (docs / "paper_artifacts.md").write_text(
         f"Offline pilot `1890–1894` / `1900–1904`\n\n"
         "## Case study (offline)\n\n"
-        f"Lift +0.0436 (`run_{d_ids[0]}`, Tick 300).\n",
+        f"Lift +0.0436 (`run_{d_ids[0]}`, Tick 300).\n\n"
+        "| Fig | Path |\n"
+        "|-----|------|\n"
+        "| 1 | `docs/figures/fig1_learning_curves.png` |\n"
+        "| 2 | `docs/figures/fig2_mechanism.png` |\n",
         encoding="utf-8",
     )
     (docs / "ICML_READY.md").write_text(

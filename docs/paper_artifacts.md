@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–301** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**; **Tick 301 paper-ID citation lock**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–302** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape**; **Tick 297–299 recipe↔shape lock**; **Tick 300 offline Bvd↔live-shape lock + re-pilot**; **Tick 301 paper-ID citation lock**; **Tick 302 offline Figs 1–2 regen + figures lock**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 
@@ -83,6 +83,8 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 |-----|-------------|------|
 | 1 | Accuracy / cost curves B vs D (offline draft) | `docs/figures/fig1_learning_curves.png` |
 | 2 | H2 DNA skew / case-study support (offline draft) | `docs/figures/fig2_mechanism.png` |
+
+Offline Figs 1–2 regenerated at Tick **302** from live-shape pilot `1890–1904` (summary `figures` locked; Tick 300 had left `figures: []` when matplotlib was absent).
 
 ## Case study (offline)
 

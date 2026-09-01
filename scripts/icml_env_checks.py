@@ -2056,6 +2056,9 @@ def committed_offline_bvd_matches_live_shape(
     Tick 301: also require paper_artifacts / ICML_READY / Section 12 / case study
     to cite the summary's current B/D run ID ranges (not superseded Tick-23 IDs
     as the "latest" offline pilot).
+
+    Tick 302: require ``figures`` to list existing Fig 1–2 PNGs (Tick 300 left
+    ``figures: []`` when matplotlib was absent, so paper could cite stale PNGs).
     """
     root = repo_root or _REPO_ROOT
     expected = icml_g3g4_live_shape(profile)
@@ -2087,6 +2090,40 @@ def committed_offline_bvd_matches_live_shape(
         problems.append(
             f"docs/offline_bvd_summary.json shape {got} != live {expected}"
         )
+
+    # Tick 302: paper Figs 1–2 must be recorded and present on disk.
+    figs = payload.get("figures")
+    if not isinstance(figs, list) or len(figs) < 2:
+        problems.append(
+            "docs/offline_bvd_summary.json: figures must list ≥2 paths "
+            "(Tick 302 fig lock; was empty when matplotlib missing)"
+        )
+    else:
+        fig_names = {Path(str(f)).name for f in figs}
+        for required in ("fig1_learning_curves.png", "fig2_mechanism.png"):
+            if required not in fig_names:
+                problems.append(
+                    f"docs/offline_bvd_summary.json figures: missing {required} "
+                    "(Tick 302)"
+                )
+        for f in figs:
+            fp = Path(str(f))
+            if not fp.is_absolute():
+                fp = root / fp
+            if not fp.is_file() or fp.stat().st_size < 1000:
+                problems.append(
+                    f"docs/offline_bvd_summary.json figures: missing/empty "
+                    f"file {f} (Tick 302)"
+                )
+        paper = root / "docs" / "paper_artifacts.md"
+        if paper.is_file():
+            paper_text = paper.read_text(encoding="utf-8")
+            for required in ("fig1_learning_curves.png", "fig2_mechanism.png"):
+                if required not in paper_text:
+                    problems.append(
+                        f"docs/paper_artifacts.md: missing figure cite "
+                        f"{required} (Tick 302)"
+                    )
 
     # Gate3 offline narrative table must also advertise the live eval_subset.
     gate3 = root / "docs" / "gate3_report.md"
