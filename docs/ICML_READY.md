@@ -329,6 +329,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 294 Nebius G3/G4 elite≥2 floor — cost-neutral elite 1→2 + `icml_g3g4_live_shape` floors env elite=1 when pop≥2 (elite=1 → same-parent crossover / H2 collapse under delay-all)
 - [x] Tick 295 Nebius G3/G4 max_gen=5 cost-neutral — eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5 under delay-all)
 - [x] Tick 296 Nebius G3/G4 pop4 diversity restore — offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120 + G3/G4 max_gen cap→6; offline PRIMARY+H5 restored (matches Tick 23)
+- [x] Tick 297 Tick-296 shape recipe/report sync — Section 21.7 + gate3/4/pipeline reports advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note → Tick 296; focused **82/82**
 
 ## Gate tracker (Section 21.5)
 

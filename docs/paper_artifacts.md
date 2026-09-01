@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–296** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape: eval5/pop4/elite2/max_gen6** after Tick 295 pop3 offline PRIMARY/H5 fail). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
+**Status:** offline mechanism pack + synthetic B vs D pilot (Tick 23; post-steering H2 case study) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–297** live stack hardening (uv/deps/secrets/tip/CSV/HF gates/budget ledger/Nebius profiles/cost metering/**Tick 296 Nebius budget-fit shape: eval5/pop4/elite2/max_gen6**; **Tick 297 synced Section 21.7 + gate reports** to that shape). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV).
 
 ## Abstract (draft — do not claim READY)
 
@@ -183,6 +183,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 - Tick 246: Tick 245 build `bcb86082` again not proposable from this cron run; re-built uv onto personal RUNTIME_FORWARD_FILL env `31d13f14-…` / `9b26362f` (uv 0.12.6 SUCCEEDED + proposed). Canonical pointer: `docs/icml_portal_save_target.json`. Still **not** READY without Portal Save onto automation + live GPQA secrets.
 - Small eval subsets and seed counts limit statistical power; avoid overclaiming.
 - Tick 295 Nebius pop=3 (elite=2) was cost-correct (120 agent-evals) but offline-collapsed PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**); Tick 296 restored **pop4×eval5×max_gen6** (still 120) matching Tick 23. Live still blocked on NEBIUS + HF/CSV.
+- Tick 297: Tick 296 code defaults were live, but Section 21.7 + committed gate reports still showed collapsed pop3 recipes until refreshed — operators must use **pop4×eval5×max_gen6**, not older pop3 examples.
 
 ## Code pins
 

@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-09-01T00:06:17Z
+**Timestamp:** 2026-09-01T06:02:08Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -41,7 +41,7 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 | `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G3 |
 | `anthropic_key` | yes | optional (Nebius meta; ANTHROPIC unused) |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
-| `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
+| `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$3.00/pair × 1 → projected=$3.00 |
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
@@ -59,13 +59,19 @@ Prior Tick-22 pilot `1810–1814` / `1820–1824` remains the first offline cost
 
 ### Planned commands (sequential: B then D per seed; never parallel)
 
-1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 3 --elite_count 2 --max_gen 4 --run_id 1201 --eval_subset 10 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
-2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 3 --elite_count 2 --max_gen 4 --run_id 1301 --eval_subset 10 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1301 --eval_subset 5 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
 
 ## Blockers (live G3)
 
 - gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G3
 - nebius_key: NEBIUS_API_KEY missing
+- hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
+
+## Notes
+
+- runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
+- diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
 
 **Live G3 status:** NOT RUN this tick
 

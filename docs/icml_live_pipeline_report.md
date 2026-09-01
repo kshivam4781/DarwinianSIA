@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-08-31T22:08:35Z
+**Timestamp:** 2026-09-01T06:02:02Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -46,7 +46,7 @@ G3 promising: n/a (G3 not scored this run)
 ## Notes
 
 - diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
-- Tick 293 G3/G4 shape: eval_subset=10 pop=3 elite=1 max_gen=4
+- Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6
 
 ## Next
 

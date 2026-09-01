@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 295 Nebius G3/G4 cost-neutral eval8/max_gen5 horizon restore for PRIMARY gens30; Tick 294 Nebius G3/G4 elite_count 1→2 cost-neutral crossover/H2 fix; Tick 293 Nebius budget-fit G3/G4 shape + estimates so full stack ≤$20 after Tick 291 Kimi metering; Tick 292 Anthropic-optional human secrets messaging; Tick 291 Nebius Kimi USD pricing + token→USD budget reconcile + Nebius meta overhead; Tick 290 GPQA subset eval merges submission tokens/USD into results.json; Tick 289 Nebius pydantic-ai meta + Anthropic-optional secrets; Tick 288 Nebius target profile + GPQA reference retarget; Tick 287 host pandas-free GPQA eval_subset; Tick 286 ephemeral-dirt tip recover + zero budget ledger; Tick 285 cross-VM ledger resume; Tick 284 live resume + budget ledger; Tick 283 live budget reconcile from run USD; Tick 282 deps-before-diamond-fetch; Tick 281 user-site on PYTHONPATH; Tick 280 uv pip `--target` user site; Tick 279 uv-first runtime package bootstrap; Tick 278 runner CSV autowire; Tick 277 `.env` + local diamond CSV unlock; Tick 276 cron/pipeline preflight `--fetch-diamond`; Tick 275 G2/G3/G4 `fetch_diamond_ok` gate; Tick 274 pipeline HF gate; Tick 273 cron HF live gate; Tick 272 lineage chicken-egg tip pick; Tick 271 single cron entry; Tick 270 main-boot bash tip recover; Tick 269 tip lineage refuse `--live`; Tick 268 secrets-first)  
+**Last updated:** 2026-09-01 (Section 21 ICML; Tick 297 synced Section 21.7 + gate/pipeline reports to Tick 296 **pop4×eval5×max_gen6**; Tick 296 Nebius G3/G4 pop4 diversity restore; Tick 295 cost-neutral eval8/max_gen5; Tick 294 elite≥2 floor; Tick 293 Nebius budget-fit shape + estimates ≤$20; Tick 292 Anthropic-optional human messaging; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -862,7 +862,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML Nebius elite≥2 floor (Tick 294) | **DONE** | Cost-neutral elite 1→2 + floor in `icml_g3g4_live_shape` (elite=1 → same-parent crossover / H2 collapse) |
 | ICML Nebius max_gen=5 cost-neutral (Tick 295) | **DONE** | eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5) |
 | ICML Nebius pop4 diversity restore (Tick 296) | **DONE** | Offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120; G3/G4 max_gen cap→6; offline PRIMARY+H5 restored |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–296 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML Tick-296 shape recipe/report sync (Tick 297) | **DONE** | Section 21.7 + gate3/4/pipeline reports now advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note label → Tick 296 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–297 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1635,12 +1636,12 @@ python scripts/run_icml_live_pipeline.py --preflight-only
 python scripts/run_icml_live_pipeline.py --live --fetch-diamond
 
 # Condition B — darwinian-only (example IDs — pick unused integers)
-sia run --task gpqa --darwinian --population_size 3 --elite_count 2 \
-  --max_gen 5 --run_id 1201 --eval_subset 8 --no-web --seed 1
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1
 
-# Condition D — G3-shaped pilot (Tick 293–295 Nebius budget-fit; elite≥2; max_gen5)
-sia run --task gpqa --darwinian --population_size 3 --elite_count 2 \
-  --max_gen 5 --run_id 1301 --eval_subset 8 --no-web --seed 1 \
+# Condition D — G3-shaped pilot (Tick 296 Nebius budget-fit; pop4×eval5×max_gen6)
+sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
+  --max_gen 6 --run_id 1301 --eval_subset 5 --no-web --seed 1 \
   --cabs --cabs-inline
 ```
 
@@ -2244,3 +2245,5 @@ sia run --task gpqa --darwinian --population_size 3 --elite_count 2 \
 **Nebius G3/G4 max_gen=5 cost-neutral rebalance (2026-09-01 Tick 295):** Tick 293/294 used eval10×max_gen4 (120 agent-evals). Under delay-all, offline PRIMARY seed 22 hits gens30 at gen **5**, so max_gen=4 would truncate live gens30/cost30 and leave only two steered breeding rounds. Rebalanced to **eval8 × max_gen5** (still 3×8×5 = **120** agent-evals; stack **$19**). STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Nebius G3/G4 pop4 diversity restore (2026-09-01 Tick 296):** Offline re-pilot at Tick 295 shape (pop3/elite2/max_gen5) **failed** PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**) — pop=3 + elite=2 leaves only 1 non-elite offspring/gen. Cost-neutral restore Tick 23 Darwinian shape: **pop4 × eval5 × max_gen6** = **120** agent-evals (offline gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**). Raised G3/G4 hard cap to max_gen≤6. Stack still **$19**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Tick-296 shape recipe/report sync (2026-09-01 Tick 297):** Tick 296 updated code defaults, but committed gate3/4/pipeline reports and Section 21.7 example `sia run` lines still showed collapsed **pop3×eval10/8×max_gen4/5**. Synced Section 21.7 + pipeline note label + refreshed preflight reports to **pop4×eval5×max_gen6**. Focused suite **82/82**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

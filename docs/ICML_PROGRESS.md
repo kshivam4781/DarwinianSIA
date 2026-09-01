@@ -4,6 +4,44 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T06:15Z — Tick 297 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-5cb3` (recovered tip ← `e752` Tick 296)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-e752` (Tick 296); local Tick **296** → **297**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on secrets. Separately, Tick 296 updated code defaults to **pop4×eval5×max_gen6**, but committed gate/pipeline reports + Section 21.7 example `sia run` lines still advertised the collapsed Tick 293/295 shape (**pop3 / eval10or8 / max_gen4or5**). A human (or next tick) following those recipes would burn the ~$20 ceiling on a shape that offline fails PRIMARY/H5. Highest leverage without paid spend: **align operator-facing recipes + refresh preflight reports** to Tick 296.
+
+### What this tick did (ONE step)
+**Stale Tick-296 shape recipes / gate reports refresh (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `e752`; confirmed secrets absent; re-requested NEBIUS+HF (Anthropic optional)
+2. Section 21.7 Condition B/D example commands → **pop4 / elite2 / max_gen6 / eval_subset5**
+3. Pipeline report notes → `Tick 296 G3/G4 shape: …` (was hardcoded `Tick 293–295`)
+4. `bash scripts/icml_cron_entry.sh --preflight-only` refreshed gate2/3/4 + pipeline reports — planned cmds now **pop4×eval5×max_gen6**
+5. Focused suite **82/82**; STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 296) | After (Tick 297) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Nebius G3/G4 code default | pop4 × eval5 × elite2 × max_gen6 | unchanged |
+| Gate3/4 planned `sia run` shape | stale pop3×eval10×max_gen4 | **pop4×eval5×max_gen6** |
+| Section 21.7 B/D examples | pop3×eval8×max_gen5 | **pop4×eval5×max_gen6** |
+| Pipeline report shape note | Tick 293–295 (stale label) | **Tick 296** + live values |
+| Focused tests | 82/82 | **82/82** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T04:15Z — Tick 296 (automation cron)
 
 ### Status snapshot
