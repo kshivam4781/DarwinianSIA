@@ -52,6 +52,7 @@ from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     budget_spent_ledger_path,
     collect_icml_secrets_status,
+    committed_g3g4_recipes_match_live_shape,
     darwinian_run_complete,
     default_g2_estimate_usd,
     default_g3_pair_estimate_usd,
@@ -577,6 +578,10 @@ def run_preflight_stack(
 
     Tick 284: resume-aware — completed run IDs do not clear ``ready_for_live``;
     budget projection excludes finished gates and reloads persisted spend.
+
+    Tick 299: after G2/G3/G4 gate writers refresh, enforce
+    ``committed_g3g4_recipes_match_live_shape`` so stale Section 21.7 /
+    pipeline notes cannot green-light a live stack (Tick 298 was tests-only).
     """
     if diamond_n is None:
         diamond_n = icml_diamond_n_for_stack()
@@ -769,6 +774,27 @@ def run_preflight_stack(
                 + icml_human_required_secrets_phrase(for_fetch_diamond=True)
             )
             report.ready_for_live = False
+
+    # Tick 299: committed operator recipes must match live G3/G4 shape.
+    # Gate JSON were just rewritten by G3/G4 preflight above; Section 21.7 +
+    # pipeline note still come from the tip tree (must stay in sync).
+    recipes_ok, recipe_problems = committed_g3g4_recipes_match_live_shape(
+        repo_root=REPO_ROOT
+    )
+    if recipes_ok:
+        report.notes.append(
+            "Tick 299: committed G3/G4 recipes match live shape "
+            f"{shape['eval_subset']}/{shape['population_size']}/"
+            f"{shape['elite_count']}/{shape['max_gen']}"
+        )
+    else:
+        for problem in recipe_problems:
+            report.blockers.append(f"recipes: {problem}")
+        report.ready_for_live = False
+        report.notes.append(
+            "Tick 299: refuse live until gate3/4 + Section 21.7 + pipeline "
+            "shape note match icml_g3g4_live_shape() (see Tick 297–298)"
+        )
 
 
 def run_live_stack(
@@ -1185,6 +1211,30 @@ def main(argv: list[str] | None = None) -> int:
             for b in report.blockers:
                 print(f"  BLOCK: {b}")
             return 4
+
+    # Tick 299: refuse --live when committed recipes drift from live shape
+    # (Tick 298 lock was unit-tested only; cron could still spend on a tip
+    # whose Section 21.7 / pipeline note lagged a shape change).
+    if selected == "live":
+        recipes_ok, recipe_problems = committed_g3g4_recipes_match_live_shape(
+            repo_root=REPO_ROOT
+        )
+        if not recipes_ok:
+            for problem in recipe_problems:
+                report.blockers.append(f"recipes: {problem}")
+            report.notes.append(
+                "Sync Section 21.7 + gate/pipeline reports to "
+                "icml_g3g4_live_shape() before paid G2→G3→G4 "
+                "(Tick 297–299)."
+            )
+            report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
+            write_pipeline_report(report, args.report)
+            print(
+                f"Pipeline refused --live (stale G3/G4 recipes) → {args.report}"
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}")
+            return 3
 
     if selected == "preflight":
         # Optional diamond fetch during preflight (e.g. CSV path validation).

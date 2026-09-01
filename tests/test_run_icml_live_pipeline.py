@@ -21,6 +21,84 @@ from run_icml_live_pipeline import (  # noqa: E402
     write_pipeline_report,
     PipelineReport,
 )
+from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
+
+
+def _seed_recipe_lock_docs(docs: Path, *, stale: bool = False) -> dict[str, int]:
+    """Write Section 21.7 + pipeline note + gate3/4 JSON for Tick 299.
+
+    Gate JSON are normally produced by G3/G4 preflight; ``--live`` refuses
+    before those writers run, so tmp-repo live tests must seed them too.
+    """
+    docs.mkdir(parents=True, exist_ok=True)
+    shape = icml_g3g4_live_shape()
+    if stale:
+        # Tick 297 failure mode: collapsed pop3 recipe still advertised.
+        flags = {
+            "population_size": 3,
+            "elite_count": 2,
+            "max_gen": 4,
+            "eval_subset": 10,
+        }
+    else:
+        flags = dict(shape)
+    b_line = (
+        "sia run --task gpqa --darwinian "
+        f"--population_size {flags['population_size']} "
+        f"--elite_count {flags['elite_count']} "
+        f"--max_gen {flags['max_gen']} --run_id 1201 "
+        f"--eval_subset {flags['eval_subset']} --no-web --seed 1"
+    )
+    d_line = (
+        "sia run --task gpqa --darwinian "
+        f"--population_size {flags['population_size']} "
+        f"--elite_count {flags['elite_count']} "
+        f"--max_gen {flags['max_gen']} --run_id 1301 "
+        f"--eval_subset {flags['eval_subset']} --no-web --seed 1 "
+        "--cabs --cabs-inline"
+    )
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "### 21.7 Suggested cheap GPQA commands (after keys + budget check)\n\n"
+        f"{b_line}\n\n"
+        f"{d_line}\n\n"
+        "### 21.8 Artifact paths\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_live_pipeline_report.md").write_text(
+        "Tick 296 G3/G4 shape: "
+        f"eval_subset={flags['eval_subset']} pop={flags['population_size']} "
+        f"elite={flags['elite_count']} max_gen={flags['max_gen']}\n",
+        encoding="utf-8",
+    )
+    cmd = [
+        "python",
+        "-m",
+        "sia",
+        "run",
+        "--task",
+        "gpqa",
+        "--darwinian",
+        "--population_size",
+        str(flags["population_size"]),
+        "--elite_count",
+        str(flags["elite_count"]),
+        "--max_gen",
+        str(flags["max_gen"]),
+        "--run_id",
+        "1201",
+        "--eval_subset",
+        str(flags["eval_subset"]),
+        "--no-web",
+        "--seed",
+        "1",
+    ]
+    for name in ("gate3_report.json", "gate4_report.json"):
+        (docs / name).write_text(
+            json.dumps({"commands": [cmd, cmd]}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return flags
+
 
 
 def test_project_budget_defaults_fit_ceiling(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -138,6 +216,7 @@ def test_live_skips_completed_g2(
     (docs / "ICML_PROGRESS.md").write_text(
         "## 2026-08-31 — Tick 284 (test)\n", encoding="utf-8"
     )
+    _seed_recipe_lock_docs(docs)
     # Completed G2 artifacts under SIA/runs (resolver order).
     run = tmp_path / "SIA" / "runs" / "run_1300"
     agent = run / "gen_1" / "agent_0"
@@ -227,6 +306,7 @@ def test_live_skips_g2_from_committed_ledger_without_run_dirs(
     (docs / "ICML_PROGRESS.md").write_text(
         "## 2026-08-31 — Tick 285 (test)\n", encoding="utf-8"
     )
+    _seed_recipe_lock_docs(docs)
     # Prior tick committed ledger; this VM has no runs/ artifacts.
     write_budget_spent_ledger(
         spent_usd=0.85,
@@ -430,6 +510,7 @@ def test_preflight_stack_not_ready_without_keys(
 
     docs = tmp_path / "docs"
     docs.mkdir()
+    _seed_recipe_lock_docs(docs)
     task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
     task.mkdir(parents=True)
     prepare_task_tree(task, n=5)
@@ -464,6 +545,9 @@ def test_preflight_stack_not_ready_without_keys(
     assert report.ready_for_live is False
     # Tick 289: default Nebius meta → Anthropic optional; NEBIUS still required.
     assert any("nebius" in b.lower() or "NEBIUS" in b for b in report.blockers)
+    # Tick 299: matching recipe lock should not add recipe blockers.
+    assert not any(b.startswith("recipes:") for b in report.blockers)
+    assert any("Tick 299: committed G3/G4 recipes match" in n for n in report.notes)
     assert (tmp_path / "docs" / "gate2_report.md").is_file()
     assert (tmp_path / "docs" / "gate3_report.md").is_file()
     assert (tmp_path / "docs" / "gate4_report.md").is_file()
@@ -493,6 +577,7 @@ def test_preflight_stack_fetch_diamond_surfaces_hf_in_gates(
         "## 2026-08-30T12:00Z — Tick 276 (test)\n", encoding="utf-8"
     )
     (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    _seed_recipe_lock_docs(docs)
 
     task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
     task.mkdir(parents=True)
@@ -636,3 +721,97 @@ def test_live_fetch_diamond_refuses_without_hf(
     assert called == []
     text = (docs / "pipe.md").read_text(encoding="utf-8")
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def test_live_refuses_stale_g3g4_recipes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 299: --live refuses when Section 21.7 / pipeline note lag live shape."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-09-01T10:00Z — Tick 299 (test)\n", encoding="utf-8"
+    )
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    # Stale pop3 recipes (Tick 297 failure mode) while code wants pop4×eval5×max_gen6.
+    # Helper also writes matching-shape? No — stale=True writes stale gate JSON too,
+    # which is enough for --live refuse before G3/G4 writers run.
+    _seed_recipe_lock_docs(docs, stale=True)
+
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("g2")
+        return 0
+
+    monkeypatch.setattr(pipe.g2, "main", boom)
+    rc = pipe.main(["--live", "--report", str(docs / "pipe.md")])
+    assert rc == 3
+    assert called == []
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "recipes" in text.lower() or "stale" in text.lower()
+    assert "21.7" in text or "shape" in text.lower()
+
+
+def test_preflight_stack_blocks_stale_recipes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 299: preflight clears ready_for_live when committed recipes drift."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+    import run_g3_pilot as g3
+    import run_g4_multiseed as g4
+    from prepare_gpqa_smoke_data import prepare_task_tree
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-09-01T10:00Z — Tick 299 (test)\n", encoding="utf-8"
+    )
+    _seed_recipe_lock_docs(docs, stale=True)
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+
+    for mod in (pipe, g2, g3, g4):
+        monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g2, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g2, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g3, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g3, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g4, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g4, "_run_dir_for", lambda rid: None)
+
+    report = PipelineReport(
+        timestamp="2026-09-01T10:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+    )
+    run_preflight_stack(
+        report,
+        g2_run_id=1300,
+        g3_seeds="1",
+        g3_b="1201",
+        g3_d="1301",
+        g4_seeds="1,2,3,4,5",
+        g4_b="1211,1212,1213,1214,1215",
+        g4_d="1311,1312,1313,1314,1315",
+    )
+    assert report.ready_for_live is False
+    assert any(b.startswith("recipes:") for b in report.blockers)
+    assert any("Tick 299: refuse live" in n for n in report.notes)

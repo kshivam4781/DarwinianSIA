@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T10:15Z — Tick 299 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-d252` (recovered tip ← `dceb` Tick 298)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-dceb` (Tick 298); local Tick **298** → **299**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 298 added `committed_g3g4_recipes_match_live_shape` but only as unit tests — cron/`--live` could still spend after a shape change whose Section 21.7 / pipeline note lagged (Tick 297 failure mode). Highest leverage without paid spend: **enforce that lock on the live pipeline path**.
+
+### What this tick did (ONE step)
+**Wire Tick-298 recipe↔shape lock into live pipeline refuse/preflight (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `dceb`; confirmed secrets absent
+2. `run_preflight_stack` now calls `committed_g3g4_recipes_match_live_shape` after G2/G3/G4 writers — clears `ready_for_live` + `recipes:` blockers on drift
+3. `main --live` hard-refuses before G2 when committed recipes ≠ `icml_g3g4_live_shape()`
+4. Tests: seed helper + stale refuse + preflight block; live-resume fixtures updated; focused **66/66**
+5. `bash scripts/icml_cron_entry.sh --preflight-only` refreshed gates; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 298) | After (Tick 299) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Nebius G3/G4 code default | pop4 × eval5 × elite2 × max_gen6 | unchanged |
+| Recipe↔shape guard | unit tests only (Tick 298) | **preflight + `--live` refuse** |
+| Focused tests (pipeline+env) | 98 env-only @ Tick 298 | **66/66** (pipeline+env; includes new Tick 299 cases) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T08:15Z — Tick 298 (automation cron)
 
 ### Status snapshot
