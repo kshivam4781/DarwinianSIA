@@ -326,6 +326,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 291 Nebius Kimi USD + token→USD budget reconcile — reference `MODEL_PRICING` 0.95/4.0; `estimate_usd_from_tokens` when USD=0; Nebius meta overhead 3.0; Nebius evolved-agent cost prompt (latent under-count after Tick 289 meta)
 - [x] Tick 292 Anthropic-optional human secrets messaging — `icml_human_required_secrets_phrase`; cron + G2/G3/G4/pipeline Next/refuse no longer hard-demand ANTHROPIC under Nebius meta
 - [x] Tick 293 Nebius budget-fit G3/G4 shape — `icml_g3g4_live_shape` eval10/pop3/elite1/max_gen4 + estimates G2+$2+G3+$3+G4+$14=$19 ≤ $20 (avoids latent mid-stack refuse/overrun after Tick 291 Kimi metering)
+- [x] Tick 294 Nebius G3/G4 elite≥2 floor — cost-neutral elite 1→2 + `icml_g3g4_live_shape` floors env elite=1 when pop≥2 (elite=1 → same-parent crossover / H2 collapse under delay-all)
 
 ## Gate tracker (Section 21.5)
 

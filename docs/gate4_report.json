@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-31T22:08:37Z",
+  "timestamp": "2026-09-01T00:06:19Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -35,8 +35,7 @@
   ],
   "blockers": [
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
-    "nebius_key: NEBIUS_API_KEY missing",
-    "hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+    "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
     {
@@ -60,9 +59,9 @@
       "detail": "NEBIUS_API_KEY missing"
     },
     {
-      "name": "hf_token",
-      "ok": false,
-      "detail": "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
     },
     {
       "name": "budget",
@@ -117,7 +116,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -143,7 +142,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -171,7 +170,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -197,7 +196,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -225,7 +224,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -251,7 +250,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -279,7 +278,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -305,7 +304,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -333,7 +332,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -359,7 +358,7 @@
       "--population_size",
       "3",
       "--elite_count",
-      "1",
+      "2",
       "--max_gen",
       "4",
       "--run_id",
@@ -381,10 +380,7 @@
   "h5_by_d_run": {},
   "h2_by_d_run": {},
   "figures_written": [],
-  "notes": [
-    "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
-    "diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token."
-  ],
+  "notes": [],
   "executed": false,
   "paper_refreshed": false
 }

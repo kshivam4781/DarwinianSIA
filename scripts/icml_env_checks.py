@@ -146,10 +146,13 @@ DEFAULT_ICML_META_AGENT_PROFILE = "kimi-nebius-pydantic-meta"
 # overhead 3.0 cannot fit full 5-seed G4 under the ~$20 ceiling once Tick 291
 # reconcile meters real Kimi spend. Nebius budget-fit shape keeps PRIMARY
 # (5 seeds, max_gen≥4 for H5 delta_horizon=2) while shrinking per-seed cost.
+# Tick 294: elite_count must be ≥2 — cost is pop×eval×gens (elite does not
+# change agent-eval count); elite=1 makes crossover same-parent clones and
+# collapses H2 / Condition D steering under delay-all bias (gen≥2).
 # Override with SIA_G3G4_* env vars. Anthropic meta keeps the historical shape.
 ICML_NEBIUS_G3G4_EVAL_SUBSET = 10
 ICML_NEBIUS_G3G4_POPULATION_SIZE = 3
-ICML_NEBIUS_G3G4_ELITE_COUNT = 1
+ICML_NEBIUS_G3G4_ELITE_COUNT = 2
 ICML_NEBIUS_G3G4_MAX_GEN = 4
 ICML_ANTHROPIC_G3G4_EVAL_SUBSET = 15
 ICML_ANTHROPIC_G3G4_POPULATION_SIZE = 4
@@ -816,15 +819,19 @@ def _env_positive_int(name: str, default: int) -> int:
 
 
 def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
-    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293).
+    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293/294).
 
     Nebius meta → budget-fit shape so 5-seed G4 + G2/G3 stay under ~$20 after
     Tick 291 Kimi metering. Anthropic meta → historical Section 21.5 shape.
     Env overrides: ``SIA_G3G4_EVAL_SUBSET``, ``SIA_G3G4_POPULATION_SIZE``,
     ``SIA_G3G4_ELITE_COUNT``, ``SIA_G3G4_MAX_GEN``.
+
+    Tick 294: when ``population_size >= 2``, ``elite_count`` is floored at 2
+    (and capped at pop). Elite does not change agent-eval cost; elite=1 makes
+    crossover same-parent clones and collapses H2 under delay-all steering.
     """
     if icml_meta_provider_id(profile) == "nebius":
-        return {
+        shape = {
             "eval_subset": _env_positive_int(
                 "SIA_G3G4_EVAL_SUBSET", ICML_NEBIUS_G3G4_EVAL_SUBSET
             ),
@@ -838,20 +845,29 @@ def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
                 "SIA_G3G4_MAX_GEN", ICML_NEBIUS_G3G4_MAX_GEN
             ),
         }
-    return {
-        "eval_subset": _env_positive_int(
-            "SIA_G3G4_EVAL_SUBSET", ICML_ANTHROPIC_G3G4_EVAL_SUBSET
-        ),
-        "population_size": _env_positive_int(
-            "SIA_G3G4_POPULATION_SIZE", ICML_ANTHROPIC_G3G4_POPULATION_SIZE
-        ),
-        "elite_count": _env_positive_int(
-            "SIA_G3G4_ELITE_COUNT", ICML_ANTHROPIC_G3G4_ELITE_COUNT
-        ),
-        "max_gen": _env_positive_int(
-            "SIA_G3G4_MAX_GEN", ICML_ANTHROPIC_G3G4_MAX_GEN
-        ),
-    }
+    else:
+        shape = {
+            "eval_subset": _env_positive_int(
+                "SIA_G3G4_EVAL_SUBSET", ICML_ANTHROPIC_G3G4_EVAL_SUBSET
+            ),
+            "population_size": _env_positive_int(
+                "SIA_G3G4_POPULATION_SIZE", ICML_ANTHROPIC_G3G4_POPULATION_SIZE
+            ),
+            "elite_count": _env_positive_int(
+                "SIA_G3G4_ELITE_COUNT", ICML_ANTHROPIC_G3G4_ELITE_COUNT
+            ),
+            "max_gen": _env_positive_int(
+                "SIA_G3G4_MAX_GEN", ICML_ANTHROPIC_G3G4_MAX_GEN
+            ),
+        }
+    pop = shape["population_size"]
+    elite = shape["elite_count"]
+    if pop >= 2 and elite < 2:
+        elite = 2
+    if elite > pop:
+        elite = pop
+    shape["elite_count"] = elite
+    return shape
 
 
 def default_g2_estimate_usd(profile: str | None = None) -> float:

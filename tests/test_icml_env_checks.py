@@ -879,7 +879,7 @@ def test_icml_human_required_secrets_phrase_anthropic_optional(
 
 
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tick 293: Nebius meta uses cheaper G3/G4 shape; Anthropic keeps historical."""
+    """Tick 293/294: Nebius cheaper shape; elite≥2 (Tick 294); Anthropic historical."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
     monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     for key in (
@@ -897,9 +897,12 @@ def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> N
     assert neb == {
         "eval_subset": 10,
         "population_size": 3,
-        "elite_count": 1,
+        "elite_count": 2,
         "max_gen": 4,
     }
+    # Elite does not change agent-eval count; keep ≥2 for two-parent crossover.
+    assert neb["elite_count"] >= 2
+    assert neb["elite_count"] <= neb["population_size"]
     assert icml_diamond_n_for_stack() == 10
     assert default_g2_estimate_usd() == pytest.approx(2.0)
     assert default_g3_pair_estimate_usd() == pytest.approx(3.0)
@@ -912,6 +915,12 @@ def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> N
     )
     assert stack <= 20.0
     assert stack == pytest.approx(19.0)
+
+    # Tick 294: env elite=1 must not survive when pop≥2 (crossover collapse).
+    monkeypatch.setenv("SIA_G3G4_ELITE_COUNT", "1")
+    floored = icml_g3g4_live_shape()
+    assert floored["elite_count"] == 2
+    monkeypatch.delenv("SIA_G3G4_ELITE_COUNT", raising=False)
 
     anth = icml_g3g4_live_shape(profile="default-meta")
     assert anth == {
