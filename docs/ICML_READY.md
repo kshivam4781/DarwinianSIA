@@ -337,6 +337,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 302 offline Bvd figures lock — regen Figs 1–2 at live shape (`1890–1904`); summary `figures` relative paths; lock requires fig1+fig2 on disk + paper cites (fixes Tick 300 `figures: []`)
 - [x] Tick 303 G3/G4 direct-live shape locks — `run_g3_pilot` / `run_g4_multiseed` preflight `ready_for_live` requires recipe + offline Bvd locks (closes pipeline-only bypass from Tick 299–302); focused g3+g4+env **71/71**
 - [x] Tick 304 offline Bvd CLI defaults←live shape — `offline_bvd_case_study` defaults from `icml_g3g4_live_shape()`; refuse divergent shape unless `--allow-shape-override` (prevents future re-pilot drift vs Tick 300–302 locks); focused offline+env **5/5**
+- [x] Tick 305 G3/G4 direct-live tip lineage guard — `run_g3_pilot` / `run_g4_multiseed` preflight `ready_for_live` requires `tip_ok_for_live` (closes pipeline-only bypass from Tick 269); `--allow-stale-tip` escape; focused g3+g4 **25/25**
 
 ## Gate tracker (Section 21.5)
 

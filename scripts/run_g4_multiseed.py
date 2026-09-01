@@ -12,6 +12,9 @@ Hard stops (never violate):
   - ``--live`` refuses synthetic smoke GPQA answers
   - ``--live`` refuses when committed G3/G4 recipes or offline Bvd artifacts
     mismatch live shape (Tick 303; same guards as pipeline Tick 298–302)
+  - ``--live`` refuses when local ICML tip lags remote tip (Tick 305; same
+    tip lineage guard as pipeline Tick 269 — use ``--allow-stale-tip`` only
+    for recovery)
   - refuses existing run IDs (never overwrite)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × 5 ≤ remaining budget
@@ -68,6 +71,7 @@ from icml_env_checks import (  # noqa: E402
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    write_icml_tip_status,
 )
 from run_g3_pilot import (  # noqa: E402
     CheckResult,
@@ -158,6 +162,7 @@ def run_preflight(
     plans: list[PilotPlan],
     pair_estimate_usd: float | None = None,
     require_hf_for_diamond: bool = False,
+    allow_stale_tip: bool = False,
 ) -> G4PreflightReport:
     report = G4PreflightReport(timestamp=_utc_now(), mode=mode, plans=list(plans))
     task = _task_dir("SIA")
@@ -295,6 +300,30 @@ def run_preflight(
         else "; ".join(offline_problems) or "stale offline Bvd artifacts",
     )
 
+    # Tick 305: tip lineage on direct G4 --live (was pipeline-only Tick 269).
+    tip_status = write_icml_tip_status(
+        REPO_ROOT / "docs" / "icml_tip_status.json",
+        fetch=False,
+    )
+    tip_ok = bool(tip_status.get("tip_ok_for_live"))
+    if allow_stale_tip and not tip_ok:
+        report.notes.append(
+            "tip: --allow-stale-tip set; proceeding despite lineage blockers"
+        )
+        tip_ok = True
+        tip_detail = "override (--allow-stale-tip); recover via icml_recover_tip.py"
+    elif tip_ok:
+        tip_detail = (
+            f"local Tick {tip_status.get('local_tick')} matches remote tip "
+            f"{tip_status.get('remote_tip_ref') or tip_status.get('remote_tip_sha')}"
+        )
+    else:
+        tip_detail = "; ".join(tip_status.get("blockers") or []) or (
+            "stale / missing ICML tip — recover via "
+            "python scripts/icml_recover_tip.py --apply"
+        )
+    report.add("tip_ok_for_live", tip_ok, tip_detail)
+
     by_name = {c.name: c.ok for c in report.checks}
     live_needed_list = [
         "gpqa_layout",
@@ -310,6 +339,7 @@ def run_preflight(
         "nebius_target_profile",
         "g3g4_recipes_match_live_shape",
         "offline_bvd_matches_live_shape",
+        "tip_ok_for_live",
     ]
     if require_hf_for_diamond:
         live_needed_list.append("hf_token")
@@ -1045,6 +1075,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--diamond-csv", type=Path, default=None)
     p.add_argument("--diamond-n", type=int, default=DEFAULT_DIAMOND_N)
     p.add_argument(
+        "--allow-stale-tip",
+        action="store_true",
+        help="Allow --live even when local Tick lags remote tip (dangerous; Tick 305)",
+    )
+    p.add_argument(
         "--skip-paper-refresh",
         action="store_true",
         help="Do not rewrite docs/paper_artifacts.md / figures / ICML_READY after scoring",
@@ -1132,13 +1167,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     args.diamond_csv = diamond_csv
     require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+    allow_stale = bool(args.allow_stale_tip)
 
     # Tick 275/278: refuse --live --fetch-diamond without HF/CSV before materialize.
     if selected == "live" and require_hf:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
             report = run_preflight(
-                mode=selected, plans=plans, require_hf_for_diamond=True
+                mode=selected,
+                plans=plans,
+                require_hf_for_diamond=True,
+                allow_stale_tip=allow_stale,
             )
             for b in secrets_status.get("blockers") or [
                 "fetch_diamond_ok=false (need "
@@ -1179,7 +1218,10 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 report = run_preflight(
-                    mode=selected, plans=plans, require_hf_for_diamond=require_hf
+                    mode=selected,
+                    plans=plans,
+                    require_hf_for_diamond=require_hf,
+                    allow_stale_tip=allow_stale,
                 )
                 report.notes.extend(fetch_notes)
                 write_gate4_report(report, args.report)
@@ -1209,14 +1251,20 @@ def main(argv: list[str] | None = None) -> int:
             if selected == "live":
                 print(f"G4 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
                 report = run_preflight(
-                    mode=selected, plans=plans, require_hf_for_diamond=require_hf
+                    mode=selected,
+                    plans=plans,
+                    require_hf_for_diamond=require_hf,
+                    allow_stale_tip=allow_stale,
                 )
                 report.notes.extend(fetch_notes)
                 write_gate4_report(report, args.report)
                 return 3
 
     report = run_preflight(
-        mode=selected, plans=plans, require_hf_for_diamond=require_hf
+        mode=selected,
+        plans=plans,
+        require_hf_for_diamond=require_hf,
+        allow_stale_tip=allow_stale,
     )
     report.notes.extend(fetch_notes)
 

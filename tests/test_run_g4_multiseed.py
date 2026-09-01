@@ -124,6 +124,17 @@ def test_preflight_live_ready_with_keys_and_real_gpqa(
     monkeypatch.setattr(
         mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
     )
+    # Tick 305: stub tip lineage green (tmp tree has no ICML_PROGRESS tip).
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 305,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
 
     plans = build_g4_plans(
         [1, 2, 3, 4, 5],
@@ -173,6 +184,16 @@ def test_preflight_refuses_stale_recipe_or_offline_bvd(
     monkeypatch.setattr(mod, "_run_dir_for", lambda rid: None)
     monkeypatch.setattr(
         mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 305,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
+    monkeypatch.setattr(
+        mod,
         "committed_g3g4_recipes_match_live_shape",
         lambda **_k: (False, ["docs/gate4_report.json commands[0] shape stale"]),
     )
@@ -203,6 +224,81 @@ def test_preflight_refuses_stale_recipe_or_offline_bvd(
     assert report2.ready_for_live is False
     names2 = {c.name: c.ok for c in report2.checks}
     assert names2["offline_bvd_matches_live_shape"] is False
+
+
+def test_preflight_refuses_stale_tip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 305: direct G4 --live refuses when tip lineage lags (not only pipeline)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("SIA_G4_PAIR_ESTIMATE_USD", "3")
+
+    import run_g4_multiseed as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+            "source": "gpqa_diamond",
+        }
+        for i in range(15)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": False,
+            "local_tick": 300,
+            "remote_tip_tick": 305,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-tip",
+            "blockers": [
+                "local Tick 300 behind remote tip Tick 305 "
+                "(refs/remotes/origin/cursor/icml-epistemic-results-tip)"
+            ],
+        },
+    )
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = run_preflight(mode="live", plans=plans, pair_estimate_usd=3.0)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["tip_ok_for_live"] is False
+
+    report2 = run_preflight(
+        mode="live", plans=plans, pair_estimate_usd=3.0, allow_stale_tip=True
+    )
+    assert report2.ready_for_live is True
+    names2 = {c.name: c.ok for c in report2.checks}
+    assert names2["tip_ok_for_live"] is True
+    assert any("allow-stale-tip" in n for n in report2.notes)
 
 
 def test_budget_projection_blocks_five_pairs_over_ceiling(
