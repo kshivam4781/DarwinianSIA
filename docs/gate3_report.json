@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-01T16:08:14Z",
+  "timestamp": "2026-09-01T20:02:52Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -79,6 +79,16 @@
       "name": "nebius_target_profile",
       "ok": true,
       "detail": "kimi-nebius-target \u2192 nebius (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "g3g4_recipes_match_live_shape",
+      "ok": true,
+      "detail": "committed gate3/4 + Section 21.7 match icml_g3g4_live_shape()"
+    },
+    {
+      "name": "offline_bvd_matches_live_shape",
+      "ok": true,
+      "detail": "offline Bvd summary + paper IDs + figures match live shape"
     }
   ],
   "commands": [

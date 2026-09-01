@@ -10,9 +10,13 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO / "SIA"))
 
+from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
 from offline_bvd_case_study import (  # noqa: E402
     FIRST_STEERED_GEN,
+    args_match_live_shape,
     extract_case_study,
+    main as offline_bvd_main,
+    offline_bvd_live_shape_defaults,
     preferred_share,
 )
 
@@ -45,6 +49,49 @@ def test_preferred_share_helper():
     traits = [{"trait": "stepwise"}, {"trait": "direct"}, {"trait": "stepwise"}, {"trait": "hierarchical"}]
     assert preferred_share(traits, "stepwise") == 0.5
     assert preferred_share([], "stepwise") is None
+
+
+def test_offline_bvd_defaults_match_live_shape():
+    """Tick 304: CLI defaults must track icml_g3g4_live_shape(), not hardcoded ints."""
+    expected = icml_g3g4_live_shape()
+    defaults = offline_bvd_live_shape_defaults()
+    assert defaults == {
+        "eval_subset": int(expected["eval_subset"]),
+        "population_size": int(expected["population_size"]),
+        "elite_count": int(expected["elite_count"]),
+        "max_gen": int(expected["max_gen"]),
+    }
+    ok, got, exp = args_match_live_shape(
+        pop=defaults["population_size"],
+        elite=defaults["elite_count"],
+        max_gen=defaults["max_gen"],
+        eval_subset=defaults["eval_subset"],
+    )
+    assert ok and got == exp == expected
+
+
+def test_offline_bvd_refuses_divergent_shape_without_override(capsys):
+    """Tick 304: refuse writing offline PRIMARY tables at non-live shape."""
+    live = icml_g3g4_live_shape()
+    bad_eval = int(live["eval_subset"]) + 1
+    rc = offline_bvd_main(
+        [
+            "--seeds",
+            "11",
+            "--eval-subset",
+            str(bad_eval),
+            "--pop",
+            str(live["population_size"]),
+            "--elite",
+            str(live["elite_count"]),
+            "--max-gen",
+            str(live["max_gen"]),
+        ]
+    )
+    assert rc == 3
+    err = capsys.readouterr().err
+    assert "!= live" in err
+    assert "--allow-shape-override" in err
 
 
 def test_extract_case_study_measures_post_steering_skew(tmp_path: Path, monkeypatch):

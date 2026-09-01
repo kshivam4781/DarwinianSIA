@@ -29,6 +29,7 @@ from epistemic_results import (  # noqa: E402
     compare_b_vs_d,
     summarize_run,
 )
+from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
 from sia.config import Config  # noqa: E402
 from sia.context_manager import ContextManager  # noqa: E402
 from sia.evolution.cabs_bridge import load_mutation_bias  # noqa: E402
@@ -38,6 +39,41 @@ from sia.evolution.dry_run import deterministic_fitness  # noqa: E402
 from sia.evolution.population import run_darwinian_loop  # noqa: E402
 from sia.layout import RunLayout  # noqa: E402
 from sia.profiles import load_meta_agent_profile, load_target_agent_profile  # noqa: E402
+
+
+def offline_bvd_live_shape_defaults() -> dict[str, int]:
+    """CLI defaults for offline Bvd — always mirror ``icml_g3g4_live_shape()``.
+
+    Tick 304: hardcoded pop/elite/max_gen/eval after Tick 300 could drift when
+    Nebius live shape changes again; defaults must be sourced from the same
+    helper G3/G4/pipeline use.
+    """
+    shape = icml_g3g4_live_shape()
+    return {
+        "eval_subset": int(shape["eval_subset"]),
+        "population_size": int(shape["population_size"]),
+        "elite_count": int(shape["elite_count"]),
+        "max_gen": int(shape["max_gen"]),
+    }
+
+
+def args_match_live_shape(
+    *,
+    pop: int,
+    elite: int,
+    max_gen: int,
+    eval_subset: int,
+    profile: str | None = None,
+) -> tuple[bool, dict[str, int], dict[str, int]]:
+    """Return (ok, got, expected) for offline CLI shape vs live G3/G4."""
+    expected = icml_g3g4_live_shape(profile)
+    got = {
+        "eval_subset": int(eval_subset),
+        "population_size": int(pop),
+        "elite_count": int(elite),
+        "max_gen": int(max_gen),
+    }
+    return got == expected, got, expected
 from sia.run_setup import RunSetup, TaskFiles  # noqa: E402
 
 
@@ -493,12 +529,13 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    # Tick 300: defaults match Nebius live G3/G4 shape (icml_g3g4_live_shape).
+    # Tick 304: defaults sourced from icml_g3g4_live_shape() (not hardcoded).
+    _shape = offline_bvd_live_shape_defaults()
     p.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33, 44, 55])
-    p.add_argument("--pop", type=int, default=4)
-    p.add_argument("--elite", type=int, default=2)
-    p.add_argument("--max-gen", type=int, default=6)
-    p.add_argument("--eval-subset", type=int, default=5)
+    p.add_argument("--pop", type=int, default=_shape["population_size"])
+    p.add_argument("--elite", type=int, default=_shape["elite_count"])
+    p.add_argument("--max-gen", type=int, default=_shape["max_gen"])
+    p.add_argument("--eval-subset", type=int, default=_shape["eval_subset"])
     p.add_argument("--b-id-start", type=int, default=1890)
     p.add_argument("--d-id-start", type=int, default=1900)
     p.add_argument("--runs-root", type=Path, default=ROOT / "runs")
@@ -506,7 +543,30 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json-out", type=Path, default=ROOT / "docs" / "offline_bvd_summary.json")
     p.add_argument("--case-md", type=Path, default=ROOT / "docs" / "case_study_offline.md")
     p.add_argument("--figures-dir", type=Path, default=ROOT / "docs" / "figures")
+    p.add_argument(
+        "--allow-shape-override",
+        action="store_true",
+        help="Permit pop/elite/max_gen/eval_subset that diverge from "
+        "icml_g3g4_live_shape() (Tick 304; default refuse so offline "
+        "PRIMARY tables cannot silently drift from live spend shape)",
+    )
     args = p.parse_args(argv)
+
+    shape_ok, got_shape, expected_shape = args_match_live_shape(
+        pop=args.pop,
+        elite=args.elite,
+        max_gen=args.max_gen,
+        eval_subset=args.eval_subset,
+    )
+    if not shape_ok and not args.allow_shape_override:
+        print(
+            "ERROR: offline Bvd shape "
+            f"{got_shape} != live {expected_shape}. "
+            "Re-run with defaults (or pass --allow-shape-override for "
+            "exploratory pilots that must not update paper locks).",
+            file=sys.stderr,
+        )
+        return 3
 
     if not ensure_cabs_importable():
         print("ERROR: cabs package not importable", file=sys.stderr)

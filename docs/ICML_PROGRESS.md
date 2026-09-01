@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T20:05Z — Tick 304 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-cd3e` (recovered tip ← `bc02` Tick 303)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-bc02` (Tick 303); local Tick **303** → **304**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Separately, Tick 300–303 locked *committed* offline Bvd artifacts to live shape, but `offline_bvd_case_study.py` still **hardcoded** pop/elite/max_gen/eval — a future Nebius shape change could re-pilot at stale ints and fight (or accidentally update) the paper lock. Highest leverage without paid spend: **source offline CLI defaults from `icml_g3g4_live_shape()` + refuse divergent shape**.
+
+### What this tick did (ONE step)
+**Offline Bvd CLI defaults←live shape (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `bc02`; confirmed secrets absent; ran cron preflight (live blocked)
+2. `offline_bvd_live_shape_defaults` / `args_match_live_shape` in `scripts/offline_bvd_case_study.py`; argparse defaults from `icml_g3g4_live_shape()`; refuse divergent shape unless `--allow-shape-override`
+3. Tests: `test_offline_bvd_defaults_match_live_shape` + `test_offline_bvd_refuses_divergent_shape_without_override`; focused offline+env **5/5**
+4. Refreshed G3/G4 preflight reports to surface Tick 303 lock rows; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 303) | After (Tick 304) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Offline CLI shape defaults | hardcoded 4/2/6/5 | **`icml_g3g4_live_shape()`** |
+| Divergent offline re-pilot | silent (could drift) | **refuse exit 3** (override flag) |
+| Focused tests (offline+env) | — | **5/5** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T18:15Z — Tick 303 (automation cron)
 
 ### Status snapshot
