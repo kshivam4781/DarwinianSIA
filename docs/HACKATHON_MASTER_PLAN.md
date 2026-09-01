@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 297 synced Section 21.7 + gate/pipeline reports to Tick 296 **pop4×eval5×max_gen6**; Tick 296 Nebius G3/G4 pop4 diversity restore; Tick 295 cost-neutral eval8/max_gen5; Tick 294 elite≥2 floor; Tick 293 Nebius budget-fit shape + estimates ≤$20; Tick 292 Anthropic-optional human messaging; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-01 (Section 21 ICML; Tick 298 locked committed gate/Section-21.7 recipes to live G3/G4 shape; Tick 297 synced Section 21.7 + gate/pipeline reports to Tick 296 **pop4×eval5×max_gen6**; Tick 296 Nebius G3/G4 pop4 diversity restore; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -863,6 +863,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML Nebius max_gen=5 cost-neutral (Tick 295) | **DONE** | eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5) |
 | ICML Nebius pop4 diversity restore (Tick 296) | **DONE** | Offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120; G3/G4 max_gen cap→6; offline PRIMARY+H5 restored |
 | ICML Tick-296 shape recipe/report sync (Tick 297) | **DONE** | Section 21.7 + gate3/4/pipeline reports now advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note label → Tick 296 |
+| ICML committed recipe↔shape lock (Tick 298) | **DONE** | `committed_g3g4_recipes_match_live_shape` + tests lock gate3/4 JSON + pipeline note + Section 21.7 B/D examples to `icml_g3g4_live_shape()` (prevents Tick-297 stale-recipe burn) |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–297 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2247,3 +2248,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Nebius G3/G4 pop4 diversity restore (2026-09-01 Tick 296):** Offline re-pilot at Tick 295 shape (pop3/elite2/max_gen5) **failed** PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**) — pop=3 + elite=2 leaves only 1 non-elite offspring/gen. Cost-neutral restore Tick 23 Darwinian shape: **pop4 × eval5 × max_gen6** = **120** agent-evals (offline gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**). Raised G3/G4 hard cap to max_gen≤6. Stack still **$19**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Tick-296 shape recipe/report sync (2026-09-01 Tick 297):** Tick 296 updated code defaults, but committed gate3/4/pipeline reports and Section 21.7 example `sia run` lines still showed collapsed **pop3×eval10/8×max_gen4/5**. Synced Section 21.7 + pipeline note label + refreshed preflight reports to **pop4×eval5×max_gen6**. Focused suite **82/82**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Committed recipe↔shape lock (2026-09-01 Tick 298):** After Tick 297 manually synced recipes, added `committed_g3g4_recipes_match_live_shape` (+ unit tests) so gate3/4 JSON commands, pipeline shape note, and Section 21.7 Condition B/D examples cannot silently drift from `icml_g3g4_live_shape()` again (would burn the ~$20 ceiling on a PRIMARY-failing shape). Focused suite **98/98**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

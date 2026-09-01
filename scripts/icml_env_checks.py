@@ -111,7 +111,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
@@ -1830,3 +1830,187 @@ def write_icml_tip_status(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
     return status
+
+
+# --- Tick 298: committed gate-recipe ↔ live-shape lock -----------------------------
+# Tick 297 failure mode: code defaults moved to pop4×eval5×max_gen6 while committed
+# gate3/4/pipeline reports + Section 21.7 still advertised collapsed pop3 recipes.
+# These helpers lock operator-facing artifacts to ``icml_g3g4_live_shape()``.
+
+_SHAPE_FLAG_KEYS = (
+    ("--population_size", "population_size"),
+    ("--elite_count", "elite_count"),
+    ("--max_gen", "max_gen"),
+    ("--eval_subset", "eval_subset"),
+)
+
+
+def extract_sia_shape_flags(argv: Sequence[str] | list[str]) -> dict[str, int] | None:
+    """Parse ``--population_size`` / ``--elite_count`` / ``--max_gen`` / ``--eval_subset``.
+
+    Returns ``None`` when the argv is not a Darwinian ``sia run`` (or is G2-shaped
+    smoke with pop≤2). Used to ignore non-G3/G4 examples in mixed docs.
+    """
+    args = [str(a) for a in argv]
+    if "sia" not in args or "run" not in args:
+        return None
+    if "--darwinian" not in args:
+        return None
+    out: dict[str, int] = {}
+    for flag, key in _SHAPE_FLAG_KEYS:
+        if flag not in args:
+            return None
+        idx = args.index(flag)
+        if idx + 1 >= len(args):
+            return None
+        try:
+            out[key] = int(args[idx + 1])
+        except ValueError:
+            return None
+    # G2 smoke is intentionally smaller; only lock G3/G4-scale recipes.
+    if out.get("population_size", 0) < 3 or out.get("max_gen", 0) < 3:
+        return None
+    return out
+
+
+def _argv_from_shell_line(line: str) -> list[str]:
+    """Best-effort tokenize a single ``sia run …`` shell line (no pipes/redirs)."""
+    # Strip leading list markers / numbering from markdown report lines.
+    cleaned = re.sub(r"^\s*\d+\.\s*", "", line.strip())
+    cleaned = cleaned.strip("`")
+    if "sia" not in cleaned:
+        return []
+    # Keep from first ``sia`` token onward (drop python -m wrapper path noise).
+    parts = cleaned.split()
+    try:
+        start = parts.index("sia")
+    except ValueError:
+        return []
+    return parts[start:]
+
+
+def iter_shape_flag_dicts_from_text(text: str) -> list[dict[str, int]]:
+    """Extract G3/G4-scale Darwinian shape dicts from free text / markdown."""
+    found: list[dict[str, int]] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        if "sia" not in raw or "--population_size" not in raw:
+            i += 1
+            continue
+        # Join shell continuation lines ending with ``\``.
+        chunk = raw.rstrip()
+        while chunk.endswith("\\") and i + 1 < len(lines):
+            chunk = chunk[:-1].rstrip() + " " + lines[i + 1].strip()
+            i += 1
+            chunk = chunk.rstrip()
+        argv = _argv_from_shell_line(chunk.replace("\\", " "))
+        shape = extract_sia_shape_flags(argv)
+        if shape is not None:
+            found.append(shape)
+        i += 1
+    return found
+
+
+def iter_shape_flag_dicts_from_commands(
+    commands: Sequence[Sequence[str]] | None,
+) -> list[dict[str, int]]:
+    """Extract G3/G4-scale shapes from gate-report JSON ``commands`` arrays."""
+    found: list[dict[str, int]] = []
+    if not commands:
+        return found
+    for cmd in commands:
+        shape = extract_sia_shape_flags(list(cmd))
+        if shape is not None:
+            found.append(shape)
+    return found
+
+
+def committed_g3g4_recipes_match_live_shape(
+    *,
+    repo_root: Path | None = None,
+    profile: str | None = None,
+) -> tuple[bool, list[str]]:
+    """Return whether committed gate/Section-21.7 recipes match live G3/G4 shape.
+
+    Tick 298: locks ``docs/gate3_report.json``, ``docs/gate4_report.json``,
+    ``docs/icml_live_pipeline_report.md`` note, and Section 21.7 Condition B/D
+    examples so a future shape change cannot ship with stale operator recipes.
+    """
+    root = repo_root or _REPO_ROOT
+    expected = icml_g3g4_live_shape(profile)
+    problems: list[str] = []
+
+    for rel in ("docs/gate3_report.json", "docs/gate4_report.json"):
+        path = root / rel
+        if not path.is_file():
+            problems.append(f"missing {rel}")
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            problems.append(f"{rel}: {exc}")
+            continue
+        shapes = iter_shape_flag_dicts_from_commands(payload.get("commands"))
+        if not shapes:
+            problems.append(f"{rel}: no G3/G4-scale sia run commands to check")
+            continue
+        for i, got in enumerate(shapes):
+            if got != expected:
+                problems.append(
+                    f"{rel} commands[{i}] shape {got} != live {expected}"
+                )
+
+    pipeline_md = root / "docs" / "icml_live_pipeline_report.md"
+    if pipeline_md.is_file():
+        text = pipeline_md.read_text(encoding="utf-8")
+        note_re = re.compile(
+            r"eval_subset\s*=\s*(\d+)\s+pop\s*=\s*(\d+)\s+"
+            r"elite\s*=\s*(\d+)\s+max_gen\s*=\s*(\d+)",
+            re.IGNORECASE,
+        )
+        match = note_re.search(text)
+        if match is None:
+            problems.append(
+                "docs/icml_live_pipeline_report.md: missing Tick-shape note "
+                "(eval_subset=… pop=… elite=… max_gen=…)"
+            )
+        else:
+            got = {
+                "eval_subset": int(match.group(1)),
+                "population_size": int(match.group(2)),
+                "elite_count": int(match.group(3)),
+                "max_gen": int(match.group(4)),
+            }
+            if got != expected:
+                problems.append(
+                    f"docs/icml_live_pipeline_report.md shape note {got} "
+                    f"!= live {expected}"
+                )
+    else:
+        problems.append("missing docs/icml_live_pipeline_report.md")
+
+    master = root / "docs" / "HACKATHON_MASTER_PLAN.md"
+    if master.is_file():
+        text = master.read_text(encoding="utf-8")
+        # Only the Section 21.7 Condition B/D examples (not historical chronicle).
+        sec = text
+        marker = "### 21.7 Suggested cheap GPQA commands"
+        if marker in text:
+            sec = text.split(marker, 1)[1].split("### 21.8", 1)[0]
+        shapes = iter_shape_flag_dicts_from_text(sec)
+        if len(shapes) < 2:
+            problems.append(
+                "Section 21.7: expected ≥2 G3/G4-scale Condition B/D sia run "
+                f"examples; found {len(shapes)}"
+            )
+        for i, got in enumerate(shapes):
+            if got != expected:
+                problems.append(
+                    f"Section 21.7 G3/G4 example[{i}] shape {got} != live {expected}"
+                )
+    else:
+        problems.append("missing docs/HACKATHON_MASTER_PLAN.md")
+
+    return (len(problems) == 0, problems)

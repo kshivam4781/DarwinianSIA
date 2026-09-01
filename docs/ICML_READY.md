@@ -330,6 +330,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 295 Nebius G3/G4 max_gen=5 cost-neutral — eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5 under delay-all)
 - [x] Tick 296 Nebius G3/G4 pop4 diversity restore — offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120 + G3/G4 max_gen cap→6; offline PRIMARY+H5 restored (matches Tick 23)
 - [x] Tick 297 Tick-296 shape recipe/report sync — Section 21.7 + gate3/4/pipeline reports advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note → Tick 296; focused **82/82**
+- [x] Tick 298 committed recipe↔shape lock — `committed_g3g4_recipes_match_live_shape` locks gate3/4 JSON + pipeline note + Section 21.7 B/D examples to live shape (prevents Tick-297 stale-recipe burn); focused **98/98**
 
 ## Gate tracker (Section 21.5)
 

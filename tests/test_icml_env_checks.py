@@ -17,6 +17,7 @@ from icml_env_checks import (  # noqa: E402
     DEFAULT_ICML_TARGET_AGENT_PROFILE,
     collect_icml_secrets_status,
     collect_icml_tip_status,
+    committed_g3g4_recipes_match_live_shape,
     default_g2_estimate_usd,
     default_g3_pair_estimate_usd,
     default_g4_pair_estimate_usd,
@@ -25,6 +26,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
+    extract_sia_shape_flags,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -32,6 +34,7 @@ from icml_env_checks import (  # noqa: E402
     icml_meta_requires_anthropic,
     icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
+    iter_shape_flag_dicts_from_text,
     live_pipeline_next_steps,
     parse_latest_icml_tick,
     probe_icml_meta_profile,
@@ -938,3 +941,80 @@ def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> N
     assert default_g2_estimate_usd(profile="default-meta") == pytest.approx(1.0)
     assert default_g3_pair_estimate_usd(profile="default-meta") == pytest.approx(4.0)
     assert default_g4_pair_estimate_usd(profile="default-meta") == pytest.approx(3.0)
+
+
+def test_extract_sia_shape_flags_ignores_g2_smoke() -> None:
+    g2 = [
+        "sia",
+        "run",
+        "--task",
+        "gpqa",
+        "--darwinian",
+        "--population_size",
+        "2",
+        "--elite_count",
+        "1",
+        "--max_gen",
+        "2",
+        "--eval_subset",
+        "5",
+    ]
+    assert extract_sia_shape_flags(g2) is None
+
+
+def test_extract_sia_shape_flags_parses_g3g4() -> None:
+    cmd = [
+        "/usr/bin/python3",
+        "-m",
+        "sia",
+        "run",
+        "--task",
+        "gpqa",
+        "--darwinian",
+        "--population_size",
+        "4",
+        "--elite_count",
+        "2",
+        "--max_gen",
+        "6",
+        "--eval_subset",
+        "5",
+    ]
+    assert extract_sia_shape_flags(cmd) == {
+        "population_size": 4,
+        "elite_count": 2,
+        "max_gen": 6,
+        "eval_subset": 5,
+    }
+
+
+def test_committed_g3g4_recipes_match_live_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 298: prevent Tick-297 stale pop3 recipe drift after shape changes."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    ok, problems = committed_g3g4_recipes_match_live_shape()
+    assert ok, problems
+
+    # Negative check: parser spots stale pop3 text.
+    stale = (
+        "sia run --task gpqa --darwinian --population_size 3 --elite_count 2 "
+        "--max_gen 4 --eval_subset 10 --no-web --seed 1\n"
+    )
+    stale_shapes = iter_shape_flag_dicts_from_text(stale)
+    assert stale_shapes == [
+        {
+            "population_size": 3,
+            "elite_count": 2,
+            "max_gen": 4,
+            "eval_subset": 10,
+        }
+    ]
+    assert stale_shapes[0] != icml_g3g4_live_shape()
