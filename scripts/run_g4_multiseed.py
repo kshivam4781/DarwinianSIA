@@ -1051,8 +1051,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"G4 plan error: {exc}", file=sys.stderr)
         return 2
 
-    if args.max_gen > 5:
-        print("G4 refuses max_gen > 5 (Section 21.5 budget shape)", file=sys.stderr)
+    if args.max_gen > 6:
+        print("G4 refuses max_gen > 6 (Section 21.5 / Tick 296 budget shape)", file=sys.stderr)
         return 2
 
     # Recovery path: score existing runs into the paper pack (no paid API).

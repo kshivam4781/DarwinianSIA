@@ -328,6 +328,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 293 Nebius budget-fit G3/G4 shape — `icml_g3g4_live_shape` eval10/pop3/elite1/max_gen4 + estimates G2+$2+G3+$3+G4+$14=$19 ≤ $20 (avoids latent mid-stack refuse/overrun after Tick 291 Kimi metering)
 - [x] Tick 294 Nebius G3/G4 elite≥2 floor — cost-neutral elite 1→2 + `icml_g3g4_live_shape` floors env elite=1 when pop≥2 (elite=1 → same-parent crossover / H2 collapse under delay-all)
 - [x] Tick 295 Nebius G3/G4 max_gen=5 cost-neutral — eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5 under delay-all)
+- [x] Tick 296 Nebius G3/G4 pop4 diversity restore — offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120 + G3/G4 max_gen cap→6; offline PRIMARY+H5 restored (matches Tick 23)
 
 ## Gate tracker (Section 21.5)
 
@@ -335,7 +336,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas); **PREFLIGHT READY** (Tick 24/25 + …); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
+| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + …); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 23; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |

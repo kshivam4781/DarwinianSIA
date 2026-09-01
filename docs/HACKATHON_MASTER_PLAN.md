@@ -861,7 +861,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML Nebius budget-fit G3/G4 shape (Tick 293) | **DONE** | `icml_g3g4_live_shape` eval10/pop3/elite1/max_gen4; estimates G2+$2 + G3+$3 + G4+$14 = $19 ≤ $20 |
 | ICML Nebius elite≥2 floor (Tick 294) | **DONE** | Cost-neutral elite 1→2 + floor in `icml_g3g4_live_shape` (elite=1 → same-parent crossover / H2 collapse) |
 | ICML Nebius max_gen=5 cost-neutral (Tick 295) | **DONE** | eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–295 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML Nebius pop4 diversity restore (Tick 296) | **DONE** | Offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120; G3/G4 max_gen cap→6; offline PRIMARY+H5 restored |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–296 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 23 **5/5** ρ>0.3 (`1840–1844`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1579,7 +1580,7 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 | **G0** | Unit tests green; mutation bias contradiction-scoped (not full enum) | Fix mechanism before paid runs |
 | **G1** | Dry-run Condition D writes belief_store + biased DNA on gen≥2 | Do not spend API |
 | **G2** | Smoke GPQA subset (≤5 samples, pop≤2, max_gen≤2), one seed | Fix harness |
-| **G3** | Pilot B vs D, 1–2 seeds, Nebius budget-fit shape (`eval_subset=8`, pop=3, elite=2, max_gen≤5; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5) | Diagnose before 5-seed |
+| **G3** | Pilot B vs D, 1–2 seeds, Nebius budget-fit shape (`eval_subset=5`, pop=4, elite=2, max_gen≤6; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5) | Diagnose before 5-seed |
 | **G4** | Full 5-seed B vs D under budget (same Nebius budget-fit shape); compute PRIMARY + H2 + H5 | Refresh paper artifacts |
 | **G5** | Paper pack + honest limitations → STATUS: READY | — |
 
@@ -2241,3 +2242,5 @@ sia run --task gpqa --darwinian --population_size 3 --elite_count 2 \
 **Nebius G3/G4 elite≥2 floor (2026-09-01 Tick 294):** Tick 293 set `elite_count=1` while shrinking pop/eval/gens for budget. Elite does **not** change agent-eval cost (pop×eval×gens), but `population.py` tournament picks two parents from the elite pool — with elite=1 that is always the same parent, so crossover is a same-parent clone. Under delay-all CABS steering (bias only from gen≥2), that collapses H2 DNA mixing before live PRIMARY. Default Nebius elite → **2**; `icml_g3g4_live_shape` floors env `SIA_G3G4_ELITE_COUNT=1` to 2 when pop≥2. Stack estimate unchanged **$19**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Nebius G3/G4 max_gen=5 cost-neutral rebalance (2026-09-01 Tick 295):** Tick 293/294 used eval10×max_gen4 (120 agent-evals). Under delay-all, offline PRIMARY seed 22 hits gens30 at gen **5**, so max_gen=4 would truncate live gens30/cost30 and leave only two steered breeding rounds. Rebalanced to **eval8 × max_gen5** (still 3×8×5 = **120** agent-evals; stack **$19**). STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Nebius G3/G4 pop4 diversity restore (2026-09-01 Tick 296):** Offline re-pilot at Tick 295 shape (pop3/elite2/max_gen5) **failed** PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**) — pop=3 + elite=2 leaves only 1 non-elite offspring/gen. Cost-neutral restore Tick 23 Darwinian shape: **pop4 × eval5 × max_gen6** = **120** agent-evals (offline gens30/cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp**). Raised G3/G4 hard cap to max_gen≤6. Stack still **$19**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

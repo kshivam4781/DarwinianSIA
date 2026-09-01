@@ -153,11 +153,16 @@ DEFAULT_ICML_META_AGENT_PROFILE = "kimi-nebius-pydantic-meta"
 # (3×8×5 = 3×10×4 = 120 agent-evals). Under delay-all, offline seed 22 hits
 # gens30 at gen **5**; max_gen=4 would truncate PRIMARY gens30/cost30 and
 # leave only two steered breeding rounds (gen2→3, gen3→4).
+# Tick 296: offline re-pilot at Tick 295 shape (pop3/elite2/max_gen5) **fails**
+# PRIMARY (gens30/cost30 1/5) and H5 (3/5) — pop=3 leaves only 1 non-elite
+# offspring/gen and collapses diversity vs Tick 23 pop=4. Cost-neutral restore
+# Tick 23 Darwinian shape: pop4 × eval5 × max_gen6 = **120** agent-evals
+# (PRIMARY gens30/cost30 4/5, final 5/5, H5 5/5, mean gap ~6.15pp offline).
 # Override with SIA_G3G4_* env vars. Anthropic meta keeps the historical shape.
-ICML_NEBIUS_G3G4_EVAL_SUBSET = 8
-ICML_NEBIUS_G3G4_POPULATION_SIZE = 3
+ICML_NEBIUS_G3G4_EVAL_SUBSET = 5
+ICML_NEBIUS_G3G4_POPULATION_SIZE = 4
 ICML_NEBIUS_G3G4_ELITE_COUNT = 2
-ICML_NEBIUS_G3G4_MAX_GEN = 5
+ICML_NEBIUS_G3G4_MAX_GEN = 6
 ICML_ANTHROPIC_G3G4_EVAL_SUBSET = 15
 ICML_ANTHROPIC_G3G4_POPULATION_SIZE = 4
 ICML_ANTHROPIC_G3G4_ELITE_COUNT = 2
@@ -823,7 +828,7 @@ def _env_positive_int(name: str, default: int) -> int:
 
 
 def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
-    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293–295).
+    """Return G3/G4 ``eval_subset`` / pop / elite / ``max_gen`` (Tick 293–296).
 
     Nebius meta → budget-fit shape so 5-seed G4 + G2/G3 stay under ~$20 after
     Tick 291 Kimi metering. Anthropic meta → historical Section 21.5 shape.
@@ -834,8 +839,10 @@ def icml_g3g4_live_shape(profile: str | None = None) -> dict[str, int]:
     (and capped at pop). Elite does not change agent-eval cost; elite=1 makes
     crossover same-parent clones and collapses H2 under delay-all steering.
 
-    Tick 295: Nebius defaults are eval8 / max_gen5 (cost-neutral vs Tick 293's
-    eval10 / max_gen4) so PRIMARY gens30 can reach the offline seed-22 horizon.
+    Tick 295: briefly used eval8 / pop3 / max_gen5 (120 agent-evals) for the
+    seed-22 gens30 horizon. Tick 296: offline showed pop=3 collapses PRIMARY
+    / H5; Nebius defaults are now **eval5 / pop4 / elite2 / max_gen6** (still
+    120 agent-evals; matches Tick 23 offline Darwinian shape).
     """
     if icml_meta_provider_id(profile) == "nebius":
         shape = {

@@ -879,7 +879,7 @@ def test_icml_human_required_secrets_phrase_anthropic_optional(
 
 
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tick 293–295: Nebius cheaper shape; elite≥2; max_gen5 cost-neutral; Anthropic historical."""
+    """Tick 293–296: Nebius budget-fit; pop4 diversity; max_gen6; Anthropic historical."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
     monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     for key in (
@@ -895,19 +895,21 @@ def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> N
 
     neb = icml_g3g4_live_shape()
     assert neb == {
-        "eval_subset": 8,
-        "population_size": 3,
+        "eval_subset": 5,
+        "population_size": 4,
         "elite_count": 2,
-        "max_gen": 5,
+        "max_gen": 6,
     }
     # Elite does not change agent-eval count; keep ≥2 for two-parent crossover.
     assert neb["elite_count"] >= 2
     assert neb["elite_count"] <= neb["population_size"]
-    # Tick 295: cost-neutral vs Tick 293 (3×10×4 == 3×8×5 == 120 agent-evals).
+    # Tick 296: cost-neutral vs Tick 293–295 (4×5×6 == 3×8×5 == 120 agent-evals).
     assert (
         neb["population_size"] * neb["eval_subset"] * neb["max_gen"] == 120
     )
-    assert icml_diamond_n_for_stack() == 8
+    # Tick 296: pop≥4 so ≥2 non-elite offspring/gen (pop3 collapses PRIMARY/H5).
+    assert neb["population_size"] - neb["elite_count"] >= 2
+    assert icml_diamond_n_for_stack() == 5
     assert default_g2_estimate_usd() == pytest.approx(2.0)
     assert default_g3_pair_estimate_usd() == pytest.approx(3.0)
     assert default_g4_pair_estimate_usd() == pytest.approx(2.8)

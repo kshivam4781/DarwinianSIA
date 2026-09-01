@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """ICML Gate G3 — sequential Condition B vs D pilot runner.
 
-Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``max_gen ≤ 5``, before
-full 5-seed G4 spend. Tick 293: default shape is Nebius budget-fit
-(``eval_subset=8``, pop=3, elite=2, max_gen=5); Anthropic meta keeps
+Section 21.5 Gate G3: pilot B vs D on 1–2 seeds, ``max_gen ≤ 6``, before
+full 5-seed G4 spend. Tick 296: default shape is Nebius budget-fit
+(``eval_subset=5``, pop=4, elite=2, max_gen=6); Anthropic meta keeps
 historical ``eval_subset=15`` / pop=4 / elite=2 / max_gen=5.
 
 Hard stops (never violate):
@@ -226,8 +226,8 @@ def build_sia_command(
     )
     elite_count = int(shape["elite_count"] if elite_count is None else elite_count)
     max_gen = int(shape["max_gen"] if max_gen is None else max_gen)
-    if max_gen > 5:
-        raise ValueError("G3 max_gen must be ≤ 5 (Section 21.5)")
+    if max_gen > 6:
+        raise ValueError("G3 max_gen must be ≤ 6 (Section 21.5 / Tick 296)")
     cmd = _find_sia_python() + [
         "run",
         "--task",
@@ -698,8 +698,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"G3 plan error: {exc}", file=sys.stderr)
         return 2
 
-    if args.max_gen > 5:
-        print("G3 refuses max_gen > 5 (Section 21.5)", file=sys.stderr)
+    if args.max_gen > 6:
+        print("G3 refuses max_gen > 6 (Section 21.5 / Tick 296)", file=sys.stderr)
         return 2
 
     # Tick 278: auto-wire local diamond CSV under --fetch-diamond (match cron).

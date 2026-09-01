@@ -41,9 +41,10 @@ def test_build_sia_command_b_vs_d() -> None:
     assert "--cabs" not in b
     assert "--cabs-inline" not in b
     assert "1201" in b
-    # Tick 293/295: Nebius budget-fit defaults (eval_subset=8, not Anthropic-era 15)
-    assert "--eval_subset" in b and "8" in b
-    assert "--population_size" in b and "3" in b
+    # Tick 296: Nebius budget-fit defaults (eval5/pop4/max_gen6; not Anthropic-era 15)
+    assert "--eval_subset" in b and "5" in b
+    assert "--population_size" in b and "4" in b
+    assert "--max_gen" in b and "6" in b
     assert "--meta-agent-profile" in b
     assert "kimi-nebius-pydantic-meta" in b
     assert "--target-agent-profile" in b
@@ -55,7 +56,7 @@ def test_build_sia_command_b_vs_d() -> None:
     assert "--target-agent-profile" in d
     assert "kimi-nebius-target" in d
     with pytest.raises(ValueError, match="max_gen"):
-        build_sia_command(condition="B", run_id=1, seed=1, max_gen=6)
+        build_sia_command(condition="B", run_id=1, seed=1, max_gen=7)
 
 
 def test_preflight_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

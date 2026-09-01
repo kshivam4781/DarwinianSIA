@@ -4,6 +4,46 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-01T04:15Z — Tick 296 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-e752` (recovered tip ← `b90b` Tick 295)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `e8700353`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-b90b` (Tick 295); local Tick **295** → **296**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on secrets. Separately, Tick 295 Nebius shape (**pop=3** / eval8 / elite2 / max_gen5) is cost-correct (120 agent-evals) but **population-collapsed**: with elite=2 only **1** non-elite offspring/gen. Offline re-pilot at that exact shape failed PRIMARY (gens30/cost30 **1/5**) and H5 (**3/5**); mean gap ~3.2pp. Tick 23 offline PRIMARY used **pop=4**. Highest leverage without paid spend: **cost-neutral restore pop4 + max_gen6** (4×5×6=120).
+
+### What this tick did (ONE step)
+**Nebius G3/G4 pop4 / eval5 / max_gen6 cost-neutral diversity restore (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `b90b`; confirmed secrets absent; re-requested NEBIUS+HF (Anthropic optional)
+2. Offline diagnosis: Tick 295 shape → PRIMARY fail; cost-neutral **pop4×eval5×max_gen6** → gens30 **4/5**, cost30 **4/5**, final **5/5**, H5 **5/5**, mean gap ~**6.15pp** (matches Tick 23)
+3. `ICML_NEBIUS_G3G4_*` → eval5/pop4/elite2/max_gen6; raised G3/G4 hard cap max_gen ≤**6**; tests + Section 21.5
+4. Focused suite **82/82**; G2 dry-run `run_1862` PASS; stack still **$19**
+5. STATUS remains IN_PROGRESS (live PRIMARY still needs NEBIUS + HF/CSV)
+
+### Metrics delta
+| Metric | Before (Tick 295) | After (Tick 296) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 @ Tick23 shape | 5/5 / 4/5 / 4/5 / 5/5 | unchanged (reference) |
+| Offline @ Tick295 live shape (pop3/e8/g5) | — | gens30 **1/5**, cost30 **1/5**, H5 **3/5**, gap ~3.2pp (**FAIL**) |
+| Offline @ Tick296 live shape (pop4/e5/g6) | — | gens30 **4/5**, cost30 **4/5**, final **5/5**, H5 **5/5**, gap ~**6.15pp** |
+| Nebius G3/G4 default shape | pop3 × eval8 × elite2 × max_gen5 | **pop4 × eval5 × elite2 × max_gen6** |
+| Agent-evals / run | 120 | **120** (cost-neutral) |
+| Nebius stack estimate | $19 | **$19** |
+| Focused tests | 41/41 (prior related) | **82/82** |
+| G2 dry-run | `run_1861` (prior) | **`run_1862` PASS** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / dry-run alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-01T02:15Z — Tick 295 (automation cron)
 
 ### Status snapshot
