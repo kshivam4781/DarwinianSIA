@@ -550,11 +550,13 @@ A flat score + high knowledge gain is a **feature** for methodology track.
 
 ### 8.2 Agent spending rules
 
-1. Check Nebius + Anthropic dashboard before starting Phase 2.
+1. Check the **Nebius** dashboard before starting Phase 2 / ICML G2→G4. Check Anthropic only if using Claude meta (`ICML_META_AGENT_PROFILE=default-meta`) — under default Nebius pydantic-ai meta, Anthropic is optional (Tick 289/313).
 2. Never run two full GPQA jobs in parallel (doubles spend).
 3. If promo credits exhausted: fall back to `default-target` (Haiku) for target on chess only.
 4. Log estimated spend in commit messages / run notes when starting expensive jobs.
 5. Minimum viable submission needs only 3 generations — use if budget tight.
+
+**ICML Thesis 1 (Tick 313):** do **not** block paid G2→G4 on an Anthropic balance check when meta is Nebius. Required spend surface is Nebius (+ HF fetch if no local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -565,13 +567,15 @@ A flat score + high knowledge gain is a **feature** for methodology track.
 | ID | Task | Gate |
 |----|------|------|
 | 0.1 | User redeems Nebius promo; `NEBIUS_API_KEY` set | Key validates |
-| 0.2 | `ANTHROPIC_API_KEY` set | SIA starts clean |
+| 0.2 | `ANTHROPIC_API_KEY` set | SIA starts clean *(hackathon Claude meta; see ICML note)* |
 | 0.3 | Fix Windows `venv_python_path` / `venv_pip_path` | Subprocess works |
 | 0.4 | Create `nemotron-nebius-target.json` profile | Profile loads |
 | 0.5 | `sia run --task longcot-chess --max_gen 1 --run_id 901 --no-web` | `gen_1/results.json` |
 | 0.6 | `sia-cabs run` same with `--run_id 902` | `belief_store/` exists |
 
-**STOP if any gate fails.**
+**ICML Thesis 1 (Tick 313):** Phase 0.2 Anthropic is **optional** under default `kimi-nebius-pydantic-meta`. Do **not** STOP ICML G2→G4 waiting on Anthropic — require `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) per Section 4.1 / `docs/ICML_HUMAN_UNBLOCK.md`. Phase 0.2 remains a historical hackathon gate when using Claude `default-meta`.
+
+**STOP if any gate fails** (except ICML may skip 0.2 when Nebius meta is active).
 
 ---
 
@@ -884,7 +888,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML README + §6.2/§21 Anthropic-optional (Tick 310) | **DONE** | README Nebius-first; Section 6.2 + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended |
 | ICML load_env.ps1 Anthropic-optional (Tick 311) | **DONE** | `scripts/load_env.ps1` Nebius-first + HF status; Anthropic marked optional; lock test extended |
 | ICML load_env.sh Linux twin (Tick 312) | **DONE** | `scripts/load_env.sh` Nebius-first + HF status; Anthropic optional; README + lock test; cloud/bash parity with Tick 311 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–312 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML §8.2 + Phase 0.2 Anthropic-optional (Tick 313) | **DONE** | Spending rules + Phase 0 no longer hard-pair Anthropic for ICML Nebius meta; lock test extended |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–313 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2298,3 +2303,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **load_env.ps1 Anthropic-optional (2026-09-02 Tick 311):** Tick 310 closed README + §6.2/§21, but `scripts/load_env.ps1` still listed Anthropic first with bare `ANTHROPIC_API_KEY: missing` and omitted HF — Windows `.env` load still looked Anthropic-gated. Now Nebius-first + HF status + Anthropic optional; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **load_env.sh Linux/cloud twin (2026-09-02 Tick 312):** Tick 311 fixed Windows `load_env.ps1`, but Linux/cloud operators (and README bash quick start) had no Nebius-first shell loader — only PowerShell. Added `scripts/load_env.sh` (sourceable; Nebius-first + HF + Anthropic optional; does not override already-set process secrets); README + lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Section 8.2 + Phase 0.2 Anthropic-optional (2026-09-02 Tick 313):** Tick 312 closed loaders, but master-plan **§8.2** still said “Check Nebius + Anthropic dashboard before Phase 2” and **Phase 0.2** still hard-gated `ANTHROPIC_API_KEY set` / STOP — ICML agents following spending rules or Phase 0 would wait on an optional third vendor. §8.2 now Nebius-first (Anthropic only for Claude meta); Phase 0.2 marked hackathon/Claude with an ICML skip note; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

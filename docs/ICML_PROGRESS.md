@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T14:15Z — Tick 313 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-84c9` (recovered tip ← `e561` Tick 312)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-e561` (Tick 312); local Tick **312** → **313**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 312 closed Linux/Windows loaders, but master-plan **§8.2** still said “Check Nebius + Anthropic dashboard before Phase 2” and **Phase 0.2** still hard-gated `ANTHROPIC_API_KEY set` with STOP — agents following spending rules / Phase 0 would wait on an optional third vendor. Same friction class as Tick 292/307–312. Highest leverage without paid spend: **finish Anthropic-optional on §8.2 + Phase 0.2**.
+
+### What this tick did (ONE step)
+**§8.2 + Phase 0.2 Anthropic-optional (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `e561`; confirmed secrets absent; cron preflight (live blocked)
+2. Section 8.2: Nebius-first spend check; Anthropic only for Claude meta; ICML Tick 313 note
+3. Phase 0.2: marked hackathon/Claude; ICML note — skip Anthropic STOP under Nebius meta
+4. Lock test `test_env_example_and_section4_anthropic_optional` extended; paper + HUMAN_UNBLOCK + READY checklist
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 312) | After (Tick 313) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| §8.2 “Nebius + Anthropic dashboard” | **yes** | **Nebius-first; Anthropic only if Claude meta** |
+| Phase 0.2 hard Anthropic STOP | **yes** | **ICML skip under Nebius meta** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T12:15Z — Tick 312 (automation cron)
 
 ### Status snapshot

@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–312: .env.example + §4.1/6.2/21 + README + load_env.ps1/.sh Anthropic-optional."""
+    """Tick 309–313: .env.example + §4.1/6.2/8.2/9/21 + README + load_env.ps1/.sh Anthropic-optional."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -937,6 +937,10 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     )
     assert "**Gate:** Both keys set before any paid run." not in master
     assert "Gate (ICML Thesis 1 / Tick 289–312)" in master
+    # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
+    assert "Check Nebius + Anthropic dashboard before starting Phase 2." not in master
+    assert "ICML Thesis 1 (Tick 313)" in master
+    assert "Phase 0.2 Anthropic is **optional**" in master
     # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
     paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
     assert (
