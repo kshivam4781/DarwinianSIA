@@ -281,13 +281,18 @@ Post-hackathon
 
 | Env variable | Service | Used for | How to obtain |
 |--------------|---------|----------|---------------|
-| `ANTHROPIC_API_KEY` | Anthropic | Meta Agent + Feedback Agent (Claude SDK) | https://console.anthropic.com |
-| `NEBIUS_API_KEY` | Nebius Token Factory | Target Agent inference (OSS models) | Nebius console; promo code below |
+| `NEBIUS_API_KEY` | Nebius Token Factory | **ICML live default:** Target + Meta/Feedback (Kimi via `kimi-nebius-pydantic-meta`, Tick 289+) | Nebius console; promo code below |
+| `HF_TOKEN` | HuggingFace | GPQA diamond `--fetch-diamond` (**or** local `gpqa_diamond.csv`) | https://huggingface.co/settings/tokens — accept `Idavidrein/gpqa` |
+| `ANTHROPIC_API_KEY` | Anthropic | **Optional** under Nebius pydantic-ai meta; required only if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) | https://console.anthropic.com |
+
+**ICML Thesis 1 (Tick 289/308/309):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md` and `.env.example`.
 
 **Set in PowerShell (session):**
 ```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
 $env:NEBIUS_API_KEY = "..."
+# optional under Nebius meta:
+# $env:ANTHROPIC_API_KEY = "sk-ant-..."
+# $env:HF_TOKEN = "hf_..."
 ```
 
 **Never commit keys.** Never log keys. Never put keys in markdown files.
@@ -874,7 +879,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML G2 direct-live tip guard (Tick 306) | **DONE** | `run_g2_smoke` preflight refuse `--live` on stale tip (closes remaining bypass after Tick 305); `--allow-stale-tip` escape |
 | ICML prepare_* Anthropic-optional Next (Tick 307) | **DONE** | `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` Next lines use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode) |
 | ICML verify_keys + portal_save Anthropic-optional (Tick 308) | **DONE** | `verify_keys.py` Anthropic SKIP under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–308 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML `.env.example` + Section 4.1 Anthropic-optional (Tick 309) | **DONE** | `.env.example` comments Anthropic; Section 4.1 ICML note (Nebius required; Anthropic optional); paper Tick-30 stale claim fixed; focused lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–309 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2280,3 +2286,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Prepare_* Anthropic-optional Next messaging (2026-09-02 Tick 307):** Tick 292 fixed gate/cron human secrets phrasing, but `prepare_gpqa_diamond.py` / `prepare_gpqa_smoke_data.py` Next lines still hard-coded `ANTHROPIC_API_KEY + NEBIUS_API_KEY` — operators following diamond/smoke materialize would wait on an optional third key. Both now call `icml_human_required_secrets_phrase`; focused prepare suite **11/11**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **verify_keys + portal_save_target Anthropic-optional (2026-09-02 Tick 308):** Tick 307 closed prepare_*, but `scripts/verify_keys.py` still treated Anthropic as a required FAIL under Nebius meta, and `docs/icml_portal_save_target.json` listed `ANTHROPIC_API_KEY` in `required_secrets`. `verify_keys` now uses `icml_meta_requires_anthropic` (SKIP when optional); portal target moves Anthropic to `optional_secrets` and points `next_live_command` at `bash scripts/icml_cron_entry.sh`. Focused **5/5**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**`.env.example` + Section 4.1 Anthropic-optional (2026-09-02 Tick 309):** Tick 308 closed verify_keys/portal_save, but operators copying `.env.example` or reading Section 4.1 still saw Anthropic as **Required — Meta + Feedback (Claude SDK)** while Nebius was target-only — delaying live until a third vendor key. `.env.example` now comments Anthropic and leads with Nebius; Section 4.1 documents ICML Nebius-meta optionality; paper_artifacts Tick-30 stale Anthropic-hard-required claim fixed; lock test `test_env_example_and_section4_anthropic_optional`. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

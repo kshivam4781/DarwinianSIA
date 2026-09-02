@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-09-02T04:05:57Z
+**Timestamp:** 2026-09-02T06:05:29Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -24,7 +24,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 308 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-dde0 |
+| `tip_ok_for_live` | yes | local Tick 308 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-a781 |
 
 ### Planned seed pairs
 

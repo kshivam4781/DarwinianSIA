@@ -341,6 +341,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 306 G2 direct-live tip lineage guard — `run_g2_smoke` preflight `ready_for_live` requires `tip_ok_for_live` (closes remaining direct-live tip bypass after Tick 305); `--allow-stale-tip` escape; focused g2 **14/14**
 - [x] Tick 307 prepare_* Anthropic-optional Next messaging — `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode); focused prepare **11/11**
 - [x] Tick 308 verify_keys + portal_save_target Anthropic-optional — `verify_keys.py` SKIP Anthropic under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional); focused **5/5**
+- [x] Tick 309 `.env.example` + Section 4.1 Anthropic-optional — `.env.example` comments Anthropic / leads with Nebius; Section 4.1 ICML note; paper Tick-30 stale claim fixed; `test_env_example_and_section4_anthropic_optional`
 
 ## Gate tracker (Section 21.5)
 

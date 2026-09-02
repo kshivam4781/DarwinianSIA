@@ -4,6 +4,44 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T06:15Z — Tick 309 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-c0d2` (recovered tip ← `a781` Tick 308)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-a781` (Tick 308); local Tick **308** → **309**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 308 closed verify_keys/portal_save Anthropic hard-requires, but operators copying **`.env.example`** or reading master-plan **Section 4.1** still saw Anthropic as **Required — Meta + Feedback (Claude SDK)** with Nebius labeled target-only — same class of friction as Tick 292/307/308. Paper limitations Tick-30 line still said live blocked on Anthropic+Nebius+HF. Highest leverage without paid spend: **finish Anthropic-optional on `.env.example` + Section 4.1 (+ paper stale claim)**.
+
+### What this tick did (ONE step)
+**`.env.example` + Section 4.1 Anthropic-optional (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `a781`; confirmed secrets absent; ran cron preflight (live blocked)
+2. `.env.example`: comment out Anthropic; lead with Nebius required; document HF/CSV; ICML Tick 289/308/309 note
+3. Section 4.1: Nebius required for ICML live; Anthropic optional; HF/CSV for diamond; "do not wait on Anthropic" note
+4. `paper_artifacts.md` Tick-30 limitations: Anthropic no longer listed as hard live blocker
+5. Lock test `test_env_example_and_section4_anthropic_optional`; focused **5/5** (with portal + verify_keys)
+6. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 308) | After (Tick 309) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| `.env.example` Anthropic | **Required — Meta/Claude** (active) | **commented optional** |
+| Section 4.1 Anthropic | Required Meta/Claude; Nebius target-only | **Nebius required; Anthropic optional (ICML)** |
+| paper Tick-30 Anthropic-hard-required claim | present | **removed** |
+| Focused tests (env+portal+verify) | 5 | **5/5** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T04:15Z — Tick 308 (automation cron)
 
 ### Status snapshot

@@ -900,6 +900,39 @@ def test_portal_save_target_anthropic_optional() -> None:
     assert "NEBIUS_API_KEY" in actions
 
 
+def test_env_example_and_section4_anthropic_optional() -> None:
+    """Tick 309: .env.example + Section 4.1 must not hard-require Anthropic for ICML live."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    env_example = (root / ".env.example").read_text(encoding="utf-8")
+    # Uncommented ANTHROPIC assignment would still look "required" to operators.
+    active_anth = [
+        ln
+        for ln in env_example.splitlines()
+        if ln.strip().startswith("ANTHROPIC_API_KEY=")
+    ]
+    assert not active_anth, (
+        ".env.example must comment out ANTHROPIC_API_KEY under Nebius meta "
+        f"(found active lines: {active_anth})"
+    )
+    assert "NEBIUS_API_KEY=" in env_example
+    assert "optional" in env_example.lower()
+    # Must not lead with legacy "Required — Meta + Feedback (Claude)" framing.
+    assert "Required — Meta + Feedback agents (Claude SDK)" not in env_example
+
+    section4 = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
+    # Section 4.1 ICML note: Anthropic optional; Nebius covers meta under Tick 289+.
+    assert "ICML Thesis 1 (Tick 289/308/309)" in section4
+    assert "do **not** wait on Anthropic" in section4
+    # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
+    paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
+    assert (
+        "live still blocked on missing `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`"
+        not in paper
+    )
+
+
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tick 293–296: Nebius budget-fit; pop4 diversity; max_gen6; Anthropic historical."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
