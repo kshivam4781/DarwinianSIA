@@ -151,18 +151,22 @@ Next generation Meta/Feedback receive active contradictions + research questions
 
 ### 3.3 Inference split (orchestration vs models)
 
+**ICML Thesis 1 live default (Tick 288/289/316 — Nebius-only; Anthropic optional):**
+
 ```
 ┌─────────────────────────────────────────┐
-│  LAPTOP (CPU) — Orchestration           │
+│  CPU — Orchestration                    │
 │  sia-cabs, Belief Engine, evaluate.py   │
 └─────────────────────────────────────────┘
-         │                    │
-         ▼                    ▼
-  Anthropic API         Nebius Token Factory
-  Meta + Feedback       Target Agent inference
-  Claude Haiku          Nemotron / Qwen / Kimi
-  (cheap, Claude SDK)   (fast, pay-per-token, no local GPU)
+                    │
+                    ▼
+         Nebius Token Factory
+         Meta + Feedback + Target
+         moonshotai/Kimi-K2.6
+         (pydantic-ai meta; pay-per-token; no local GPU)
 ```
+
+**Optional / historical (hackathon-era dual-vendor):** Anthropic Claude Haiku meta (`default-meta`) + Nebius Nemotron/Qwen target — only when intentionally selecting Claude meta (`ICML_META_AGENT_PROFILE=default-meta`). Do **not** provision Anthropic for ICML G2→G4 under default Nebius profiles.
 
 **Layers 2–4** (later phases; see Section 18): Tavily grounding, committee gating, Darwinian population (sibling repo).
 
@@ -268,9 +272,10 @@ Post-hackathon
 └── Phase 7: merge — CABS reads civilization.json; Darwinian reads belief_store/
 ```
 
-**Budget split (shared $100–200 Nebius + Anthropic):**
-- Reserve ~60% for SIA2 GPQA baseline + CABS (primary Track 3 evidence).
-- Reserve ~40% for SIA darwinian subset runs (population × subset cases).
+**Budget split (hackathon-era shared pool; ICML Thesis 1 uses Nebius-only ~$20 ceiling — Section 21):**
+- Reserve ~60% for SIA2 / CABS GPQA evidence (primary Track 3).
+- Reserve ~40% for Darwinian subset runs (population × subset cases).
+- ICML live G2→G4: spend is **Nebius** under default Kimi profiles; Anthropic only if Claude meta is selected.
 - Never run both repos' full GPQA jobs in parallel.
 
 ---
@@ -285,7 +290,7 @@ Post-hackathon
 | `HF_TOKEN` | HuggingFace | GPQA diamond `--fetch-diamond` (**or** local `gpqa_diamond.csv`) | https://huggingface.co/settings/tokens — accept `Idavidrein/gpqa` |
 | `ANTHROPIC_API_KEY` | Anthropic | **Optional** under Nebius pydantic-ai meta; required only if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) | https://console.anthropic.com |
 
-**ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314/315):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
+**ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314/315/316):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
 
 **Set in PowerShell (session):**
 ```powershell
@@ -420,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–315):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–316):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -438,10 +443,10 @@ Same pattern for `venv_pip_path`.
 - Default task for submission: **gpqa**
 - Smoke task: **longcot-chess**
 - **Never run lawbench** without user approval
-- Budget ceiling: **$200 total** unless user raises it
+- Budget ceiling: **$200 total** unless user raises it (**ICML Thesis 1:** ~**$20** Nebius ceiling for G2→G4 — Section 21)
 - If spend > $150: stop after 3 generations and submit with available data
 - Always use `--no-web` on long runs
-- Use Nemotron (cheapest fast option) for target
+- **ICML live target + meta:** `kimi-nebius-target` + `kimi-nebius-pydantic-meta` (Nebius Kimi-K2.6; Tick 288/289/316). Do **not** default to Nemotron or Claude for ICML G2→G4. Nemotron/Claude remain optional alternates only.
 
 ---
 
@@ -899,7 +904,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML §8.2 + Phase 0.2 Anthropic-optional (Tick 313) | **DONE** | Spending rules + Phase 0 no longer hard-pair Anthropic for ICML Nebius meta; lock test extended |
 | ICML Section 12 cloud secrets honesty (Tick 314) | **DONE** | Section 12 no longer claims NEBIUS/Anthropic **DONE** for cloud; HF/CSV row; §4.1/§6.2 tick labels → 314; lock test |
 | ICML Section 4.4 Nebius model defaults (Tick 315) | **DONE** | §4.4 lists `kimi-nebius-pydantic-meta` + `kimi-nebius-target` as ICML defaults (not Anthropic/`nemotron` TO-BE-CREATED); §4.5 Kimi-K2.6 $0.95/$4.00; lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–314 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML §3.3 + §6.3 Nebius inference architecture (Tick 316) | **DONE** | §3.3 diagram + §6.3 rules lead with Nebius Kimi (not Claude meta + Nemotron-as-default target); budget note Nebius-only; lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–316 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2319,3 +2325,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Section 12 cloud secrets honesty (2026-09-02 Tick 314):** Tick 313 finished Anthropic-optional spending/Phase-0 rules, but Section 12 still listed `NEBIUS_API_KEY` / `ANTHROPIC_API_KEY` as **DONE** “In `.env`” — cloud agents reading Implementation status could treat secrets as satisfied and skip `ICML_HUMAN_UNBLOCK`. Section 12 now marks Nebius/HF **ABSENT (cloud)**, Anthropic **OPTIONAL (ICML)**, adds an HF/CSV row, and syncs §4.1/§6.2 tick labels through 314; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Section 4.4 ICML Nebius model defaults (2026-09-02 Tick 315):** Tick 314 fixed Section 12 key honesty, but **§4.4 Approved model assignment** still listed Anthropic `default-meta` + Nemotron as the universal default table (Nemotron profile marked as unfinished Phase-0 work), contradicting Tick 288/289 live profiles (`kimi-nebius-target` + `kimi-nebius-pydantic-meta`). Agents reading §4 after the correct §4.1 note could still provision Anthropic or wait on Nemotron. §4.4 now leads with ICML Nebius defaults; Claude/Nemotron demoted to optional; §4.5 adds Kimi-K2.6 $0.95/$4.00; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**§3.3 + §6.3 ICML Nebius inference architecture (2026-09-02 Tick 316):** Tick 315 fixed §4.4 model tables, but architecture **§3.3** still showed dual-vendor Claude meta + Nebius target, and **§6.3** cost rules still steered agents to a Nemotron target default — agents reading early sections could still provision Anthropic or override live runners away from Kimi. §3.3 now leads with Nebius Kimi meta+target; §6.3 points at `kimi-nebius-target` / `kimi-nebius-pydantic-meta` + ICML ~$20 ceiling; §3.6 budget note Nebius-only for ICML; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

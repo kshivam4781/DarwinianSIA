@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T20:10Z — Tick 316 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-caf2` (recovered tip ← `f7d1` Tick 315)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-f7d1` (Tick 315); local Tick **315** → **316**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 315 fixed §4.4 model tables, but architecture **§3.3** still showed dual-vendor Claude meta + Nebius target, and **§6.3** cost rules still steered agents to a Nemotron target default — agents reading early sections could provision Anthropic or override live runners away from Kimi once secrets land. Highest leverage without paid spend: **§3.3 + §6.3 ICML Nebius inference architecture**.
+
+### What this tick did (ONE step)
+**§3.3 + §6.3 ICML Nebius inference architecture (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `f7d1`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral preflight dirt
+2. §3.3: lead with Nebius Kimi meta+target diagram; Claude/Nemotron demoted to optional/historical
+3. §6.3: replace Nemotron-as-default target rule with `kimi-nebius-target` + `kimi-nebius-pydantic-meta` + ICML ~$20 ceiling; §3.6 budget note Nebius-only for ICML
+4. §4.1/§6.2 tick labels → 316; Section 12 + Section 21 Tick 316 notes; lock test extended; paper + HUMAN_UNBLOCK + READY checklist
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 315) | After (Tick 316) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| §3.3 diagram = Claude meta + Nemotron/Kimi | **yes (misleading)** | **Nebius Kimi meta+target** |
+| §6.3 Nemotron-as-default target rule | **present** | **replaced with ICML Kimi profiles** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T18:15Z — Tick 315 (automation cron)
 
 ### Status snapshot
