@@ -69,14 +69,21 @@ py -3.13 -m venv .venv
 pip install -e ".[dev]" -e "./sia-upstream[dev]"
 ```
 
-Set API keys (copy `.env.example` → `.env`). **ICML live** needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`); `ANTHROPIC_API_KEY` is optional under default Nebius pydantic-ai meta (Tick 289/310). See `docs/ICML_HUMAN_UNBLOCK.md`.
+Set API keys (copy `.env.example` → `.env`). **ICML live** needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`); `ANTHROPIC_API_KEY` is optional under default Nebius pydantic-ai meta (Tick 289/310–312). See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ```bash
-# Required for ICML live (Nebius target + meta/feedback)
-set NEBIUS_API_KEY=your_key_here
+# Linux / macOS / cloud:
+cp .env.example .env   # edit keys
+source scripts/load_env.sh
+
+# Or export directly:
+export NEBIUS_API_KEY=your_key_here
+# export HF_TOKEN=hf_...
 # Optional under Nebius meta:
-# set ANTHROPIC_API_KEY=sk-ant-...
+# export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+Windows PowerShell: `. .\scripts\load_env.ps1`
 
 ### 2. Baseline SIA run (for comparison)
 

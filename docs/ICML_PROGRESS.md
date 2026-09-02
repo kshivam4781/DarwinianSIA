@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T12:15Z — Tick 312 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-e561` (recovered tip ← `de14` Tick 311)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-de14` (Tick 311); local Tick **311** → **312**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 311 closed Windows `load_env.ps1`, but Linux/cloud operators (this cron VM, bash README quick start) still had **no** Nebius-first shell loader — only PowerShell. Same friction class as Tick 292/307–311 for bash. Highest leverage without paid spend: **add `scripts/load_env.sh` twin + wire README/AGENTS/lock**.
+
+### What this tick did (ONE step)
+**load_env.sh Linux/cloud twin (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `de14`; confirmed secrets absent; cron preflight (live blocked)
+2. Added `scripts/load_env.sh` (sourceable; Nebius-first + HF + Anthropic optional; does not override already-set process secrets)
+3. README bash quick start → `source scripts/load_env.sh`; AGENTS.md secrets callout; Section 4.1/6.2 tick labels → 312; Section 12 "Both keys" → Nebius/Anthropic-optional
+4. Lock test `test_env_example_and_section4_anthropic_optional` extended; focused lock+verify green
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 311) | After (Tick 312) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Linux/cloud Nebius-first `.env` loader | **none** (ps1 only) | **`scripts/load_env.sh`** |
+| Focused lock + verify tests | 4/4 | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T10:05Z — Tick 311 (automation cron)
 
 ### Status snapshot

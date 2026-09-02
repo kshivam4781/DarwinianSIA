@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-02T06:15:00Z",
-  "tick": 309,
+  "updated_at": "2026-09-02T12:15:00Z",
+  "tick": 312,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
@@ -166,7 +166,7 @@
     "Accept HuggingFace Idavidrein/gpqa terms (or drop local gpqa_diamond.csv)"
   ],
   "next_live_command": "bash scripts/icml_cron_entry.sh",
-  "notes": "Tick 310: README + Section 6.2 + Section 21 Tick 24/25/30 Anthropic-optional (closes leftover after Tick 309). Tick 309: .env.example + Section 4.1 Anthropic-optional. Tick 308: required_secrets / external_actions Anthropic-optional (Tick 289/292/307); verify_keys.py matches. Tick 267: Verified Tick 265\u2013266 bootstraps on SYSTEM boot (uv + huggingface_hub + SIA PYTHONPATH); G2/G3/G4/pipeline preflight ready_for_live=False only for API keys + synthetic diamond (HF fetch). AGENT build 0eb37243 SUCCEEDED (uv 0.12.7) + proposed. Secrets remain the READY blocker.",
+  "notes": "Tick 312: scripts/load_env.sh Linux/cloud twin (Nebius-first + HF; Anthropic optional) + README/AGENTS. Tick 311: load_env.ps1 Anthropic-optional. Tick 310: README + Section 6.2 + Section 21 Tick 24/25/30 Anthropic-optional (closes leftover after Tick 309). Tick 309: .env.example + Section 4.1 Anthropic-optional. Tick 308: required_secrets / external_actions Anthropic-optional (Tick 289/292/307); verify_keys.py matches. Tick 267: Verified Tick 265\u2013266 bootstraps on SYSTEM boot (uv + huggingface_hub + SIA PYTHONPATH); G2/G3/G4/pipeline preflight ready_for_live=False only for API keys + synthetic diamond (HF fetch). AGENT build 0eb37243 SUCCEEDED (uv 0.12.7) + proposed. Secrets remain the READY blocker.",
   "supersedes_builds": [
     "bld-20260829-5a2d7f34-b175-4963-91b5-5e349e5846e2",
     "bld-20260829-ec92739d-c9b7-4b8c-a9b2-3c2a405b1b0a",

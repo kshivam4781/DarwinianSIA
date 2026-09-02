@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–311: .env.example + §4.1/6.2/21 + README + load_env.ps1 Anthropic-optional."""
+    """Tick 309–312: .env.example + §4.1/6.2/21 + README + load_env.ps1/.sh Anthropic-optional."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -923,7 +923,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
 
     master = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
     # Section 4.1 ICML note: Anthropic optional; Nebius covers meta under Tick 289+.
-    assert "ICML Thesis 1 (Tick 289/308/309/310)" in master
+    assert "ICML Thesis 1 (Tick 289/308/309/310/311/312)" in master
     assert "do **not** wait on Anthropic" in master
     # Tick 310: Section 6.2 + Section 21 Tick 24/25/30 must not hard-pair Anthropic+Nebius.
     assert "hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`" not in master
@@ -936,7 +936,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–310)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–312)" in master
     # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
     paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
     assert (
@@ -948,6 +948,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "set ANTHROPIC_API_KEY=your_key_here" not in readme
     assert "NEBIUS_API_KEY" in readme
     assert "optional" in readme.lower()
+    assert "load_env.sh" in readme
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
@@ -960,6 +961,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         "load_env.ps1 must report NEBIUS before Anthropic status lines"
     )
     assert "ANTHROPIC_API_KEY: missing" not in load_env
+    # Tick 312: Linux/cloud twin load_env.sh — same Nebius-first / Anthropic-optional.
+    load_sh = (root / "scripts" / "load_env.sh").read_text(encoding="utf-8")
+    assert "NEBIUS_API_KEY" in load_sh
+    assert "HF_TOKEN" in load_sh
+    assert "optional" in load_sh.lower()
+    nebius_sh = load_sh.find("NEBIUS_API_KEY")
+    anth_sh = load_sh.find("ANTHROPIC_API_KEY: SET")
+    assert nebius_sh >= 0 and anth_sh > nebius_sh, (
+        "load_env.sh must report NEBIUS before Anthropic status lines"
+    )
+    assert "ANTHROPIC_API_KEY: missing" not in load_sh
+    assert "source scripts/load_env.sh" in load_sh or ". scripts/load_env.sh" in load_sh
 
 
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:

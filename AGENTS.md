@@ -12,6 +12,8 @@ That document is the single source of truth for CABS architecture, APIs, hardwar
 
 Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*` or live runners.
 
+**Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
+
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
 2. Run the **single cron entry** (Tick 271/272) — tip recover + secrets gate + live or preflight:
 

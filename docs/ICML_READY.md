@@ -344,6 +344,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 309 `.env.example` + Section 4.1 Anthropic-optional — `.env.example` comments Anthropic / leads with Nebius; Section 4.1 ICML note; paper Tick-30 stale claim fixed; `test_env_example_and_section4_anthropic_optional`
 - [x] Tick 310 README + §6.2/§21 Anthropic-optional — README Nebius-first; Section 6.2 gate + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended
 - [x] Tick 311 load_env.ps1 Anthropic-optional — `scripts/load_env.ps1` Nebius-first + HF_TOKEN status; Anthropic marked optional (not bare "missing"); lock test extended
+- [x] Tick 312 load_env.sh Linux/cloud twin — `scripts/load_env.sh` Nebius-first + HF status; Anthropic optional; README + AGENTS + lock test; bash parity with Tick 311
 
 ## Gate tracker (Section 21.5)
 
