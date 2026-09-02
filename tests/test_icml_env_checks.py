@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309: .env.example + Section 4.1 must not hard-require Anthropic for ICML live."""
+    """Tick 309/310: .env.example + Section 4.1/6.2/21 + README must not hard-require Anthropic."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -921,16 +921,33 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # Must not lead with legacy "Required — Meta + Feedback (Claude)" framing.
     assert "Required — Meta + Feedback agents (Claude SDK)" not in env_example
 
-    section4 = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
+    master = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
     # Section 4.1 ICML note: Anthropic optional; Nebius covers meta under Tick 289+.
-    assert "ICML Thesis 1 (Tick 289/308/309)" in section4
-    assert "do **not** wait on Anthropic" in section4
+    assert "ICML Thesis 1 (Tick 289/308/309/310)" in master
+    assert "do **not** wait on Anthropic" in master
+    # Tick 310: Section 6.2 + Section 21 Tick 24/25/30 must not hard-pair Anthropic+Nebius.
+    assert "hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`" not in master
+    assert (
+        "when `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted dataset access) are present"
+        not in master
+    )
+    assert (
+        "Live still blocked on `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN`"
+        not in master
+    )
+    assert "**Gate:** Both keys set before any paid run." not in master
+    assert "Gate (ICML Thesis 1 / Tick 289–310)" in master
     # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
     paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
     assert (
         "live still blocked on missing `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` / `HF_TOKEN`"
         not in paper
     )
+    # Tick 310: README quick start must not sole-require Anthropic.
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "set ANTHROPIC_API_KEY=your_key_here" not in readme
+    assert "NEBIUS_API_KEY" in readme
+    assert "optional" in readme.lower()
 
 
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:

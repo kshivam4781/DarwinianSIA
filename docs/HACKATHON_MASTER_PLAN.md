@@ -285,7 +285,7 @@ Post-hackathon
 | `HF_TOKEN` | HuggingFace | GPQA diamond `--fetch-diamond` (**or** local `gpqa_diamond.csv`) | https://huggingface.co/settings/tokens — accept `Idavidrein/gpqa` |
 | `ANTHROPIC_API_KEY` | Anthropic | **Optional** under Nebius pydantic-ai meta; required only if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) | https://console.anthropic.com |
 
-**ICML Thesis 1 (Tick 289/308/309):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md` and `.env.example`.
+**ICML Thesis 1 (Tick 289/308/309/310):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, and README quick start.
 
 **Set in PowerShell (session):**
 ```powershell
@@ -409,10 +409,11 @@ Same pattern for `venv_pip_path`.
 
 | Missing key | What breaks |
 |-------------|-------------|
-| `ANTHROPIC_API_KEY` | Meta + Feedback agents fail at startup |
-| `NEBIUS_API_KEY` | Target agent fails if using Nebius profiles |
+| `NEBIUS_API_KEY` | **ICML live default:** Target + Meta/Feedback (Kimi / Nebius pydantic-ai) fail |
+| `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
+| `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate:** Both keys set before any paid run.
+**Gate (ICML Thesis 1 / Tick 289–310):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -880,7 +881,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML prepare_* Anthropic-optional Next (Tick 307) | **DONE** | `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` Next lines use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode) |
 | ICML verify_keys + portal_save Anthropic-optional (Tick 308) | **DONE** | `verify_keys.py` Anthropic SKIP under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional) |
 | ICML `.env.example` + Section 4.1 Anthropic-optional (Tick 309) | **DONE** | `.env.example` comments Anthropic; Section 4.1 ICML note (Nebius required; Anthropic optional); paper Tick-30 stale claim fixed; focused lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–309 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML README + §6.2/§21 Anthropic-optional (Tick 310) | **DONE** | README Nebius-first; Section 6.2 + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–310 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1727,9 +1729,9 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Post-steering case-study H2 (2026-08-05 Tick 23):** Prior case studies reported gen2 preferred share (often ~0.25), but delay-all keeps gen1→gen2 fair — so that understated H2. `extract_case_study` now measures preferred DNA share at gen≥3 (first steered generation), prefers multi-allele + fitness-aligned contradictions, and re-pilots `1830–1834` / `1840–1844` → same PRIMARY/H5 offline rates; case study `run_1840` shows `tool_strategy=selective` share **0.25→0.5→0.75** (gen1/2/3) with lift **+0.0436**. Live G2–G4 still blocked (no API keys; GPQA diamond gated on HuggingFace).
 
-**Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`, refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when secrets + real GPQA diamond are present.
+**Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without required secrets (Tick 289/310: `NEBIUS_API_KEY`; `ANTHROPIC_API_KEY` only when meta is anthropic), refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when `NEBIUS` + HF/CSV + real GPQA diamond are present.
 
-**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted dataset access) are present.
+**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV) are present (Anthropic optional under Nebius meta; Tick 289/310).
 
 **Live G3 sequential pilot runner (2026-08-06 Tick 26):** `scripts/run_g3_pilot.py` turns Gate G3 into a single entrypoint (`--preflight-only` / `--live`). Enforces Section 21.5 shape (1–2 seeds; Nebius budget-fit via `icml_g3g4_live_shape()` — currently `eval_subset=5`, `pop=4`, `elite=2`, `max_gen≤6`; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5), runs Condition **B then D serially** (hard-stop against parallel full GPQA), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G3_PAIR_ESTIMATE_USD` × n_pairs ≤ ceiling). After a live pair, scores `compare_b_vs_d` + Condition D H5 and refreshes `docs/gate3_report.md` while preserving the offline pilot block. Preflight this tick: live ready **no**. Next after G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`.
 
@@ -1739,7 +1741,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot is promising (any D gens/cost/final win or H5 ρ>0.3) unless `--force-g4`. Preferred live entry: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
 
-**Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. Live still blocked on `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY` + `HF_TOKEN` (accepted `Idavidrein/gpqa`).
+**Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. **Tick 289/310:** live blocked on `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV); `ANTHROPIC_API_KEY` optional under Nebius pydantic-ai meta (accepted `Idavidrein/gpqa` when using HF).
 
 **Re-linked Cursor environment (2026-08-06 Tick 31):** Tick 30 draft was **not** attached to the automation — cron `bf9c` again booted with `environment: null`. Re-created personal transitional draft `4b2bb39a-917e-11f1-ba66-0e7d0216e441`; build `bld-20260806-933779ed-21cd-4af0-a9f5-d66af114146c` **SUCCEEDED** and was proposed for Portal Save. User must Save that env onto automation `bf73dff3-8f7a-11f1-a7d1-d6b4613131ce` and inject secrets, or every future cron will repeat the null-env boot.
 
@@ -2288,3 +2290,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **verify_keys + portal_save_target Anthropic-optional (2026-09-02 Tick 308):** Tick 307 closed prepare_*, but `scripts/verify_keys.py` still treated Anthropic as a required FAIL under Nebius meta, and `docs/icml_portal_save_target.json` listed `ANTHROPIC_API_KEY` in `required_secrets`. `verify_keys` now uses `icml_meta_requires_anthropic` (SKIP when optional); portal target moves Anthropic to `optional_secrets` and points `next_live_command` at `bash scripts/icml_cron_entry.sh`. Focused **5/5**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **`.env.example` + Section 4.1 Anthropic-optional (2026-09-02 Tick 309):** Tick 308 closed verify_keys/portal_save, but operators copying `.env.example` or reading Section 4.1 still saw Anthropic as **Required — Meta + Feedback (Claude SDK)** while Nebius was target-only — delaying live until a third vendor key. `.env.example` now comments Anthropic and leads with Nebius; Section 4.1 documents ICML Nebius-meta optionality; paper_artifacts Tick-30 stale Anthropic-hard-required claim fixed; lock test `test_env_example_and_section4_anthropic_optional`. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**README + Section 6.2 / Section 21 Anthropic-optional (2026-09-02 Tick 310):** Tick 309 closed `.env.example` + Section 4.1, but README still sole-set `ANTHROPIC_API_KEY`, Section 6.2 gated "Both keys", and Section 21 Tick 24/25/30 notes still said live hard-stops / blocked on `ANTHROPIC + NEBIUS (+ HF)`. Those operator surfaces now match Tick 289 (Nebius required; Anthropic optional); lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
