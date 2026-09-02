@@ -882,7 +882,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML verify_keys + portal_save Anthropic-optional (Tick 308) | **DONE** | `verify_keys.py` Anthropic SKIP under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional) |
 | ICML `.env.example` + Section 4.1 Anthropic-optional (Tick 309) | **DONE** | `.env.example` comments Anthropic; Section 4.1 ICML note (Nebius required; Anthropic optional); paper Tick-30 stale claim fixed; focused lock test |
 | ICML README + §6.2/§21 Anthropic-optional (Tick 310) | **DONE** | README Nebius-first; Section 6.2 + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–310 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML load_env.ps1 Anthropic-optional (Tick 311) | **DONE** | `scripts/load_env.ps1` Nebius-first + HF status; Anthropic marked optional; lock test extended |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–311 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2292,3 +2293,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **`.env.example` + Section 4.1 Anthropic-optional (2026-09-02 Tick 309):** Tick 308 closed verify_keys/portal_save, but operators copying `.env.example` or reading Section 4.1 still saw Anthropic as **Required — Meta + Feedback (Claude SDK)** while Nebius was target-only — delaying live until a third vendor key. `.env.example` now comments Anthropic and leads with Nebius; Section 4.1 documents ICML Nebius-meta optionality; paper_artifacts Tick-30 stale Anthropic-hard-required claim fixed; lock test `test_env_example_and_section4_anthropic_optional`. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **README + Section 6.2 / Section 21 Anthropic-optional (2026-09-02 Tick 310):** Tick 309 closed `.env.example` + Section 4.1, but README still sole-set `ANTHROPIC_API_KEY`, Section 6.2 gated "Both keys", and Section 21 Tick 24/25/30 notes still said live hard-stops / blocked on `ANTHROPIC + NEBIUS (+ HF)`. Those operator surfaces now match Tick 289 (Nebius required; Anthropic optional); lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**load_env.ps1 Anthropic-optional (2026-09-02 Tick 311):** Tick 310 closed README + §6.2/§21, but `scripts/load_env.ps1` still listed Anthropic first with bare `ANTHROPIC_API_KEY: missing` and omitted HF — Windows `.env` load still looked Anthropic-gated. Now Nebius-first + HF status + Anthropic optional; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

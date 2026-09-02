@@ -343,6 +343,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 308 verify_keys + portal_save_target Anthropic-optional — `verify_keys.py` SKIP Anthropic under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional); focused **5/5**
 - [x] Tick 309 `.env.example` + Section 4.1 Anthropic-optional — `.env.example` comments Anthropic / leads with Nebius; Section 4.1 ICML note; paper Tick-30 stale claim fixed; `test_env_example_and_section4_anthropic_optional`
 - [x] Tick 310 README + §6.2/§21 Anthropic-optional — README Nebius-first; Section 6.2 gate + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended
+- [x] Tick 311 load_env.ps1 Anthropic-optional — `scripts/load_env.ps1` Nebius-first + HF_TOKEN status; Anthropic marked optional (not bare "missing"); lock test extended
 
 ## Gate tracker (Section 21.5)
 

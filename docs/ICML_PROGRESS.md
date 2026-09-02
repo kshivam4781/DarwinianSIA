@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T10:05Z — Tick 311 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-tick311` (from tip `2e79` Tick 310)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-2e79` (Tick 310); local Tick **310** → **311**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 310 closed README + §6.2/§21 Anthropic pairing, but `scripts/load_env.ps1` still listed **Anthropic first** with bare `ANTHROPIC_API_KEY: missing` and omitted HF — Windows operators loading `.env` after Tick 309's Nebius-first example would still see Anthropic as the primary failure. Same friction class as Tick 292/307–310. Highest leverage without paid spend: **finish Anthropic-optional on load_env.ps1**.
+
+### What this tick did (ONE step)
+**load_env.ps1 Anthropic-optional (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `2e79`; confirmed secrets absent; cron preflight (live blocked)
+2. `scripts/load_env.ps1`: Nebius-first status; HF_TOKEN / HUGGINGFACE_HUB_TOKEN line; Anthropic marked optional (no bare "missing")
+3. Lock test `test_env_example_and_section4_anthropic_optional` extended; focused **4/4** (env + verify_keys)
+4. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 310) | After (Tick 311) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| load_env.ps1 Anthropic-first "missing" | **yes** | **Nebius-first; Anthropic optional; HF shown** |
+| Focused lock + verify tests | 5/5 | **4/4** green |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T08:20Z — Tick 310 (automation cron)
 
 ### Status snapshot

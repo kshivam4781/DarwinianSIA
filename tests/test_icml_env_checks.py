@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309/310: .env.example + Section 4.1/6.2/21 + README must not hard-require Anthropic."""
+    """Tick 309–311: .env.example + §4.1/6.2/21 + README + load_env.ps1 Anthropic-optional."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -948,6 +948,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "set ANTHROPIC_API_KEY=your_key_here" not in readme
     assert "NEBIUS_API_KEY" in readme
     assert "optional" in readme.lower()
+    # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
+    load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
+    assert "NEBIUS_API_KEY" in load_env
+    assert "HF_TOKEN" in load_env
+    assert "optional" in load_env.lower()
+    # Status lines must lead with Nebius, not Anthropic-first "missing" framing.
+    nebius_pos = load_env.find("NEBIUS_API_KEY")
+    anth_status_pos = load_env.find("ANTHROPIC_API_KEY: SET")
+    assert nebius_pos >= 0 and anth_status_pos > nebius_pos, (
+        "load_env.ps1 must report NEBIUS before Anthropic status lines"
+    )
+    assert "ANTHROPIC_API_KEY: missing" not in load_env
 
 
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
