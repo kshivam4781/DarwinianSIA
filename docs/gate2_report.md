@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-09-02T02:06:45Z
+**Timestamp:** 2026-09-02T04:05:54Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -20,7 +20,7 @@
 | `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
-| `tip_ok_for_live` | yes | local Tick 307 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-c164 |
+| `tip_ok_for_live` | yes | local Tick 308 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-dde0 |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no

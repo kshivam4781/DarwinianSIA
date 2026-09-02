@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-08-29T20:14:00Z",
-  "tick": 268,
+  "updated_at": "2026-09-02T04:10:00Z",
+  "tick": 308,
   "build_status": "SUCCEEDED",
   "proposed_for_portal_save": true,
   "automation_id": "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce",
@@ -154,17 +154,19 @@
     "0ed19edd-916e-11f1-ba66-0e7d0216e441"
   ],
   "required_secrets": [
-    "ANTHROPIC_API_KEY",
     "NEBIUS_API_KEY",
     "HF_TOKEN"
   ],
+  "optional_secrets": [
+    "ANTHROPIC_API_KEY"
+  ],
   "external_actions": [
     "Portal Save proposed env 31d13f14-9d04-11f1-a7d1-d6b4613131ce / build 0eb37243 onto automation bf73dff3 (optional warm boot)",
-    "Add ANTHROPIC_API_KEY, NEBIUS_API_KEY, HF_TOKEN",
-    "Accept HuggingFace Idavidrein/gpqa terms"
+    "Add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv); ANTHROPIC_API_KEY optional under Tick 289 Nebius pydantic-ai meta (required only if ICML_META_AGENT_PROFILE=default-meta)",
+    "Accept HuggingFace Idavidrein/gpqa terms (or drop local gpqa_diamond.csv)"
   ],
-  "next_live_command": "python scripts/run_icml_live_pipeline.py --live --fetch-diamond",
-  "notes": "Tick 267: Verified Tick 265\u2013266 bootstraps on SYSTEM boot (uv + huggingface_hub + SIA PYTHONPATH); G2/G3/G4/pipeline preflight ready_for_live=False only for API keys + synthetic diamond (HF fetch). AGENT build 0eb37243 SUCCEEDED (uv 0.12.7) + proposed. Secrets remain the READY blocker.",
+  "next_live_command": "bash scripts/icml_cron_entry.sh",
+  "notes": "Tick 308: required_secrets / external_actions Anthropic-optional (Tick 289/292/307); verify_keys.py matches. Tick 267: Verified Tick 265\u2013266 bootstraps on SYSTEM boot (uv + huggingface_hub + SIA PYTHONPATH); G2/G3/G4/pipeline preflight ready_for_live=False only for API keys + synthetic diamond (HF fetch). AGENT build 0eb37243 SUCCEEDED (uv 0.12.7) + proposed. Secrets remain the READY blocker.",
   "supersedes_builds": [
     "bld-20260829-5a2d7f34-b175-4963-91b5-5e349e5846e2",
     "bld-20260829-ec92739d-c9b7-4b8c-a9b2-3c2a405b1b0a",

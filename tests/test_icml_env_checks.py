@@ -882,6 +882,24 @@ def test_icml_human_required_secrets_phrase_anthropic_optional(
     assert anth.startswith("ANTHROPIC_API_KEY + NEBIUS_API_KEY")
 
 
+def test_portal_save_target_anthropic_optional() -> None:
+    """Tick 308: portal_save_target must not hard-require Anthropic under Nebius meta."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "docs" / "icml_portal_save_target.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    required = data.get("required_secrets") or []
+    optional = data.get("optional_secrets") or []
+    assert "NEBIUS_API_KEY" in required
+    assert "ANTHROPIC_API_KEY" not in required
+    assert "ANTHROPIC_API_KEY" in optional
+    actions = " | ".join(data.get("external_actions") or [])
+    assert "ANTHROPIC_API_KEY, NEBIUS_API_KEY, HF_TOKEN" not in actions
+    assert "optional" in actions.lower()
+    assert "NEBIUS_API_KEY" in actions
+
+
 def test_icml_g3g4_nebius_budget_fit_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tick 293–296: Nebius budget-fit; pop4 diversity; max_gen6; Anthropic historical."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
