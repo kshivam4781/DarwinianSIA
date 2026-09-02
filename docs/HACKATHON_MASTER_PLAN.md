@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-01 (Section 21 ICML; Tick 304 offline Bvd defaults←live shape; Tick 303 G3/G4 direct-live shape locks; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-02 (Section 21 ICML; Tick 317 §13/§18/§21.7 Kimi command surfaces; Tick 316 §3.3/§6.3; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -290,7 +290,7 @@ Post-hackathon
 | `HF_TOKEN` | HuggingFace | GPQA diamond `--fetch-diamond` (**or** local `gpqa_diamond.csv`) | https://huggingface.co/settings/tokens — accept `Idavidrein/gpqa` |
 | `ANTHROPIC_API_KEY` | Anthropic | **Optional** under Nebius pydantic-ai meta; required only if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) | https://console.anthropic.com |
 
-**ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314/315/316):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
+**ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314/315/316/317):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
 
 **Set in PowerShell (session):**
 ```powershell
@@ -425,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–316):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–317):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -609,14 +609,20 @@ A flat score + high knowledge gain is a **feature** for methodology track.
 
 ### Phase 2 — Submission runs (~12–20 hours wall time)
 
-```powershell
-# Baseline
-sia run --task gpqa --max_gen 5 --run_id baseline_gpqa_5 --no-web `
-  --target-agent-profile nemotron-nebius-target
+**ICML Thesis 1 (Tick 317):** prefer `bash scripts/icml_cron_entry.sh` / `run_icml_live_pipeline.py` (injects Kimi meta+target). Manual examples below use ICML defaults — do **not** spend on Nemotron for the ~$20 G2→G4 ceiling.
 
-# CABS
-sia-cabs run --task gpqa --max_gen 5 --run_id cabs_gpqa_5 --no-web `
-  --target-agent-profile nemotron-nebius-target
+```powershell
+# Baseline (darwinian-only Condition B shape)
+sia run --task gpqa --darwinian --max_gen 6 --run_id 1201 --no-web `
+  --eval_subset 5 --population_size 4 --elite_count 2 `
+  --meta-agent-profile kimi-nebius-pydantic-meta `
+  --target-agent-profile kimi-nebius-target
+
+# CABS / Condition D
+sia run --task gpqa --darwinian --cabs --cabs-inline --max_gen 6 --run_id 1301 --no-web `
+  --eval_subset 5 --population_size 4 --elite_count 2 `
+  --meta-agent-profile kimi-nebius-pydantic-meta `
+  --target-agent-profile kimi-nebius-target
 ```
 
 **Gate:** One full story arc (belief → contradiction → research question → gen N+1 addresses it).
@@ -905,7 +911,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML Section 12 cloud secrets honesty (Tick 314) | **DONE** | Section 12 no longer claims NEBIUS/Anthropic **DONE** for cloud; HF/CSV row; §4.1/§6.2 tick labels → 314; lock test |
 | ICML Section 4.4 Nebius model defaults (Tick 315) | **DONE** | §4.4 lists `kimi-nebius-pydantic-meta` + `kimi-nebius-target` as ICML defaults (not Anthropic/`nemotron` TO-BE-CREATED); §4.5 Kimi-K2.6 $0.95/$4.00; lock test |
 | ICML §3.3 + §6.3 Nebius inference architecture (Tick 316) | **DONE** | §3.3 diagram + §6.3 rules lead with Nebius Kimi (not Claude meta + Nemotron-as-default target); budget note Nebius-only; lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–316 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML §13/§18/§21.7 Kimi command surfaces (Tick 317) | **DONE** | Exact run commands + Phase 2 + Section 18 handoff + §21.7 bare `sia run` examples use `kimi-nebius-*` profiles (not Nemotron-only copy-paste); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–317 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -916,7 +923,26 @@ Computed in `cabs/belief_engine.py`:
 
 ## 13. Exact run commands reference
 
-### Smoke (Phase 0) — complete
+### ICML Thesis 1 live default (Tick 288/289/317) — prefer this
+
+Paid G2→G4 uses Nebius Kimi for **both** meta and target. Do **not** copy historical Nemotron/Qwen smoke lines below for ICML spend.
+
+```bash
+# Single cron entry (recovers tip; auto-live when NEBIUS + HF/CSV present)
+bash scripts/icml_cron_entry.sh
+
+# Or explicit live stack (same profiles the runners inject)
+python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+
+# Manual Condition D example (unused run_id; keys + real diamond + budget check)
+sia run --task gpqa --darwinian --cabs --cabs-inline \
+  --population_size 4 --elite_count 2 --max_gen 6 \
+  --run_id 1301 --eval_subset 5 --no-web --seed 1 \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
+```
+
+### Historical hackathon smoke (Phase 0) — complete; not ICML live defaults
 ```powershell
 cd c:\Users\MSPSA\Documents\SIA2
 .\.venv\Scripts\Activate.ps1
@@ -929,19 +955,20 @@ sia-cabs run --task longcot-chess --max_gen 1 --run_id 902 --no-web `
   --target-agent-profile qwen-nebius-target
 ```
 
-### Validation (Phase 1)
+### Historical validation (Phase 1) — optional alternate target
 ```powershell
 sia-cabs run --task longcot-chess --max_gen 3 --run_id 903 --no-web `
   --target-agent-profile nemotron-nebius-target
 ```
 
-### Submission (Phase 2)
+### ICML / submission-shaped GPQA (Phase 2) — use Kimi profiles
 ```powershell
-sia run --task gpqa --max_gen 5 --run_id 910 --no-web `
-  --target-agent-profile nemotron-nebius-target
-
-sia-cabs run --task gpqa --max_gen 5 --run_id 911 --no-web `
-  --target-agent-profile nemotron-nebius-target
+# Prefer scripts/run_icml_live_pipeline.py for B vs D under budget.
+# Manual single-condition example (pick unused integer run_id):
+sia run --task gpqa --darwinian --cabs --cabs-inline --max_gen 6 --run_id 911 --no-web `
+  --eval_subset 5 --population_size 4 --elite_count 2 `
+  --meta-agent-profile kimi-nebius-pydantic-meta `
+  --target-agent-profile kimi-nebius-target
 ```
 
 ### Inspect results
@@ -1073,7 +1100,7 @@ When adding new profiles, blockers, or changing task/budget policy — update th
 
 1. **SIA2 → SIA:** Export `belief_store/research_questions.json` topics that map to DNA fields (`planning_style`, `tool_strategy`, `memory`, etc.).
 2. **SIA → SIA2:** Copy `civilization.json` after each darwinian run; CABS `belief_extractor` ingests trait_insights as beliefs.
-3. **Shared:** Same task (`gpqa`), same target profile (`nemotron-nebius-target`), same `--run_id` numbering convention (integers).
+3. **Shared:** Same task (`gpqa`), same ICML profiles (`kimi-nebius-target` + `kimi-nebius-pydantic-meta`; Tick 288/289/317), same `--run_id` numbering convention (integers). Historical hackathon handoffs may still cite `nemotron-nebius-target` as an optional alternate.
 
 ---
 
@@ -1656,12 +1683,16 @@ python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond   # keys + H
 # 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
 sia run --task gpqa --darwinian --cabs --cabs-inline \
   --population_size 2 --elite_count 1 --max_gen 2 \
-  --run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42
+  --run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42 \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
 
 # 2) Live G2 smoke (drop --dry-run; unused run_id; keys + real GPQA + budget check)
 sia run --task gpqa --darwinian --cabs --cabs-inline \
   --population_size 2 --elite_count 1 --max_gen 2 \
-  --run_id 1300 --eval_subset 5 --no-web --seed 1
+  --run_id 1300 --eval_subset 5 --no-web --seed 1 \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
 
 # 3) Preferred G3 entrypoint (Tick 26) — sequential B then D; never parallel
 python scripts/run_g3_pilot.py --preflight-only --seeds 1 --b-run-ids 1201 --d-run-ids 1301
@@ -1677,14 +1708,18 @@ python scripts/run_g4_multiseed.py --live \
 python scripts/run_icml_live_pipeline.py --preflight-only
 python scripts/run_icml_live_pipeline.py --live --fetch-diamond
 
-# Condition B — darwinian-only (example IDs — pick unused integers)
+# Condition B — darwinian-only (example IDs — pick unused integers; Tick 317 profiles)
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
-  --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1
+  --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1 \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
 
 # Condition D — G3-shaped pilot (Tick 296 Nebius budget-fit; pop4×eval5×max_gen6)
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
   --max_gen 6 --run_id 1301 --eval_subset 5 --no-web --seed 1 \
-  --cabs --cabs-inline
+  --cabs --cabs-inline \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
 ```
 
 ### 21.8 Artifact paths
@@ -2327,3 +2362,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Section 4.4 ICML Nebius model defaults (2026-09-02 Tick 315):** Tick 314 fixed Section 12 key honesty, but **§4.4 Approved model assignment** still listed Anthropic `default-meta` + Nemotron as the universal default table (Nemotron profile marked as unfinished Phase-0 work), contradicting Tick 288/289 live profiles (`kimi-nebius-target` + `kimi-nebius-pydantic-meta`). Agents reading §4 after the correct §4.1 note could still provision Anthropic or wait on Nemotron. §4.4 now leads with ICML Nebius defaults; Claude/Nemotron demoted to optional; §4.5 adds Kimi-K2.6 $0.95/$4.00; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **§3.3 + §6.3 ICML Nebius inference architecture (2026-09-02 Tick 316):** Tick 315 fixed §4.4 model tables, but architecture **§3.3** still showed dual-vendor Claude meta + Nebius target, and **§6.3** cost rules still steered agents to a Nemotron target default — agents reading early sections could still provision Anthropic or override live runners away from Kimi. §3.3 now leads with Nebius Kimi meta+target; §6.3 points at `kimi-nebius-target` / `kimi-nebius-pydantic-meta` + ICML ~$20 ceiling; §3.6 budget note Nebius-only for ICML; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**§13/§18/§21.7 ICML Kimi command surfaces (2026-09-02 Tick 317):** Tick 316 closed architecture/cost docs, but **Section 13 Exact run commands**, Phase 2 examples, Section 18 handoff, and bare §21.7 `sia run` lines still copy-pasted **Nemotron/Qwen targets without meta profile** — agents launching manual GPQA after secrets land would burn the ~$20 ceiling on the wrong stack. §13 now leads with cron/pipeline + Kimi profiles; Phase 2 / §18 / §21.7 B/D examples carry `kimi-nebius-pydantic-meta` + `kimi-nebius-target`; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

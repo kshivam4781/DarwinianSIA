@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T22:10Z — Tick 317 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-9ee7` (recovered tip ← `caf2` Tick 316)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-caf2` (Tick 316); local Tick **316** → **317**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 316 fixed §3.3/§6.3 architecture, but **Section 13 Exact run commands**, Phase 2 examples, Section 18 handoff, and bare §21.7 `sia run` lines still steered copy-paste operators to **Nemotron/Qwen targets without Kimi meta** — once secrets land, manual launches would miss the Tick 288/289 stack the runners inject. Highest leverage without paid spend: **§13/§18/§21.7 ICML Kimi command surfaces**.
+
+### What this tick did (ONE step)
+**§13/§18/§21.7 ICML Kimi command surfaces (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `caf2`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral preflight dirt
+2. §13: lead with cron/pipeline + Kimi meta/target; demote Phase 0/1 Nemotron/Qwen to historical; Phase 2 → Kimi
+3. Phase 2 submission examples + Section 18 shared handoff + §21.7 B/D/`sia run` examples carry both profiles
+4. §4.1/§6.2 tick labels → 317; Section 12 + Section 21 Tick 317 notes; lock test extended; paper + READY checklist
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 316) | After (Tick 317) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| §13 Phase 2 = Nemotron-only GPQA | **yes (misleading)** | **Kimi meta+target + cron lead** |
+| §18 handoff / §21.7 bare sia = Nemotron / no meta | **yes** | **`kimi-nebius-*` on both** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T20:10Z — Tick 316 (automation cron)
 
 ### Status snapshot
