@@ -339,6 +339,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 304 offline Bvd CLI defaults←live shape — `offline_bvd_case_study` defaults from `icml_g3g4_live_shape()`; refuse divergent shape unless `--allow-shape-override` (prevents future re-pilot drift vs Tick 300–302 locks); focused offline+env **5/5**
 - [x] Tick 305 G3/G4 direct-live tip lineage guard — `run_g3_pilot` / `run_g4_multiseed` preflight `ready_for_live` requires `tip_ok_for_live` (closes pipeline-only bypass from Tick 269); `--allow-stale-tip` escape; focused g3+g4 **25/25**
 - [x] Tick 306 G2 direct-live tip lineage guard — `run_g2_smoke` preflight `ready_for_live` requires `tip_ok_for_live` (closes remaining direct-live tip bypass after Tick 305); `--allow-stale-tip` escape; focused g2 **14/14**
+- [x] Tick 307 prepare_* Anthropic-optional Next messaging — `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode); focused prepare **11/11**
 
 ## Gate tracker (Section 21.5)
 

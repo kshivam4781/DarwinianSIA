@@ -4,6 +4,40 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-02T02:15Z — Tick 307 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-dde0` (recovered tip ← `c164` Tick 306)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork build `0c356ac1`); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-c164` (Tick 306); local Tick **306** → **307**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tip/recipe/offline live-path guards are closed through Tick 306. Separately, Tick 292 fixed gate/cron human secrets phrasing, but `prepare_gpqa_diamond.py` / `prepare_gpqa_smoke_data.py` Next lines still hard-coded `ANTHROPIC_API_KEY + NEBIUS_API_KEY` — operators following materialize docs would wait on an optional third key before unblocking live. Highest leverage without paid spend: **finish Tick 292 Anthropic-optional messaging in prepare_***.
+
+### What this tick did (ONE step)
+**Prepare_* Anthropic-optional Next messaging (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `c164`; confirmed secrets absent; ran cron preflight (live blocked)
+2. `live_g2_next_steps_message()` in both prepare scripts calls `icml_human_required_secrets_phrase(for_fetch_diamond=True)`
+3. Tests: `test_live_g2_next_steps_anthropic_optional` (diamond + smoke); focused prepare **11/11**
+4. Refreshed gate/pipeline preflight reports; secrets setup actions re-filed; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 306) | After (Tick 307) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| prepare_* Next hard-demands Anthropic | **yes** (Tick 292 leftover) | **no** (phrase helper) |
+| Focused tests (prepare) | 9 | **11/11** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-02T00:15Z — Tick 306 (automation cron)
 
 ### Status snapshot

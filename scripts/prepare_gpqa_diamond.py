@@ -36,11 +36,31 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from icml_env_checks import icml_human_required_secrets_phrase  # noqa: E402
 
 DEFAULT_ROOTS = ("SIA", "sia-upstream")
 HF_REPO_ID = "Idavidrein/gpqa"
 HF_FILENAME = "gpqa_diamond.csv"
 SOURCE_TAG = "gpqa_diamond"
+
+
+def live_g2_next_steps_message() -> str:
+    """Operator Next lines after diamond materialize (Tick 307 / Tick 292 phrase).
+
+    Tick 292 fixed gate/cron human text, but this script still hard-coded
+    ``ANTHROPIC_API_KEY + NEBIUS_API_KEY`` — operators waited on an optional key.
+    """
+    secrets = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    return (
+        "\nNext:\n"
+        "  python scripts/run_g2_smoke.py --preflight-only --run-id 1850\n"
+        f"  # when {secrets} present:\n"
+        "  python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond\n"
+        "  # or: bash scripts/icml_cron_entry.sh\n"
+    )
 
 TASK_MD = """# GPQA Diamond (local materialization)
 
@@ -327,12 +347,7 @@ def main(argv: list[str] | None = None) -> int:
     print("GPQA diamond fixture ready (do not commit JSON):")
     for p in wrote:
         print(f"  {p}")
-    print(
-        "\nNext:\n"
-        "  python scripts/run_g2_smoke.py --preflight-only --run-id 1850\n"
-        "  # when ANTHROPIC_API_KEY + NEBIUS_API_KEY present:\n"
-        "  python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond"
-    )
+    print(live_g2_next_steps_message(), end="")
     return 0
 
 

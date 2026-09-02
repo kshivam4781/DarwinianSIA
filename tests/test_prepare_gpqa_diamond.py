@@ -15,12 +15,26 @@ sys.path.insert(0, str(REPO / "scripts"))
 from prepare_gpqa_diamond import (  # noqa: E402
     SOURCE_TAG,
     hf_row_to_sia,
+    live_g2_next_steps_message,
     load_rows_from_csv,
     materialize_from_csv,
     rows_to_sia_questions,
     write_diamond_task_tree,
 )
 from prepare_gpqa_smoke_data import is_synthetic_smoke  # noqa: E402
+
+
+def test_live_g2_next_steps_anthropic_optional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 307: diamond Next lines must not hard-demand Anthropic under Nebius meta."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    text = live_g2_next_steps_message()
+    assert "NEBIUS_API_KEY" in text
+    assert "run_g2_smoke.py --live" in text
+    assert "optional" in text.lower()
+    assert "ANTHROPIC_API_KEY + NEBIUS_API_KEY" not in text
 
 
 def _fake_hf_row(i: int = 0) -> dict[str, str]:

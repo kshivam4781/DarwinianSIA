@@ -27,8 +27,31 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from icml_env_checks import icml_human_required_secrets_phrase  # noqa: E402
 
 DEFAULT_ROOTS = ("SIA", "sia-upstream")
+
+
+def live_g2_next_steps_message() -> str:
+    """Operator Next lines after smoke fixture write (Tick 307 / Tick 292 phrase).
+
+    Tick 292 fixed gate/cron human text, but this script still hard-coded
+    ``ANTHROPIC_API_KEY + NEBIUS_API_KEY`` for live G2 — misleading under Nebius meta.
+    """
+    secrets = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    return (
+        "\nNext (dry-run Condition D / G2 harness, unused run_id):\n"
+        "  cd SIA && python -m sia run "
+        "--task gpqa --darwinian --cabs --cabs-inline "
+        "--population_size 2 --elite_count 1 --max_gen 2 "
+        "--run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42\n"
+        "Live G2: replace diamond_questions.json with real GPQA "
+        f"(``scripts/prepare_gpqa_diamond.py``), drop --dry-run, set {secrets}, "
+        "unused run_id, budget check. Prefer: ``bash scripts/icml_cron_entry.sh``.\n"
+    )
 
 TASK_MD = """# GPQA smoke fixture (synthetic)
 
@@ -225,15 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     for p in checked_ok:
         print(f"  kept:  {p}")
 
-    print(
-        "\nNext (dry-run Condition D / G2 harness, unused run_id):\n"
-        "  cd SIA && python -m sia run "
-        "--task gpqa --darwinian --cabs --cabs-inline "
-        "--population_size 2 --elite_count 1 --max_gen 2 "
-        "--run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42\n"
-        "Live G2: replace diamond_questions.json with real GPQA, drop --dry-run, "
-        "set ANTHROPIC_API_KEY + NEBIUS_API_KEY, unused run_id, budget check."
-    )
+    print(live_g2_next_steps_message(), end="")
     return 1 if errors else 0
 
 

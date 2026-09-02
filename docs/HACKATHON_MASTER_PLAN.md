@@ -872,7 +872,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML offline Bvd defaults←live shape (Tick 304) | **DONE** | `offline_bvd_case_study` CLI defaults from `icml_g3g4_live_shape()`; refuse divergent shape unless `--allow-shape-override` |
 | ICML G3/G4 direct-live tip guard (Tick 305) | **DONE** | `run_g3_pilot` / `run_g4_multiseed` preflight refuse `--live` on stale tip (was pipeline-only Tick 269); `--allow-stale-tip` escape |
 | ICML G2 direct-live tip guard (Tick 306) | **DONE** | `run_g2_smoke` preflight refuse `--live` on stale tip (closes remaining bypass after Tick 305); `--allow-stale-tip` escape |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–306 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML prepare_* Anthropic-optional Next (Tick 307) | **DONE** | `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` Next lines use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–307 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2274,3 +2275,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G3/G4 direct-live tip lineage guard (2026-09-01 Tick 305):** Tick 269 tip guard was pipeline-only — `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` could still burn the ~$20 ceiling on a stale chicken-egg tip. Wired `write_icml_tip_status` into G3/G4 preflight `ready_for_live` (+ `--allow-stale-tip`). Focused g3+g4 **25/25**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **G2 direct-live tip lineage guard (2026-09-02 Tick 306):** Tick 305 closed G3/G4, but `run_g2_smoke.py --live` could still spend the first gate on a stale tip. Wired the same `tip_ok_for_live` check into G2 preflight (+ `--allow-stale-tip`). Focused g2 **14/14**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Prepare_* Anthropic-optional Next messaging (2026-09-02 Tick 307):** Tick 292 fixed gate/cron human secrets phrasing, but `prepare_gpqa_diamond.py` / `prepare_gpqa_smoke_data.py` Next lines still hard-coded `ANTHROPIC_API_KEY + NEBIUS_API_KEY` — operators following diamond/smoke materialize would wait on an optional third key. Both now call `icml_human_required_secrets_phrase`; focused prepare suite **11/11**. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

@@ -14,8 +14,22 @@ sys.path.insert(0, str(REPO / "scripts"))
 from prepare_gpqa_smoke_data import (  # noqa: E402
     check_task_tree,
     is_synthetic_smoke,
+    live_g2_next_steps_message,
     prepare_task_tree,
 )
+
+
+def test_live_g2_next_steps_anthropic_optional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 307: smoke Next lines must not hard-demand Anthropic under Nebius meta."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    text = live_g2_next_steps_message()
+    assert "NEBIUS_API_KEY" in text
+    assert "optional" in text.lower()
+    assert "ANTHROPIC_API_KEY + NEBIUS_API_KEY" not in text
+    assert "icml_cron_entry.sh" in text
 
 
 def test_prepare_task_tree_writes_public_private_schema(tmp_path: Path) -> None:
