@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-09-02T14:03:57Z",
+  "mode": "preflight",
+  "ready_for_live": false,
+  "budget": {
+    "spent": 0.0,
+    "ceiling": 20.0,
+    "g2_estimate": 2.0,
+    "g3_estimate": 3.0,
+    "g4_estimate": 14.0,
+    "stack_estimate": 19.0,
+    "projected": 19.0,
+    "ok": true,
+    "g3_pairs": 1,
+    "g4_pairs": 5,
+    "skip_g2": false,
+    "skip_g3": false,
+    "skip_g4": false
+  },
+  "stages": [
+    {
+      "name": "G2",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    },
+    {
+      "name": "G3",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    },
+    {
+      "name": "G4",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    }
+  ],
+  "blockers": [
+    "G2: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
+    "G2: nebius_key: NEBIUS_API_KEY missing",
+    "G2: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
+    "G3: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
+    "G3: nebius_key: NEBIUS_API_KEY missing",
+    "G3: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
+    "G4: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
+    "G4: nebius_key: NEBIUS_API_KEY missing",
+    "G4: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
+    "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)"
+  ],
+  "notes": [
+    "diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.",
+    "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
+    "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
+    "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"
+  ],
+  "g3_promising": null,
+  "stopped_after": null,
+  "icml_ready_status": "IN_PROGRESS"
+}
