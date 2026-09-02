@@ -155,10 +155,89 @@ def test_preflight_live_ready_with_keys_and_real_gpqa(
     monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
     monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
     monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    # Tick 306: stub tip lineage green (tmp tree has no ICML_PROGRESS tip).
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
 
     report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
     assert report.ready_for_live is True
     assert report.blockers == []
+
+
+def test_preflight_refuses_stale_tip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 306: direct G2 --live refuses when tip lineage lags (not only pipeline)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+        for i in range(5)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": False,
+            "local_tick": 300,
+            "remote_tip_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-tip",
+            "blockers": [
+                "local Tick 300 behind remote tip Tick 306 "
+                "(refs/remotes/origin/cursor/icml-epistemic-results-tip)"
+            ],
+        },
+    )
+
+    report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["tip_ok_for_live"] is False
+    assert names["nebius_key"] is True
+    assert names["gpqa_not_synthetic"] is True
+
+    report2 = run_preflight(
+        mode="live",
+        run_id=1300,
+        ensure_smoke_layout=False,
+        allow_stale_tip=True,
+    )
+    assert report2.ready_for_live is True
+    names2 = {c.name: c.ok for c in report2.checks}
+    assert names2["tip_ok_for_live"] is True
+    assert any("allow-stale-tip" in n for n in report2.notes)
 
 
 def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
@@ -302,6 +381,16 @@ def test_preflight_require_hf_for_diamond_blocks_without_hf(
     monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
     monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
     monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
 
     report = run_preflight(
         mode="live", run_id=1300, ensure_smoke_layout=False, require_hf_for_diamond=True
@@ -310,6 +399,7 @@ def test_preflight_require_hf_for_diamond_blocks_without_hf(
     names = {c.name: c.ok for c in report.checks}
     assert names["hf_token"] is False
     assert names["anthropic_key"] is True
+    assert names["tip_ok_for_live"] is True
 
 
 def test_main_live_fetch_diamond_refuses_without_hf(

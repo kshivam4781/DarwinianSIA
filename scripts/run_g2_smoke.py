@@ -8,6 +8,7 @@ turnkey and hard-stops unsafe paid runs:
   - synthetic smoke GPQA answers for --live (refuse paid eval on fake labels)
   - existing run directory (never overwrite)
   - optional budget ceiling via SIA_BUDGET_SPENT_USD / SIA_BUDGET_CEILING_USD
+  - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -59,6 +60,7 @@ from icml_env_checks import (  # noqa: E402
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    write_icml_tip_status,
 )
 
 DEFAULT_BUDGET_CEILING = 20.0
@@ -197,6 +199,7 @@ def run_preflight(
     run_id: int,
     ensure_smoke_layout: bool = True,
     require_hf_for_diamond: bool = False,
+    allow_stale_tip: bool = False,
 ) -> PreflightReport:
     report = PreflightReport(timestamp=_utc_now(), mode=mode, run_id=run_id)
     task = _task_dir("SIA")
@@ -307,6 +310,31 @@ def run_preflight(
     profile_ok, profile_detail = probe_icml_target_profile_nebius()
     report.add("nebius_target_profile", profile_ok, profile_detail)
 
+    # Tick 306: tip lineage on direct G2 --live (was pipeline-only Tick 269;
+    # G3/G4 gained the same guard at Tick 305 — close the remaining bypass).
+    tip_status = write_icml_tip_status(
+        REPO_ROOT / "docs" / "icml_tip_status.json",
+        fetch=False,
+    )
+    tip_ok = bool(tip_status.get("tip_ok_for_live"))
+    if allow_stale_tip and not tip_ok:
+        report.notes.append(
+            "tip: --allow-stale-tip set; proceeding despite lineage blockers"
+        )
+        tip_ok = True
+        tip_detail = "override (--allow-stale-tip); recover via icml_recover_tip.py"
+    elif tip_ok:
+        tip_detail = (
+            f"local Tick {tip_status.get('local_tick')} matches remote tip "
+            f"{tip_status.get('remote_tip_ref') or tip_status.get('remote_tip_sha')}"
+        )
+    else:
+        tip_detail = "; ".join(tip_status.get("blockers") or []) or (
+            "stale / missing ICML tip — recover via "
+            "python scripts/icml_recover_tip.py --apply"
+        )
+    report.add("tip_ok_for_live", tip_ok, tip_detail)
+
     by_name = {c.name: c.ok for c in report.checks}
     dry_needed = ("gpqa_layout", "run_id_free", "per_run_venv", "runtime_deps")
     report.ready_for_dry_run = all(by_name.get(n, False) for n in dry_needed) and not missing
@@ -321,6 +349,7 @@ def run_preflight(
         "runtime_deps",
         "nebius_meta_profile",
         "nebius_target_profile",
+        "tip_ok_for_live",
     ]
     if require_hf_for_diamond:
         live_needed_list.append("hf_token")
@@ -550,6 +579,11 @@ def main(argv: list[str] | None = None) -> int:
         default=5,
         help="Questions to materialize with --fetch-diamond (default 5)",
     )
+    p.add_argument(
+        "--allow-stale-tip",
+        action="store_true",
+        help="Allow --live even when local Tick lags remote tip (dangerous; Tick 306)",
+    )
     args = p.parse_args(argv)
 
     if args.live:
@@ -571,6 +605,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args.diamond_csv = diamond_csv
     require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+    allow_stale = bool(args.allow_stale_tip)
 
     # Tick 275/278: refuse --live --fetch-diamond without HF/CSV before materialize
     # (match pipeline/cron fetch_diamond_ok; CSV path skips HF).
@@ -581,6 +616,7 @@ def main(argv: list[str] | None = None) -> int:
                 mode=selected,
                 run_id=run_id,
                 require_hf_for_diamond=True,
+                allow_stale_tip=allow_stale,
             )
             for b in secrets_status.get("blockers") or [
                 "fetch_diamond_ok=false (need "
@@ -629,6 +665,7 @@ def main(argv: list[str] | None = None) -> int:
                     mode=selected,
                     run_id=run_id,
                     require_hf_for_diamond=require_hf,
+                    allow_stale_tip=allow_stale,
                 )
                 report.notes.extend(fetch_notes)
                 report.command = build_sia_command(
@@ -665,6 +702,7 @@ def main(argv: list[str] | None = None) -> int:
                     mode=selected,
                     run_id=run_id,
                     require_hf_for_diamond=require_hf,
+                    allow_stale_tip=allow_stale,
                 )
                 report.notes.extend(fetch_notes)
                 report.command = build_sia_command(
@@ -677,6 +715,7 @@ def main(argv: list[str] | None = None) -> int:
         mode=selected,
         run_id=run_id,
         require_hf_for_diamond=require_hf,
+        allow_stale_tip=allow_stale,
     )
     report.notes.extend(fetch_notes)
     report.command = build_sia_command(

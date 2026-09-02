@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-09-01T16:08:14Z",
+  "timestamp": "2026-09-02T00:07:10Z",
   "mode": "preflight",
-  "run_id": 1300,
+  "run_id": 1850,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -48,7 +48,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1850 unused"
     },
     {
       "name": "per_run_venv",
@@ -69,6 +69,11 @@
       "name": "nebius_target_profile",
       "ok": true,
       "detail": "kimi-nebius-target \u2192 nebius (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "tip_ok_for_live",
+      "ok": true,
+      "detail": "local Tick 306 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-0f42"
     }
   ],
   "command": [
@@ -88,7 +93,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1850",
     "--eval_subset",
     "5",
     "--no-web",
