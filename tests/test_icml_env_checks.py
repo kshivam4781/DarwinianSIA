@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–314: .env.example + §4.1/6.2/8.2/9/12/21 + README + load_env.ps1/.sh Anthropic-optional."""
+    """Tick 309–315: .env.example + §4.1/4.4/4.5/6.2/8.2/9/12/21 + README + load_env.ps1/.sh Anthropic-optional."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -923,8 +923,17 @@ def test_env_example_and_section4_anthropic_optional() -> None:
 
     master = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
     # Section 4.1 ICML note: Anthropic optional; Nebius covers meta under Tick 289+.
-    assert "ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314)" in master
+    assert "ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314/315)" in master
     assert "do **not** wait on Anthropic" in master
+    # Tick 315: §4.4 must list ICML Nebius defaults (not Anthropic/Nemotron as "all runs").
+    assert "Approved model assignment (default for all runs)" not in master
+    assert "TO BE CREATED in Phase 0" not in master
+    assert "`kimi-nebius-pydantic-meta`" in master
+    assert "`kimi-nebius-target`" in master
+    assert "Kimi-K2.6 (ICML default)" in master
+    assert "$0.95" in master and "$4.00" in master
+    # After §4.4 rewrite, Anthropic default-meta must not be the sole "all runs" table lead.
+    assert "ICML Thesis 1 live default (Tick 288/289/315" in master
     # Tick 310: Section 6.2 + Section 21 Tick 24/25/30 must not hard-pair Anthropic+Nebius.
     assert "hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`" not in master
     assert (
@@ -936,7 +945,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–314)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–315)" in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
     assert "Check Nebius + Anthropic dashboard before starting Phase 2." not in master
     assert "ICML Thesis 1 (Tick 313)" in master
@@ -948,6 +957,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "**OPTIONAL (ICML)**" in master
     assert "`HF_TOKEN` / diamond CSV" in master
     assert "ICML Section 12 cloud secrets honesty (Tick 314)" in master
+    assert "ICML Section 4.4 Nebius model defaults (Tick 315)" in master
     # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
     paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
     assert (

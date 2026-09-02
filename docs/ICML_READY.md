@@ -347,6 +347,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 312 load_env.sh Linux/cloud twin — `scripts/load_env.sh` Nebius-first + HF status; Anthropic optional; README + AGENTS + lock test; bash parity with Tick 311
 - [x] Tick 313 §8.2 + Phase 0.2 Anthropic-optional — spending rules Nebius-first; Phase 0.2 marked optional under Nebius meta (no STOP waiting on Anthropic); lock test extended
 - [x] Tick 314 Section 12 cloud secrets honesty — NEBIUS/HF **ABSENT (cloud)**; Anthropic **OPTIONAL (ICML)**; HF/CSV row; §4.1/§6.2 labels → 314; lock test extended
+- [x] Tick 315 Section 4.4 ICML Nebius model defaults — §4.4 leads with `kimi-nebius-pydantic-meta` + `kimi-nebius-target` (not Anthropic/Nemotron “all runs”); §4.5 Kimi-K2.6 $0.95/$4.00; lock test extended
 
 ## Gate tracker (Section 21.5)
 
