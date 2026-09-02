@@ -285,7 +285,7 @@ Post-hackathon
 | `HF_TOKEN` | HuggingFace | GPQA diamond `--fetch-diamond` (**or** local `gpqa_diamond.csv`) | https://huggingface.co/settings/tokens — accept `Idavidrein/gpqa` |
 | `ANTHROPIC_API_KEY` | Anthropic | **Optional** under Nebius pydantic-ai meta; required only if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) | https://console.anthropic.com |
 
-**ICML Thesis 1 (Tick 289/308/309/310/311/312):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
+**ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314):** do **not** wait on Anthropic before live G2→G4. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or local diamond CSV). See `docs/ICML_HUMAN_UNBLOCK.md`, `.env.example`, README quick start, and `scripts/load_env.sh` / `scripts/load_env.ps1`.
 
 **Set in PowerShell (session):**
 ```powershell
@@ -413,7 +413,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–312):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–314):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -769,8 +769,9 @@ Computed in `cabs/belief_engine.py`:
 | UTF-8 task file reads (`run_setup.py`) | **DONE** | Windows cp1252 fix |
 | `nemotron-nebius-target` profile | **DONE** | Added to sia defaults |
 | `.env` + `verify_keys.py` | **DONE** | Nebius required; Anthropic optional under Tick 289 meta (Tick 308+) |
-| `ANTHROPIC_API_KEY` configured | **DONE** | In `.env` |
-| `NEBIUS_API_KEY` configured | **DONE** | In `.env` |
+| `ANTHROPIC_API_KEY` configured | **OPTIONAL (ICML)** | Hackathon local `.env` may have it; **ICML Nebius meta: optional** — do not block G2→G4 waiting on Anthropic |
+| `NEBIUS_API_KEY` configured | **ABSENT (cloud)** | Local hackathon historically DONE; **ICML automation/cloud secrets still ABSENT** — see `docs/ICML_HUMAN_UNBLOCK.md` |
+| `HF_TOKEN` / diamond CSV | **ABSENT (cloud)** | Required for `--fetch-diamond` unless local `gpqa_diamond.csv` drop-path |
 | Baseline smoke `run_901` | **DONE** | Loop works; 0% acc (parse issue) |
 | CABS smoke `run_902` | **DONE** | belief_store populated |
 | Structured `beliefs.json` from feedback | **DONE** | Feedback prompt + ingest hook |
@@ -889,7 +890,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML load_env.ps1 Anthropic-optional (Tick 311) | **DONE** | `scripts/load_env.ps1` Nebius-first + HF status; Anthropic marked optional; lock test extended |
 | ICML load_env.sh Linux twin (Tick 312) | **DONE** | `scripts/load_env.sh` Nebius-first + HF status; Anthropic optional; README + lock test; cloud/bash parity with Tick 311 |
 | ICML §8.2 + Phase 0.2 Anthropic-optional (Tick 313) | **DONE** | Spending rules + Phase 0 no longer hard-pair Anthropic for ICML Nebius meta; lock test extended |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–313 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML Section 12 cloud secrets honesty (Tick 314) | **DONE** | Section 12 no longer claims NEBIUS/Anthropic **DONE** for cloud; HF/CSV row; §4.1/§6.2 tick labels → 314; lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–314 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2305,3 +2307,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **load_env.sh Linux/cloud twin (2026-09-02 Tick 312):** Tick 311 fixed Windows `load_env.ps1`, but Linux/cloud operators (and README bash quick start) had no Nebius-first shell loader — only PowerShell. Added `scripts/load_env.sh` (sourceable; Nebius-first + HF + Anthropic optional; does not override already-set process secrets); README + lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **Section 8.2 + Phase 0.2 Anthropic-optional (2026-09-02 Tick 313):** Tick 312 closed loaders, but master-plan **§8.2** still said “Check Nebius + Anthropic dashboard before Phase 2” and **Phase 0.2** still hard-gated `ANTHROPIC_API_KEY set` / STOP — ICML agents following spending rules or Phase 0 would wait on an optional third vendor. §8.2 now Nebius-first (Anthropic only for Claude meta); Phase 0.2 marked hackathon/Claude with an ICML skip note; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Section 12 cloud secrets honesty (2026-09-02 Tick 314):** Tick 313 finished Anthropic-optional spending/Phase-0 rules, but Section 12 still listed `NEBIUS_API_KEY` / `ANTHROPIC_API_KEY` as **DONE** “In `.env`” — cloud agents reading Implementation status could treat secrets as satisfied and skip `ICML_HUMAN_UNBLOCK`. Section 12 now marks Nebius/HF **ABSENT (cloud)**, Anthropic **OPTIONAL (ICML)**, adds an HF/CSV row, and syncs §4.1/§6.2 tick labels through 314; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

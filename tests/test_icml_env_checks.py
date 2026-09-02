@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–313: .env.example + §4.1/6.2/8.2/9/21 + README + load_env.ps1/.sh Anthropic-optional."""
+    """Tick 309–314: .env.example + §4.1/6.2/8.2/9/12/21 + README + load_env.ps1/.sh Anthropic-optional."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -923,7 +923,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
 
     master = (root / "docs" / "HACKATHON_MASTER_PLAN.md").read_text(encoding="utf-8")
     # Section 4.1 ICML note: Anthropic optional; Nebius covers meta under Tick 289+.
-    assert "ICML Thesis 1 (Tick 289/308/309/310/311/312)" in master
+    assert "ICML Thesis 1 (Tick 289/308/309/310/311/312/313/314)" in master
     assert "do **not** wait on Anthropic" in master
     # Tick 310: Section 6.2 + Section 21 Tick 24/25/30 must not hard-pair Anthropic+Nebius.
     assert "hard-stops without `ANTHROPIC_API_KEY` + `NEBIUS_API_KEY`" not in master
@@ -936,11 +936,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–312)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–314)" in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
     assert "Check Nebius + Anthropic dashboard before starting Phase 2." not in master
     assert "ICML Thesis 1 (Tick 313)" in master
     assert "Phase 0.2 Anthropic is **optional**" in master
+    # Tick 314: Section 12 must not claim cloud API keys are DONE (agents skip secrets).
+    assert "| `ANTHROPIC_API_KEY` configured | **DONE** | In `.env` |" not in master
+    assert "| `NEBIUS_API_KEY` configured | **DONE** | In `.env` |" not in master
+    assert "**ABSENT (cloud)**" in master
+    assert "**OPTIONAL (ICML)**" in master
+    assert "`HF_TOKEN` / diamond CSV" in master
+    assert "ICML Section 12 cloud secrets honesty (Tick 314)" in master
     # Stale Tick-30 paper_artifacts claim must not survive as Anthropic-hard-required.
     paper = (root / "docs" / "paper_artifacts.md").read_text(encoding="utf-8")
     assert (
