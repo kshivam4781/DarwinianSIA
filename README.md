@@ -6,11 +6,18 @@
 
 ## Present in 2 minutes (no API keys)
 
+```bash
+# Linux / cloud (Tick 322: many images have python3 only — no bare `python`)
+python3 scripts/finish_hackathon.py    # ICML-honest offline verify (no false READY)
+python3 scripts/present_hackathon.py   # 2-min demo only
+```
+
 ```powershell
+# Windows venv
 cd c:\Users\MSPSA\Documents\SIA2
 .\.venv\Scripts\Activate.ps1
-python scripts\finish_hackathon.py    # full verify (recommended for judges)
-python scripts\present_hackathon.py   # 2-min demo only
+python scripts\finish_hackathon.py
+python scripts\present_hackathon.py
 ```
 
 See [`docs/PRESENTATION.md`](docs/PRESENTATION.md) for the talking script and [`docs/SUBMISSION.md`](docs/SUBMISSION.md) for judges.
@@ -69,32 +76,59 @@ py -3.13 -m venv .venv
 pip install -e ".[dev]" -e "./sia-upstream[dev]"
 ```
 
-Set your API key:
+Set API keys (copy `.env.example` → `.env`). **ICML live** needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`); `ANTHROPIC_API_KEY` is optional under default Nebius pydantic-ai meta (Tick 289/310–320). See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ```bash
-set ANTHROPIC_API_KEY=your_key_here
+# Linux / macOS / cloud:
+cp .env.example .env   # edit keys
+source scripts/load_env.sh
+
+# Or export directly:
+export NEBIUS_API_KEY=your_key_here
+# export HF_TOKEN=hf_...
+# Optional under Nebius meta:
+# export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-### 2. Baseline SIA run (for comparison)
+Windows PowerShell: `. .\scripts\load_env.ps1`
+
+### 2. ICML Thesis 1 live stack (preferred — Tick 288/289/317/318)
+
+Paid G2→G3→G4 uses **Nebius Kimi for both meta and target**. Prefer the cron entry (injects profiles + serial gates under one budget):
 
 ```bash
+bash scripts/icml_cron_entry.sh
+# or: python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
+```
+
+Manual GPQA (pick unused integer `--run_id`; never overwrite):
+
+```bash
+sia run --task gpqa --max_gen 6 --run_id 1300 --no-web --cabs --cabs-inline \
+  --meta-agent-profile kimi-nebius-pydantic-meta \
+  --target-agent-profile kimi-nebius-target
+```
+
+Do **not** spend the ~$20 ICML ceiling on Nemotron/Qwen or Claude meta unless intentionally overriding `ICML_*_AGENT_PROFILE`.
+
+### 3. Historical hackathon smoke (chess / optional Qwen target)
+
+```bash
+# Baseline (comparison only — not ICML live)
 sia run --task longcot-chess --max_gen 1 --run_id 901 --no-web --target-agent-profile qwen-nebius-target
-```
 
-### 3. SIA-CABS run
-
-```bash
+# SIA-CABS chess smoke
 sia-cabs run --task longcot-chess --max_gen 3 --run_id 903 --no-web --target-agent-profile qwen-nebius-target
 ```
 
-Feedback agent now writes `beliefs.json`; CABS agenda is **prepended** to meta/feedback prompts.
+Feedback agent writes `beliefs.json`; CABS agenda is **prepended** to meta/feedback prompts.
 
 ### 4. Inspect beliefs and contradictions
 
 ```bash
 sia-cabs-tools agenda --run-dir runs/run_showcase
-python scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_903 --markdown
-python scripts/cabs_dashboard.py --run-dir runs/run_showcase
+python3 scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_903 --markdown
+python3 scripts/cabs_dashboard.py --run-dir runs/run_showcase
 
 # Tavily grounding (Layer 2) — needs TAVILY_API_KEY in .env
 sia-cabs-tools ground --run-dir runs/run_showcase --max-calls 5 --task-hint longcot-chess
@@ -191,7 +225,7 @@ A generation that *explains why memory sometimes fails* is valuable even if accu
 ## Offline demo (no API key)
 
 ```bash
-python scripts/demo_cabs.py
+python3 scripts/demo_cabs.py
 ```
 
 Shows belief extraction, contradiction detection, and research question generation from synthetic generations.
@@ -199,13 +233,15 @@ Shows belief extraction, contradiction detection, and research question generati
 ## Tests
 
 ```bash
-pytest
+python3 -m pytest
 ```
 
-## Submission evidence checklist
+## Submission / ICML evidence checklist
 
-1. Baseline run: `sia run --task lawbench --max_gen 5 --run_id baseline`
-2. CABS run: `sia-cabs run --task lawbench --max_gen 5 --run_id cabs`
-3. Compare `results.json` scores across generations in both runs
-4. Show at least one contradiction → research question chain from `belief_store/`
-5. Explain how the research agenda changed agent behavior in later generations
+**Hard stop:** Do **not** run full LawBench without explicit human approval in the run notes (Section 0 / Section 21). Prefer GPQA diamond under the ~$20 Nebius ceiling.
+
+1. Offline / dry-run evidence: `docs/paper_artifacts.md` + `docs/offline_bvd_summary.json` (IDs `1890–1904`)
+2. Live PRIMARY (when secrets present): `bash scripts/icml_cron_entry.sh` → G2→G3→G4; fill Live Table 1
+3. Compare Condition B vs D on gens-to-threshold / cost-to-threshold / final accuracy
+4. Show at least one contradiction → DNA/code → fitness chain (`docs/case_study_offline.md`; live case study when available)
+5. Keep H5 Spearman ρ > 0.3; set `docs/ICML_READY.md` STATUS: READY only when criteria 1–4 pass
