@@ -7,5 +7,14 @@ runs/
 *.egg-info/
 dist/
 build/
-.cursor/
+.cursor/*
+!.cursor/environment.json
 *.log
+# Local GPQA diamond CSV drops (Tick 277) — never commit gated dataset exports
+docs/private/
+.local/gpqa_diamond.csv
+/tmp/gpqa_diamond.csv
+gpqa_diamond.csv
+# Tick 285: docs/icml_budget_spent.json is NOT gitignored — amounts are not
+# secrets; committing the ledger is required for cross-VM cron resume
+# (runs/ stay gitignored and do not survive fresh cloud boots).
