@@ -68,6 +68,7 @@ from icml_env_checks import (  # noqa: E402
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_meta_requires_anthropic,
+    icml_python_cli,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
@@ -320,7 +321,7 @@ def run_preflight(
     else:
         tip_detail = "; ".join(tip_status.get("blockers") or []) or (
             "stale / missing ICML tip — recover via "
-            "python scripts/icml_recover_tip.py --apply"
+            f"{icml_python_cli()} scripts/icml_recover_tip.py --apply"
         )
     report.add("tip_ok_for_live", tip_ok, tip_detail)
 
@@ -883,6 +884,7 @@ def write_gate4_report(
         lines.append("")
 
     secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    py = icml_python_cli()
     lines.extend(
         [
             "## Next",
@@ -890,7 +892,7 @@ def write_gate4_report(
             "1. Ensure live G2 smoke + G3 pilot passed before spending on G4.",
             f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
             "3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
-            "   `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
+            f"   `{py} scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
             "--b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
             "4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY "
             "(or recover via `--refresh-paper-from-runs`).",

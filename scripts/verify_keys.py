@@ -150,7 +150,8 @@ def main() -> int:
                 "(HF_TOKEN or local gpqa_diamond.csv); see docs/ICML_HUMAN_UNBLOCK.md."
             )
         return 0
-    print("Fix failing required keys, then re-run: python scripts/verify_keys.py")
+    print("Fix failing required keys, then re-run: "
+          f"{Path(sys.executable).name} scripts/verify_keys.py")
     return 1
 
 

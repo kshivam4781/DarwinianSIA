@@ -355,6 +355,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 320 finish/present ICML-honest judge demos — `finish_hackathon.py` / `present_hackathon.py` surface ICML STATUS + offline Bvd + cron; no false READY FOR SUBMISSION; lock test extended
 - [x] Tick 321 finish pytest bootstrap — cold-cloud `finish_hackathon.py` bootstraps/SKIPs missing pytest and always prints ICML STATUS footer (no exit-1 suppressing honest IN_PROGRESS); lock test extended
 - [x] Tick 322 python3-safe judge entrypoints — README/SUBMISSION/PRESENTATION + finish/present use `python3` / `sys.executable` (cold Linux has no bare `python` shim); lock test extended
+- [x] Tick 323 python3-safe gate Next — G2/G3/G4/pipeline Next + tip refuse + prepare_*/verify_keys use `icml_python_cli()` (no bare `python scripts/…` on cold Linux); lock test extended
 
 ## Gate tracker (Section 21.5)
 

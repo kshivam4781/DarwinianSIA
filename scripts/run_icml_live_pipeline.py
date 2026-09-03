@@ -62,6 +62,7 @@ from icml_env_checks import (  # noqa: E402
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
+    icml_python_cli,
     ledger_stage_complete,
     live_pipeline_next_steps,
     load_budget_spent_ledger,
@@ -1195,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
             for b in tip_status.get("blockers") or ["stale ICML tip"]:
                 report.blockers.append(f"tip: {b}")
             report.notes.append(
-                "Recover tip: python scripts/icml_recover_tip.py --apply"
+                f"Recover tip: {icml_python_cli()} scripts/icml_recover_tip.py --apply"
             )
             report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
             write_pipeline_report(report, args.report)

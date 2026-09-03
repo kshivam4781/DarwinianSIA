@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-03T10:15Z — Tick 323 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-9706` (recovered tip ← `5e7f` Tick 322)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-5e7f` (Tick 322); local Tick **322** → **323**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 322 fixed judge docs / finish/present, but G2/G3/G4 gate-report **Next** lines, tip-recovery refuse strings, `prepare_gpqa_*` Next, and `verify_keys` still said bare `python scripts/…`. On cold Linux (`python: command not found`) operators following preflight after secrets land would fail before paid G2. Highest leverage without paid spend: **python3-safe gate Next**.
+
+### What this tick did (ONE step)
+**python3-safe gate Next / refuse messaging (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `5e7f`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral gate-report dirt
+2. Added `icml_python_cli()` (`Path(sys.executable).name`) in `scripts/icml_env_checks.py`
+3. Wired into G2/G3/G4 Next + tip refuse, pipeline recover note, `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` Next, `verify_keys`, `comparison_report`
+4. Section 12 row + Tick 323 DONE note; Section 21 note; Gate label → 289–323; HUMAN_UNBLOCK / paper / READY tick labels; lock test extended
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 322) | After (Tick 323) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Gate Next / tip refuse use live interpreter | **no** (`python scripts/…`) | **yes** (`icml_python_cli()`) |
+| prepare_*/verify_keys python3-safe | **no** | **yes** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-03T08:10Z — Tick 322 (automation cron)
 
 ### Status snapshot

@@ -68,6 +68,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_python_cli,
     icml_target_profile_cli_flags,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -432,7 +433,7 @@ def run_preflight(
     else:
         tip_detail = "; ".join(tip_status.get("blockers") or []) or (
             "stale / missing ICML tip — recover via "
-            "python scripts/icml_recover_tip.py --apply"
+            f"{icml_python_cli()} scripts/icml_recover_tip.py --apply"
         )
     report.add("tip_ok_for_live", tip_ok, tip_detail)
 
@@ -611,6 +612,7 @@ def write_gate3_report(
         lines.append("")
 
     secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    py = icml_python_cli()
     lines.extend(
         [
             "## Next",
@@ -618,7 +620,7 @@ def write_gate3_report(
             "1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`).",
             f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
             "3. Budget-check, then:",
-            "   `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
+            f"   `{py} scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
             "4. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).",
             "5. Do **not** set `ICML_READY` STATUS: READY from offline / preflight alone.",
             "",

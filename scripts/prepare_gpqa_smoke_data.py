@@ -30,7 +30,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from icml_env_checks import icml_human_required_secrets_phrase  # noqa: E402
+from icml_env_checks import (  # noqa: E402
+    icml_human_required_secrets_phrase,
+    icml_python_cli,
+)
 
 DEFAULT_ROOTS = ("SIA", "sia-upstream")
 
@@ -40,11 +43,13 @@ def live_g2_next_steps_message() -> str:
 
     Tick 292 fixed gate/cron human text, but this script still hard-coded
     ``ANTHROPIC_API_KEY + NEBIUS_API_KEY`` for live G2 — misleading under Nebius meta.
+    Tick 323: use ``icml_python_cli()`` (cold Linux has no bare ``python``).
     """
     secrets = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    py = icml_python_cli()
     return (
         "\nNext (dry-run Condition D / G2 harness, unused run_id):\n"
-        "  cd SIA && python -m sia run "
+        f"  cd SIA && {py} -m sia run "
         "--task gpqa --darwinian --cabs --cabs-inline "
         "--population_size 2 --elite_count 1 --max_gen 2 "
         "--run_id 1800 --eval_subset 5 --dry-run --no-web --seed 42\n"

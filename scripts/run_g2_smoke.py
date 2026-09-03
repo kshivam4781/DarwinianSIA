@@ -56,6 +56,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_python_cli,
     icml_target_profile_cli_flags,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -331,7 +332,7 @@ def run_preflight(
     else:
         tip_detail = "; ".join(tip_status.get("blockers") or []) or (
             "stale / missing ICML tip — recover via "
-            "python scripts/icml_recover_tip.py --apply"
+            f"{icml_python_cli()} scripts/icml_recover_tip.py --apply"
         )
     report.add("tip_ok_for_live", tip_ok, tip_detail)
 
@@ -493,6 +494,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         lines.append("")
 
     secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    py = icml_python_cli()
     lines.extend(
         [
             "## Next",
@@ -501,8 +503,8 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
             "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
             "2. Accept HF access for `Idavidrein/gpqa` (or drop local "
             "`gpqa_diamond.csv`), then either:",
-            "   `python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
-            "   or `python scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`",
+            f"   `{py} scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
+            f"   or `{py} scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`",
             "3. Re-run live G2 after budget check (unused integer run_id).",
             "4. Only then start live G3 B vs D pilot (Section 21.5).",
             "",

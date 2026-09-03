@@ -495,6 +495,17 @@ def sys_executable_label() -> str:
     return sys.executable
 
 
+def icml_python_cli() -> str:
+    """Basename of the live interpreter for operator copy-paste (Tick 323).
+
+    Cold Linux/cloud images often have ``python3`` only (no bare ``python``
+    shim). Gate Next / refuse / verify_keys strings must not say
+    ``python scripts/...`` — use this (or hardcode ``python3`` on Linux docs).
+    Matches finish/present ``Path(sys.executable).name`` (Tick 322).
+    """
+    return Path(sys.executable).name
+
+
 def _module_importable(name: str) -> bool:
     try:
         __import__(name)

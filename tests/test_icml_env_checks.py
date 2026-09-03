@@ -33,6 +33,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_python_cli,
     icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
     iter_shape_flag_dicts_from_text,
@@ -958,7 +959,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–322)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–323)" in master
     assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
@@ -1040,6 +1041,34 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Path(sys.executable).name" in present
     assert 'python scripts/finish_hackathon.py\n  python scripts/present_hackathon.py' not in finish
     assert "ICML python3-safe judge entrypoints (Tick 322)" in master
+    # Tick 323: gate Next / refuse / prepare / verify_keys must use live interpreter
+    # basename (cold Linux has no bare `python` shim) — not hardcoded `python scripts/…`.
+    py = icml_python_cli()
+    assert py  # usually python3 on Linux/cloud
+    env_checks = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def icml_python_cli" in env_checks
+    g2 = (root / "scripts" / "run_g2_smoke.py").read_text(encoding="utf-8")
+    g3 = (root / "scripts" / "run_g3_pilot.py").read_text(encoding="utf-8")
+    g4 = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
+    pipeline = (root / "scripts" / "run_icml_live_pipeline.py").read_text(encoding="utf-8")
+    verify = (root / "scripts" / "verify_keys.py").read_text(encoding="utf-8")
+    diamond = (root / "scripts" / "prepare_gpqa_diamond.py").read_text(encoding="utf-8")
+    smoke = (root / "scripts" / "prepare_gpqa_smoke_data.py").read_text(encoding="utf-8")
+    assert "icml_python_cli" in g2 and "icml_python_cli" in g3 and "icml_python_cli" in g4
+    assert "icml_python_cli" in pipeline and "icml_python_cli" in diamond
+    assert "icml_python_cli" in smoke
+    assert "`python scripts/prepare_gpqa_diamond.py" not in g2
+    assert "`python scripts/run_g2_smoke.py --live" not in g2
+    assert "`python scripts/run_g3_pilot.py --live" not in g3
+    assert "`python scripts/run_g4_multiseed.py --live" not in g4
+    assert "python scripts/icml_recover_tip.py --apply" not in g2
+    assert "python scripts/icml_recover_tip.py --apply" not in g3
+    assert "python scripts/icml_recover_tip.py --apply" not in g4
+    assert "Recover tip: python scripts/icml_recover_tip.py --apply" not in pipeline
+    assert 'python scripts/verify_keys.py"' not in verify
+    assert "Path(sys.executable).name" in verify or "icml_python_cli" in verify
+    assert "{py} scripts/run_g2_smoke.py --live" in diamond
+    assert "ICML python3-safe gate Next (Tick 323)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
