@@ -1,5 +1,37 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-03T18:05Z — Tick 326 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-bb05` (recovered tip ← `f187` Tick 325)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 324–325 left §21.7 / docs python3-safe, but **gate/pipeline/prepare/recover/epistemic `--help` Examples** (module docstrings) still said bare `python scripts/…`. On cold Linux (`python: command not found`) operators copying from `--help` after secrets land would fail before paid G2. Highest leverage without paid spend: **python3-safe script --help Examples**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**python3-safe script --help Examples (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `f187`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral gate-report dirt
+2. G2/G3/G4/pipeline/prepare_*/recover/epistemic module docstring Examples → `python3` (+ Windows venv note)
+3. Section 12 row + Tick 326 DONE note; Gate label → 289–326; HUMAN_UNBLOCK / paper / READY tick labels
+4. Lock test extended (`test_icml_env_checks`); secrets setup actions re-filed; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 325) | After (Tick 326) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Script `--help` Examples use `python3` | **no** (`python scripts/…`) | **yes** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) to Cloud Agent secrets per `docs/ICML_HUMAN_UNBLOCK.md`. Then: `bash scripts/icml_cron_entry.sh` → auto G2→G3→G4→paper pack→STATUS READY.
+
+---
+
 ## 2026-09-03T16:05Z — Tick 325 (automation cron)
 
 ### Status snapshot

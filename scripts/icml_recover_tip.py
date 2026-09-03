@@ -7,10 +7,10 @@ stack. Before paid ``--live``, agents must fast-forward to the highest remote
 Tick tip (prefer secrets-first / Astral-bootstrap lineage over Portal-Save-only
 forks).
 
-Examples:
-  python scripts/icml_recover_tip.py              # print tip + write status JSON
-  python scripts/icml_recover_tip.py --fetch      # refresh remote refs first
-  python scripts/icml_recover_tip.py --apply      # git reset --hard to tip
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/icml_recover_tip.py              # print tip + write status JSON
+  python3 scripts/icml_recover_tip.py --fetch      # refresh remote refs first
+  python3 scripts/icml_recover_tip.py --apply      # git reset --hard to tip
 """
 
 from __future__ import annotations

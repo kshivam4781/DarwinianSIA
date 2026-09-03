@@ -13,10 +13,10 @@ Does NOT download the real GPQA diamond set (license / size). For live G2–G4, 
 ``diamond_questions.json`` under public/private with the real files (same schema) after
 API keys are present.
 
-Examples:
-  python scripts/prepare_gpqa_smoke_data.py
-  python scripts/prepare_gpqa_smoke_data.py --roots SIA sia-upstream
-  python scripts/prepare_gpqa_smoke_data.py --check
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/prepare_gpqa_smoke_data.py
+  python3 scripts/prepare_gpqa_smoke_data.py --roots SIA sia-upstream
+  python3 scripts/prepare_gpqa_smoke_data.py --check
 """
 
 from __future__ import annotations

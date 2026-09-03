@@ -15,12 +15,12 @@ Modes:
   --dry-run          harness Condition D (smoke fixture OK; no API)
   --live             paid G2 smoke (keys + non-smoke GPQA required)
 
-Examples:
-  python scripts/run_g2_smoke.py --preflight-only --run-id 1850
-  python scripts/run_g2_smoke.py --dry-run --run-id 1850
-  python scripts/run_g2_smoke.py --live --run-id 1300 --seed 1
-  python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond
-  python scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv /tmp/gpqa_diamond.csv
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/run_g2_smoke.py --preflight-only --run-id 1850
+  python3 scripts/run_g2_smoke.py --dry-run --run-id 1850
+  python3 scripts/run_g2_smoke.py --live --run-id 1300 --seed 1
+  python3 scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond
+  python3 scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv /tmp/gpqa_diamond.csv
 """
 
 from __future__ import annotations

@@ -959,7 +959,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–324)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–326)" in master
     assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
@@ -1084,6 +1084,25 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "python3 scripts/run_icml_live_pipeline.py" in section_217
     assert "\npython scripts/" not in section_217
     assert "ICML python3-safe Section 21.7 (Tick 324)" in master
+    # Tick 326: gate/pipeline/prepare/recover/epistemic --help Examples must use
+    # python3 (cold Linux has no bare `python` shim) — same class of fail as §21.7.
+    recover = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
+    epi = (root / "scripts" / "epistemic_results.py").read_text(encoding="utf-8")
+    for label, body in (
+        ("run_g2_smoke", g2),
+        ("run_g3_pilot", g3),
+        ("run_g4_multiseed", g4),
+        ("run_icml_live_pipeline", pipeline),
+        ("prepare_gpqa_diamond", diamond),
+        ("prepare_gpqa_smoke_data", smoke),
+        ("icml_recover_tip", recover),
+        ("epistemic_results", epi),
+    ):
+        assert "python3 scripts/" in body, f"{label} must show python3 examples"
+        assert "\n  python scripts/" not in body, (
+            f"{label} --help Examples still lead with bare python scripts/…"
+        )
+    assert "ICML python3-safe script --help Examples (Tick 326)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

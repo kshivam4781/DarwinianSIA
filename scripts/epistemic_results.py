@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Compute ICML epistemic metrics (H2 / H5 / PRIMARY helpers) from run directories.
 
-Usage:
-  python scripts/epistemic_results.py --run-dir runs/run_1301
-  python scripts/epistemic_results.py --b-runs runs/run_1201 --d-runs runs/run_1301 --write-docs
+Usage (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/epistemic_results.py --run-dir runs/run_1301
+  python3 scripts/epistemic_results.py --b-runs runs/run_1201 --d-runs runs/run_1301 --write-docs
 
 Does not call paid APIs. Safe for dry-run and live GPQA artifacts.
 """

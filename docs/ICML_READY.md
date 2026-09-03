@@ -357,6 +357,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 322 python3-safe judge entrypoints — README/SUBMISSION/PRESENTATION + finish/present use `python3` / `sys.executable` (cold Linux has no bare `python` shim); lock test extended
 - [x] Tick 323 python3-safe gate Next — G2/G3/G4/pipeline Next + tip refuse + prepare_*/verify_keys use `icml_python_cli()` (no bare `python scripts/…` on cold Linux); lock test extended
 - [x] Tick 324 python3-safe Section 21.7 — §21.7 prepare/G2/G3/G4/pipeline copy-paste uses `python3` (cold Linux has no bare `python`); lock test extended
+- [x] Tick 326 python3-safe script --help Examples — G2/G3/G4/pipeline/prepare/recover/epistemic module docstrings use `python3` (cold Linux); lock test extended
 
 ## Gate tracker (Section 21.5)
 

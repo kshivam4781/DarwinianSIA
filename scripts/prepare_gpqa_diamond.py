@@ -17,10 +17,10 @@ Sources (first match wins when using CLI defaults):
 **License:** GPQA forbids posting examples online. Do **not** commit
 ``diamond_questions.json`` from this script. Data dirs stay gitignored.
 
-Examples:
-  python scripts/prepare_gpqa_diamond.py --from-csv /tmp/gpqa_diamond.csv --n 5
-  python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --seed 1
-  python scripts/prepare_gpqa_diamond.py --from-hf --roots SIA sia-upstream --force
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/prepare_gpqa_diamond.py --from-csv /tmp/gpqa_diamond.csv --n 5
+  python3 scripts/prepare_gpqa_diamond.py --from-hf --n 5 --seed 1
+  python3 scripts/prepare_gpqa_diamond.py --from-hf --roots SIA sia-upstream --force
 """
 
 from __future__ import annotations

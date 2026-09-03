@@ -25,12 +25,12 @@ Modes:
   --refresh-paper-from-runs rebuild paper pack / READY checklist from existing run dirs
                             (no API; for recovery after live pairs or unit tests)
 
-Examples:
-  python scripts/run_g4_multiseed.py --preflight-only
-  python scripts/run_g4_multiseed.py --live \\
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/run_g4_multiseed.py --preflight-only
+  python3 scripts/run_g4_multiseed.py --live \\
     --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 \\
     --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond
-  python scripts/run_g4_multiseed.py --refresh-paper-from-runs \\
+  python3 scripts/run_g4_multiseed.py --refresh-paper-from-runs \\
     --b-run-dirs runs/run_1211 ... --d-run-dirs runs/run_1311 ...
 """
 

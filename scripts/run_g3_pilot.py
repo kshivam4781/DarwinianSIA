@@ -23,10 +23,10 @@ Modes:
   --preflight-only   check blockers; refresh live section of docs/gate3_report.md
   --live             paid sequential B then D (keys + non-smoke GPQA required)
 
-Examples:
-  python scripts/run_g3_pilot.py --preflight-only
-  python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301
-  python scripts/run_g3_pilot.py --live --seeds 1,2 --fetch-diamond
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/run_g3_pilot.py --preflight-only
+  python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301
+  python3 scripts/run_g3_pilot.py --live --seeds 1,2 --fetch-diamond
 """
 
 from __future__ import annotations

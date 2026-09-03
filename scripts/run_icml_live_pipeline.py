@@ -23,10 +23,10 @@ Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
   --live             G2 → (pass) G3 → (promising + budget) G4 paper pack
 
-Examples:
-  python scripts/run_icml_live_pipeline.py --preflight-only
-  python scripts/run_icml_live_pipeline.py --live --fetch-diamond
-  python scripts/run_icml_live_pipeline.py --live --fetch-diamond --stop-after g3
+Examples (Linux/cloud: python3; Windows venv: python):
+  python3 scripts/run_icml_live_pipeline.py --preflight-only
+  python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
+  python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond --stop-after g3
 """
 
 from __future__ import annotations
