@@ -958,7 +958,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–320)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–321)" in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
@@ -1021,6 +1021,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "LawBench" in present
     assert "1890" in present
     assert "ICML finish/present judge demos (Tick 320)" in master
+    # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
+    assert "_ensure_pytest" in finish
+    assert "_print_icml_footer" in finish
+    assert "pip install" in finish and "--user" in finish
+    assert "not an ICML PRIMARY failure" in finish
+    assert "ICML finish pytest bootstrap (Tick 321)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
