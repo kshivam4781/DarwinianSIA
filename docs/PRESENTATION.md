@@ -1,86 +1,87 @@
-# Presentation cheat sheet (~2 hours to demo)
+# Presentation cheat sheet (ICML Thesis 1 + offline demo)
 
 ## Before you present (5 min)
 
-```powershell
-cd c:\Users\MSPSA\Documents\SIA2
-.\.venv\Scripts\Activate.ps1
-python scripts\finish_hackathon.py
+```bash
+# Offline story (no API) — use python3 on Linux/cloud (no bare `python` shim)
+python3 scripts/present_hackathon.py   # ICML status + contradiction chain
+# or full verify: python3 scripts/finish_hackathon.py  # ICML-honest (no false READY)
 ```
-
-Quick demo only: `python scripts\present_hackathon.py`
 
 Confirm you see:
-- **35 tests** passing
-- A **contradiction** on topic `memory`
+- Tests passing (or note focused ICML lock green)
+- A **contradiction** on a DNA-relevant topic
 - A **research question** with suggested experiments
-- Injected CABS prompt section (prepended to next gen)
+- Injected CABS prompt section (agenda for next gen)
 
 Optional visual dashboard:
-```powershell
-python scripts\cabs_dashboard.py --run-dir runs\run_showcase
+```bash
+python3 scripts/cabs_dashboard.py --run-dir runs/run_showcase
 ```
 
-Optional Tavily grounding demo (Layer 2):
-```powershell
-. .\scripts\load_env.ps1
-sia-cabs-tools ground --run-dir runs\run_showcase --max-calls 2 --task-hint longcot-chess
-sia-cabs-tools agenda --run-dir runs\run_showcase
-```
-Look for `external_evidence` and `belief_store/evidence/*.json`.
+### ICML live path (only with secrets + budget)
 
-Committee demo (Layer 3):
-```powershell
-sia-cabs-tools committee --run-dir runs\run_showcase --task-hint longcot-chess
-type runs\run_showcase\belief_store\approved_techniques.json
-sia-cabs-tools agenda --run-dir runs\run_showcase
+```bash
+bash scripts/icml_cron_entry.sh
 ```
-Look for `Committee-Approved Techniques` in the injected prompt section.
+
+Needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`). Anthropic optional under Nebius meta.  
+**Do not** run full LawBench without explicit human approval.
+
+Paper pack after live: `docs/paper_artifacts.md`, `docs/ICML_READY.md`.
+
+---
 
 ## Slide-free talking script (~2 min)
 
 **Opening (15 sec)**  
-"Most self-improving AI only chases benchmark score. We built SIA-CABS so the system asks *what should I investigate next* when its own beliefs contradict."
+"Most self-improving AI only chases benchmark score. We built SIA-CABS so the system asks *what should I investigate next* when its own beliefs contradict — then steers Darwinian DNA mutation from that agenda."
 
 **Problem (20 sec)**  
-"Gen 1 says memory helps. Gen 2 agrees. Gen 3 says memory hurts on easy tasks. Normal SIA picks a fix. Science would ask: *when* does memory help vs hurt?"
+"Fitness-only Darwinian evolution (Condition B) mutates blindly. When agents disagree — selective vs aggressive tools — science would ask *which allele to prefer*, not sample uniformly."
 
 **Demo (45 sec)**  
-Run `python scripts/present_hackathon.py` and scroll to:
+Run `python3 scripts/present_hackathon.py` and scroll to:
 1. Generation story (beliefs added each gen)
 2. CONTRADICTION block
 3. RESEARCH QUESTION block
 4. INJECTED PROMPT — show this goes into Meta/Feedback next gen
 
-**Architecture (20 sec)**  
-"Belief Engine after Feedback: extract beliefs, detect contradictions, generate research questions, inject agenda. Dual metric: accuracy plus knowledge gain."
-
-**Evidence (20 sec)**  
-"We ran real SIA on this laptop — baseline run 901, CABS run 902. Full loop works. For the contradiction story, use `runs/run_showcase` — full belief → contradiction → research question chain, no API cost."
+**ICML claim (20 sec)**  
+"Condition D is epistemic-full: `--cabs --cabs-inline`. Offline at the live Nebius shape, D beats B on gens-to-30% **4/5**, cost-to-30% **4/5**, final accuracy **5/5** (~6pp gap), with H5 ρ>0.3 on **5/5**. Live GPQA is the publishable bar — gated behind secrets and a $20 cron pipeline."
 
 **Close (10 sec)**  
-"Track 3: new methodology. Future: web search, committee debate, Darwinian evolution in our sibling repo."
+"Mechanism: contradiction → preferred DNA → population skew → fitness lift. Evidence pack: `docs/paper_artifacts.md`. Status: `docs/ICML_READY.md`."
+
+---
 
 ## If judges ask questions
 
 | Question | Answer |
 |----------|--------|
-| How is this different from SIA? | SIA fixes failures. CABS tracks *beliefs* and *contradictions* and steers *what to investigate*. |
-| Did accuracy improve? | Not required for Track 3. We show knowledge gain when beliefs conflict. Accuracy is secondary. |
-| Can I reproduce? | `python scripts/present_hackathon.py` — no API keys. |
-| What's next? | Tavily for evidence, committee to approve techniques, merge with Darwinian population. |
+| How is this different from SIA? | SIA fixes failures. CABS tracks *beliefs* and *contradictions* and steers *what to mutate/investigate*. |
+| Did accuracy improve? | Offline PRIMARY-shaped yes (D vs B). Publishable claim needs live multi-seed GPQA (G4). |
+| Can I reproduce offline? | `python3 scripts/present_hackathon.py` — no API. Offline Bvd: `docs/offline_bvd_summary.json` IDs `1890–1904`. |
+| What's the live command? | `bash scripts/icml_cron_entry.sh` with Nebius + HF/CSV. |
+| LawBench? | Hard-stop — not without explicit human approval. |
+| What's next? | Unblock secrets → live G2→G3→G4 → fill Live Tables → STATUS READY. |
 
 ## Backup if terminal fails
 
 Open these files in the IDE:
+- `docs/paper_artifacts.md` (Figs 1–2, Tables, abstract)
+- `docs/case_study_offline.md`
+- `docs/figures/fig1_learning_curves.png`
+- `docs/figures/fig2_mechanism.png`
 - `runs/run_showcase/belief_store/contradictions.json`
-- `runs/run_showcase/belief_store/research_questions.json`
-- `runs/run_showcase/gen_3/cabs_report.json`
 - `docs/SUBMISSION.md`
+- `docs/ICML_READY.md`
 
 ## Optional live API demo (only if time + keys)
 
-```powershell
-. .\scripts\load_env.ps1
-sia-cabs-tools agenda --run-dir runs\run_902
+```bash
+source scripts/load_env.sh   # Windows: . .\scripts\load_env.ps1
+bash scripts/icml_cron_entry.sh
+# or inspect a completed run agenda:
+# sia-cabs-tools agenda --run-dir SIA/runs/run_<id>
 ```
