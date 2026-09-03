@@ -1,0 +1,45 @@
+{
+  "updated_at": "2026-09-03T00:06:20Z",
+  "tick_note": "Tick 269\u2013270: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh",
+  "local_tick": 318,
+  "remote_tip_tick": 317,
+  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9ee7",
+  "remote_tip_sha": "0917495",
+  "remote_tip_lineage_score": 6,
+  "tip_ok_for_live": true,
+  "blockers": [],
+  "recover_command": "python3 scripts/icml_recover_tip.py --apply (main boot / no tip scripts: git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply)",
+  "candidates_scanned": 312,
+  "top_candidates": [
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-9ee7",
+      "tick": 317,
+      "sha": "0917495",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-caf2",
+      "tick": 316,
+      "sha": "5035d43",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-f7d1",
+      "tick": 315,
+      "sha": "0816558",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-fb0f",
+      "tick": 314,
+      "sha": "56ec19e",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-84c9",
+      "tick": 313,
+      "sha": "505d11d",
+      "lineage_score": 6
+    }
+  ]
+}
