@@ -958,7 +958,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–318)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–319)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
     assert "Check Nebius + Anthropic dashboard before starting Phase 2." not in master
     assert "ICML Thesis 1 (Tick 313)" in master
@@ -991,6 +992,20 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Do **not** run full LawBench without explicit human approval" in readme
     assert "sia run --task lawbench --max_gen 5 --run_id baseline" not in readme
     assert "ICML README Kimi command surfaces (Tick 318)" in master
+    # Tick 319: judge-facing SUBMISSION + PRESENTATION must lead ICML (README still links them).
+    submission = (root / "docs" / "SUBMISSION.md").read_text(encoding="utf-8")
+    presentation = (root / "docs" / "PRESENTATION.md").read_text(encoding="utf-8")
+    assert "ICML Thesis 1" in submission
+    assert "bash scripts/icml_cron_entry.sh" in submission
+    assert "kimi-nebius-pydantic-meta" in submission
+    assert "kimi-nebius-target" in submission
+    assert "Do **not** run full LawBench without explicit human approval" in submission
+    assert "1890–1894" in submission or "1890-1894" in submission or "`1890–1894`" in submission
+    assert "Future: web search, committee debate, Darwinian evolution in our sibling repo." not in presentation
+    assert "ICML Thesis 1" in presentation
+    assert "bash scripts/icml_cron_entry.sh" in presentation
+    assert "Do not** run full LawBench" in presentation or "Do **not** run full LawBench" in presentation
+    assert "ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

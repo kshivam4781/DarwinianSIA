@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-03 (Section 21 ICML; Tick 318 README Kimi command surfaces; Tick 317 §13/§18/§21.7; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-03 (Section 21 ICML; Tick 319 SUBMISSION+PRESENTATION judge surfaces; Tick 318 README Kimi; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -425,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–318):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–319):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -800,8 +800,8 @@ Computed in `cabs/belief_engine.py`:
 | Chess meta output hints | **DONE** | `sia_prompt_addons.py` |
 | HTML CABS dashboard | **DONE** | `scripts/cabs_dashboard.py` |
 | Tests (16+) | **DONE** | `test_improvements.py` |
-| `docs/SUBMISSION.md` | **DONE** | Hackathon pitch |
-| `docs/PRESENTATION.md` | **DONE** | 2-min demo script |
+| `docs/SUBMISSION.md` | **DONE** | ICML Thesis 1 + offline demo (Tick 319); cron/Kimi + LawBench hard-stop |
+| `docs/PRESENTATION.md` | **DONE** | ICML talking script + offline demo (Tick 319) |
 | `scripts/present_hackathon.py` | **DONE** | One-command demo |
 | `runs/run_showcase` | **DONE** | Full contradiction chain |
 | `scripts/comparison_report.py` | **DONE** | Baseline vs CABS table |
@@ -913,7 +913,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML §3.3 + §6.3 Nebius inference architecture (Tick 316) | **DONE** | §3.3 diagram + §6.3 rules lead with Nebius Kimi (not Claude meta + Nemotron-as-default target); budget note Nebius-only; lock test |
 | ICML §13/§18/§21.7 Kimi command surfaces (Tick 317) | **DONE** | Exact run commands + Phase 2 + Section 18 handoff + §21.7 bare `sia run` examples use `kimi-nebius-*` profiles (not Nemotron-only copy-paste); lock test |
 | ICML README Kimi command surfaces (Tick 318) | **DONE** | README leads with cron + `kimi-nebius-*` GPQA; chess/Qwen demoted; LawBench checklist removed (hard-stop note); lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–318 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319) | **DONE** | Judge docs (linked from README) lead with ICML cron/Kimi + offline PRIMARY evidence + LawBench hard-stop; lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–319 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2367,3 +2368,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **§13/§18/§21.7 ICML Kimi command surfaces (2026-09-02 Tick 317):** Tick 316 closed architecture/cost docs, but **Section 13 Exact run commands**, Phase 2 examples, Section 18 handoff, and bare §21.7 `sia run` lines still copy-pasted **Nemotron/Qwen targets without meta profile** — agents launching manual GPQA after secrets land would burn the ~$20 ceiling on the wrong stack. §13 now leads with cron/pipeline + Kimi profiles; Phase 2 / §18 / §21.7 B/D examples carry `kimi-nebius-pydantic-meta` + `kimi-nebius-target`; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **README ICML Kimi command surfaces (2026-09-03 Tick 318):** Tick 317 fixed the master-plan command book, but **README** still led with chess/`qwen-nebius-target` only and a **LawBench** submission checklist — front-door operators would miss cron/Kimi and risk an unapproved LawBench spend. README now leads with `bash scripts/icml_cron_entry.sh` + Kimi meta/target GPQA; chess/Qwen demoted to historical smoke; LawBench checklist replaced with ICML hard-stop + GPQA evidence steps; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**SUBMISSION + PRESENTATION ICML judge surfaces (2026-09-03 Tick 319):** Tick 318 fixed README, but README still points judges to **`docs/SUBMISSION.md` / `docs/PRESENTATION.md`**, which remained hackathon-era (chess/Tavily, “merge Darwinian next”, no cron/Kimi, no LawBench hard-stop). Both now lead with ICML Thesis 1 offline PRIMARY evidence + `bash scripts/icml_cron_entry.sh` + Nebius secrets; demote offline showcase; LawBench hard-stop; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

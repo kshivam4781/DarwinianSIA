@@ -4,6 +4,41 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-03T02:20Z — Tick 319 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-9f17` (recovered tip ← `feae` Tick 318)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-feae` (Tick 318); local Tick **318** → **319**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 318 fixed README command surfaces, but README still points judges to **`docs/SUBMISSION.md` / `docs/PRESENTATION.md`**, which remained hackathon-era (chess/Tavily, “merge Darwinian next”, no cron/Kimi, no LawBench hard-stop). Highest leverage without paid spend: **judge-facing SUBMISSION + PRESENTATION ICML surfaces**.
+
+### What this tick did (ONE step)
+**SUBMISSION + PRESENTATION ICML judge surfaces (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `feae`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral gate-report dirt
+2. `docs/SUBMISSION.md` → ICML Thesis 1 lead: cron + Kimi profiles, offline PRIMARY `1890–1904`, LawBench hard-stop; demote showcase
+3. `docs/PRESENTATION.md` → ICML talking script + live path; remove stale “Darwinian next” close
+4. Section 12 rows + Tick 319 DONE row; Section 21 note; Gate label → 289–319; HUMAN_UNBLOCK / paper / READY / README tick labels; lock test extended
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 318) | After (Tick 319) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| SUBMISSION/PRESENTATION = ICML cron+Kimi | **no (hackathon-era)** | **ICML lead + LawBench hard-stop** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-03T00:15Z — Tick 318 (automation cron)
 
 ### Status snapshot
