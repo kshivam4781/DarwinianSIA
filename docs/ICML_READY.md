@@ -359,6 +359,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 324 python3-safe Section 21.7 — §21.7 prepare/G2/G3/G4/pipeline copy-paste uses `python3` (cold Linux has no bare `python`); lock test extended
 - [x] Tick 326 python3-safe script --help Examples — G2/G3/G4/pipeline/prepare/recover/epistemic module docstrings use `python3` (cold Linux); lock test extended
 - [x] Tick 327 dual human unblock — `ICML_HUMAN_UNBLOCK.md` leads with secrets **and** merge tip PR → `main` (cron boots hackathon AGENTS without ICML tip files); lock test extended
+- [x] Tick 328 machine-readable dual unblock — `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -370,3 +371,5 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 300 live-shape `1890–1904`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; post-steer H2 on `run_1900`); **live** G3 **PREFLIGHT READY** (Tick 26: `run_g3_pilot.py`) but NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
+
+<!-- Tick 328 note: Gate labels / secrets stack through Tick 328 machine-readable dual unblock -->

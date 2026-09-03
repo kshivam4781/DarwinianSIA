@@ -1436,6 +1436,32 @@ def _secret_present(name: str) -> bool:
     return True
 
 
+def main_has_icml_tip_files(*, repo_root: Path | None = None) -> bool:
+    """True when ``origin/main`` (or local ``main``) contains ICML tip scripts.
+
+    Tick 328: cron boots from ``main``. Until tip lands there, every tick must
+    chicken-egg recover. This is an **operational** dual-unblock signal — it
+    does **not** block ``fetch_diamond_ok`` / paid live once secrets exist
+    (recover still works).
+    """
+    root = repo_root or _REPO_ROOT
+    marker = "scripts/icml_cron_entry.sh"
+    for ref in ("refs/remotes/origin/main", "origin/main", "main"):
+        ok, _ = _git_ok(["cat-file", "-e", f"{ref}:{marker}"], cwd=root)
+        if ok:
+            return True
+    return False
+
+
+def _merge_tip_to_main_human_next() -> str:
+    return (
+        "Merge the latest ICML tip PR into `main` so cron inherits "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–328 dual "
+        "unblock; `main` still has hackathon-era AGENTS without tip files). "
+        "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
+    )
+
+
 def collect_icml_secrets_status() -> dict:
     """Presence-only secrets / diamond gate for live G2→G3→G4 (Tick 268/277/289).
 
@@ -1443,6 +1469,10 @@ def collect_icml_secrets_status() -> dict:
     265–266 bootstraps succeed; live blockers are API keys + real GPQA
     (HF token **or** a local diamond CSV). Tick 289: Anthropic is required
     only when the ICML meta profile uses ``provider_id=anthropic``.
+
+    Tick 328: also reports ``main_has_icml_tip`` and prepends merge-tip→main
+    to ``human_next`` when ``main`` lacks tip files (does not affect
+    ``fetch_diamond_ok``).
     """
     load_icml_dotenv()
     anthropic = _secret_present("ANTHROPIC_API_KEY")
@@ -1467,17 +1497,36 @@ def collect_icml_secrets_status() -> dict:
             "(required for --fetch-diamond; or provide --diamond-csv / "
             "drop gpqa_diamond.csv at /tmp or docs/private/)"
         )
+    main_has_tip = main_has_icml_tip_files()
     human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    human_next: list[str] = []
+    if not main_has_tip:
+        human_next.append(_merge_tip_to_main_human_next())
+    human_next.extend(
+        [
+            f"Add {human_keys} to automation "
+            f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
+            "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
+            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
+            "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
+            "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
+            "(Tick 271–328 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "Portal Save of docs/icml_portal_save_target.json is optional "
+            "(warm boots only; packages bootstrap without it)",
+        ]
+    )
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292: secrets-first live gate; Portal Save optional; "
-            "cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
+            "Tick 268/273/277/289/292/328: secrets-first live gate; Portal Save "
+            "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
             "icml_human_required_secrets_phrase; "
             ".env loaded for missing secret names; "
-            "human_next prefers bash scripts/icml_cron_entry.sh"
+            "human_next prefers bash scripts/icml_cron_entry.sh; "
+            "Tick 328 dual unblock also surfaces merge tip→main when "
+            "main_has_icml_tip is false"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1501,18 +1550,10 @@ def collect_icml_secrets_status() -> dict:
         "fetch_diamond_ok": fetch_diamond_ok,
         "cron_live_ok": cron_live_ok,
         "ready_for_live_pipeline": False,  # diamond + keys both required; caller may override
+        # Tick 328: operational dual-unblock (does not gate fetch_diamond_ok).
+        "main_has_icml_tip": main_has_tip,
         "blockers": blockers,
-        "human_next": [
-            f"Add {human_keys} to automation "
-            f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
-            "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
-            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
-            "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
-            "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–292 — recovers tip; auto-live only when fetch_diamond_ok)",
-            "Portal Save of docs/icml_portal_save_target.json is optional "
-            "(warm boots only; packages bootstrap without it)",
-        ],
+        "human_next": human_next,
     }
 
 
@@ -1547,13 +1588,19 @@ def live_pipeline_next_steps(
     tip_ok: bool | None = None,
     tip_ref: str | None = None,
     fetch_diamond_ok: bool | None = None,
+    main_has_icml_tip: bool | None = None,
 ) -> list[str]:
-    """Human-facing Next bullets — tip + secrets + HF + cron entry (Tick 268–274).
+    """Human-facing Next bullets — tip + secrets + HF + cron entry (Tick 268–274/328).
 
     Tick 274: do **not** claim live-ready on Anthropic+Nebius alone — cron and
     ``--live --fetch-diamond`` also need ``HF_TOKEN`` (``fetch_diamond_ok``).
+    Tick 328: when ``main`` lacks tip files, prepend merge tip→main (dual unblock).
     """
     steps: list[str] = []
+    if main_has_icml_tip is None:
+        main_has_icml_tip = main_has_icml_tip_files()
+    if main_has_icml_tip is False:
+        steps.append(_merge_tip_to_main_human_next())
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
         steps.append(
@@ -1796,12 +1843,15 @@ def collect_icml_tip_status(
     if not candidates and local_tick is not None:
         tip_ok = True
 
+    main_has_tip = main_has_icml_tip_files(repo_root=root)
+
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270: tip lineage guard — cron often boots from main; "
+            "Tick 269–270/328: tip lineage guard — cron often boots from main; "
             "refuse --live on stale trees; recover via "
-            "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh"
+            "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
+            "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock)"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -1809,6 +1859,8 @@ def collect_icml_tip_status(
         "remote_tip_sha": tip["sha"] if tip else None,
         "remote_tip_lineage_score": tip["lineage_score"] if tip else None,
         "tip_ok_for_live": tip_ok,
+        # Tick 328: advisory — tip recover still works; prefer merge tip→main.
+        "main_has_icml_tip": main_has_tip,
         "blockers": blockers,
         "recover_command": (
             "python3 scripts/icml_recover_tip.py --apply "

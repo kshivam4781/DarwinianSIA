@@ -385,6 +385,7 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: True)
     status = collect_icml_secrets_status()
     blob = json.dumps(status)
     assert "sk-ant-secret-should-not-leak" not in blob
@@ -395,6 +396,29 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
     assert status["fetch_diamond_ok"] is False
     assert status["cron_live_ok"] is False
     assert any("NEBIUS" in b for b in status["blockers"])
+    assert status["main_has_icml_tip"] is True
+
+
+def test_secrets_status_human_next_merge_tip_when_main_lacks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 328: dual unblock — human_next leads with merge tip→main when main lacks tip."""
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
+    status = collect_icml_secrets_status()
+    assert status["main_has_icml_tip"] is False
+    assert status["fetch_diamond_ok"] is True  # merge tip does not gate paid live
+    assert status["blockers"] == []
+    assert "Merge the latest ICML tip PR into `main`" in status["human_next"][0]
+    steps = live_pipeline_next_steps(
+        secrets_ok=True,
+        tip_ok=True,
+        fetch_diamond_ok=True,
+        main_has_icml_tip=False,
+    )
+    assert "Merge the latest ICML tip PR into `main`" in steps[0]
 
 
 def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -507,11 +531,15 @@ def test_load_icml_dotenv_fills_missing_secrets(
 
 def test_live_pipeline_next_steps_requires_fetch_diamond_ok() -> None:
     """Tick 274: Anthropic+Nebius alone must not claim cron live OK."""
-    partial = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=False)
+    partial = live_pipeline_next_steps(
+        secrets_ok=True, fetch_diamond_ok=False, main_has_icml_tip=True
+    )
     assert "HF_TOKEN" in partial[0] or "gpqa_diamond.csv" in partial[0]
     assert "fetch_diamond_ok" in partial[0]
     assert "preflight-only" in partial[1]
-    full = live_pipeline_next_steps(secrets_ok=True, fetch_diamond_ok=True)
+    full = live_pipeline_next_steps(
+        secrets_ok=True, fetch_diamond_ok=True, main_has_icml_tip=True
+    )
     assert "fetch_diamond_ok" in full[0]
     assert "icml_cron_entry.sh" in full[1]
 
@@ -566,12 +594,12 @@ def test_ready_for_live_pipeline_requires_fetch_diamond_ok(
 
 
 def test_live_pipeline_next_steps_secrets_first() -> None:
-    blocked = live_pipeline_next_steps(secrets_ok=False)
+    blocked = live_pipeline_next_steps(secrets_ok=False, main_has_icml_tip=True)
     assert "NEBIUS_API_KEY" in blocked[0]
     assert "icml_cron_entry.sh" in blocked[1]
     assert "optional" in blocked[2].lower()
     # Legacy caller (no fetch_diamond_ok): secrets_ok still means "go".
-    ready = live_pipeline_next_steps(secrets_ok=True)
+    ready = live_pipeline_next_steps(secrets_ok=True, main_has_icml_tip=True)
     assert "Secrets present" in ready[0]
     assert "icml_cron_entry.sh" in ready[1]
 
@@ -581,6 +609,7 @@ def test_live_pipeline_next_steps_tip_before_secrets() -> None:
         secrets_ok=False,
         tip_ok=False,
         tip_ref="origin/cursor/icml-epistemic-results-de52",
+        main_has_icml_tip=True,
     )
     assert "icml_cron_entry.sh" in steps[0]
     assert "NEBIUS_API_KEY" in steps[1]
@@ -959,7 +988,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–327)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–328)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–327)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–326)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
@@ -1110,6 +1140,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Merge the latest tip PR into `main`" in unblock
     assert "cron boots from **`main`**" in unblock or "Cron boots from **`main`**" in unblock
     assert "ICML dual human unblock — secrets + merge tip→main (Tick 327)" in master
+    # Tick 328: machine-readable dual unblock — secrets status / tip status /
+    # pipeline Next surface merge tip→main when main lacks ICML tip files.
+    env_checks = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def main_has_icml_tip_files" in env_checks
+    assert "main_has_icml_tip" in env_checks
+    assert "_merge_tip_to_main_human_next" in env_checks
+    assert "Merge the latest ICML tip PR into `main`" in env_checks
+    assert "ICML machine-readable dual unblock (Tick 328)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

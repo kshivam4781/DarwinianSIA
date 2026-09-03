@@ -489,6 +489,7 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         tip_ok=(False if tip_blocker else True),
         tip_ref=tip_ref,
         fetch_diamond_ok=fetch_diamond_ok,
+        main_has_icml_tip=secrets_status.get("main_has_icml_tip"),
     )
     lines.extend(["", "## Next", ""])
     for i, step in enumerate(next_lines, start=1):
