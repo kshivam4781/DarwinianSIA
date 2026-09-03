@@ -1,5 +1,27 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-03T16:05Z — Tick 325 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f187` (recovered tip ← `6a3b` Tick 324)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets (`NEBIUS_API_KEY` + `HF_TOKEN` or local CSV). All offline metrics strong (PRIMARY 4–5/5, H5 5/5, mean gap ~6.15pp). All code paths python3-safe, all gate locks green, all preflight runners ready. No further code-level improvements identified — the bottleneck is purely operational (secrets provisioning). Portal Save re-link intentionally skipped (never inherited by cron after 260+ attempts).
+
+### What this tick did
+No code changes. Confirmed tip recovery, verified ICML_READY / HUMAN_UNBLOCK / progress docs current, confirmed no new code-level gaps.
+
+### Metrics delta
+No change from Tick 324. Offline: D final 5/5, gens30 4/5, cost30 4/5, H5 5/5.
+
+### Next recommended step
+Add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) to Cloud Agent secrets per `docs/ICML_HUMAN_UNBLOCK.md`. Then: `bash scripts/icml_cron_entry.sh` → auto G2→G3→G4→paper pack→STATUS READY.
+
+---
+
 ## 2026-09-03T12:15Z — Tick 324 (automation cron)
 
 ### Status snapshot
