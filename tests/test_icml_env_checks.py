@@ -959,7 +959,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–323)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–324)" in master
     assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
@@ -1069,6 +1069,21 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Path(sys.executable).name" in verify or "icml_python_cli" in verify
     assert "{py} scripts/run_g2_smoke.py --live" in diamond
     assert "ICML python3-safe gate Next (Tick 323)" in master
+    # Tick 324: Section 21.7 protocol copy-paste must use python3 (not bare python).
+    marker_217 = "### 21.7 Suggested cheap GPQA commands"
+    idx_217 = master.find(marker_217)
+    assert idx_217 >= 0
+    idx_218 = master.find("### 21.8", idx_217)
+    assert idx_218 > idx_217
+    section_217 = master[idx_217:idx_218]
+    assert "python3 scripts/prepare_gpqa_smoke_data.py" in section_217
+    assert "python3 scripts/prepare_gpqa_diamond.py" in section_217
+    assert "python3 scripts/run_g2_smoke.py" in section_217
+    assert "python3 scripts/run_g3_pilot.py" in section_217
+    assert "python3 scripts/run_g4_multiseed.py" in section_217
+    assert "python3 scripts/run_icml_live_pipeline.py" in section_217
+    assert "\npython scripts/" not in section_217
+    assert "ICML python3-safe Section 21.7 (Tick 324)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

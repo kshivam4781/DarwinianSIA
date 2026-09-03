@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-03 (Section 21 ICML; Tick 323 python3-safe gate Next; Tick 322 python3-safe judge entrypoints; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-03 (Section 21 ICML; Tick 324 python3-safe §21.7; Tick 323 python3-safe gate Next; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -425,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–323):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–324):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -918,7 +918,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
 | ICML python3-safe gate Next (Tick 323) | **DONE** | G2/G3/G4/pipeline Next + tip refuse + prepare_*/verify_keys use `icml_python_cli()` (no bare `python scripts/…`); lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–323 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML python3-safe Section 21.7 (Tick 324) | **DONE** | §21.7 G2/G3/G4/pipeline/prepare copy-paste uses `python3` (cold Linux has no bare `python`); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–324 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1673,18 +1674,22 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 
 ### 21.7 Suggested cheap GPQA commands (after keys + budget check)
 
+Prefer `bash scripts/icml_cron_entry.sh` once secrets land. Manual fallbacks below use
+**`python3`** on Linux/cloud (Tick 324; cold images often lack a bare `python` shim).
+Windows venv may use `python` after `.\.venv\Scripts\Activate.ps1`.
+
 ```bash
 # 0) Materialize GPQA task data if gitignored data/ is missing (synthetic smoke OK for dry-run)
-python scripts/prepare_gpqa_smoke_data.py
+python3 scripts/prepare_gpqa_smoke_data.py
 
 # 0a) Real GPQA diamond for paid runs (Tick 25; needs HF_TOKEN + accepted Idavidrein/gpqa access)
-python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force
-# or: python scripts/prepare_gpqa_diamond.py --from-csv /path/to/gpqa_diamond.csv --n 5 --force
+python3 scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force
+# or: python3 scripts/prepare_gpqa_diamond.py --from-csv /path/to/gpqa_diamond.csv --n 5 --force
 
 # 0b) Preferred G2 entrypoint (Tick 24/25) — preflight / dry-run / live with hard-stops
-python scripts/run_g2_smoke.py --preflight-only --run-id 1850
-python scripts/run_g2_smoke.py --dry-run --run-id 1850
-python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond   # keys + HF_TOKEN / CSV
+python3 scripts/run_g2_smoke.py --preflight-only --run-id 1850
+python3 scripts/run_g2_smoke.py --dry-run --run-id 1850
+python3 scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond   # keys + HF_TOKEN / CSV
 
 # 1) Harness dry-run Condition D (no API) — validated Tick 21 as run_1800
 sia run --task gpqa --darwinian --cabs --cabs-inline \
@@ -1701,18 +1706,18 @@ sia run --task gpqa --darwinian --cabs --cabs-inline \
   --target-agent-profile kimi-nebius-target
 
 # 3) Preferred G3 entrypoint (Tick 26) — sequential B then D; never parallel
-python scripts/run_g3_pilot.py --preflight-only --seeds 1 --b-run-ids 1201 --d-run-ids 1301
-python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond
+python3 scripts/run_g3_pilot.py --preflight-only --seeds 1 --b-run-ids 1201 --d-run-ids 1301
+python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond
 
 # 3b) Preferred G4 entrypoint (Tick 27) — exactly 5 seeds; sequential B then D; refreshes paper Live table
-python scripts/run_g4_multiseed.py --preflight-only
-python scripts/run_g4_multiseed.py --live \
+python3 scripts/run_g4_multiseed.py --preflight-only
+python3 scripts/run_g4_multiseed.py --live \
   --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 \
   --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond
 
 # 3c) Preferred full-stack entrypoint (Tick 29) — G2 → G3 → G4 serially under one budget
-python scripts/run_icml_live_pipeline.py --preflight-only
-python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+python3 scripts/run_icml_live_pipeline.py --preflight-only
+python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
 
 # Condition B — darwinian-only (example IDs — pick unused integers; Tick 317 profiles)
 sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
@@ -1795,15 +1800,15 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Live G2 preflight runner (2026-08-05 Tick 24):** `scripts/run_g2_smoke.py` turns Gate G2 into a single entrypoint (`--preflight-only` / `--dry-run` / `--live`). Paid `--live` hard-stops without required secrets (Tick 289/310: `NEBIUS_API_KEY`; `ANTHROPIC_API_KEY` only when meta is anthropic), refuses synthetic smoke `diamond_questions.json` (`is_synthetic_smoke`), refuses existing run IDs, and respects `SIA_BUDGET_*` ceiling. Preflight this tick: dry-run ready **yes**; live ready **no** — see `docs/gate2_report.md`. Next: live G2 when `NEBIUS` + HF/CSV + real GPQA diamond are present.
 
-**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV) are present (Anthropic optional under Nebius meta; Tick 289/310).
+**GPQA diamond materializer (2026-08-05 Tick 25):** `scripts/prepare_gpqa_diamond.py` converts HuggingFace `Idavidrein/gpqa` / `gpqa_diamond` (or a local CSV) into SIA `diamond_questions.json` (public without answers; private with `correct_answer_letter`; `source=gpqa_diamond` so `is_synthetic_smoke` is false). Wired as `run_g2_smoke.py --fetch-diamond` / `--diamond-csv`. **Do not commit** materialized JSON (GPQA license). Preflight this tick still live-ready **no** (no API keys / no HF token). Next: `python3 scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond` when `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV) are present (Anthropic optional under Nebius meta; Tick 289/310).
 
-**Live G3 sequential pilot runner (2026-08-06 Tick 26):** `scripts/run_g3_pilot.py` turns Gate G3 into a single entrypoint (`--preflight-only` / `--live`). Enforces Section 21.5 shape (1–2 seeds; Nebius budget-fit via `icml_g3g4_live_shape()` — currently `eval_subset=5`, `pop=4`, `elite=2`, `max_gen≤6`; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5), runs Condition **B then D serially** (hard-stop against parallel full GPQA), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G3_PAIR_ESTIMATE_USD` × n_pairs ≤ ceiling). After a live pair, scores `compare_b_vs_d` + Condition D H5 and refreshes `docs/gate3_report.md` while preserving the offline pilot block. Preflight this tick: live ready **no**. Next after G2 PASS: `python scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`.
+**Live G3 sequential pilot runner (2026-08-06 Tick 26):** `scripts/run_g3_pilot.py` turns Gate G3 into a single entrypoint (`--preflight-only` / `--live`). Enforces Section 21.5 shape (1–2 seeds; Nebius budget-fit via `icml_g3g4_live_shape()` — currently `eval_subset=5`, `pop=4`, `elite=2`, `max_gen≤6`; Anthropic meta keeps historical `eval_subset=15`/pop4/elite2/max_gen5), runs Condition **B then D serially** (hard-stop against parallel full GPQA), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G3_PAIR_ESTIMATE_USD` × n_pairs ≤ ceiling). After a live pair, scores `compare_b_vs_d` + Condition D H5 and refreshes `docs/gate3_report.md` while preserving the offline pilot block. Preflight this tick: live ready **no**. Next after G2 PASS: `python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`.
 
-**Live G4 5-seed sequential runner (2026-08-06 Tick 27):** `scripts/run_g4_multiseed.py` turns Gate G4 into a single entrypoint (`--preflight-only` / `--live`). Requires **exactly 5 seeds**, same Section 21.5 shape as G3, serial B→D (never parallel), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G4_PAIR_ESTIMATE_USD` default $3 × 5 ≤ ceiling). After live pairs, scores PRIMARY + Condition D H5, writes `docs/gate4_report.md`, and refreshes the Live GPQA Table 1 + run-ID rows in `docs/paper_artifacts.md`. Preflight this tick: live ready **no**. Next after G3 PASS under remaining budget: `python scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`.
+**Live G4 5-seed sequential runner (2026-08-06 Tick 27):** `scripts/run_g4_multiseed.py` turns Gate G4 into a single entrypoint (`--preflight-only` / `--live`). Requires **exactly 5 seeds**, same Section 21.5 shape as G3, serial B→D (never parallel), refuses synthetic smoke / missing keys / occupied run IDs, and projects budget (`SIA_G4_PAIR_ESTIMATE_USD` default $3 × 5 ≤ ceiling). After live pairs, scores PRIMARY + Condition D H5, writes `docs/gate4_report.md`, and refreshes the Live GPQA Table 1 + run-ID rows in `docs/paper_artifacts.md`. Preflight this tick: live ready **no**. Next after G3 PASS under remaining budget: `python3 scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`.
 
-**G4 full paper-pack refresh (2026-08-06 Tick 28):** Same runner now also scores live H2 DNA skew, refreshes Table 2 H2/H5 marker rows, rewrites Figs 1–2 from B vs D curves + pooled H2 histograms, and updates `docs/ICML_READY.md` checklist (sets STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper all pass). Recovery without re-spend: `python scripts/run_g4_multiseed.py --refresh-paper-from-runs --b-run-dirs ... --d-run-dirs ...` (READY requires explicit `--allow-ready` on refresh).
+**G4 full paper-pack refresh (2026-08-06 Tick 28):** Same runner now also scores live H2 DNA skew, refreshes Table 2 H2/H5 marker rows, rewrites Figs 1–2 from B vs D curves + pooled H2 histograms, and updates `docs/ICML_READY.md` checklist (sets STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper all pass). Recovery without re-spend: `python3 scripts/run_g4_multiseed.py --refresh-paper-from-runs --b-run-dirs ... --d-run-dirs ...` (READY requires explicit `--allow-ready` on refresh).
 
-**Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot is promising (any D gens/cost/final win or H5 ρ>0.3) unless `--force-g4`. Preferred live entry: `python scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
+**Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot is promising (any D gens/cost/final win or H5 ρ>0.3) unless `--force-g4`. Preferred live entry: `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
 
 **Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. **Tick 289/310:** live blocked on `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV); `ANTHROPIC_API_KEY` optional under Nebius pydantic-ai meta (accepted `Idavidrein/gpqa` when using HF).
 
@@ -2382,3 +2387,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **python3-safe judge entrypoints (2026-09-03 Tick 322):** Tick 321 fixed missing pytest, but cold Linux/cloud images often have **no bare `python` shim** (only `python3`). Judge docs (README / SUBMISSION / PRESENTATION) and finish/present copy-paste still said `python scripts/…`, so the offline verify path failed before ICML status. Docs now lead with `python3`; finish/present print `Path(sys.executable).name`. Lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **python3-safe gate Next (2026-09-03 Tick 323):** Tick 322 fixed judge docs, but G2/G3/G4 gate-report **Next** lines, tip-recovery refuse strings, `prepare_gpqa_*` Next, and `verify_keys` still said bare `python scripts/…` — operators following preflight after secrets would fail on cold Linux. Added `icml_python_cli()` and wired it through gate/pipeline/prepare/verify surfaces; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**python3-safe Section 21.7 (2026-09-03 Tick 324):** Tick 323 fixed runtime Next/refuse strings, but the canonical protocol copy-paste block **§21.7** still led with bare `python scripts/…` for prepare/G2/G3/G4/pipeline — agents and humans following Section 21 after secrets would fail on cold Linux (`python: command not found`). §21.7 now uses `python3` (Windows venv note retained); lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
