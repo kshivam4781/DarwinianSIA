@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-03 (Section 21 ICML; Tick 326 python3-safe script --help; Tick 324 python3-safe §21.7; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-03 (Section 21 ICML; Tick 327 dual human unblock secrets+merge tip→main; Tick 326 python3-safe --help; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -425,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–326):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–327):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. Also **merge tip → `main`** so cron inherits ICML AGENTS/cron entry (Tick 327). See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -920,7 +920,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML python3-safe gate Next (Tick 323) | **DONE** | G2/G3/G4/pipeline Next + tip refuse + prepare_*/verify_keys use `icml_python_cli()` (no bare `python scripts/…`); lock test |
 | ICML python3-safe Section 21.7 (Tick 324) | **DONE** | §21.7 G2/G3/G4/pipeline/prepare copy-paste uses `python3` (cold Linux has no bare `python`); lock test |
 | ICML python3-safe script --help Examples (Tick 326) | **DONE** | G2/G3/G4/pipeline/prepare/recover/epistemic module docstrings / `--help` Examples use `python3` (cold Linux); lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–326 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML dual human unblock — secrets + merge tip→main (Tick 327) | **DONE** | `ICML_HUMAN_UNBLOCK.md` leads with secrets **and** merge tip PR → `main` (cron still boots hackathon AGENTS without ICML tip files); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–327 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2392,3 +2393,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **python3-safe Section 21.7 (2026-09-03 Tick 324):** Tick 323 fixed runtime Next/refuse strings, but the canonical protocol copy-paste block **§21.7** still led with bare `python scripts/…` for prepare/G2/G3/G4/pipeline — agents and humans following Section 21 after secrets would fail on cold Linux (`python: command not found`). §21.7 now uses `python3` (Windows venv note retained); lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **python3-safe script --help Examples (2026-09-03 Tick 326):** Tick 324 fixed §21.7, but G2/G3/G4/pipeline/prepare/recover/epistemic **module docstrings** (surfaced by `--help`) still said bare `python scripts/…`. Operators copying from help after secrets land would fail on cold Linux. Examples now lead with `python3` (+ Windows venv note); lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Dual human unblock — secrets + merge tip→main (2026-09-03 Tick 327):** Live PRIMARY remains secrets-blocked, but cron also still boots **`main`**, which has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `icml_cron_entry.sh` (300+ tip PRs unmerged). `docs/ICML_HUMAN_UNBLOCK.md` now leads with the dual action: (1) add NEBIUS + HF/CSV, (2) merge latest tip PR into `main`. Portal Save skipped. G2 dry-run `run_1910` green. STATUS remains IN_PROGRESS.

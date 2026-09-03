@@ -11,6 +11,7 @@ That document is the single source of truth for CABS architecture, APIs, hardwar
 ## ICML persistent agent (cron / cloud)
 
 Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*` or live runners.
+**Tick 327:** `main` still has hackathon-era AGENTS (no ICML tip files) until the tip PR is merged — recover tip every boot; ask human to merge tip → `main` + add secrets (`docs/ICML_HUMAN_UNBLOCK.md`).
 
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 

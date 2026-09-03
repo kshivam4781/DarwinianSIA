@@ -959,7 +959,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–326)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–327)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–326)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
@@ -1103,6 +1104,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
             f"{label} --help Examples still lead with bare python scripts/…"
         )
     assert "ICML python3-safe script --help Examples (Tick 326)" in master
+    # Tick 327: dual human unblock — secrets AND merge tip → main (cron boots main).
+    unblock = (root / "docs" / "ICML_HUMAN_UNBLOCK.md").read_text(encoding="utf-8")
+    assert "Dual human unblock (Tick 327" in unblock
+    assert "Merge the latest tip PR into `main`" in unblock
+    assert "cron boots from **`main`**" in unblock or "Cron boots from **`main`**" in unblock
+    assert "ICML dual human unblock — secrets + merge tip→main (Tick 327)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

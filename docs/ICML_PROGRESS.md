@@ -1,5 +1,38 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-03T20:08Z — Tick 327 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0482` (recovered tip ← `bb05` Tick 326)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- G2 dry-run health: `run_1910` **PASS** (Condition D `--cabs --cabs-inline`, no API)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Code polish track exhausted (python3-safe through Tick 326). Additional systemic gap: **`main` still has hackathon-era `AGENTS.md` and no ICML tip files** — cron creates a fresh branch from `main` every tick, so agents must chicken-egg recover tip (300+ tip PRs unmerged). Highest leverage without paid spend: **document dual human unblock (secrets + merge tip → main)** so the next human action unblocks both live GPQA and stable cron boots. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Dual human unblock docs + lock (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `bb05`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral gate-report dirt; G2 dry-run `run_1910` green
+2. `docs/ICML_HUMAN_UNBLOCK.md` leads with Dual human unblock table: (1) NEBIUS+HF/CSV, (2) merge latest tip PR into `main`
+3. Section 12 row + Tick 327 DONE chronicle; Gate label → 289–327; READY / paper tick labels; lock test extended
+4. Secrets setup actions re-filed; STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 326) | After (Tick 327) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Dual unblock (secrets + merge tip→main) documented | **no** (secrets-only framing) | **yes** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **merge latest tip PR into `main`**. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-03T18:05Z — Tick 326 (automation cron)
 
 ### Status snapshot
