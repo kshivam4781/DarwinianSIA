@@ -4,8 +4,8 @@
 
 ```bash
 # Offline story (no API)
-python scripts/present_hackathon.py
-# or full verify: python scripts/finish_hackathon.py
+python scripts/present_hackathon.py   # ICML status + contradiction chain
+# or full verify: python scripts/finish_hackathon.py  # ICML-honest (no false READY)
 ```
 
 Confirm you see:

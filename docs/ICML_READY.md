@@ -352,6 +352,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 317 §13/§18/§21.7 ICML Kimi command surfaces — Exact run commands + Phase 2 + Section 18 handoff + §21.7 bare `sia run` examples use `kimi-nebius-*` (not Nemotron-only copy-paste); lock test extended
 - [x] Tick 318 README ICML Kimi command surfaces — README leads with cron + `kimi-nebius-*` GPQA; chess/Qwen demoted; LawBench checklist removed (hard-stop note); lock test extended
 - [x] Tick 319 SUBMISSION + PRESENTATION ICML judge surfaces — judge docs (linked from README) lead with ICML cron/Kimi + offline PRIMARY `1890–1904` + LawBench hard-stop; lock test extended
+- [x] Tick 320 finish/present ICML-honest judge demos — `finish_hackathon.py` / `present_hackathon.py` surface ICML STATUS + offline Bvd + cron; no false READY FOR SUBMISSION; lock test extended
 
 ## Gate tracker (Section 21.5)
 

@@ -11,8 +11,8 @@
 ### Offline demo (judges / no API, ~2 min)
 
 ```bash
-python scripts/present_hackathon.py   # belief → contradiction → RQ story
-# or: python scripts/finish_hackathon.py
+python scripts/present_hackathon.py   # belief → contradiction → RQ story (+ ICML status)
+# or: python scripts/finish_hackathon.py  # ICML-honest verify (no false READY)
 ```
 
 Talking script: [`docs/PRESENTATION.md`](PRESENTATION.md).

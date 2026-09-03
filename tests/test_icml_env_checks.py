@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–318: .env.example + §3.3/4.1/4.4/4.5/6.2/6.3/8.2/9/12/13/18/21 + README + load_env.ps1/.sh Anthropic-optional / Kimi commands."""
+    """Tick 309–320: .env.example + §3.3/4.1/4.4/4.5/6.2/6.3/8.2/9/12/13/18/21 + README + load_env + finish/present ICML-honest."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -958,7 +958,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–319)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–320)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
     assert "Check Nebius + Anthropic dashboard before starting Phase 2." not in master
@@ -1006,6 +1007,20 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "bash scripts/icml_cron_entry.sh" in presentation
     assert "Do not** run full LawBench" in presentation or "Do **not** run full LawBench" in presentation
     assert "ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319)" in master
+    # Tick 320: judge one-command demos must be ICML-honest (no false READY).
+    finish = (root / "scripts" / "finish_hackathon.py").read_text(encoding="utf-8")
+    present = (root / "scripts" / "present_hackathon.py").read_text(encoding="utf-8")
+    assert "ICML Thesis 1" in finish or "ICML THESIS 1" in finish
+    assert "icml_cron_entry.sh" in finish
+    assert "LawBench" in finish
+    assert 'print("\\nREADY FOR SUBMISSION.")' not in finish
+    assert "Do NOT treat this script's exit-0 as ICML_READY" in finish
+    assert "offline_bvd_summary" in finish
+    assert "ICML Thesis 1" in present or "ICML THESIS 1" in present
+    assert "icml_cron_entry.sh" in present
+    assert "LawBench" in present
+    assert "1890" in present
+    assert "ICML finish/present judge demos (Tick 320)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

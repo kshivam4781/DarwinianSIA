@@ -9,7 +9,7 @@
 ```powershell
 cd c:\Users\MSPSA\Documents\SIA2
 .\.venv\Scripts\Activate.ps1
-python scripts\finish_hackathon.py    # full verify (recommended for judges)
+python scripts\finish_hackathon.py    # ICML-honest offline verify (no false READY)
 python scripts\present_hackathon.py   # 2-min demo only
 ```
 
@@ -69,7 +69,7 @@ py -3.13 -m venv .venv
 pip install -e ".[dev]" -e "./sia-upstream[dev]"
 ```
 
-Set API keys (copy `.env.example` → `.env`). **ICML live** needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`); `ANTHROPIC_API_KEY` is optional under default Nebius pydantic-ai meta (Tick 289/310–319). See `docs/ICML_HUMAN_UNBLOCK.md`.
+Set API keys (copy `.env.example` → `.env`). **ICML live** needs `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`); `ANTHROPIC_API_KEY` is optional under default Nebius pydantic-ai meta (Tick 289/310–320). See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ```bash
 # Linux / macOS / cloud:

@@ -1,18 +1,21 @@
-"""45-minute finish sprint: verify tests, demos, merge proof, print judge commands."""
+"""Judge verify: offline CABS demo + ICML Thesis 1 status (no paid spend)."""
 
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SIA_ROOT = ROOT.parent / "SIA"
+# Monorepo ships SIA under ROOT/SIA; sibling-checkout layout uses ROOT.parent/SIA.
+_SIA_CANDIDATES = (ROOT / "SIA", ROOT.parent / "SIA")
+SIA_ROOT = next((p for p in _SIA_CANDIDATES if p.is_dir()), _SIA_CANDIDATES[0])
 sys.path.insert(0, str(ROOT))
 
-from cabs.belief_engine import BeliefEngine
-from cabs.prompt_injection import agenda_snapshot
+from cabs.belief_engine import BeliefEngine  # noqa: E402
+from cabs.prompt_injection import agenda_snapshot  # noqa: E402
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> int:
@@ -24,9 +27,61 @@ def _banner(title: str) -> None:
     print(f"\n{'=' * 72}\n  {title}\n{'=' * 72}\n")
 
 
+def _icml_status_line() -> str:
+    ready = ROOT / "docs" / "ICML_READY.md"
+    if not ready.is_file():
+        return "UNKNOWN (docs/ICML_READY.md missing)"
+    text = ready.read_text(encoding="utf-8")
+    m = re.search(r"\*\*STATUS:\s*([A-Z_]+)\*\*", text)
+    return m.group(1) if m else "UNKNOWN"
+
+
+def _offline_bvd_blurb() -> str:
+    path = ROOT / "docs" / "offline_bvd_summary.json"
+    if not path.is_file():
+        return "  (docs/offline_bvd_summary.json missing)"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return f"  (offline_bvd_summary unreadable: {exc})"
+    cmp_ = data.get("compare") or {}
+    shape = data.get("shape") or {}
+    b_ids = data.get("b_run_ids") or []
+    d_ids = data.get("d_run_ids") or []
+    id_range = (
+        f"{b_ids[0]}–{b_ids[-1]} / {d_ids[0]}–{d_ids[-1]}"
+        if b_ids and d_ids
+        else "see docs/offline_bvd_summary.json"
+    )
+    return (
+        f"  Offline B vs D ({id_range}) @ pop{shape.get('population_size')}×"
+        f"eval{shape.get('eval_subset')}×max_gen{shape.get('max_gen')}:\n"
+        f"    gens30 D wins {cmp_.get('d_wins_gens30')}/5 "
+        f"(primary_gens30={cmp_.get('primary_gens30_pass')}); "
+        f"cost30 D wins {cmp_.get('d_wins_cost30')}/5 "
+        f"(primary_cost30={cmp_.get('primary_cost30_pass')}); "
+        f"final D wins {cmp_.get('d_wins_final')}/5\n"
+        f"  NOT live GPQA — do not set ICML_READY from offline alone."
+    )
+
+
 def main() -> int:
-    _banner("SIA-CABS FINISH SPRINT")
+    _banner("SIA-CABS / ICML THESIS 1 — JUDGE VERIFY")
     failures = 0
+    icml_status = _icml_status_line()
+
+    _banner("0/5 ICML Thesis 1 status")
+    print(f"  docs/ICML_READY.md STATUS: {icml_status}")
+    print(_offline_bvd_blurb())
+    print(
+        "\n  Live stack (paid, after secrets):\n"
+        "    bash scripts/icml_cron_entry.sh\n"
+        "    # injects kimi-nebius-pydantic-meta + kimi-nebius-target; G2→G3→G4\n"
+        "  Needs NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv).\n"
+        "  ANTHROPIC_API_KEY optional under default Nebius meta.\n"
+        "  Hard stop: do NOT run full LawBench without explicit human approval.\n"
+        "  See docs/ICML_HUMAN_UNBLOCK.md | docs/paper_artifacts.md"
+    )
 
     _banner("1/5 Tests")
     if _run([sys.executable, "-m", "pytest", "-q", "--tb=no"]) != 0:
@@ -64,7 +119,7 @@ def main() -> int:
             best = max((g.get("best_fitness", 0) for g in data.get("generations", [])), default=0)
             print(f"  Darwinian best fitness: {best:.1%}")
     else:
-        print(f"  SKIP: {run_311} not found")
+        print(f"  SKIP: {run_311} not found (optional historical merge proof)")
 
     _banner("4/5 Live runs on this machine")
     for label, path in [
@@ -82,34 +137,42 @@ def main() -> int:
 
     _banner("5/5 JUDGE COMMANDS (copy-paste)")
     print("""
-  cd c:\\Users\\MSPSA\\Documents\\SIA2
-  .\\.venv\\Scripts\\Activate.ps1
-  python scripts\\finish_hackathon.py          # full verify (this script)
-  python scripts\\present_hackathon.py         # 2-min demo
+  # Offline (no API):
+  python scripts/finish_hackathon.py
+  python scripts/present_hackathon.py
   pytest -q
 
-  # CABS + Darwinian merge (no API):
-  sia-cabs-tools analyze --run-dir ..\\SIA\\runs\\run_311
+  # ICML live (paid GPQA — preferred after secrets):
+  bash scripts/icml_cron_entry.sh
 
-  # Layers 2-3 on showcase:
-  sia-cabs-tools agenda --run-dir runs\\run_showcase
-  type runs\\run_showcase\\belief_store\\approved_techniques.json
+  # Optional historical merge proof:
+  sia-cabs-tools analyze --run-dir SIA/runs/run_311
 
-  Docs: docs\\SUBMISSION.md | docs\\PRESENTATION.md
+  Docs: docs/SUBMISSION.md | docs/PRESENTATION.md | docs/ICML_READY.md
+  Unblock: docs/ICML_HUMAN_UNBLOCK.md
 """)
 
     _banner("PITCH (30 sec)")
     print("""
   Two metrics: FITNESS (Darwinian accuracy) + KNOWLEDGE GAIN (CABS beliefs/contradictions).
-  CABS asks what to investigate when agents disagree. Darwinian evolves code via DNA.
-  MERGED: analyze run_311 finds cross-agent memory/tool contradictions; --cabs steers
-  mutation and mandates committee-approved code in feedback. Track 3: novel methodology.
+  Thesis: Belief → Contradiction → RQ → Biased mutation / scoped feedback → better
+  sample efficiency than fitness-only Darwinian (Condition D vs B).
+  Offline PRIMARY-shaped signal exists; live GPQA still needs Nebius + HF/CSV.
 """)
 
     if failures:
         print(f"\nFinished with {failures} step(s) reporting errors — review above.")
         return 1
-    print("\nREADY FOR SUBMISSION.")
+
+    if icml_status == "READY":
+        print("\nICML Thesis 1 STATUS: READY — publishable checklist complete.")
+        return 0
+
+    print(
+        f"\nOffline demo OK — but ICML Thesis 1 STATUS: {icml_status} "
+        "(not READY until live PRIMARY + mechanism + H5 + paper pack).\n"
+        "Do NOT treat this script's exit-0 as ICML_READY."
+    )
     return 0
 
 

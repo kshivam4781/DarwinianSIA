@@ -4,6 +4,42 @@ Persistent agent ticks append newest entries at the top.
 
 ---
 
+## 2026-09-03T04:15Z — Tick 320 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-5efa` (recovered tip ← `9f17` Tick 319)
+- Cursor environment: RUNTIME_FORWARD_FILL env `31d13f14-…` (warm_fork); no new AGENT Portal Save build
+- Tip lineage: recovered ← `origin/cursor/icml-epistemic-results-9f17` (Tick 319); local Tick **319** → **320**
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional under default Nebius meta)
+- Budget: ~$20 ceiling; spend this tick = $0
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets. Tick 319 fixed judge docs, but the one-command scripts they recommend (`finish_hackathon.py` / `present_hackathon.py`) still printed unconditional **READY FOR SUBMISSION** and omitted ICML status / offline Bvd / cron / LawBench hard-stop — judges would falsely conclude publishable READY. Highest leverage without paid spend: **ICML-honest finish/present demos**.
+
+### What this tick did (ONE step)
+**finish/present ICML-honest judge demos (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `9f17`; confirmed secrets absent; cron preflight (live blocked); discarded ephemeral gate-report dirt
+2. `scripts/finish_hackathon.py` → ICML STATUS + offline Bvd blurb + cron/Kimi/LawBench; refuse false READY when STATUS≠READY; monorepo `SIA/` path
+3. `scripts/present_hackathon.py` → ICML blurb + talking points cite offline PRIMARY `1890–1904` + LawBench hard-stop + cron
+4. Section 12 rows + Tick 320 DONE row; Section 21 note; Gate label → 289–320; HUMAN_UNBLOCK / paper / READY tick labels; lock test extended
+5. Secrets setup actions re-filed (NEBIUS+HF required; Anthropic optional); STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 319) | After (Tick 320) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| finish_hackathon false READY | **yes** (`READY FOR SUBMISSION`) | **no** (ICML-honest) |
+| present_hackathon ICML/cron/Bvd | **absent** | **surfaced** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked on **NEBIUS + HF/CSV** |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+User: add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** drop `gpqa_diamond.csv`) per `docs/ICML_HUMAN_UNBLOCK.md` (`ANTHROPIC_API_KEY` optional unless `ICML_META_AGENT_PROFILE=default-meta`). Next agent tick: `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack → STATUS READY when criteria pass. Do **not** set READY from offline / preflight alone. Do **not** re-trigger Portal Save unless warm-boot install is needed.
+
+---
+
 ## 2026-09-03T02:20Z — Tick 319 (automation cron)
 
 ### Status snapshot
