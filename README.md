@@ -6,11 +6,18 @@
 
 ## Present in 2 minutes (no API keys)
 
+```bash
+# Linux / cloud (Tick 322: many images have python3 only — no bare `python`)
+python3 scripts/finish_hackathon.py    # ICML-honest offline verify (no false READY)
+python3 scripts/present_hackathon.py   # 2-min demo only
+```
+
 ```powershell
+# Windows venv
 cd c:\Users\MSPSA\Documents\SIA2
 .\.venv\Scripts\Activate.ps1
-python scripts\finish_hackathon.py    # ICML-honest offline verify (no false READY)
-python scripts\present_hackathon.py   # 2-min demo only
+python scripts\finish_hackathon.py
+python scripts\present_hackathon.py
 ```
 
 See [`docs/PRESENTATION.md`](docs/PRESENTATION.md) for the talking script and [`docs/SUBMISSION.md`](docs/SUBMISSION.md) for judges.
@@ -91,7 +98,7 @@ Paid G2→G3→G4 uses **Nebius Kimi for both meta and target**. Prefer the cron
 
 ```bash
 bash scripts/icml_cron_entry.sh
-# or: python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+# or: python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
 ```
 
 Manual GPQA (pick unused integer `--run_id`; never overwrite):
@@ -120,8 +127,8 @@ Feedback agent writes `beliefs.json`; CABS agenda is **prepended** to meta/feedb
 
 ```bash
 sia-cabs-tools agenda --run-dir runs/run_showcase
-python scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_903 --markdown
-python scripts/cabs_dashboard.py --run-dir runs/run_showcase
+python3 scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_903 --markdown
+python3 scripts/cabs_dashboard.py --run-dir runs/run_showcase
 
 # Tavily grounding (Layer 2) — needs TAVILY_API_KEY in .env
 sia-cabs-tools ground --run-dir runs/run_showcase --max-calls 5 --task-hint longcot-chess
@@ -218,7 +225,7 @@ A generation that *explains why memory sometimes fails* is valuable even if accu
 ## Offline demo (no API key)
 
 ```bash
-python scripts/demo_cabs.py
+python3 scripts/demo_cabs.py
 ```
 
 Shows belief extraction, contradiction detection, and research question generation from synthetic generations.
@@ -226,7 +233,7 @@ Shows belief extraction, contradiction detection, and research question generati
 ## Tests
 
 ```bash
-pytest
+python3 -m pytest
 ```
 
 ## Submission / ICML evidence checklist

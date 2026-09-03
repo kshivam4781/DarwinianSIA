@@ -196,11 +196,14 @@ def main() -> int:
         print(f"  {label}: {path.name} beliefs={beliefs}")
 
     _banner("5/5 JUDGE COMMANDS (copy-paste)")
-    print("""
-  # Offline (no API):
-  python scripts/finish_hackathon.py
-  python scripts/present_hackathon.py
-  pytest -q
+    # Tick 322: cold cloud / Linux often lack a `python` shim — only `python3`.
+    # Print the interpreter that actually launched this process.
+    py = Path(sys.executable).name
+    print(f"""
+  # Offline (no API) — use this interpreter ({sys.executable}):
+  {py} scripts/finish_hackathon.py
+  {py} scripts/present_hackathon.py
+  {py} -m pytest -q
 
   # ICML live (paid GPQA — preferred after secrets):
   bash scripts/icml_cron_entry.sh

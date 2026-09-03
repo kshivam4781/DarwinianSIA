@@ -11,8 +11,9 @@
 ### Offline demo (judges / no API, ~2 min)
 
 ```bash
-python scripts/present_hackathon.py   # belief → contradiction → RQ story (+ ICML status)
-# or: python scripts/finish_hackathon.py  # ICML-honest verify (no false READY)
+python3 scripts/present_hackathon.py   # belief → contradiction → RQ story (+ ICML status)
+# or: python3 scripts/finish_hackathon.py  # ICML-honest verify (no false READY)
+# Windows venv: python scripts/... is fine after Activate.ps1
 ```
 
 Talking script: [`docs/PRESENTATION.md`](PRESENTATION.md).
@@ -83,7 +84,7 @@ Do **not** claim `ICML_READY` STATUS: READY from offline alone.
 ```bash
 pytest -q
 # focused ICML lock (after tip recover):
-python -m pytest tests/test_icml_env_checks.py::test_icml_anthropic_optional_human_surfaces -q
+python3 -m pytest tests/test_icml_env_checks.py::test_icml_anthropic_optional_human_surfaces -q
 ```
 
 ## Reproduce install

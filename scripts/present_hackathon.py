@@ -201,8 +201,9 @@ def _real_runs_summary() -> None:
             except (json.JSONDecodeError, OSError):
                 pass
         print(f"  {label}: {run_dir.name} - gen_1 accuracy={acc}, beliefs={beliefs}")
+    py = Path(sys.executable).name
     print(
-        "\n  Full comparison: python scripts/comparison_report.py "
+        f"\n  Full comparison: {py} scripts/comparison_report.py "
         "--baseline runs/run_901 --cabs runs/run_902 --markdown"
     )
 
@@ -257,13 +258,15 @@ def main() -> None:
     _talking_points()
 
     _banner("COMMANDS FOR JUDGES")
-    print("""
-  python scripts/present_hackathon.py          # this demo
-  python scripts/finish_hackathon.py           # full offline verify (ICML-honest)
-  python scripts/demo_cabs.py                  # minimal offline demo
+    # Tick 322: print the live interpreter (python3 on cold Linux/cloud).
+    py = Path(sys.executable).name
+    print(f"""
+  {py} scripts/present_hackathon.py          # this demo
+  {py} scripts/finish_hackathon.py           # full offline verify (ICML-honest)
+  {py} scripts/demo_cabs.py                  # minimal offline demo
   bash scripts/icml_cron_entry.sh              # live G2→G3→G4 (needs secrets)
   sia-cabs-tools agenda --run-dir runs/run_showcase
-  pytest -q
+  {py} -m pytest -q
 
   Docs: docs/SUBMISSION.md | docs/PRESENTATION.md | docs/ICML_READY.md
   Hard stop: no full LawBench without explicit human approval.

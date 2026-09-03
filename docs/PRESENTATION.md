@@ -3,9 +3,9 @@
 ## Before you present (5 min)
 
 ```bash
-# Offline story (no API)
-python scripts/present_hackathon.py   # ICML status + contradiction chain
-# or full verify: python scripts/finish_hackathon.py  # ICML-honest (no false READY)
+# Offline story (no API) — use python3 on Linux/cloud (no bare `python` shim)
+python3 scripts/present_hackathon.py   # ICML status + contradiction chain
+# or full verify: python3 scripts/finish_hackathon.py  # ICML-honest (no false READY)
 ```
 
 Confirm you see:
@@ -16,7 +16,7 @@ Confirm you see:
 
 Optional visual dashboard:
 ```bash
-python scripts/cabs_dashboard.py --run-dir runs/run_showcase
+python3 scripts/cabs_dashboard.py --run-dir runs/run_showcase
 ```
 
 ### ICML live path (only with secrets + budget)
@@ -41,7 +41,7 @@ Paper pack after live: `docs/paper_artifacts.md`, `docs/ICML_READY.md`.
 "Fitness-only Darwinian evolution (Condition B) mutates blindly. When agents disagree — selective vs aggressive tools — science would ask *which allele to prefer*, not sample uniformly."
 
 **Demo (45 sec)**  
-Run `python scripts/present_hackathon.py` and scroll to:
+Run `python3 scripts/present_hackathon.py` and scroll to:
 1. Generation story (beliefs added each gen)
 2. CONTRADICTION block
 3. RESEARCH QUESTION block
@@ -61,7 +61,7 @@ Run `python scripts/present_hackathon.py` and scroll to:
 |----------|--------|
 | How is this different from SIA? | SIA fixes failures. CABS tracks *beliefs* and *contradictions* and steers *what to mutate/investigate*. |
 | Did accuracy improve? | Offline PRIMARY-shaped yes (D vs B). Publishable claim needs live multi-seed GPQA (G4). |
-| Can I reproduce offline? | `python scripts/present_hackathon.py` — no API. Offline Bvd: `docs/offline_bvd_summary.json` IDs `1890–1904`. |
+| Can I reproduce offline? | `python3 scripts/present_hackathon.py` — no API. Offline Bvd: `docs/offline_bvd_summary.json` IDs `1890–1904`. |
 | What's the live command? | `bash scripts/icml_cron_entry.sh` with Nebius + HF/CSV. |
 | LawBench? | Hard-stop — not without explicit human approval. |
 | What's next? | Unblock secrets → live G2→G3→G4 → fill Live Tables → STATUS READY. |

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-03 (Section 21 ICML; Tick 321 finish pytest bootstrap; Tick 320 finish/present ICML-honest demos; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-03 (Section 21 ICML; Tick 322 python3-safe judge entrypoints; Tick 321 finish pytest bootstrap; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -425,7 +425,7 @@ Same pattern for `venv_pip_path`.
 | `HF_TOKEN` (or local diamond CSV) | `--fetch-diamond` cannot materialize real GPQA |
 | `ANTHROPIC_API_KEY` | **Optional** under Nebius meta; only required if `ICML_META_AGENT_PROFILE=default-meta` (Claude meta/feedback) |
 
-**Gate (ICML Thesis 1 / Tick 289–321):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
+**Gate (ICML Thesis 1 / Tick 289–322):** `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) before paid G2→G4. Do **not** wait on Anthropic under default Nebius meta. See `docs/ICML_HUMAN_UNBLOCK.md`.
 
 ---
 
@@ -916,7 +916,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319) | **DONE** | Judge docs (linked from README) lead with ICML cron/Kimi + offline PRIMARY evidence + LawBench hard-stop; lock test |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–320 stack ready; next: `bash scripts/icml_cron_entry.sh` |
+| ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–322 stack ready; next: `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -935,8 +936,8 @@ Paid G2→G4 uses Nebius Kimi for **both** meta and target. Do **not** copy hist
 # Single cron entry (recovers tip; auto-live when NEBIUS + HF/CSV present)
 bash scripts/icml_cron_entry.sh
 
-# Or explicit live stack (same profiles the runners inject)
-python scripts/run_icml_live_pipeline.py --live --fetch-diamond
+# Or explicit live stack (same profiles the runners inject; python3 on Linux/cloud)
+python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond
 
 # Manual Condition D example (unused run_id; keys + real diamond + budget check)
 sia run --task gpqa --darwinian --cabs --cabs-inline \
@@ -2376,3 +2377,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **finish/present ICML-honest judge demos (2026-09-03 Tick 320):** Tick 319 fixed judge docs, but the one-command scripts they recommend (`scripts/finish_hackathon.py` / `present_hackathon.py`) still printed unconditional **READY FOR SUBMISSION** and omitted ICML status / offline Bvd / cron / LawBench hard-stop — judges running the offline path would falsely conclude publishable READY. Both scripts now surface `ICML_READY` STATUS + offline PRIMARY blurb + cron live path; finish refuses false READY when STATUS≠READY; monorepo `SIA/` path fix; lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **finish pytest bootstrap (2026-09-03 Tick 321):** Tick 320 made finish ICML-honest, but cold cloud images lack pytest → step 1/5 exited non-zero and the ICML STATUS footer never printed. `finish_hackathon.py` now bootstraps pytest via `pip install --user` (SKIP soft-warn if install fails), treats test failures as soft warns, and always prints the ICML STATUS footer. Lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**python3-safe judge entrypoints (2026-09-03 Tick 322):** Tick 321 fixed missing pytest, but cold Linux/cloud images often have **no bare `python` shim** (only `python3`). Judge docs (README / SUBMISSION / PRESENTATION) and finish/present copy-paste still said `python scripts/…`, so the offline verify path failed before ICML status. Docs now lead with `python3`; finish/present print `Path(sys.executable).name`. Lock test extended. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).

@@ -901,7 +901,7 @@ def test_portal_save_target_anthropic_optional() -> None:
 
 
 def test_env_example_and_section4_anthropic_optional() -> None:
-    """Tick 309–320: .env.example + §3.3/4.1/4.4/4.5/6.2/6.3/8.2/9/12/13/18/21 + README + load_env + finish/present ICML-honest."""
+    """Tick 309–322: .env.example + §3.3/4.1/4.4/4.5/6.2/6.3/8.2/9/12/13/18/21 + README + load_env + finish/present ICML-honest + python3."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
@@ -958,7 +958,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         not in master
     )
     assert "**Gate:** Both keys set before any paid run." not in master
-    assert "Gate (ICML Thesis 1 / Tick 289–321)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–322)" in master
+    assert "Gate (ICML Thesis 1 / Tick 289–321)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–319)" not in master
     assert "Gate (ICML Thesis 1 / Tick 289–318)" not in master
     # Tick 313: §8.2 spending rules + Phase 0.2 must not hard-pair Anthropic for ICML.
@@ -1027,6 +1028,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "pip install" in finish and "--user" in finish
     assert "not an ICML PRIMARY failure" in finish
     assert "ICML finish pytest bootstrap (Tick 321)" in master
+    # Tick 322: cold-cloud / Linux judge path must prefer python3 (no bare `python` shim).
+    assert "python3 scripts/finish_hackathon.py" in submission
+    assert "python3 scripts/present_hackathon.py" in submission
+    assert "python3 scripts/present_hackathon.py" in presentation
+    assert "python3 scripts/finish_hackathon.py" in presentation
+    assert "python3 scripts/finish_hackathon.py" in readme
+    assert "python3 scripts/present_hackathon.py" in readme
+    # finish/present must print the live interpreter, not a hardcoded bare `python` shim.
+    assert "Path(sys.executable).name" in finish
+    assert "Path(sys.executable).name" in present
+    assert 'python scripts/finish_hackathon.py\n  python scripts/present_hackathon.py' not in finish
+    assert "ICML python3-safe judge entrypoints (Tick 322)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
