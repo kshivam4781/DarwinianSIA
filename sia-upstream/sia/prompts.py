@@ -710,6 +710,26 @@ Example invocation (paths will vary at runtime):
     return build_target_client_setup(provider, task_model) + base
 
 
+def _target_cost_instruction(provider: Provider) -> str:
+    """How evolved target agents should meter USD (Tick 291).
+
+    Nebius Kimi-K2.6 has published Token Factory rates; other OpenAI-compatible
+    providers still leave dollar cost at 0 while recording token counts.
+    """
+    if getattr(provider, "provider_id", None) == "nebius":
+        return (
+            "Record token counts from the API response. Compute dollar cost with "
+            "Nebius Token Factory Kimi-K2.6 rates: "
+            "MODEL_PRICING = {\"input\": 0.95, \"output\": 4.0} ($ per 1M tokens); "
+            "cost_usd = (input_tokens/1e6)*0.95 + ((output_tokens+reasoning_tokens)/1e6)*4.0. "
+            "Write total_cost_usd / per-question cost_usd into results/submission.json."
+        )
+    return (
+        "Do NOT compute a dollar cost: per-provider pricing is unknown, so "
+        "set any cost field to 0 (token counts from the API response are still fine to record)."
+    )
+
+
 def build_target_client_setup(provider: Provider, task_model: str) -> str:
     """Prompt block telling the meta-agent how to reach an OpenAI-compatible target model.
 
@@ -717,6 +737,7 @@ def build_target_client_setup(provider: Provider, task_model: str) -> str:
     (e.g. the Gemini SDK); this block instructs the meta-agent to refactor it to the
     ``openai`` SDK configured for ``provider``.
     """
+    cost_line = _target_cost_instruction(provider)
     return f"""=== TARGET MODEL CLIENT SETUP (OpenAI-compatible provider: {provider.name}) ===
 
 The target model "{task_model}" is served by an OpenAI-compatible API. The reference
@@ -734,8 +755,7 @@ refactor your target_agent.py to use the `openai` SDK configured for this provid
 
 Call client.chat.completions.create(model="{task_model}", ...) using OpenAI-style
 messages (and OpenAI function calling / response_format where the reference uses
-structured output). Do NOT compute a dollar cost: per-provider pricing is unknown, so
-set any cost field to 0 (token counts from the API response are still fine to record).
+structured output). {cost_line}
 
 """
 
