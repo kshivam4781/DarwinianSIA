@@ -5,7 +5,7 @@
 `kimi-nebius-pydantic-meta` (Nebius). Set `ICML_META_AGENT_PROFILE=default-meta`
 only if you intentionally want Claude meta (then Anthropic becomes required again).
 
-## Dual human unblock (Tick 327–336 — read first)
+## Dual human unblock (Tick 327–337 — read first)
 
 Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 `1890–1904`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
@@ -13,7 +13,7 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 | # | Action | Why |
 |---|--------|-----|
 | **1** | Add **`NEBIUS_API_KEY`** + (`**HF_TOKEN**` or local `gpqa_diamond.csv`) | Required for paid G2→G3→G4 / `--fetch-diamond` |
-| **2** | **Undraft + Merge the latest tip PR into `main`** — concrete URL is in `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` field `tip_pr_url` (refreshed each cron; Tick 330+). Tick **335** also exposes `tip_pr_mergeable` / `tip_pr_merge_state_status` (e.g. MERGEABLE/CLEAN). Tick **336** adds `tip_pr_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`) and a churn warning — merge **before next cron (~2h)** or a new tip PR will supersede among 100+ open drafts; ignore older tip PRs. | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). |
+| **2** | **Undraft + Merge the latest tip PR into `main`** — concrete URL is in `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` field `tip_pr_url` (refreshed each cron; Tick 330+). Tick **335** also exposes `tip_pr_mergeable` / `tip_pr_merge_state_status` (e.g. MERGEABLE/CLEAN). Tick **336** adds `tip_pr_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`). Tick **337** anti-churn: `tip_pr_commit_branch` / `tip_pr_anti_churn` — agents checkout that branch (`bash scripts/icml_checkout_tip_pr_branch.sh`) and **do not open a new tip PR**; merge **#N** via copy-paste `gh` before next cron. Ignore older tip PRs. | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). |
 
 **Tick 328:** `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` / pipeline Next now expose `main_has_icml_tip` and prepend merge tip→main in `human_next` when false (does **not** gate `fetch_diamond_ok`).
 
@@ -32,6 +32,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 **Tick 335:** `resolve_icml_tip_pr` / tip+secrets JSON / `human_next` also surface GitHub **`mergeable`** + **`mergeStateStatus`** (e.g. MERGEABLE/CLEAN → “undraft & merge now (no conflicts)”; CONFLICTING → rebase note). Operators no longer assume all 300+ draft tip PRs are conflicted.
 
 **Tick 336:** `human_next` / tip+secrets JSON also expose **`tip_pr_merge_commands`** — copy-paste `gh pr ready <N> --repo kshivam4781/DarwinianSIA && gh pr merge <N> --repo kshivam4781/DarwinianSIA --merge` — plus a **churn warning** (merge before next cron ~2h or a new tip PR supersedes; older tip PRs are superseded). Mergeability alone still left operators clicking through the UI among 100+ drafts.
+
+**Tick 337:** tip PR **anti-churn** — when tip PR is MERGEABLE, tip/secrets JSON expose `tip_pr_commit_branch` / `tip_pr_anti_churn=true`. Agents must `bash scripts/icml_checkout_tip_pr_branch.sh` and push/`open_git_pr` on that branch so the existing tip PR updates (no new draft among 100+). `human_next` says **do NOT open a new tip PR**.
 
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.

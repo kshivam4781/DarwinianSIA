@@ -429,7 +429,8 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     # Tick 336: copy-paste gh ready+merge + tip-PR churn warning.
     assert "gh pr ready 330" in status["human_next"][0]
     assert "gh pr merge 330" in status["human_next"][0]
-    assert "supersede" in status["human_next"][0].lower()
+    # Tick 337: anti-churn note replaces "new tip PR will supersede" wording.
+    assert "tip_pr_commit_branch" in status["human_next"][0] or "do NOT open a new tip PR" in status["human_next"][0]
     assert status["tip_pr_url"] == fake_pr["url"]
     assert status["tip_pr_number"] == 330
     assert status["tip_pr_is_draft"] is True
@@ -439,6 +440,9 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
         "gh pr ready 330 --repo kshivam4781/DarwinianSIA",
         "gh pr merge 330 --repo kshivam4781/DarwinianSIA --merge",
     ]
+    # Tick 337: anti-churn fields on secrets JSON.
+    assert status["tip_pr_commit_branch"] == "cursor/icml-epistemic-results-45fd"
+    assert status["tip_pr_anti_churn"] is True
     steps = live_pipeline_next_steps(
         secrets_ok=True,
         tip_ok=True,
@@ -448,13 +452,15 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     assert "Merge the latest ICML tip PR into `main`" in steps[0]
     assert "pull/330" in steps[0]
     assert "gh pr merge 330" in steps[0]
+    assert "do NOT open a new tip PR" in steps[0]
 
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
-    """Tick 335/336: MERGEABLE/CLEAN vs CONFLICTING + gh copy-paste in human_next."""
+    """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
         _merge_tip_to_main_human_next,
         _tip_pr_merge_commands,
+        prefer_tip_pr_commit_branch,
         _tip_pr_mergeability_note,
     )
 
@@ -486,7 +492,24 @@ def test_tip_pr_mergeability_note_and_merge_next() -> None:
     assert "no conflicts" in msg.lower()
     assert "gh pr ready 335" in msg
     assert "gh pr merge 335" in msg
-    assert "supersede" in msg.lower()
+    assert "do NOT open a new tip PR" in msg
+    assert "cursor/icml-epistemic-results-4bb3" in msg
+    assert prefer_tip_pr_commit_branch(
+        {
+            "number": 335,
+            "head_ref": "cursor/icml-epistemic-results-4bb3",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+        }
+    ) == "cursor/icml-epistemic-results-4bb3"
+    assert prefer_tip_pr_commit_branch(
+        {
+            "number": 1,
+            "head_ref": "cursor/icml-epistemic-results-x",
+            "mergeable": "CONFLICTING",
+            "merge_state_status": "DIRTY",
+        }
+    ) is None
     assert _tip_pr_merge_commands(
         {
             "number": 335,
@@ -1581,10 +1604,22 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "tip_pr_merge_commands" in env_checks
     assert "gh pr ready" in env_checks
     assert "gh pr merge" in env_checks
-    assert "supersede" in env_checks
     assert "Tick 336" in unblock
     assert "copy-paste" in unblock.lower() or "gh pr" in unblock
     assert "ICML tip PR gh copy-paste merge commands (Tick 336)" in master
+    # Tick 337: tip PR anti-churn — prefer_tip_pr_commit_branch / checkout script.
+    assert "def prefer_tip_pr_commit_branch" in env_checks
+    assert "tip_pr_commit_branch" in env_checks
+    assert "tip_pr_anti_churn" in env_checks
+    assert "do NOT open a new tip PR" in env_checks
+    assert "Tick 337" in unblock
+    assert "anti-churn" in unblock.lower() or "tip_pr_commit_branch" in unblock
+    assert "ICML tip PR anti-churn (Tick 337)" in master
+    checkout = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "tip_pr_commit_branch" in checkout
+    assert "anti-churn" in checkout.lower()
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
