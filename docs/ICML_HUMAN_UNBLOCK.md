@@ -5,7 +5,7 @@
 `kimi-nebius-pydantic-meta` (Nebius). Set `ICML_META_AGENT_PROFILE=default-meta`
 only if you intentionally want Claude meta (then Anthropic becomes required again).
 
-## Dual human unblock (Tick 327–328 — read first)
+## Dual human unblock (Tick 327–331 — read first)
 
 Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 `1890–1904`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
@@ -13,13 +13,15 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 | # | Action | Why |
 |---|--------|-----|
 | **1** | Add **`NEBIUS_API_KEY`** + (`**HF_TOKEN**` or local `gpqa_diamond.csv`) | Required for paid G2→G3→G4 / `--fetch-diamond` |
-| **2** | **Merge the latest tip PR into `main`** (see `tip_pr_url` in `docs/icml_tip_status.json` / `docs/icml_secrets_status.json` — Tick 330) | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). Undraft the tip PR first if it is still draft. |
+| **2** | **Undraft + Merge the latest tip PR into `main`** — concrete URL is in `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` field `tip_pr_url` (refreshed each cron; Tick 330+) | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). |
 
 **Tick 328:** `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` / pipeline Next now expose `main_has_icml_tip` and prepend merge tip→main in `human_next` when false (does **not** gate `fetch_diamond_ok`).
 
 **Tick 329:** `bash scripts/icml_cron_entry.sh` (including `--preflight-only` / live-refuse) prints the **full** `human_next` list (`=== Human next (dual unblock) ===`), so merge tip→main is visible in cron logs even when secrets stay blocked.
 
 **Tick 330:** `human_next` / tip+secrets JSON now include the **concrete tip PR URL** (`tip_pr_url` / `#N`) via `resolve_icml_tip_pr` (`gh pr list --head <tip>`), plus an undraft note when the tip PR is still draft — operators no longer guess among 300+ draft tip PRs.
+
+**Tick 331:** Tip lineage pickers (`icml_pick_remote_tip.sh`, `icml_boot_recover.sh`, `icml_cron_entry.sh`, `list_remote_icml_tip_candidates`) also scan **`cursor/bc-*`** cloud cron boot branches (not only `icml-epistemic-results-*`). Without this, newer Tick work on `bc-*` PRs was invisible to the next cron recover and tip lineage stalled at the last `results-*` tip.
 
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.

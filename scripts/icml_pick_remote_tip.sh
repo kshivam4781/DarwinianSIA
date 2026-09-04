@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Tip 272 — lineage-aware remote tip picker (no apply).
+# ICML Tip 272 / 331 — lineage-aware remote tip picker (no apply).
 #
 # Greenfield cron branches from main can have a newer committerdate than the
 # real tip but lack ICML scripts. Date-only `for-each-ref | head -1` then
@@ -8,6 +8,7 @@
 # This helper scans remote ICML refs, keeps only those that contain a required
 # blob (default: scripts/icml_cron_entry.sh), scores Tick + secrets-first
 # lineage, and prints the winning ref on stdout.
+# Tick 331: also scans cursor/bc-* cloud cron boot branches.
 #
 # Usage:
 #   bash scripts/icml_pick_remote_tip.sh
@@ -54,9 +55,11 @@ fi
 cd "$ROOT"
 
 if [[ "$FETCH" -eq 1 ]]; then
+  # Tick 331: also fetch cursor/bc-* (cloud cron boot branches).
   git fetch origin \
     '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
     '+refs/heads/cursor/icml-epistemic-evolution-*:refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+    '+refs/heads/cursor/bc-*:refs/remotes/origin/cursor/bc-*' \
     2>/dev/null || git fetch origin --prune 2>/dev/null || true
 fi
 
@@ -109,9 +112,11 @@ while IFS= read -r ref; do
     best_ref="$ref"
   fi
 done < <(
+  # Tick 331: include cursor/bc-* cloud cron boots (require blob filters junk).
   git for-each-ref --format='%(refname)' \
     'refs/remotes/origin/cursor/icml-epistemic-results-*' \
-    'refs/remotes/origin/cursor/icml-epistemic-evolution-*' 2>/dev/null
+    'refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+    'refs/remotes/origin/cursor/bc-*' 2>/dev/null
 )
 
 if [[ -z "$best_ref" ]]; then

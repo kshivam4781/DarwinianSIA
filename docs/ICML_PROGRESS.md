@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T04:15Z — Tick 331 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba` (recovered tip ← `eb23` Tick 330)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. After Tick 330, a latent tip-lineage bug remained: cloud cron now boots on `cursor/bc-*` branches, but tip pickers only scanned `icml-epistemic-results-*`. Pushing Tick work only on `bc-*` would make the next cron recover stall at Tick 330. Highest leverage without paid spend: **include `cursor/bc-*` in tip lineage scanners**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Tip lineage scans cursor/bc-* cloud cron boots (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `eb23`; confirmed secrets absent; `main` still lacks ICML tip files
+2. Extended `_TIP_REF_PREFIXES` / fetch / for-each-ref + shell pickers (`icml_pick_remote_tip`, `icml_boot_recover`, `icml_cron_entry`) + AGENTS chicken-egg to scan `cursor/bc-*`
+3. Section 12 row + Tick 331 DONE chronicle; READY / HUMAN_UNBLOCK / lock tests extended
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 330) | After (Tick 331) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Tip scanners include `cursor/bc-*` | **no** | **yes** |
+| Concrete tip PR URL in `human_next` | yes | yes |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge the concrete tip PR** linked in `docs/icml_secrets_status.json` `tip_pr_url` / cron `human_next`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T02:10Z — Tick 330 (automation cron)
 
 ### Status snapshot

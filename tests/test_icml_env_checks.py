@@ -437,7 +437,7 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
 
 
 def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
-    """Tick 330: tip-ref → branch; merge Next still works if gh unavailable."""
+    """Tick 330/331: tip-ref → branch; merge Next still works if gh unavailable."""
     from icml_env_checks import _branch_from_tip_ref, _merge_tip_to_main_human_next
 
     assert (
@@ -448,19 +448,48 @@ def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
         _branch_from_tip_ref("origin/cursor/icml-epistemic-results-45fd")
         == "cursor/icml-epistemic-results-45fd"
     )
+    # Tick 331: cloud cron bc-* tip refs also resolve to a branch name.
+    assert (
+        _branch_from_tip_ref(
+            "refs/remotes/origin/cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba"
+        )
+        == "cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba"
+    )
     # Explicit empty pr dict path: pass a non-draft resolved PR.
     msg = _merge_tip_to_main_human_next(
         {
             "url": "https://github.com/kshivam4781/DarwinianSIA/pull/999",
             "number": 999,
-            "title": "ICML Tick 330",
+            "title": "ICML Tick 331",
             "is_draft": False,
-            "head_ref": "cursor/icml-epistemic-results-eb23",
+            "head_ref": "cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba",
         }
     )
     assert "#999" in msg
     assert "pull/999" in msg
     assert "undraft" not in msg.lower()
+
+
+def test_tip_ref_prefixes_include_cloud_bc_branches() -> None:
+    """Tick 331: tip lineage must scan cursor/bc-* cloud cron boots."""
+    from icml_env_checks import (
+        _TIP_FETCH_REFSPECS,
+        _TIP_FOR_EACH_REF_PATTERNS,
+        _TIP_REF_PREFIXES,
+    )
+
+    assert any(p.endswith("cursor/bc-") for p in _TIP_REF_PREFIXES)
+    assert any("cursor/bc-*" in s for s in _TIP_FETCH_REFSPECS)
+    assert any(p.endswith("cursor/bc-*") for p in _TIP_FOR_EACH_REF_PATTERNS)
+    # Shell pickers / recover / cron must mirror the Python patterns.
+    for rel in (
+        "scripts/icml_pick_remote_tip.sh",
+        "scripts/icml_boot_recover.sh",
+        "scripts/icml_cron_entry.sh",
+    ):
+        text = (REPO / rel).read_text(encoding="utf-8")
+        assert "cursor/bc-*" in text, f"{rel} must scan cursor/bc-*"
+        assert "Tick 331" in text or "bc-*" in text
 
 
 
@@ -745,7 +774,10 @@ def test_icml_pick_remote_tip_script_picks_lineage() -> None:
     )
     if pick.returncode == 0:
         ref = pick.stdout.strip()
-        assert "icml-epistemic" in ref
+        # Tick 331: tip may be icml-epistemic-results-* OR cursor/bc-*.
+        assert ("icml-epistemic" in ref) or ("/cursor/bc-" in ref) or ref.startswith(
+            "refs/remotes/origin/cursor/bc-"
+        )
         # Winning tip must contain cron_entry.
         probe = subprocess.run(
             ["git", "cat-file", "-e", f"{ref}:scripts/icml_cron_entry.sh"],
@@ -1206,6 +1238,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "tip_pr_url" in env_checks
     assert "Concrete tip PR" in env_checks
     assert "ICML concrete tip PR URL in human_next (Tick 330)" in master
+    # Tick 331: tip lineage also scans cursor/bc-* cloud cron boot branches.
+    assert "cursor/bc-" in env_checks
+    assert "_TIP_FOR_EACH_REF_PATTERNS" in env_checks
+    assert "cursor/bc-*" in cron
+    assert "cursor/bc-*" in (root / "scripts" / "icml_pick_remote_tip.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "Tick 331" in unblock
+    assert "ICML tip lineage scans cursor/bc-* cron boots (Tick 331)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

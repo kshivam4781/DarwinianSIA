@@ -14,6 +14,7 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 327:** `main` still has hackathon-era AGENTS (no ICML tip files) until the tip PR is merged — recover tip every boot; ask human to merge tip → `main` + add secrets (`docs/ICML_HUMAN_UNBLOCK.md`).
 **Tick 328:** machine-readable `docs/icml_secrets_status.json` / tip status / pipeline Next also surface merge tip→main via `main_has_icml_tip` (does not gate paid live).
 **Tick 330:** `human_next` includes the concrete tip PR URL (`tip_pr_url`) so operators do not guess among 300+ draft tip PRs.
+**Tick 331:** tip pickers also scan `cursor/bc-*` cloud cron branches (not only `icml-epistemic-results-*`).
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
@@ -24,8 +25,11 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 bash scripts/icml_cron_entry.sh
 
 # Chicken-egg from main (entry script absent) — Tick 272 lineage pick
-# (never committerdate-only: greenfield main branches can be newer than tip):
-git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
+# (never committerdate-only: greenfield main branches can be newer than tip).
+# Tick 331: also scan cursor/bc-* cloud cron boots.
+git fetch origin \
+  '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
+  '+refs/heads/cursor/bc-*:refs/remotes/origin/cursor/bc-*'
 TIP_REF=""
 BEST_TICK=-1
 TMP=$(mktemp -d)
@@ -35,7 +39,9 @@ while IFS= read -r ref; do
   tick=$(grep -oE 'Tick[[:space:]]+[0-9]+' "$TMP/p" | head -1 | grep -oE '[0-9]+' || true)
   [[ -z "$tick" ]] && continue
   if [[ "$tick" -gt "$BEST_TICK" ]]; then BEST_TICK=$tick; TIP_REF=$ref; fi
-done < <(git for-each-ref --format='%(refname)' 'refs/remotes/origin/cursor/icml-epistemic-results-*')
+done < <(git for-each-ref --format='%(refname)' \
+  'refs/remotes/origin/cursor/icml-epistemic-results-*' \
+  'refs/remotes/origin/cursor/bc-*')
 rm -rf "$TMP"
 git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 ```

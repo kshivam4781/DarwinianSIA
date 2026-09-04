@@ -48,9 +48,11 @@ fi
 cd "$ROOT"
 
 if [[ "$FETCH" -eq 1 ]]; then
+  # Tick 331: also fetch cursor/bc-* (cloud cron boot branches).
   git fetch origin \
     '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
     '+refs/heads/cursor/icml-epistemic-evolution-*:refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+    '+refs/heads/cursor/bc-*:refs/remotes/origin/cursor/bc-*' \
     2>/dev/null || git fetch origin --prune 2>/dev/null || true
 fi
 
@@ -105,9 +107,11 @@ while IFS= read -r ref; do
     best_sha="$sha"
   fi
 done < <(
+  # Tick 331: include cursor/bc-* cloud cron boots (ICML_PROGRESS filter below).
   git for-each-ref --format='%(refname)' \
     'refs/remotes/origin/cursor/icml-epistemic-results-*' \
-    'refs/remotes/origin/cursor/icml-epistemic-evolution-*' 2>/dev/null
+    'refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+    'refs/remotes/origin/cursor/bc-*' 2>/dev/null
 )
 
 local_tick=""

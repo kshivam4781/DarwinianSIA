@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-09-02T16:02:41Z
+**Timestamp:** 2026-09-04T04:02:52Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -20,7 +20,7 @@
 | `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
-| `tip_ok_for_live` | yes | local Tick 313 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-84c9 |
+| `tip_ok_for_live` | yes | local Tick 330 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-eb23 |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -49,8 +49,8 @@
 
 1. Add `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta) + (HF_TOKEN or local gpqa_diamond.csv)` to the cloud environment (see `docs/ICML_HUMAN_UNBLOCK.md`).
 2. Accept HF access for `Idavidrein/gpqa` (or drop local `gpqa_diamond.csv`), then either:
-   `python scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`
-   or `python scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
+   `python3 scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`
+   or `python3 scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
 3. Re-run live G2 after budget check (unused integer run_id).
 4. Only then start live G3 B vs D pilot (Section 21.5).
 

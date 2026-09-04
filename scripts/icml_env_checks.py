@@ -1573,15 +1573,16 @@ def resolve_icml_tip_pr(
         for r in rows
         if str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-results-")
         or str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-evolution-")
+        or str(r.get("head_ref") or "").startswith("cursor/bc-")
     ]
     return (tip_rows or rows or [None])[0]
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–330: merge tip→main; Tick 330 adds concrete PR URL + draft note."""
+    """Tick 327–331: merge tip→main; Tick 330+ concrete PR URL + draft note."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–330 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–331 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1650,8 +1651,9 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–330 — recovers tip; auto-live only when fetch_diamond_ok; "
-            "blocked paths print full human_next + concrete tip PR URL)",
+            "(Tick 271–331 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "only when fetch_diamond_ok; blocked paths print full human_next + "
+            "concrete tip PR URL)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1659,7 +1661,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1669,7 +1671,8 @@ def collect_icml_secrets_status() -> dict:
             "Tick 328 dual unblock also surfaces merge tip→main when "
             "main_has_icml_tip is false; Tick 329 cron prints full human_next "
             "on --preflight-only / auto / live-refuse; Tick 330 adds concrete "
-            "tip PR URL (+ draft undraft note) via resolve_icml_tip_pr"
+            "tip PR URL (+ draft undraft note) via resolve_icml_tip_pr; "
+            "Tick 331 tip lineage also scans cursor/bc-* cloud cron branches"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1824,6 +1827,24 @@ _TICK_HEADING_RE = re.compile(
 _TIP_REF_PREFIXES = (
     "refs/remotes/origin/cursor/icml-epistemic-results-",
     "refs/remotes/origin/cursor/icml-epistemic-evolution-",
+    # Tick 331: cloud automation cron now boots on cursor/bc-<uuid>-<hash>
+    # branches (not only icml-epistemic-results-*). Include them when they
+    # carry ICML_PROGRESS (filtered below) so tip lineage does not stall at
+    # the last results-* tip while newer work lives only on bc-* PRs.
+    "refs/remotes/origin/cursor/bc-",
+)
+_TIP_FETCH_REFSPECS = (
+    "+refs/heads/cursor/icml-epistemic-results-*"
+    ":refs/remotes/origin/cursor/icml-epistemic-results-*",
+    "+refs/heads/cursor/icml-epistemic-evolution-*"
+    ":refs/remotes/origin/cursor/icml-epistemic-evolution-*",
+    "+refs/heads/cursor/bc-*"
+    ":refs/remotes/origin/cursor/bc-*",
+)
+_TIP_FOR_EACH_REF_PATTERNS = (
+    "refs/remotes/origin/cursor/icml-epistemic-results-*",
+    "refs/remotes/origin/cursor/icml-epistemic-evolution-*",
+    "refs/remotes/origin/cursor/bc-*",
 )
 # Prefer lineage that includes Tick 265–268 bootstraps; skip Portal-Save-only forks.
 _TIP_LINEAGE_MARKERS = (
@@ -1890,14 +1911,7 @@ def list_remote_icml_tip_candidates(
     notes: list[str] = []
     if fetch:
         ok, detail = _git_ok(
-            [
-                "fetch",
-                "origin",
-                "+refs/heads/cursor/icml-epistemic-results-*"
-                ":refs/remotes/origin/cursor/icml-epistemic-results-*",
-                "+refs/heads/cursor/icml-epistemic-evolution-*"
-                ":refs/remotes/origin/cursor/icml-epistemic-evolution-*",
-            ],
+            ["fetch", "origin", *_TIP_FETCH_REFSPECS],
             cwd=root,
         )
         notes.append(f"fetch={'ok' if ok else 'fail'}: {detail[:200]}")
@@ -1906,8 +1920,7 @@ def list_remote_icml_tip_candidates(
         [
             "for-each-ref",
             "--format=%(refname)\t%(committerdate:unix)\t%(objectname:short)",
-            "refs/remotes/origin/cursor/icml-epistemic-results-*",
-            "refs/remotes/origin/cursor/icml-epistemic-evolution-*",
+            *_TIP_FOR_EACH_REF_PATTERNS,
         ],
         cwd=root,
     )
@@ -1998,11 +2011,12 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330: tip lineage guard — cron often boots from main; "
-            "refuse --live on stale trees; recover via "
+            "Tick 269–270/328/330/331: tip lineage guard — cron often boots from "
+            "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
-            "Tick 330 resolves concrete tip_pr_url via gh"
+            "Tick 330 resolves concrete tip_pr_url via gh; "
+            "Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,

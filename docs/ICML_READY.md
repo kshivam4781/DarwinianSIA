@@ -362,6 +362,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 328 machine-readable dual unblock — `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test extended
 - [x] Tick 329 cron full human_next on blocked paths — `print_human_next` on `--preflight-only` / auto / live-refuse (Tick 328 JSON was silent on preflight); lock test extended
 - [x] Tick 330 concrete tip PR URL in human_next — `resolve_icml_tip_pr` + `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip JSON + merge Next (300+ tip PRs); lock test extended
+- [x] Tick 331 tip lineage scans cursor/bc-* cron boots — tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud automation boot branches); lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -374,4 +375,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 330 note: Gate labels / secrets stack through Tick 330 concrete tip PR URL -->
+<!-- Tick 331 note: Gate labels / secrets stack through Tick 331 tip lineage bc-* scan -->

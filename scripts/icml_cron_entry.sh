@@ -92,7 +92,8 @@ _pick_tip_ref() {
   done < <(
     git for-each-ref --format='%(refname)' \
       'refs/remotes/origin/cursor/icml-epistemic-results-*' \
-      'refs/remotes/origin/cursor/icml-epistemic-evolution-*' 2>/dev/null
+      'refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+      'refs/remotes/origin/cursor/bc-*' 2>/dev/null
   )
   rm -rf "$tmp"
   echo "$best_ref"
@@ -107,6 +108,7 @@ recover_tip() {
   git fetch origin \
     '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
     '+refs/heads/cursor/icml-epistemic-evolution-*:refs/remotes/origin/cursor/icml-epistemic-evolution-*' \
+    '+refs/heads/cursor/bc-*:refs/remotes/origin/cursor/bc-*' \
     2>/dev/null || git fetch origin --prune 2>/dev/null || true
   local tip_ref
   tip_ref="$(_pick_tip_ref scripts/icml_boot_recover.sh)"

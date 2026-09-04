@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-04 (Section 21 ICML; Tick 330 concrete tip PR URL; Tick 329 cron full human_next; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-04 (Section 21 ICML; Tick 331 tip lineage scans cursor/bc-*; Tick 330 concrete tip PR URL; Tick 329 cron full human_next; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -924,7 +924,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML machine-readable dual unblock (Tick 328) | **DONE** | `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test |
 | ICML cron full human_next on blocked paths (Tick 329) | **DONE** | `print_human_next` prints *all* `human_next` lines on `--preflight-only` / auto / live-refuse (Tick 328 JSON was silent on preflight); lock test |
 | ICML concrete tip PR URL in human_next (Tick 330) | **DONE** | `resolve_icml_tip_pr` + `tip_pr_url` on secrets/tip JSON; merge Next includes `#N` URL + draft undraft note (300+ tip PRs); lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–330 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
+| ICML tip lineage scans cursor/bc-* cron boots (Tick 331) | **DONE** | Tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud cron boot branches); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–331 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2404,3 +2405,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Cron full human_next on blocked paths (2026-09-04 Tick 329):** Tick 328 wrote merge tip→main into `human_next` JSON, but `icml_cron_entry.sh --preflight-only` never printed it (only auto mode printed `lines[0]`). Added `print_human_next` and call it on `--preflight-only` / auto-blocked / live-refuse so dual unblock is always visible. Portal Save skipped. STATUS remains IN_PROGRESS.
 
 **Concrete tip PR URL in human_next (2026-09-04 Tick 330):** Tick 327–329 told operators to “merge the latest tip PR” but never linked a concrete URL among 300+ draft tip PRs. Added `resolve_icml_tip_pr` (`gh pr list --head <tip>`) and surface `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip JSON + `human_next` / pipeline Next. Portal Save skipped. STATUS remains IN_PROGRESS.
+
+**Tip lineage scans cursor/bc-* cron boots (2026-09-04 Tick 331):** Cloud automation cron now boots on `cursor/bc-<uuid>-<hash>` branches, but tip pickers only scanned `icml-epistemic-results-*` / `icml-epistemic-evolution-*`. Newer Tick work on `bc-*` PRs was invisible to the next chicken-egg recover, stalling tip lineage. Extended Python + shell tip scanners / fetch refspecs to include `cursor/bc-*` (still filtered by `ICML_PROGRESS` / required blobs). Portal Save skipped. STATUS remains IN_PROGRESS.
