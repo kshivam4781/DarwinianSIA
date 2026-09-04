@@ -8,6 +8,8 @@
 #
 # Tick 338: `bash scripts/icml_cron_entry.sh` calls this automatically after
 # writing tip/secrets status (manual use still OK for agents mid-tick).
+# Tick 339: `icml_boot_recover.sh --apply` + `icml_recover_tip.py --apply`
+# also call this so chicken-egg recover alone lands on tip_pr_commit_branch.
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh

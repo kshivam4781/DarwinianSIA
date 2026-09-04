@@ -1629,6 +1629,19 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "auto-checkout" in unblock.lower() or "auto-checkouts" in unblock.lower()
     assert "ICML cron tip PR anti-churn auto-checkout (Tick 338)" in master
     assert "Tick 338 cron auto-checkout" in env_checks or "Tick 338" in env_checks
+    # Tick 339: tip recover --apply also auto-checkouts (closes Tick-338 chicken-egg gap).
+    boot_recover = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
+    recover_tip = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
+    assert "tip_pr_anti_churn_checkout" in boot_recover
+    assert "icml_checkout_tip_pr_branch.sh" in boot_recover
+    assert "Tick 339" in boot_recover
+    assert "tip_pr_anti_churn_checkout" in recover_tip
+    assert "icml_checkout_tip_pr_branch.sh" in recover_tip
+    assert "Tick 339" in recover_tip
+    assert "Tick 339" in unblock
+    assert "boot_recover" in unblock.lower() or "recover" in unblock.lower()
+    assert "ICML tip recover --apply anti-churn checkout (Tick 339)" in master
+    assert "Tick 339" in env_checks
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

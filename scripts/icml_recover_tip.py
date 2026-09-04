@@ -11,6 +11,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/icml_recover_tip.py              # print tip + write status JSON
   python3 scripts/icml_recover_tip.py --fetch      # refresh remote refs first
   python3 scripts/icml_recover_tip.py --apply      # git reset --hard to tip
+                                               # (+ Tick 339 tip PR anti-churn checkout)
 """
 
 from __future__ import annotations
@@ -67,6 +68,34 @@ def apply_tip(tip_ref: str) -> int:
     head = _git(["log", "-1", "--oneline"])
     if head.returncode == 0:
         print(head.stdout.strip())
+    # Tick 339: tip PR anti-churn checkout after --apply (mirrors boot_recover).
+    # Tick 338 only wired this into icml_cron_entry.sh; recover --apply alone
+    # still left greenfield branch names → new tip PR churn.
+    checkout = REPO_ROOT / "scripts" / "icml_checkout_tip_pr_branch.sh"
+    if checkout.is_file():
+        cur = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+        cur_branch = (cur.stdout or "").strip() if cur.returncode == 0 else "?"
+        print(f"tip_pr_anti_churn_checkout (recover_tip): attempting from {cur_branch}")
+        anti = subprocess.run(
+            ["bash", str(checkout)],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+        )
+        if anti.stdout:
+            print(anti.stdout.rstrip())
+        if anti.returncode == 0:
+            after = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+            after_b = (after.stdout or "").strip() if after.returncode == 0 else "?"
+            print(f"tip_pr_anti_churn_checkout=ok branch={after_b}")
+        else:
+            if anti.stderr:
+                print(anti.stderr.rstrip(), file=sys.stderr)
+            print(
+                "tip_pr_anti_churn_checkout=skip_or_fail "
+                f"(continuing on {cur_branch}; do NOT open a new tip PR)",
+                file=sys.stderr,
+            )
     return 0
 
 

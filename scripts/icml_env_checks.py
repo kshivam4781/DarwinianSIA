@@ -1683,7 +1683,7 @@ def _tip_pr_merge_commands(pr: dict | None) -> list[str]:
 
 
 def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
-    """Tick 337–338: MERGEABLE tip PR head_ref for commits (anti-churn).
+    """Tick 337–339: MERGEABLE tip PR head_ref for commits (anti-churn).
 
     Cron boots a greenfield ``cursor/…`` branch every tick. Opening a *new*
     tip PR supersedes the MERGEABLE one and defeats tip→main. When the tip PR
@@ -1692,6 +1692,9 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
 
     Tick 338: ``icml_cron_entry.sh`` auto-checkouts this branch after writing
     tip/secrets JSON (Tick 337 left checkout as a manual script only).
+    Tick 339: ``icml_boot_recover.sh --apply`` + ``icml_recover_tip.py --apply``
+    also auto-checkout (chicken-egg recover alone no longer leaves greenfield
+    branch names).
     """
     if pr is None:
         pr = resolve_icml_tip_pr()
@@ -1710,15 +1713,16 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
-    """Tick 337–338: tell agents to push onto tip_pr_commit_branch (no new tip PR)."""
+    """Tick 337–339: tell agents to push onto tip_pr_commit_branch (no new tip PR)."""
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch:
         return ""
     n = pr.get("number")
     return (
         f" Agents/cron: do NOT open a new tip PR — checkout `{branch}` "
-        f"(tip_pr_commit_branch; Tick 338 cron auto-checkouts via "
-        f"icml_cron_entry) and push here so PR #{n} updates "
+        f"(tip_pr_commit_branch; Tick 338–339 cron + tip recover --apply "
+        f"auto-checkout via icml_cron_entry / icml_boot_recover / "
+        f"icml_recover_tip) and push here so PR #{n} updates "
         "(bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr "
         f"branch=`{branch}`)."
     )
@@ -1749,10 +1753,10 @@ def _tip_pr_merge_commands_note(pr: dict) -> str:
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–338: merge tip→main; URL; mergeability; gh; anti-churn."""
+    """Tick 327–339: merge tip→main; URL; mergeability; gh; anti-churn."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–338 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–339 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1829,11 +1833,12 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–338 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–339 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
             "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
-            "copy-paste merge commands + Tick 337–338 tip PR anti-churn "
-            "(tip_pr_commit_branch; cron auto-checkout); Tick 333 same-SHA "
+            "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
+            "(tip_pr_commit_branch; cron + tip recover --apply auto-checkout); "
+            "Tick 333 same-SHA "
             "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
             "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
             "also scans cursor/bc-*)",
@@ -1845,7 +1850,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1863,7 +1868,9 @@ def collect_icml_secrets_status() -> dict:
             "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
             "Tick 336 tip PR gh copy-paste merge commands + churn warning; "
             "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch); "
-            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write"
+            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write; "
+            "Tick 339 tip recover --apply also auto-checkouts tip_pr_commit_branch "
+            "(boot_recover + recover_tip; closes chicken-egg-only path)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2212,7 +2219,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335/336/337/338: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2224,7 +2231,9 @@ def collect_icml_tip_status(
             "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
             "Tick 336 tip PR gh copy-paste merge commands + churn warning; "
             "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch); "
-            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write"
+            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write; "
+            "Tick 339 tip recover --apply also auto-checkouts tip_pr_commit_branch "
+            "(boot_recover + recover_tip)"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,

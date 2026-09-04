@@ -196,4 +196,21 @@ fi
 git reset --hard "$best_ref"
 echo "Recovered tip: HEAD now at ${best_ref}"
 git log -1 --oneline
+
+# Tick 339: tip PR anti-churn checkout after --apply.
+# Tick 338 only auto-checkouts inside icml_cron_entry.sh. Chicken-egg
+# `git show <tip>:…/icml_boot_recover.sh | bash -s -- --apply` still left
+# HEAD on the greenfield boot branch name → new tip PR every cron when
+# agents skipped cron_entry or committed before it. Checkout here so both
+# recover paths land on tip_pr_commit_branch.
+if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]]; then
+  _cur_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+  echo "tip_pr_anti_churn_checkout (boot_recover): attempting from ${_cur_branch}"
+  if bash scripts/icml_checkout_tip_pr_branch.sh; then
+    echo "tip_pr_anti_churn_checkout=ok branch=$(git rev-parse --abbrev-ref HEAD)"
+  else
+    echo "tip_pr_anti_churn_checkout=skip_or_fail (continuing on ${_cur_branch}; do NOT open a new tip PR)" >&2
+  fi
+  unset _cur_branch
+fi
 exit 0

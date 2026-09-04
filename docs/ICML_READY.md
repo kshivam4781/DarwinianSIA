@@ -370,6 +370,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 336 tip PR gh copy-paste merge commands — `_tip_pr_merge_commands` + churn warning in human_next; tip/secrets JSON `tip_pr_merge_commands`; merge before next cron or tip PR supersedes; lock test extended
 - [x] Tick 337 tip PR anti-churn — `prefer_tip_pr_commit_branch` + `tip_pr_commit_branch` / `tip_pr_anti_churn` in tip/secrets JSON; `scripts/icml_checkout_tip_pr_branch.sh`; human_next “do NOT open a new tip PR”; lock test extended
 - [x] Tick 338 cron tip PR anti-churn auto-checkout — `icml_cron_entry.sh` auto-checkouts `tip_pr_commit_branch` after tip/secrets status write (closes Tick-337 greenfield branch-name gap); lock test extended
+- [x] Tick 339 tip recover --apply anti-churn checkout — `icml_boot_recover.sh --apply` + `icml_recover_tip.py --apply` also auto-checkout `tip_pr_commit_branch` (closes Tick-338 chicken-egg-only path); lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -382,4 +383,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 338 note: Gate labels / secrets stack through Tick 338 cron tip PR anti-churn auto-checkout -->
+<!-- Tick 339 note: Gate labels / secrets stack through Tick 339 tip recover --apply anti-churn checkout -->
