@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T14:20Z — Tick 336 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (recovered tip ← `dbe3` Tick 335)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tip PR #336 is **MERGEABLE/CLEAN** but draft — operators still must click through the GitHub UI among **100+ open draft tip PRs**, and every cron opens another tip PR (~2h), so tip→main never lands. Highest leverage without paid spend: **copy-paste `gh pr ready` + `gh pr merge` commands + tip-PR churn warning in human_next**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Tip PR gh copy-paste merge commands + churn warning (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← Tick 335 (`dbe3`); confirmed secrets absent; `main` still lacks ICML tip files
+2. `_tip_pr_merge_commands` / `_tip_pr_merge_commands_note` → `gh pr ready N && gh pr merge N --merge` + “merge before next cron (~2h) or tip PR supersedes”
+3. tip/secrets JSON expose `tip_pr_merge_commands`; HUMAN_UNBLOCK / AGENTS / Section 12 + lock tests
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 335) | After (Tick 336) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| human_next tip PR merge path | MERGEABLE/CLEAN undraft note | **+ copy-paste `gh` + churn warning** |
+| tip/secrets JSON merge commands | absent | **`tip_pr_merge_commands`** |
+| Focused tip-PR tests | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **copy-paste** `gh pr ready <N> --repo kshivam4781/DarwinianSIA && gh pr merge <N> --repo kshivam4781/DarwinianSIA --merge` for the tip PR in `docs/icml_secrets_status.json` (`tip_pr_url` / `tip_pr_merge_commands`) — merge **before next cron** or a new tip PR will supersede. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T12:20Z — Tick 335 (automation cron)
 
 ### Status snapshot

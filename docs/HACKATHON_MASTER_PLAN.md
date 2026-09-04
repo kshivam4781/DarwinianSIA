@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-04 (Section 21 ICML; Tick 335 tip PR mergeability in human_next; Tick 334 tip PR HEAD/local SHA fallback; Tick 333 same-SHA sibling tip PR fallback; Tick 332 HUMAN_UNBLOCK chicken-egg scans cursor/bc-*; Tick 331 tip lineage scans cursor/bc-*; Tick 330 concrete tip PR URL; Tick 329 cron full human_next; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-04 (Section 21 ICML; Tick 336 tip PR gh copy-paste merge commands; Tick 335 tip PR mergeability in human_next; Tick 334 tip PR HEAD/local SHA fallback; Tick 333 same-SHA sibling tip PR fallback; Tick 332 HUMAN_UNBLOCK chicken-egg scans cursor/bc-*; Tick 331 tip lineage scans cursor/bc-*; Tick 330 concrete tip PR URL; Tick 329 cron full human_next; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -929,7 +929,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML same-SHA sibling tip PR fallback (Tick 333) | **DONE** | `resolve_icml_tip_pr` uses open PR on same-SHA sibling tip ref when tip head has no PR yet (mid-tick / greenfield); still no unrelated-ICML-PR fallback; lock test |
 | ICML tip PR HEAD/local SHA fallback (Tick 334) | **DONE** | `_tip_sha_for_pr_resolve` falls back to HEAD/local branch when tip_ref remote is unpushed (greenfield after tip recover); same-SHA sibling tip PR still resolves; lock test |
 | ICML tip PR mergeability in human_next (Tick 335) | **DONE** | `_gh_pr_list_for_head` fetches `mergeable`/`mergeStateStatus`; `_tip_pr_mergeability_note` → human_next + tip/secrets JSON (`tip_pr_mergeable`); MERGEABLE/CLEAN → undraft & merge now |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–335 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
+| ICML tip PR gh copy-paste merge commands (Tick 336) | **DONE** | `_tip_pr_merge_commands` + churn warning in human_next; tip/secrets JSON `tip_pr_merge_commands` (`gh pr ready` + `gh pr merge`); merge before next cron or tip PR supersedes |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–336 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2419,3 +2420,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Tip PR HEAD/local SHA fallback (2026-09-04 Tick 334):** Tick 333 same-SHA fallback still failed when `tip_ref` was an unpushed `refs/remotes/origin/<greenfield>` (common after tip recover before `git push`) — `rev-parse` of the missing remote left tip SHA unset and `tip_pr_url` unresolved. `_tip_sha_for_pr_resolve` now falls back to local branch / HEAD. Portal Save skipped. STATUS remains IN_PROGRESS.
 
 **Tip PR mergeability in human_next (2026-09-04 Tick 335):** Tip PR #335 is MERGEABLE/CLEAN but draft — among 300+ draft tip PRs operators cannot tell which are conflict-free. `_gh_pr_list_for_head` now fetches `mergeable`/`mergeStateStatus`; `_tip_pr_mergeability_note` embeds MERGEABLE/CLEAN → “undraft & merge now (no conflicts)” (or CONFLICTING → rebase) into `human_next` + tip/secrets JSON (`tip_pr_mergeable`). Portal Save skipped. STATUS remains IN_PROGRESS.
+
+**Tip PR gh copy-paste merge commands (2026-09-04 Tick 336):** Tip PR #336 is MERGEABLE/CLEAN but draft — operators still click through the UI among 100+ open drafts, and every cron opens another tip PR (~2h). `_tip_pr_merge_commands` / `_tip_pr_merge_commands_note` embed copy-paste `gh pr ready N && gh pr merge N --merge` + a churn warning (“merge before next cron or tip PR supersedes”) into `human_next` + tip/secrets JSON (`tip_pr_merge_commands`). Portal Save skipped. STATUS remains IN_PROGRESS.

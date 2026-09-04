@@ -1661,11 +1661,55 @@ def _tip_pr_mergeability_note(pr: dict) -> str:
     return f" — GitHub {label}"
 
 
+_ICML_GITHUB_REPO = "kshivam4781/DarwinianSIA"
+
+
+def _tip_pr_merge_commands(pr: dict | None) -> list[str]:
+    """Tick 336: copy-paste ``gh`` undraft+merge for the concrete tip PR.
+
+    Operators face 100+ open draft tip PRs; mergeability alone still requires
+    clicking through the UI. Exact ``gh pr ready`` / ``gh pr merge`` commands
+    land the tip on ``main`` in one shell paste.
+    """
+    if not pr or pr.get("number") is None:
+        return []
+    n = int(pr["number"])
+    repo = _ICML_GITHUB_REPO
+    cmds: list[str] = []
+    if pr.get("is_draft"):
+        cmds.append(f"gh pr ready {n} --repo {repo}")
+    cmds.append(f"gh pr merge {n} --repo {repo} --merge")
+    return cmds
+
+
+def _tip_pr_merge_commands_note(pr: dict) -> str:
+    """Tick 336: human_next suffix with copy-paste gh + tip-PR churn warning."""
+    cmds = _tip_pr_merge_commands(pr)
+    if not cmds:
+        return ""
+    paste = " && ".join(cmds)
+    mergeable = str(pr.get("mergeable") or "").strip().upper()
+    state = str(pr.get("merge_state_status") or "").strip().upper()
+    churn = (
+        " Merge before next cron (~2h) or a new tip PR will supersede this one "
+        "among 100+ open draft tip PRs — older tip PRs are superseded; merge "
+        f"only #{pr['number']}."
+    )
+    if mergeable == "MERGEABLE" and state in {"", "CLEAN"}:
+        return f" Copy-paste: `{paste}`.{churn}"
+    if mergeable == "CONFLICTING" or state in {"DIRTY", "UNSTABLE"}:
+        return (
+            f" After rebase: `{paste}`."
+            " Do not merge older superseded tip PRs."
+        )
+    return f" Copy-paste when ready: `{paste}`.{churn}"
+
+
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–335: merge tip→main; Tick 330+ URL; Tick 335 mergeability."""
+    """Tick 327–336: merge tip→main; URL; mergeability; gh copy-paste (Tick 336)."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–335 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–336 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1686,9 +1730,10 @@ def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
             if pr.get("is_draft")
             else ""
         )
+    cmd_note = _tip_pr_merge_commands_note(pr)
     return (
         f"{base} Concrete tip PR: #{pr['number']} {pr['url']}"
-        f"{merge_note}{draft_note}."
+        f"{merge_note}{draft_note}.{cmd_note}"
     )
 
 
@@ -1741,9 +1786,10 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–335 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–336 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
-            "concrete tip PR URL + Tick 335 mergeability; Tick 333 same-SHA "
+            "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
+            "copy-paste merge commands / churn warning; Tick 333 same-SHA "
             "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
             "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
             "also scans cursor/bc-*)",
@@ -1754,7 +1800,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1769,7 +1815,8 @@ def collect_icml_secrets_status() -> dict:
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
             "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
             "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
-            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON"
+            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
+            "Tick 336 tip PR gh copy-paste merge commands + churn warning"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1803,6 +1850,8 @@ def collect_icml_secrets_status() -> dict:
         # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
         "tip_pr_mergeable": (tip_pr or {}).get("mergeable"),
         "tip_pr_merge_state_status": (tip_pr or {}).get("merge_state_status"),
+        # Tick 336: copy-paste gh undraft+merge (null/[] when main has tip).
+        "tip_pr_merge_commands": _tip_pr_merge_commands(tip_pr),
         "blockers": blockers,
         "human_next": human_next,
     }
@@ -2111,7 +2160,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2120,7 +2169,8 @@ def collect_icml_tip_status(
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
             "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
             "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
-            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON"
+            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
+            "Tick 336 tip PR gh copy-paste merge commands + churn warning"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2138,6 +2188,8 @@ def collect_icml_tip_status(
         # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
         "tip_pr_mergeable": (tip_pr or {}).get("mergeable"),
         "tip_pr_merge_state_status": (tip_pr or {}).get("merge_state_status"),
+        # Tick 336: copy-paste gh undraft+merge (null/[] when main has tip).
+        "tip_pr_merge_commands": _tip_pr_merge_commands(tip_pr),
         "blockers": blockers,
         "recover_command": (
             "python3 scripts/icml_recover_tip.py --apply "

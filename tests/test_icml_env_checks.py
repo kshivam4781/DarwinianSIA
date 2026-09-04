@@ -402,7 +402,7 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
 def test_secrets_status_human_next_merge_tip_when_main_lacks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tick 328/330/335: dual unblock — human_next leads with concrete tip PR + mergeability."""
+    """Tick 328/330/335/336: dual unblock — tip PR + mergeability + gh copy-paste."""
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.setenv("HF_TOKEN", "hf-test")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
@@ -426,11 +426,19 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     assert "#330" in status["human_next"][0]
     assert "MERGEABLE" in status["human_next"][0]
     assert "undraft" in status["human_next"][0].lower()
+    # Tick 336: copy-paste gh ready+merge + tip-PR churn warning.
+    assert "gh pr ready 330" in status["human_next"][0]
+    assert "gh pr merge 330" in status["human_next"][0]
+    assert "supersede" in status["human_next"][0].lower()
     assert status["tip_pr_url"] == fake_pr["url"]
     assert status["tip_pr_number"] == 330
     assert status["tip_pr_is_draft"] is True
     assert status["tip_pr_mergeable"] == "MERGEABLE"
     assert status["tip_pr_merge_state_status"] == "CLEAN"
+    assert status["tip_pr_merge_commands"] == [
+        "gh pr ready 330 --repo kshivam4781/DarwinianSIA",
+        "gh pr merge 330 --repo kshivam4781/DarwinianSIA --merge",
+    ]
     steps = live_pipeline_next_steps(
         secrets_ok=True,
         tip_ok=True,
@@ -439,11 +447,16 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     )
     assert "Merge the latest ICML tip PR into `main`" in steps[0]
     assert "pull/330" in steps[0]
+    assert "gh pr merge 330" in steps[0]
 
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
-    """Tick 335: MERGEABLE/CLEAN vs CONFLICTING notes in human_next."""
-    from icml_env_checks import _merge_tip_to_main_human_next, _tip_pr_mergeability_note
+    """Tick 335/336: MERGEABLE/CLEAN vs CONFLICTING + gh copy-paste in human_next."""
+    from icml_env_checks import (
+        _merge_tip_to_main_human_next,
+        _tip_pr_merge_commands,
+        _tip_pr_mergeability_note,
+    )
 
     assert _tip_pr_mergeability_note({}) == ""
     clean = _tip_pr_mergeability_note(
@@ -471,7 +484,38 @@ def test_tip_pr_mergeability_note_and_merge_next() -> None:
     assert "MERGEABLE" in msg
     assert "undraft" in msg.lower()
     assert "no conflicts" in msg.lower()
-
+    assert "gh pr ready 335" in msg
+    assert "gh pr merge 335" in msg
+    assert "supersede" in msg.lower()
+    assert _tip_pr_merge_commands(
+        {
+            "number": 335,
+            "is_draft": True,
+        }
+    ) == [
+        "gh pr ready 335 --repo kshivam4781/DarwinianSIA",
+        "gh pr merge 335 --repo kshivam4781/DarwinianSIA --merge",
+    ]
+    # Non-draft MERGEABLE: ready step omitted.
+    assert _tip_pr_merge_commands(
+        {"number": 335, "is_draft": False}
+    ) == ["gh pr merge 335 --repo kshivam4781/DarwinianSIA --merge"]
+    # CONFLICTING: still expose commands but after-rebase wording.
+    conflict_msg = _merge_tip_to_main_human_next(
+        {
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/335",
+            "number": 335,
+            "title": "ICML Tick 334",
+            "is_draft": True,
+            "head_ref": "cursor/icml-epistemic-results-4bb3",
+            "mergeable": "CONFLICTING",
+            "merge_state_status": "DIRTY",
+        }
+    )
+    assert "After rebase" in conflict_msg
+    assert "gh pr merge 335" in conflict_msg
+    assert "next cron" not in conflict_msg.lower()
+    assert "Copy-paste:" not in conflict_msg
 
 def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
     """Tick 330/331: tip-ref → branch; merge Next still works if gh unavailable."""
@@ -1532,6 +1576,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 335" in unblock
     assert "MERGEABLE" in unblock or "mergeability" in unblock.lower()
     assert "ICML tip PR mergeability in human_next (Tick 335)" in master
+    # Tick 336: gh copy-paste merge commands + tip-PR churn warning.
+    assert "_tip_pr_merge_commands" in env_checks
+    assert "tip_pr_merge_commands" in env_checks
+    assert "gh pr ready" in env_checks
+    assert "gh pr merge" in env_checks
+    assert "supersede" in env_checks
+    assert "Tick 336" in unblock
+    assert "copy-paste" in unblock.lower() or "gh pr" in unblock
+    assert "ICML tip PR gh copy-paste merge commands (Tick 336)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
