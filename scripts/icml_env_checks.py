@@ -1535,12 +1535,46 @@ def _sha_prefix_equal(a: str | None, b: str | None, *, n: int = 7) -> bool:
     return sa[:n] == sb[:n]
 
 
+def _tip_sha_for_pr_resolve(
+    *,
+    branch: str | None,
+    tip_ref: str | None,
+    candidates: list[dict],
+    repo_root: Path | None = None,
+) -> str | None:
+    """Resolve the tip commit SHA used for same-SHA sibling PR fallback.
+
+    Tick 334: greenfield cron branches are often tip-recovered locally before
+    ``git push``, so ``refs/remotes/origin/<greenfield>`` may not exist yet.
+    Fall back to local branch / HEAD so same-SHA sibling tip PRs still resolve.
+    """
+    root = repo_root or _REPO_ROOT
+    if branch:
+        for cand in candidates:
+            if _branch_from_tip_ref(str(cand.get("ref") or "")) == branch:
+                sha = str(cand.get("sha") or "") or None
+                if sha:
+                    return sha
+    for ref in (
+        tip_ref,
+        (f"refs/heads/{branch}" if branch else None),
+        (branch or None),
+        "HEAD",
+    ):
+        if not ref:
+            continue
+        ok, out = _git_ok(["rev-parse", "--short=12", ref], cwd=root)
+        if ok and out.strip():
+            return out.strip()
+    return None
+
+
 def resolve_icml_tip_pr(
     *,
     tip_ref: str | None = None,
     repo_root: Path | None = None,
 ) -> dict | None:
-    """Resolve the open GitHub PR for the current ICML tip branch (Tick 330/333).
+    """Resolve the open GitHub PR for the current ICML tip branch (Tick 330/333/334).
 
     Returns ``{url, number, title, is_draft, head_ref}`` or ``None``. Uses
     ``gh`` when available; never raises. Operators otherwise face 300+ draft
@@ -1549,6 +1583,10 @@ def resolve_icml_tip_pr(
     Tick 333: if the tip head has no open PR yet, also try **same-SHA**
     sibling tip refs (e.g. prior tip branch / ``bc-*`` alias). Still never
     falls back to an unrelated open ICML PR (Tick 331 hazard).
+
+    Tick 334: when tip SHA cannot be read from an unpushed
+    ``refs/remotes/origin/<greenfield>`` tip_ref, fall back to local branch /
+    HEAD so same-SHA sibling resolution still works after tip recover.
     """
     root = repo_root or _REPO_ROOT
     candidates = list_remote_icml_tip_candidates(repo_root=root, fetch=False)
@@ -1566,15 +1604,13 @@ def resolve_icml_tip_pr(
     # Tip head has no open PR yet (common mid-tick before open_git_pr, or when
     # cron recovered tip onto a new greenfield branch at the same SHA).
     # Tick 333: same-SHA sibling tip refs may already have the mergeable PR.
-    tip_sha: str | None = None
-    for cand in candidates:
-        if _branch_from_tip_ref(str(cand.get("ref") or "")) == branch:
-            tip_sha = str(cand.get("sha") or "") or None
-            break
-    if not tip_sha and tip_ref:
-        ok, out = _git_ok(["rev-parse", "--short=12", tip_ref], cwd=root)
-        if ok and out.strip():
-            tip_sha = out.strip()
+    # Tick 334: tip_sha via local branch / HEAD when remote tip_ref is unpushed.
+    tip_sha = _tip_sha_for_pr_resolve(
+        branch=branch,
+        tip_ref=tip_ref,
+        candidates=candidates,
+        repo_root=root,
+    )
     if tip_sha:
         seen: set[str] = {branch}
         for cand in candidates:
@@ -1594,10 +1630,10 @@ def resolve_icml_tip_pr(
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–333: merge tip→main; Tick 330+ concrete PR URL + draft note."""
+    """Tick 327–334: merge tip→main; Tick 330+ concrete PR URL + draft note."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–333 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–334 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1666,9 +1702,10 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–333 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–334 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
             "concrete tip PR URL; Tick 333 same-SHA sibling tip PR fallback; "
+            "Tick 334 HEAD/local SHA fallback for unpushed greenfield tip_ref; "
             "Tick 332 HUMAN_UNBLOCK chicken-egg also scans cursor/bc-*)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
@@ -1677,7 +1714,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1690,7 +1727,8 @@ def collect_icml_secrets_status() -> dict:
             "tip PR URL (+ draft undraft note) via resolve_icml_tip_pr; "
             "Tick 331 tip lineage also scans cursor/bc-* cloud cron branches; "
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
-            "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet"
+            "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
+            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2029,14 +2067,15 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
             "Tick 330 resolves concrete tip_pr_url via gh; "
             "Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; "
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
-            "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet"
+            "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
+            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,

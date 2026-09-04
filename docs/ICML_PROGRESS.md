@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T10:20Z — Tick 334 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-4bb3` (recovered tip ← `cd84` Tick 333)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tick 333 same-SHA sibling fallback still left `tip_pr_url` **unresolved** when `tip_ref` was an unpushed `refs/remotes/origin/<greenfield>` (tip recover before `git push`) — `rev-parse` of the missing remote unset tip SHA. Highest leverage without paid spend: **HEAD/local SHA fallback for tip PR resolve**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Tip PR HEAD/local SHA fallback (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← Tick 333 (`cd84`); confirmed secrets absent; `main` still lacks ICML tip files
+2. `_tip_sha_for_pr_resolve`: when tip_ref remote is missing, fall back to local branch / HEAD so same-SHA sibling tip PRs still resolve
+3. HUMAN_UNBLOCK / AGENTS / Section 12 + lock tests extended
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 333) | After (Tick 334) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| tip_pr_url for unpushed greenfield tip_ref (same-SHA sibling exists) | **unresolved** | **sibling PR via HEAD** |
+| Unrelated ICML PR fallback | still forbidden | still forbidden |
+| Focused tip-PR tests | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge latest tip PR** (see `docs/icml_tip_status.json` `tip_pr_url` after this tick) into `main`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T08:15Z — Tick 333 (automation cron)
 
 ### Status snapshot

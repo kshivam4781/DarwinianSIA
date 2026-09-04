@@ -622,6 +622,69 @@ def test_resolve_icml_tip_pr_same_sha_ignores_different_sha(
     )
 
 
+def test_resolve_icml_tip_pr_unpushed_remote_uses_head_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 334: unpushed greenfield remote tip_ref still same-SHA via HEAD."""
+    from icml_env_checks import resolve_icml_tip_pr
+    import subprocess
+
+    def fake_run(cmd, **kwargs):
+        class R:
+            returncode = 1
+            stdout = ""
+            stderr = ""
+
+        if "pr" in cmd and "--head" in cmd:
+            R.returncode = 0
+            head = cmd[cmd.index("--head") + 1]
+            if head == "cursor/icml-epistemic-results-cd84":
+                R.stdout = json.dumps(
+                    [
+                        {
+                            "number": 334,
+                            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/334",
+                            "title": "ICML Tick 333",
+                            "isDraft": True,
+                            "headRefName": "cursor/icml-epistemic-results-cd84",
+                        }
+                    ]
+                )
+            else:
+                R.stdout = "[]"
+            return R()
+        # tip_ref remote missing; HEAD / local branch has tip SHA
+        if "rev-parse" in cmd:
+            ref = cmd[-1]
+            if ref.startswith("refs/remotes/origin/"):
+                R.returncode = 1
+                R.stdout = ""
+            else:
+                R.returncode = 0
+                R.stdout = "dab2c77abcde\n"
+            return R()
+        return R()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "icml_env_checks.list_remote_icml_tip_candidates",
+        lambda **_k: [
+            {
+                "ref": "refs/remotes/origin/cursor/icml-epistemic-results-cd84",
+                "tick": 333,
+                "sha": "dab2c77",
+                "lineage_score": 6,
+            },
+        ],
+    )
+    pr = resolve_icml_tip_pr(
+        tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-4bb3"
+    )
+    assert pr is not None
+    assert pr["number"] == 334
+    assert pr["head_ref"] == "cursor/icml-epistemic-results-cd84"
+
+
 def test_tip_ref_prefixes_include_cloud_bc_branches() -> None:
     """Tick 331: tip lineage must scan cursor/bc-* cloud cron boots."""
     from icml_env_checks import (
@@ -1419,6 +1482,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "same-SHA sibling tip PR fallback" in env_checks
     assert "_sha_prefix_equal" in env_checks
     assert "_gh_pr_list_for_head" in env_checks
+    # Tick 334: unpushed greenfield tip_ref still resolves via HEAD/local SHA.
+    assert "_tip_sha_for_pr_resolve" in env_checks
+    assert "Tick 334" in unblock
+    assert "HEAD/local" in unblock or "unpushed" in unblock.lower()
+    assert "ICML tip PR HEAD/local SHA fallback (Tick 334)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

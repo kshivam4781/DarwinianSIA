@@ -1,10 +1,10 @@
 {
-  "updated_at": "2026-09-04T08:08:52Z",
-  "tick_note": "Tick 269\u2013270/328/330/331/332/333: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; Tick 328 reports main_has_icml_tip (merge tip\u2192main dual unblock); Tick 330 resolves concrete tip_pr_url via gh; Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet",
-  "local_tick": 333,
+  "updated_at": "2026-09-04T10:10:10Z",
+  "tick_note": "Tick 269\u2013270/328/330/331/332/333/334: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; Tick 328 reports main_has_icml_tip (merge tip\u2192main dual unblock); Tick 330 resolves concrete tip_pr_url via gh; Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed",
+  "local_tick": 334,
   "remote_tip_tick": 333,
   "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-cd84",
-  "remote_tip_sha": "10ad347",
+  "remote_tip_sha": "dab2c77",
   "remote_tip_lineage_score": 6,
   "tip_ok_for_live": true,
   "main_has_icml_tip": false,
@@ -19,7 +19,7 @@
     {
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-cd84",
       "tick": 333,
-      "sha": "10ad347",
+      "sha": "dab2c77",
       "lineage_score": 6
     },
     {
