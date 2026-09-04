@@ -1683,12 +1683,15 @@ def _tip_pr_merge_commands(pr: dict | None) -> list[str]:
 
 
 def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
-    """Tick 337: MERGEABLE tip PR head_ref for commits (anti-churn).
+    """Tick 337–338: MERGEABLE tip PR head_ref for commits (anti-churn).
 
     Cron boots a greenfield ``cursor/…`` branch every tick. Opening a *new*
     tip PR supersedes the MERGEABLE one and defeats tip→main. When the tip PR
     is MERGEABLE, agents must checkout/push this ``head_ref`` and pass it to
     ``open_git_pr(branch=…)`` so the existing PR updates instead.
+
+    Tick 338: ``icml_cron_entry.sh`` auto-checkouts this branch after writing
+    tip/secrets JSON (Tick 337 left checkout as a manual script only).
     """
     if pr is None:
         pr = resolve_icml_tip_pr()
@@ -1707,14 +1710,15 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
-    """Tick 337: tell agents to push onto tip_pr_commit_branch (no new tip PR)."""
+    """Tick 337–338: tell agents to push onto tip_pr_commit_branch (no new tip PR)."""
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch:
         return ""
     n = pr.get("number")
     return (
         f" Agents/cron: do NOT open a new tip PR — checkout `{branch}` "
-        f"(tip_pr_commit_branch) and push here so PR #{n} updates "
+        f"(tip_pr_commit_branch; Tick 338 cron auto-checkouts via "
+        f"icml_cron_entry) and push here so PR #{n} updates "
         "(bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr "
         f"branch=`{branch}`)."
     )
@@ -1745,10 +1749,10 @@ def _tip_pr_merge_commands_note(pr: dict) -> str:
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–337: merge tip→main; URL; mergeability; gh; anti-churn."""
+    """Tick 327–338: merge tip→main; URL; mergeability; gh; anti-churn."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–337 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–338 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1825,14 +1829,14 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–337 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–338 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
             "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
-            "copy-paste merge commands + Tick 337 tip PR anti-churn "
-            "(tip_pr_commit_branch); Tick 333 same-SHA sibling tip PR "
-            "fallback; Tick 334 HEAD/local SHA fallback for unpushed "
-            "greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg also "
-            "scans cursor/bc-*)",
+            "copy-paste merge commands + Tick 337–338 tip PR anti-churn "
+            "(tip_pr_commit_branch; cron auto-checkout); Tick 333 same-SHA "
+            "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
+            "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
+            "also scans cursor/bc-*)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1841,7 +1845,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1858,7 +1862,8 @@ def collect_icml_secrets_status() -> dict:
             "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
             "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
             "Tick 336 tip PR gh copy-paste merge commands + churn warning; "
-            "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch)"
+            "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch); "
+            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1895,6 +1900,7 @@ def collect_icml_secrets_status() -> dict:
         # Tick 336: copy-paste gh undraft+merge (null/[] when main has tip).
         "tip_pr_merge_commands": _tip_pr_merge_commands(tip_pr),
         # Tick 337: anti-churn — commit onto this branch (null when not MERGEABLE).
+        # Tick 338: cron_entry auto-checkouts this branch after status write.
         "tip_pr_commit_branch": tip_commit_branch,
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "blockers": blockers,
@@ -2206,7 +2212,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335/336/337: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336/337/338: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2217,7 +2223,8 @@ def collect_icml_tip_status(
             "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
             "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; "
             "Tick 336 tip PR gh copy-paste merge commands + churn warning; "
-            "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch)"
+            "Tick 337 tip PR anti-churn (prefer_tip_pr_commit_branch / tip_pr_commit_branch); "
+            "Tick 338 cron auto-checkout tip_pr_commit_branch after status write"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2238,6 +2245,7 @@ def collect_icml_tip_status(
         # Tick 336: copy-paste gh undraft+merge (null/[] when main has tip).
         "tip_pr_merge_commands": _tip_pr_merge_commands(tip_pr),
         # Tick 337: anti-churn — commit onto this branch (null when not MERGEABLE).
+        # Tick 338: cron_entry auto-checkouts this branch after status write.
         "tip_pr_commit_branch": tip_commit_branch,
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "blockers": blockers,

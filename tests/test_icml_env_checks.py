@@ -1620,6 +1620,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     )
     assert "tip_pr_commit_branch" in checkout
     assert "anti-churn" in checkout.lower()
+    # Tick 338: cron_entry auto-checkouts tip_pr_commit_branch (closes Tick-337 gap).
+    cron_entry = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "tip_pr_anti_churn_checkout" in cron_entry
+    assert "icml_checkout_tip_pr_branch.sh" in cron_entry
+    assert "Tick 338" in cron_entry
+    assert "Tick 338" in unblock
+    assert "auto-checkout" in unblock.lower() or "auto-checkouts" in unblock.lower()
+    assert "ICML cron tip PR anti-churn auto-checkout (Tick 338)" in master
+    assert "Tick 338 cron auto-checkout" in env_checks or "Tick 338" in env_checks
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

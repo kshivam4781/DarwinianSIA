@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–338).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
 # tip_pr_anti_churn=true / tip_pr_commit_branch set, checkout that branch so
 # subsequent commits update the existing tip PR (open_git_pr branch=<that>).
+#
+# Tick 338: `bash scripts/icml_cron_entry.sh` calls this automatically after
+# writing tip/secrets status (manual use still OK for agents mid-tick).
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh
