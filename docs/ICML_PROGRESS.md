@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T00:25Z — Tick 329 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-45fd` (recovered tip ← `3d84` Tick 328)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tick 328 put dual unblock into machine-readable `human_next`, but cron `--preflight-only` (and live-refuse) never printed those lines — operators grepping cron logs only saw gate BLOCKs. Highest leverage without paid spend: **print full `human_next` on every blocked cron exit path**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Cron full human_next on blocked paths (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `3d84`; confirmed secrets absent; `main` still lacks ICML tip files
+2. `scripts/icml_cron_entry.sh`: `print_human_next` prints all `human_next` lines; wired into `--preflight-only` / auto / live-refuse
+3. Section 12 row + Tick 329 DONE chronicle; READY / HUMAN_UNBLOCK tick labels; lock test extended
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 328) | After (Tick 329) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Dual unblock in secrets/tip JSON | yes | yes |
+| Cron `--preflight-only` prints full `human_next` | **no** | **yes** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **merge latest tip PR into `main`**. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-03T22:20Z — Tick 328 (automation cron)
 
 ### Status snapshot

@@ -1510,7 +1510,8 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–328 — recovers tip; auto-live only when fetch_diamond_ok)",
+            "(Tick 271–329 — recovers tip; auto-live only when fetch_diamond_ok; "
+            "blocked paths print full human_next)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1518,7 +1519,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1526,7 +1527,8 @@ def collect_icml_secrets_status() -> dict:
             ".env loaded for missing secret names; "
             "human_next prefers bash scripts/icml_cron_entry.sh; "
             "Tick 328 dual unblock also surfaces merge tip→main when "
-            "main_has_icml_tip is false"
+            "main_has_icml_tip is false; Tick 329 cron prints full human_next "
+            "on --preflight-only / auto / live-refuse"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,

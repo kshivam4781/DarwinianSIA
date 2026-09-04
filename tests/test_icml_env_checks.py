@@ -637,7 +637,7 @@ def test_icml_boot_recover_script_exists_and_help() -> None:
 
 
 def test_icml_cron_entry_script_exists_and_help() -> None:
-    """Tick 271–278: recover→live/preflight; lineage tip pick; HF/CSV fetch_diamond gate."""
+    """Tick 271–278/329: recover→live/preflight; lineage tip pick; HF/CSV; full human_next."""
     script = REPO / "scripts" / "icml_cron_entry.sh"
     assert script.is_file()
     text = script.read_text(encoding="utf-8")
@@ -658,6 +658,10 @@ def test_icml_cron_entry_script_exists_and_help() -> None:
     assert "autowire_diamond_csv" in (
         (REPO / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     )
+    # Tick 329: full human_next on blocked paths (--preflight-only / auto / live-refuse).
+    assert "print_human_next" in text
+    assert "Tick 329" in text
+    assert "Human next (dual unblock)" in text
     import subprocess
 
     proc = subprocess.run(
@@ -1148,6 +1152,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "_merge_tip_to_main_human_next" in env_checks
     assert "Merge the latest ICML tip PR into `main`" in env_checks
     assert "ICML machine-readable dual unblock (Tick 328)" in master
+    # Tick 329: cron prints *full* human_next on --preflight-only / auto /
+    # live-refuse (Tick 328 wrote merge tip into JSON but preflight stayed silent).
+    cron = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "print_human_next" in cron
+    assert "Human next (dual unblock)" in cron
+    assert "ICML cron full human_next on blocked paths (Tick 329)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

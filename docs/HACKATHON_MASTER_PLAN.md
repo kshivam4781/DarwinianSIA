@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-03 (Section 21 ICML; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock secrets+merge tip→main; Tick 326 python3-safe --help; … Tick 268 secrets-first)  
+**Last updated:** 2026-09-04 (Section 21 ICML; Tick 329 cron full human_next; Tick 328 machine-readable dual unblock; Tick 327 dual human unblock; … Tick 268 secrets-first)  
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -922,7 +922,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML python3-safe script --help Examples (Tick 326) | **DONE** | G2/G3/G4/pipeline/prepare/recover/epistemic module docstrings / `--help` Examples use `python3` (cold Linux); lock test |
 | ICML dual human unblock — secrets + merge tip→main (Tick 327) | **DONE** | `ICML_HUMAN_UNBLOCK.md` leads with secrets **and** merge tip PR → `main` (cron still boots hackathon AGENTS without ICML tip files); lock test |
 | ICML machine-readable dual unblock (Tick 328) | **DONE** | `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–328 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
+| ICML cron full human_next on blocked paths (Tick 329) | **DONE** | `print_human_next` prints *all* `human_next` lines on `--preflight-only` / auto / live-refuse (Tick 328 JSON was silent on preflight); lock test |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–329 stack ready; next: secrets + merge tip→main, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2398,3 +2399,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Dual human unblock — secrets + merge tip→main (2026-09-03 Tick 327):** Live PRIMARY remains secrets-blocked, but cron also still boots **`main`**, which has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `icml_cron_entry.sh` (300+ tip PRs unmerged). `docs/ICML_HUMAN_UNBLOCK.md` now leads with the dual action: (1) add NEBIUS + HF/CSV, (2) merge latest tip PR into `main`. Portal Save skipped. G2 dry-run `run_1910` green. STATUS remains IN_PROGRESS.
 
 **Machine-readable dual unblock (2026-09-03 Tick 328):** Tick 327 documented dual unblock in HUMAN_UNBLOCK, but `icml_secrets_status.json` `human_next` / pipeline Next still listed secrets-only. Added `main_has_icml_tip_files()` + `main_has_icml_tip` on secrets/tip status; prepends merge tip→main in `human_next` / Next when `main` lacks tip (does **not** gate `fetch_diamond_ok`). Portal Save skipped. STATUS remains IN_PROGRESS.
+
+**Cron full human_next on blocked paths (2026-09-04 Tick 329):** Tick 328 wrote merge tip→main into `human_next` JSON, but `icml_cron_entry.sh --preflight-only` never printed it (only auto mode printed `lines[0]`). Added `print_human_next` and call it on `--preflight-only` / auto-blocked / live-refuse so dual unblock is always visible. Portal Save skipped. STATUS remains IN_PROGRESS.

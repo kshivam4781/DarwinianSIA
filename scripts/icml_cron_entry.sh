@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -7,7 +7,8 @@
 #   3. If tip OK + fetch_diamond_ok (API keys + HF **or** local diamond CSV)
 #      → live G2→G3→G4 (--fetch-diamond [, --diamond-csv])
 #   4. Else → preflight only WITH --fetch-diamond (Tick 276) and optional
-#      --diamond-csv (Tick 277); print blockers; exit 0 (not READY)
+#      --diamond-csv (Tick 277); print *full* human_next (Tick 329 dual
+#      unblock: merge tip→main + secrets); exit 0 (not READY)
 #
 # Tick 273: do NOT launch --fetch-diamond live on anthropic+nebius alone —
 # missing HF_TOKEN would fail diamond materialization after tip recover.
@@ -270,20 +271,49 @@ run_live() {
   python3 scripts/run_icml_live_pipeline.py --live "${_dargs[@]}"
 }
 
+# Tick 329: print *all* human_next lines on blocked paths (not only auto /
+# not only lines[0]). Tick 328 put merge tip→main first in human_next when
+# main lacks tip; --preflight-only / live-refuse previously stayed silent.
+print_human_next() {
+  if [[ -f docs/icml_secrets_status.json ]]; then
+    python3 - <<'PY'
+import json
+from pathlib import Path
+data = json.loads(Path("docs/icml_secrets_status.json").read_text(encoding="utf-8"))
+lines = data.get("human_next") or []
+if lines:
+    print("=== Human next (dual unblock) ===")
+    for i, line in enumerate(lines, 1):
+        print(f"  {i}. {line}")
+else:
+    print(
+        "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) "
+        "per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+    )
+PY
+  else
+    echo "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+  fi
+}
+
 case "$MODE" in
   preflight)
+    # Tick 329: surface dual unblock even on --preflight-only (no paid spend).
+    print_human_next
     run_preflight
     exit 0
     ;;
   live)
     if [[ "$TIP_OK" -ne 1 ]]; then
       echo "Refusing --live: tip not OK (see docs/icml_tip_status.json)" >&2
+      print_human_next
       run_preflight
       exit 3
     fi
     if [[ "$CRON_LIVE_OK" -ne 1 ]]; then
       echo "Refusing --live: need API keys + (HF_TOKEN or local diamond CSV) for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
       echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK} diamond_csv=${DIAMOND_CSV:-none}" >&2
+      print_human_next
       run_preflight
       exit 4
     fi
@@ -296,24 +326,8 @@ case "$MODE" in
       exit $?
     fi
     echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}) — preflight only"
-    # Tick 292: print Anthropic-optional line from secrets status (not hard-coded).
-    if [[ -f docs/icml_secrets_status.json ]]; then
-      python3 - <<'PY'
-import json
-from pathlib import Path
-data = json.loads(Path("docs/icml_secrets_status.json").read_text(encoding="utf-8"))
-lines = data.get("human_next") or []
-if lines:
-    print(f"Human: {lines[0]}")
-else:
-    print(
-        "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) "
-        "per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
-    )
-PY
-    else
-      echo "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
-    fi
+    # Tick 292/329: Anthropic-optional human_next from secrets status (full list).
+    print_human_next
     run_preflight
     exit 0
     ;;
