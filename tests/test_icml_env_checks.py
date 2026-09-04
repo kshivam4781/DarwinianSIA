@@ -494,7 +494,7 @@ def test_resolve_icml_tip_pr_no_stale_fallback(monkeypatch: pytest.MonkeyPatch) 
             {
                 "ref": "refs/remotes/origin/cursor/bc-deadbeef-ecba",
                 "tick": 331,
-                "sha": "abc",
+                "sha": "abc1234",
                 "lineage_score": 6,
             }
         ],
@@ -504,6 +504,122 @@ def test_resolve_icml_tip_pr_no_stale_fallback(monkeypatch: pytest.MonkeyPatch) 
     joined = [" ".join(c) for c in calls]
     assert any("pr" in j and "--head" in j for j in joined)
     assert not any("ICML Tick in:title" in j for j in joined)
+
+
+def test_resolve_icml_tip_pr_same_sha_sibling_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 333: tip head without PR may reuse same-SHA sibling tip PR."""
+    from icml_env_checks import resolve_icml_tip_pr
+    import subprocess
+
+    def fake_run(cmd, **kwargs):
+        class R:
+            returncode = 0
+            stdout = "[]"
+            stderr = ""
+
+        # gh pr list --head <branch>
+        if "pr" in cmd and "--head" in cmd:
+            head = cmd[cmd.index("--head") + 1]
+            if head == "cursor/icml-epistemic-results-cd84":
+                R.stdout = "[]"
+            elif head == "cursor/icml-epistemic-results-0f03":
+                R.stdout = json.dumps(
+                    [
+                        {
+                            "number": 333,
+                            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/333",
+                            "title": "ICML Tick 332",
+                            "isDraft": True,
+                            "headRefName": "cursor/icml-epistemic-results-0f03",
+                        }
+                    ]
+                )
+            else:
+                R.stdout = "[]"
+        return R()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "icml_env_checks.list_remote_icml_tip_candidates",
+        lambda **_k: [
+            {
+                "ref": "refs/remotes/origin/cursor/icml-epistemic-results-cd84",
+                "tick": 332,
+                "sha": "ed1e54d",
+                "lineage_score": 6,
+            },
+            {
+                "ref": "refs/remotes/origin/cursor/icml-epistemic-results-0f03",
+                "tick": 332,
+                "sha": "ed1e54d",
+                "lineage_score": 6,
+            },
+        ],
+    )
+    pr = resolve_icml_tip_pr(
+        tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-cd84"
+    )
+    assert pr is not None
+    assert pr["number"] == 333
+    assert pr["head_ref"] == "cursor/icml-epistemic-results-0f03"
+    assert pr["is_draft"] is True
+
+
+def test_resolve_icml_tip_pr_same_sha_ignores_different_sha(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 333: sibling with different SHA must not supply tip_pr_url."""
+    from icml_env_checks import resolve_icml_tip_pr
+    import subprocess
+
+    def fake_run(cmd, **kwargs):
+        class R:
+            returncode = 0
+            stdout = "[]"
+            stderr = ""
+
+        if "pr" in cmd and "--head" in cmd:
+            head = cmd[cmd.index("--head") + 1]
+            if head == "cursor/icml-epistemic-results-0f03":
+                R.stdout = json.dumps(
+                    [
+                        {
+                            "number": 333,
+                            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/333",
+                            "title": "ICML Tick 332",
+                            "isDraft": True,
+                            "headRefName": "cursor/icml-epistemic-results-0f03",
+                        }
+                    ]
+                )
+        return R()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "icml_env_checks.list_remote_icml_tip_candidates",
+        lambda **_k: [
+            {
+                "ref": "refs/remotes/origin/cursor/icml-epistemic-results-cd84",
+                "tick": 333,
+                "sha": "aaaaaaa",
+                "lineage_score": 6,
+            },
+            {
+                "ref": "refs/remotes/origin/cursor/icml-epistemic-results-0f03",
+                "tick": 332,
+                "sha": "ed1e54d",
+                "lineage_score": 6,
+            },
+        ],
+    )
+    assert (
+        resolve_icml_tip_pr(
+            tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-cd84"
+        )
+        is None
+    )
 
 
 def test_tip_ref_prefixes_include_cloud_bc_branches() -> None:
@@ -1296,6 +1412,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     boot = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
     assert "cursor/bc-*" in boot
     assert "cursor/bc-*" in cron
+    # Tick 333: same-SHA sibling tip PR fallback (not unrelated ICML PR).
+    assert "same-SHA" in unblock or "same-SHA sibling" in unblock
+    assert "Tick 333" in unblock
+    assert "ICML same-SHA sibling tip PR fallback (Tick 333)" in master
+    assert "same-SHA sibling tip PR fallback" in env_checks
+    assert "_sha_prefix_equal" in env_checks
+    assert "_gh_pr_list_for_head" in env_checks
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

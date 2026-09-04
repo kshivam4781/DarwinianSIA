@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T08:15Z — Tick 333 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-cd84` (recovered tip ← `0f03` Tick 332)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. After Tick 331 removed unrelated-ICML-PR fallback, mid-tick / greenfield tip heads (new `cursor/icml-epistemic-results-*` at the prior tip SHA before `open_git_pr`) left `tip_pr_url` **unresolved** even when a same-SHA sibling tip branch already had the mergeable PR — operators lost the concrete merge link. Highest leverage without paid spend: **same-SHA sibling tip PR fallback**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Same-SHA sibling tip PR fallback (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← Tick 332 (`0f03`); confirmed secrets absent; `main` still lacks ICML tip files
+2. `resolve_icml_tip_pr`: when tip head has no open PR, try open PRs on **same-SHA** sibling tip refs only (still never unrelated ICML PRs)
+3. Helpers `_gh_pr_list_for_head` / `_sha_prefix_equal`; HUMAN_UNBLOCK / AGENTS / Section 12 + lock tests
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 332) | After (Tick 333) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| tip_pr_url when tip head has no PR but same-SHA sibling does | **unresolved** | **sibling PR** |
+| Unrelated ICML PR fallback | still forbidden | still forbidden |
+| Focused tip-PR tests | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge tip PR** linked in `docs/icml_secrets_status.json` `tip_pr_url` into `main`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T06:10Z — Tick 332 (automation cron)
 
 ### Status snapshot

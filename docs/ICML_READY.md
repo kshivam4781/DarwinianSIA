@@ -364,6 +364,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 330 concrete tip PR URL in human_next — `resolve_icml_tip_pr` + `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip JSON + merge Next (300+ tip PRs); lock test extended
 - [x] Tick 331 tip lineage scans cursor/bc-* cron boots — tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud automation boot branches); `resolve_icml_tip_pr` no stale unrelated-PR fallback; lock test extended
 - [x] Tick 332 HUMAN_UNBLOCK chicken-egg scans cursor/bc-* — `ICML_HUMAN_UNBLOCK.md` chicken-egg + cron/boot_recover header recipes also fetch/scan `cursor/bc-*` (Tick 331 fixed pickers/AGENTS only); lock test extended
+- [x] Tick 333 same-SHA sibling tip PR fallback — `resolve_icml_tip_pr` uses open PR on same-SHA sibling tip ref when tip head has no PR yet (mid-tick / greenfield); still no unrelated-ICML-PR fallback; lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -376,4 +377,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 332 note: Gate labels / secrets stack through Tick 332 HUMAN_UNBLOCK chicken-egg bc-* scan -->
+<!-- Tick 333 note: Gate labels / secrets stack through Tick 333 same-SHA sibling tip PR fallback -->
