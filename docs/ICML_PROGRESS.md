@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T02:10Z — Tick 330 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-eb23` (recovered tip ← `45fd` Tick 329)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tick 329 prints full `human_next`, but merge guidance still said “latest tip PR” with **no concrete URL** — operators face 300+ draft tip PRs and cannot tell which to merge/undraft. Highest leverage without paid spend: **resolve + surface concrete tip PR URL** in `human_next` / tip+secrets JSON. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Concrete tip PR URL in human_next (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← `45fd`; confirmed secrets absent; `main` still lacks ICML tip files
+2. `resolve_icml_tip_pr` + `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip status + merge Next
+3. Section 12 row + Tick 330 DONE chronicle; READY / HUMAN_UNBLOCK tick labels; lock test extended
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 329) | After (Tick 330) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Cron prints full `human_next` | yes | yes |
+| Concrete tip PR URL in `human_next` / JSON | **no** | **yes** (`tip_pr_url`) |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge the concrete tip PR** linked in `docs/icml_secrets_status.json` `tip_pr_url` / cron `human_next`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T00:25Z — Tick 329 (automation cron)
 
 ### Status snapshot

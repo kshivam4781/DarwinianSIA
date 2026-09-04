@@ -402,16 +402,30 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
 def test_secrets_status_human_next_merge_tip_when_main_lacks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tick 328: dual unblock — human_next leads with merge tip→main when main lacks tip."""
+    """Tick 328/330: dual unblock — human_next leads with concrete tip PR URL."""
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.setenv("HF_TOKEN", "hf-test")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
+    fake_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/330",
+        "number": 330,
+        "title": "ICML Tick 329",
+        "is_draft": True,
+        "head_ref": "cursor/icml-epistemic-results-45fd",
+    }
+    monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: fake_pr)
     status = collect_icml_secrets_status()
     assert status["main_has_icml_tip"] is False
     assert status["fetch_diamond_ok"] is True  # merge tip does not gate paid live
     assert status["blockers"] == []
     assert "Merge the latest ICML tip PR into `main`" in status["human_next"][0]
+    assert "https://github.com/kshivam4781/DarwinianSIA/pull/330" in status["human_next"][0]
+    assert "#330" in status["human_next"][0]
+    assert "undraft" in status["human_next"][0].lower() or "Ready for review" in status["human_next"][0]
+    assert status["tip_pr_url"] == fake_pr["url"]
+    assert status["tip_pr_number"] == 330
+    assert status["tip_pr_is_draft"] is True
     steps = live_pipeline_next_steps(
         secrets_ok=True,
         tip_ok=True,
@@ -419,6 +433,35 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
         main_has_icml_tip=False,
     )
     assert "Merge the latest ICML tip PR into `main`" in steps[0]
+    assert "pull/330" in steps[0]
+
+
+def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
+    """Tick 330: tip-ref → branch; merge Next still works if gh unavailable."""
+    from icml_env_checks import _branch_from_tip_ref, _merge_tip_to_main_human_next
+
+    assert (
+        _branch_from_tip_ref("refs/remotes/origin/cursor/icml-epistemic-results-45fd")
+        == "cursor/icml-epistemic-results-45fd"
+    )
+    assert (
+        _branch_from_tip_ref("origin/cursor/icml-epistemic-results-45fd")
+        == "cursor/icml-epistemic-results-45fd"
+    )
+    # Explicit empty pr dict path: pass a non-draft resolved PR.
+    msg = _merge_tip_to_main_human_next(
+        {
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/999",
+            "number": 999,
+            "title": "ICML Tick 330",
+            "is_draft": False,
+            "head_ref": "cursor/icml-epistemic-results-eb23",
+        }
+    )
+    assert "#999" in msg
+    assert "pull/999" in msg
+    assert "undraft" not in msg.lower()
+
 
 
 def test_fetch_diamond_ok_requires_hf(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1158,6 +1201,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "print_human_next" in cron
     assert "Human next (dual unblock)" in cron
     assert "ICML cron full human_next on blocked paths (Tick 329)" in master
+    # Tick 330: concrete tip PR URL in human_next / tip+secrets JSON (300+ drafts).
+    assert "def resolve_icml_tip_pr" in env_checks
+    assert "tip_pr_url" in env_checks
+    assert "Concrete tip PR" in env_checks
+    assert "ICML concrete tip PR URL in human_next (Tick 330)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

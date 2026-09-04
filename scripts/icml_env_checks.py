@@ -1453,12 +1453,151 @@ def main_has_icml_tip_files(*, repo_root: Path | None = None) -> bool:
     return False
 
 
-def _merge_tip_to_main_human_next() -> str:
-    return (
+def _branch_from_tip_ref(tip_ref: str | None) -> str | None:
+    """Map ``refs/remotes/origin/…`` / ``origin/…`` tip refs to a branch name."""
+    if not tip_ref:
+        return None
+    ref = str(tip_ref).strip()
+    for prefix in ("refs/remotes/origin/", "refs/heads/", "origin/"):
+        if ref.startswith(prefix):
+            return ref[len(prefix) :]
+    if "/" in ref:
+        return ref
+    return None
+
+
+def resolve_icml_tip_pr(
+    *,
+    tip_ref: str | None = None,
+    repo_root: Path | None = None,
+) -> dict | None:
+    """Resolve the open GitHub PR for the current ICML tip branch (Tick 330).
+
+    Returns ``{url, number, title, is_draft, head_ref}`` or ``None``. Uses
+    ``gh`` when available; never raises. Operators otherwise face 300+ draft
+    tip PRs with no concrete merge link in ``human_next``.
+    """
+    root = repo_root or _REPO_ROOT
+    branch = _branch_from_tip_ref(tip_ref)
+    if branch is None:
+        candidates = list_remote_icml_tip_candidates(repo_root=root, fetch=False)
+        if candidates:
+            branch = _branch_from_tip_ref(str(candidates[0].get("ref") or ""))
+    if not branch:
+        return None
+
+    def _parse_pr_rows(raw: str) -> list[dict]:
+        try:
+            rows = json.loads(raw or "[]")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(rows, list):
+            return []
+        out: list[dict] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            url = row.get("url")
+            number = row.get("number")
+            if not url or number is None:
+                continue
+            out.append(
+                {
+                    "url": str(url),
+                    "number": int(number),
+                    "title": str(row.get("title") or ""),
+                    "is_draft": bool(row.get("isDraft")),
+                    "head_ref": str(row.get("headRefName") or branch),
+                }
+            )
+        return out
+
+    try:
+        proc = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "list",
+                "--head",
+                branch,
+                "--state",
+                "open",
+                "--limit",
+                "3",
+                "--json",
+                "number,url,title,isDraft,headRefName",
+            ],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    rows = _parse_pr_rows(proc.stdout or "")
+    if rows:
+        return rows[0]
+
+    # Fallback: newest open ICML Tick PR (tip branch may lag the PR head).
+    try:
+        proc = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                "20",
+                "--json",
+                "number,url,title,isDraft,headRefName",
+                "--search",
+                "ICML Tick in:title",
+            ],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    rows = _parse_pr_rows(proc.stdout or "")
+    tip_rows = [
+        r
+        for r in rows
+        if str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-results-")
+        or str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-evolution-")
+    ]
+    return (tip_rows or rows or [None])[0]
+
+
+def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
+    """Tick 327–330: merge tip→main; Tick 330 adds concrete PR URL + draft note."""
+    base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–328 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–330 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
+    )
+    if not pr:
+        # Lazy resolve when callers omit pr (pipeline Next / tests).
+        pr = resolve_icml_tip_pr()
+    if not pr:
+        return base + " (tip PR URL unresolved — see open ICML tip PRs on GitHub)."
+    draft_note = (
+        " — undraft / mark Ready for review first"
+        if pr.get("is_draft")
+        else ""
+    )
+    return (
+        f"{base} Concrete tip PR: #{pr['number']} {pr['url']}"
+        f"{draft_note}."
     )
 
 
@@ -1498,10 +1637,11 @@ def collect_icml_secrets_status() -> dict:
             "drop gpqa_diamond.csv at /tmp or docs/private/)"
         )
     main_has_tip = main_has_icml_tip_files()
+    tip_pr = None if main_has_tip else resolve_icml_tip_pr()
     human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     human_next: list[str] = []
     if not main_has_tip:
-        human_next.append(_merge_tip_to_main_human_next())
+        human_next.append(_merge_tip_to_main_human_next(tip_pr))
     human_next.extend(
         [
             f"Add {human_keys} to automation "
@@ -1510,8 +1650,8 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–329 — recovers tip; auto-live only when fetch_diamond_ok; "
-            "blocked paths print full human_next)",
+            "(Tick 271–330 — recovers tip; auto-live only when fetch_diamond_ok; "
+            "blocked paths print full human_next + concrete tip PR URL)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1519,7 +1659,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1528,7 +1668,8 @@ def collect_icml_secrets_status() -> dict:
             "human_next prefers bash scripts/icml_cron_entry.sh; "
             "Tick 328 dual unblock also surfaces merge tip→main when "
             "main_has_icml_tip is false; Tick 329 cron prints full human_next "
-            "on --preflight-only / auto / live-refuse"
+            "on --preflight-only / auto / live-refuse; Tick 330 adds concrete "
+            "tip PR URL (+ draft undraft note) via resolve_icml_tip_pr"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1554,6 +1695,11 @@ def collect_icml_secrets_status() -> dict:
         "ready_for_live_pipeline": False,  # diamond + keys both required; caller may override
         # Tick 328: operational dual-unblock (does not gate fetch_diamond_ok).
         "main_has_icml_tip": main_has_tip,
+        # Tick 330: concrete tip PR for operators (null when main already has tip).
+        "tip_pr_url": (tip_pr or {}).get("url"),
+        "tip_pr_number": (tip_pr or {}).get("number"),
+        "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
+        "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
         "blockers": blockers,
         "human_next": human_next,
     }
@@ -1602,7 +1748,8 @@ def live_pipeline_next_steps(
     if main_has_icml_tip is None:
         main_has_icml_tip = main_has_icml_tip_files()
     if main_has_icml_tip is False:
-        steps.append(_merge_tip_to_main_human_next())
+        tip_pr = resolve_icml_tip_pr(tip_ref=tip_ref)
+        steps.append(_merge_tip_to_main_human_next(tip_pr))
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
         steps.append(
@@ -1846,14 +1993,16 @@ def collect_icml_tip_status(
         tip_ok = True
 
     main_has_tip = main_has_icml_tip_files(repo_root=root)
+    tip_pr = None if main_has_tip else resolve_icml_tip_pr(tip_ref=tip_ref, repo_root=root)
 
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328: tip lineage guard — cron often boots from main; "
+            "Tick 269–270/328/330: tip lineage guard — cron often boots from main; "
             "refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
-            "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock)"
+            "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
+            "Tick 330 resolves concrete tip_pr_url via gh"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -1863,6 +2012,11 @@ def collect_icml_tip_status(
         "tip_ok_for_live": tip_ok,
         # Tick 328: advisory — tip recover still works; prefer merge tip→main.
         "main_has_icml_tip": main_has_tip,
+        # Tick 330: concrete PR for operators facing 300+ draft tip PRs.
+        "tip_pr_url": (tip_pr or {}).get("url"),
+        "tip_pr_number": (tip_pr or {}).get("number"),
+        "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
+        "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
         "blockers": blockers,
         "recover_command": (
             "python3 scripts/icml_recover_tip.py --apply "
