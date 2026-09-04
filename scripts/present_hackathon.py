@@ -1,21 +1,28 @@
-"""One-command hackathon presentation demo (no API keys required)."""
+"""One-command offline presentation demo (no API keys) + ICML Thesis 1 status."""
 
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SIA_ROOT = ROOT.parent / "SIA"
+_SIA_CANDIDATES = (ROOT / "SIA", ROOT.parent / "SIA")
+SIA_ROOT = next((p for p in _SIA_CANDIDATES if p.is_dir()), _SIA_CANDIDATES[0])
 sys.path.insert(0, str(ROOT))
 
 from cabs.belief_engine import BeliefEngine
 from cabs.prompt_injection import format_cabs_context
 
+
 def _seed_showcase() -> Path:
-    subprocess.run([sys.executable, str(ROOT / "scripts" / "seed_showcase_run.py")], check=True, cwd=ROOT)
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "seed_showcase_run.py")],
+        check=True,
+        cwd=ROOT,
+    )
     return ROOT / "runs" / "run_showcase"
 
 
@@ -30,6 +37,40 @@ def _banner(title: str) -> None:
 
 def _section(title: str) -> None:
     print(f"\n--- {title} ---\n")
+
+
+def _icml_status_line() -> str:
+    ready = ROOT / "docs" / "ICML_READY.md"
+    if not ready.is_file():
+        return "UNKNOWN (docs/ICML_READY.md missing)"
+    text = ready.read_text(encoding="utf-8")
+    m = re.search(r"\*\*STATUS:\s*([A-Z_]+)\*\*", text)
+    return m.group(1) if m else "UNKNOWN"
+
+
+def _print_icml_blurb() -> None:
+    _section("ICML Thesis 1 (epistemic evolution)")
+    status = _icml_status_line()
+    print(f"  docs/ICML_READY.md STATUS: {status}")
+    summary = ROOT / "docs" / "offline_bvd_summary.json"
+    if summary.is_file():
+        try:
+            data = json.loads(summary.read_text(encoding="utf-8"))
+            cmp_ = data.get("compare") or {}
+            print(
+                f"  Offline B vs D IDs {data.get('b_run_ids')} / {data.get('d_run_ids')}: "
+                f"gens30 D {cmp_.get('d_wins_gens30')}/5, "
+                f"cost30 D {cmp_.get('d_wins_cost30')}/5, "
+                f"final D {cmp_.get('d_wins_final')}/5 "
+                "(synthetic — not live GPQA)."
+            )
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"  offline_bvd_summary unreadable: {exc}")
+    print("  Live (paid): bash scripts/icml_cron_entry.sh")
+    print("  Needs NEBIUS_API_KEY + (HF_TOKEN or gpqa_diamond.csv); Anthropic optional.")
+    print("  Hard stop: do NOT run full LawBench without explicit human approval.")
+    if status != "READY":
+        print("  Do not claim publishable ICML READY from this offline demo alone.")
 
 
 def _run_pytest() -> bool:
@@ -137,7 +178,7 @@ def _real_runs_summary() -> None:
     run_901 = ROOT / "runs" / "run_901"
     run_902 = ROOT / "runs" / "run_902"
     if not run_901.exists() and not run_902.exists():
-        print("  (No live API runs found — showcase demo is sufficient for presentation.)")
+        print("  (No live API runs found — showcase + offline Bvd summary are enough for demo.)")
         return
 
     _section("LIVE SIA RUNS ON THIS MACHINE")
@@ -160,7 +201,11 @@ def _real_runs_summary() -> None:
             except (json.JSONDecodeError, OSError):
                 pass
         print(f"  {label}: {run_dir.name} - gen_1 accuracy={acc}, beliefs={beliefs}")
-    print("\n  Full comparison: python scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_902 --markdown")
+    py = Path(sys.executable).name
+    print(
+        f"\n  Full comparison: {py} scripts/comparison_report.py "
+        "--baseline runs/run_901 --cabs runs/run_902 --markdown"
+    )
 
 
 def _talking_points() -> None:
@@ -170,25 +215,25 @@ def _talking_points() -> None:
 
   2. INSIGHT: Science advances via belief -> contradiction -> investigation.
 
-  3. SOLUTION: SIA-CABS Belief Engine sits between Feedback and Meta agents.
-     It extracts beliefs, detects contradictions, and generates research questions.
+  3. SOLUTION: SIA-CABS Belief Engine + Darwinian DNA. Contradictions become research
+     questions that bias mutation / scoped feedback (Condition D: --cabs --cabs-inline).
 
   4. DEMO: Gen 1-2 say memory helps. Gen 3 says memory hurts on easy cases.
      CABS does NOT just pick a fix - it asks WHEN does memory help vs hurt?
 
-  5. EVIDENCE: Dual metrics - benchmark accuracy AND knowledge gain score.
-     We ran real SIA on this laptop (run_901 baseline, run_902 with CABS hooks).
+  5. EVIDENCE: Offline B vs D at live Nebius shape (IDs 1890-1904): D wins gens30 4/5,
+     cost30 4/5, final 5/5, H5 rho>0.3. Live GPQA still needs NEBIUS + HF/CSV.
 
-  6. MERGED: Darwinian run_311 + CABS analyze = cross-agent contradictions.
-     Fitness picks elites; CABS picks what to question and implement next.
-     Tavily + committee on showcase (stratified_memory approved).
+  6. HARD STOP: Do not run full LawBench without explicit human approval.
 """)
 
 
 def main() -> None:
-    _banner("SIA-CABS HACKATHON PRESENTATION")
-    print("  Contradiction-Aware Belief System | Track 3: Novel Self-Improvement")
+    _banner("SIA-CABS / ICML THESIS 1 — OFFLINE PRESENTATION")
+    print("  Contradiction-Aware Belief System | Epistemic evolution (Condition D)")
     print("  No API keys needed for this demo.\n")
+
+    _print_icml_blurb()
 
     _section("1. Tests")
     ok = _run_pytest()
@@ -213,14 +258,18 @@ def main() -> None:
     _talking_points()
 
     _banner("COMMANDS FOR JUDGES")
-    print("""
-  python scripts/present_hackathon.py          # this demo
-  python scripts/demo_cabs.py                  # minimal offline demo
-  python scripts/comparison_report.py --baseline runs/run_901 --cabs runs/run_902 --markdown
+    # Tick 322: print the live interpreter (python3 on cold Linux/cloud).
+    py = Path(sys.executable).name
+    print(f"""
+  {py} scripts/present_hackathon.py          # this demo
+  {py} scripts/finish_hackathon.py           # full offline verify (ICML-honest)
+  {py} scripts/demo_cabs.py                  # minimal offline demo
+  bash scripts/icml_cron_entry.sh              # live G2→G3→G4 (needs secrets)
   sia-cabs-tools agenda --run-dir runs/run_showcase
-  pytest -q
+  {py} -m pytest -q
 
-  Docs: docs/SUBMISSION.md | docs/PRESENTATION.md
+  Docs: docs/SUBMISSION.md | docs/PRESENTATION.md | docs/ICML_READY.md
+  Hard stop: no full LawBench without explicit human approval.
 """)
 
 
