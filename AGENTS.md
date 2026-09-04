@@ -18,6 +18,7 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 332:** `ICML_HUMAN_UNBLOCK.md` chicken-egg recipe (+ script-header recipes) also fetch/scan `cursor/bc-*` (Tick 331 fixed pickers/AGENTS only).
 **Tick 333:** `resolve_icml_tip_pr` same-SHA sibling tip PR fallback (tip head mid-tick / greenfield branch without its own PR yet still surfaces concrete `tip_pr_url`).
 **Tick 334:** same-SHA tip PR resolve also falls back to **HEAD / local branch SHA** when `tip_ref` is an unpushed `refs/remotes/origin/<greenfield>` (common after tip recover before `git push`).
+**Tick 335:** tip PR resolve / `human_next` / tip+secrets JSON also surface GitHub **mergeability** (`MERGEABLE`/`CLEAN` vs `CONFLICTING`) so operators know when undraft+merge is safe among 300+ draft tip PRs.
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).

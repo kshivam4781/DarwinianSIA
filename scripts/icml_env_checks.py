@@ -1486,7 +1486,9 @@ def _gh_pr_list_for_head(
                 "--limit",
                 "3",
                 "--json",
-                "number,url,title,isDraft,headRefName",
+                # Tick 335: also fetch mergeability so human_next can say
+                # MERGEABLE/CLEAN vs CONFLICTING among 300+ draft tip PRs.
+                "number,url,title,isDraft,headRefName,mergeable,mergeStateStatus",
             ],
             cwd=str(root),
             capture_output=True,
@@ -1512,6 +1514,8 @@ def _gh_pr_list_for_head(
         number = row.get("number")
         if not url or number is None:
             continue
+        mergeable = row.get("mergeable")
+        merge_state = row.get("mergeStateStatus")
         out.append(
             {
                 "url": str(url),
@@ -1519,6 +1523,11 @@ def _gh_pr_list_for_head(
                 "title": str(row.get("title") or ""),
                 "is_draft": bool(row.get("isDraft")),
                 "head_ref": str(row.get("headRefName") or branch),
+                # Tick 335: optional; may be None if gh omits fields.
+                "mergeable": str(mergeable) if mergeable is not None else None,
+                "merge_state_status": (
+                    str(merge_state) if merge_state is not None else None
+                ),
             }
         )
     return out
@@ -1574,11 +1583,12 @@ def resolve_icml_tip_pr(
     tip_ref: str | None = None,
     repo_root: Path | None = None,
 ) -> dict | None:
-    """Resolve the open GitHub PR for the current ICML tip branch (Tick 330/333/334).
+    """Resolve the open GitHub PR for the current ICML tip branch (Tick 330/333–335).
 
-    Returns ``{url, number, title, is_draft, head_ref}`` or ``None``. Uses
-    ``gh`` when available; never raises. Operators otherwise face 300+ draft
-    tip PRs with no concrete merge link in ``human_next``.
+    Returns ``{url, number, title, is_draft, head_ref, mergeable,
+    merge_state_status}`` or ``None``. Uses ``gh`` when available; never
+    raises. Operators otherwise face 300+ draft tip PRs with no concrete
+    merge link in ``human_next``.
 
     Tick 333: if the tip head has no open PR yet, also try **same-SHA**
     sibling tip refs (e.g. prior tip branch / ``bc-*`` alias). Still never
@@ -1587,6 +1597,9 @@ def resolve_icml_tip_pr(
     Tick 334: when tip SHA cannot be read from an unpushed
     ``refs/remotes/origin/<greenfield>`` tip_ref, fall back to local branch /
     HEAD so same-SHA sibling resolution still works after tip recover.
+
+    Tick 335: also surfaces ``mergeable`` / ``merge_state_status`` from
+    ``gh`` so ``human_next`` can say MERGEABLE/CLEAN vs CONFLICTING.
     """
     root = repo_root or _REPO_ROOT
     candidates = list_remote_icml_tip_candidates(repo_root=root, fetch=False)
@@ -1629,11 +1642,30 @@ def resolve_icml_tip_pr(
     return None
 
 
+def _tip_pr_mergeability_note(pr: dict) -> str:
+    """Tick 335: short mergeability hint for human_next (MERGEABLE/CLEAN etc.)."""
+    mergeable = str(pr.get("mergeable") or "").strip().upper()
+    state = str(pr.get("merge_state_status") or "").strip().upper()
+    if not mergeable and not state:
+        return ""
+    parts: list[str] = []
+    if mergeable:
+        parts.append(mergeable)
+    if state and state != mergeable:
+        parts.append(state)
+    label = "/".join(parts)
+    if mergeable == "MERGEABLE" and state in {"", "CLEAN"}:
+        return f" — GitHub {label}: undraft & merge now (no conflicts)"
+    if mergeable == "CONFLICTING" or state in {"DIRTY", "UNSTABLE"}:
+        return f" — GitHub {label}: rebase onto main before merge"
+    return f" — GitHub {label}"
+
+
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–334: merge tip→main; Tick 330+ concrete PR URL + draft note."""
+    """Tick 327–335: merge tip→main; Tick 330+ URL; Tick 335 mergeability."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–334 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–335 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1642,14 +1674,21 @@ def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
         pr = resolve_icml_tip_pr()
     if not pr:
         return base + " (tip PR URL unresolved — see open ICML tip PRs on GitHub)."
-    draft_note = (
-        " — undraft / mark Ready for review first"
-        if pr.get("is_draft")
-        else ""
-    )
+    merge_note = _tip_pr_mergeability_note(pr)
+    if merge_note:
+        # Tick 335: mergeability note already covers undraft-when-MERGEABLE.
+        draft_note = ""
+        if pr.get("is_draft") and "undraft" not in merge_note.lower():
+            draft_note = " — undraft / mark Ready for review first"
+    else:
+        draft_note = (
+            " — undraft / mark Ready for review first"
+            if pr.get("is_draft")
+            else ""
+        )
     return (
         f"{base} Concrete tip PR: #{pr['number']} {pr['url']}"
-        f"{draft_note}."
+        f"{merge_note}{draft_note}."
     )
 
 
@@ -1702,11 +1741,12 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–334 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–335 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
-            "concrete tip PR URL; Tick 333 same-SHA sibling tip PR fallback; "
-            "Tick 334 HEAD/local SHA fallback for unpushed greenfield tip_ref; "
-            "Tick 332 HUMAN_UNBLOCK chicken-egg also scans cursor/bc-*)",
+            "concrete tip PR URL + Tick 335 mergeability; Tick 333 same-SHA "
+            "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
+            "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
+            "also scans cursor/bc-*)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1714,7 +1754,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1728,7 +1768,8 @@ def collect_icml_secrets_status() -> dict:
             "Tick 331 tip lineage also scans cursor/bc-* cloud cron branches; "
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
             "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
-            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed"
+            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
+            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1759,6 +1800,9 @@ def collect_icml_secrets_status() -> dict:
         "tip_pr_number": (tip_pr or {}).get("number"),
         "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
         "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
+        # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
+        "tip_pr_mergeable": (tip_pr or {}).get("mergeable"),
+        "tip_pr_merge_state_status": (tip_pr or {}).get("merge_state_status"),
         "blockers": blockers,
         "human_next": human_next,
     }
@@ -2067,7 +2111,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2075,7 +2119,8 @@ def collect_icml_tip_status(
             "Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; "
             "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; "
             "Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; "
-            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed"
+            "Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; "
+            "Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2090,6 +2135,9 @@ def collect_icml_tip_status(
         "tip_pr_number": (tip_pr or {}).get("number"),
         "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
         "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
+        # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
+        "tip_pr_mergeable": (tip_pr or {}).get("mergeable"),
+        "tip_pr_merge_state_status": (tip_pr or {}).get("merge_state_status"),
         "blockers": blockers,
         "recover_command": (
             "python3 scripts/icml_recover_tip.py --apply "

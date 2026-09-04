@@ -402,7 +402,7 @@ def test_collect_secrets_status_presence_only(monkeypatch: pytest.MonkeyPatch) -
 def test_secrets_status_human_next_merge_tip_when_main_lacks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tick 328/330: dual unblock — human_next leads with concrete tip PR URL."""
+    """Tick 328/330/335: dual unblock — human_next leads with concrete tip PR + mergeability."""
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.setenv("HF_TOKEN", "hf-test")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
@@ -413,6 +413,8 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
         "title": "ICML Tick 329",
         "is_draft": True,
         "head_ref": "cursor/icml-epistemic-results-45fd",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
     }
     monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: fake_pr)
     status = collect_icml_secrets_status()
@@ -422,10 +424,13 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     assert "Merge the latest ICML tip PR into `main`" in status["human_next"][0]
     assert "https://github.com/kshivam4781/DarwinianSIA/pull/330" in status["human_next"][0]
     assert "#330" in status["human_next"][0]
-    assert "undraft" in status["human_next"][0].lower() or "Ready for review" in status["human_next"][0]
+    assert "MERGEABLE" in status["human_next"][0]
+    assert "undraft" in status["human_next"][0].lower()
     assert status["tip_pr_url"] == fake_pr["url"]
     assert status["tip_pr_number"] == 330
     assert status["tip_pr_is_draft"] is True
+    assert status["tip_pr_mergeable"] == "MERGEABLE"
+    assert status["tip_pr_merge_state_status"] == "CLEAN"
     steps = live_pipeline_next_steps(
         secrets_ok=True,
         tip_ok=True,
@@ -434,6 +439,38 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     )
     assert "Merge the latest ICML tip PR into `main`" in steps[0]
     assert "pull/330" in steps[0]
+
+
+def test_tip_pr_mergeability_note_and_merge_next() -> None:
+    """Tick 335: MERGEABLE/CLEAN vs CONFLICTING notes in human_next."""
+    from icml_env_checks import _merge_tip_to_main_human_next, _tip_pr_mergeability_note
+
+    assert _tip_pr_mergeability_note({}) == ""
+    clean = _tip_pr_mergeability_note(
+        {"mergeable": "MERGEABLE", "merge_state_status": "CLEAN"}
+    )
+    assert "MERGEABLE" in clean
+    assert "undraft & merge now" in clean.lower()
+    conflict = _tip_pr_mergeability_note(
+        {"mergeable": "CONFLICTING", "merge_state_status": "DIRTY"}
+    )
+    assert "CONFLICTING" in conflict
+    assert "rebase" in conflict.lower()
+    msg = _merge_tip_to_main_human_next(
+        {
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/335",
+            "number": 335,
+            "title": "ICML Tick 334",
+            "is_draft": True,
+            "head_ref": "cursor/icml-epistemic-results-4bb3",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+        }
+    )
+    assert "#335" in msg
+    assert "MERGEABLE" in msg
+    assert "undraft" in msg.lower()
+    assert "no conflicts" in msg.lower()
 
 
 def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
@@ -1487,6 +1524,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 334" in unblock
     assert "HEAD/local" in unblock or "unpushed" in unblock.lower()
     assert "ICML tip PR HEAD/local SHA fallback (Tick 334)" in master
+    # Tick 335: tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON.
+    assert "_tip_pr_mergeability_note" in env_checks
+    assert "mergeable" in env_checks
+    assert "mergeStateStatus" in env_checks
+    assert "tip_pr_mergeable" in env_checks
+    assert "Tick 335" in unblock
+    assert "MERGEABLE" in unblock or "mergeability" in unblock.lower()
+    assert "ICML tip PR mergeability in human_next (Tick 335)" in master
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

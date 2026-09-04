@@ -366,6 +366,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 332 HUMAN_UNBLOCK chicken-egg scans cursor/bc-* — `ICML_HUMAN_UNBLOCK.md` chicken-egg + cron/boot_recover header recipes also fetch/scan `cursor/bc-*` (Tick 331 fixed pickers/AGENTS only); lock test extended
 - [x] Tick 333 same-SHA sibling tip PR fallback — `resolve_icml_tip_pr` uses open PR on same-SHA sibling tip ref when tip head has no PR yet (mid-tick / greenfield); still no unrelated-ICML-PR fallback; lock test extended
 - [x] Tick 334 tip PR HEAD/local SHA fallback — `_tip_sha_for_pr_resolve` uses HEAD/local branch when tip_ref remote is unpushed (greenfield after tip recover); same-SHA sibling tip PR still resolves; lock test extended
+- [x] Tick 335 tip PR mergeability in human_next — `_gh_pr_list_for_head` fetches `mergeable`/`mergeStateStatus`; `_tip_pr_mergeability_note` → human_next + tip/secrets JSON; MERGEABLE/CLEAN → undraft & merge now; lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -378,4 +379,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 334 note: Gate labels / secrets stack through Tick 334 tip PR HEAD/local SHA fallback -->
+<!-- Tick 335 note: Gate labels / secrets stack through Tick 335 tip PR mergeability in human_next -->
