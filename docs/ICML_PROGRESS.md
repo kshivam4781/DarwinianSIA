@@ -16,21 +16,23 @@ Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. After
 **Tip lineage scans cursor/bc-* cloud cron boots (no API spend; no Portal Save):**
 1. Chicken-egg recovered tip ← `eb23`; confirmed secrets absent; `main` still lacks ICML tip files
 2. Extended `_TIP_REF_PREFIXES` / fetch / for-each-ref + shell pickers (`icml_pick_remote_tip`, `icml_boot_recover`, `icml_cron_entry`) + AGENTS chicken-egg to scan `cursor/bc-*`
-3. Section 12 row + Tick 331 DONE chronicle; READY / HUMAN_UNBLOCK / lock tests extended
-4. STATUS remains IN_PROGRESS
+3. Hardened `resolve_icml_tip_pr`: no stale fallback to unrelated open ICML PRs when tip head has no PR yet
+4. Section 12 row + Tick 331 DONE chronicle; READY / HUMAN_UNBLOCK / lock tests extended
+5. STATUS remains IN_PROGRESS
 
 ### Metrics delta
 | Metric | Before (Tick 330) | After (Tick 331) |
 |--------|-------------------|------------------|
 | Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
 | Tip scanners include `cursor/bc-*` | **no** | **yes** |
-| Concrete tip PR URL in `human_next` | yes | yes |
+| `tip_pr_url` stale fallback hazard | yes (arbitrary ICML PR) | **removed** (None until tip-head PR exists) |
+| Concrete tip PR URL in `human_next` | yes (#331) | yes (**#332**) |
 | Focused lock test | green | **extended lock green** |
 | Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
 | `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
 
 ### Next recommended step
-Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge the concrete tip PR** linked in `docs/icml_secrets_status.json` `tip_pr_url` / cron `human_next`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge tip PR #332** (`https://github.com/kshivam4781/DarwinianSIA/pull/332`) into `main`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
 
 ---
 

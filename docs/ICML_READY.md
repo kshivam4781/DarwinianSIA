@@ -362,7 +362,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 328 machine-readable dual unblock — `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test extended
 - [x] Tick 329 cron full human_next on blocked paths — `print_human_next` on `--preflight-only` / auto / live-refuse (Tick 328 JSON was silent on preflight); lock test extended
 - [x] Tick 330 concrete tip PR URL in human_next — `resolve_icml_tip_pr` + `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip JSON + merge Next (300+ tip PRs); lock test extended
-- [x] Tick 331 tip lineage scans cursor/bc-* cron boots — tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud automation boot branches); lock test extended
+- [x] Tick 331 tip lineage scans cursor/bc-* cron boots — tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud automation boot branches); `resolve_icml_tip_pr` no stale unrelated-PR fallback; lock test extended
 
 ## Gate tracker (Section 21.5)
 
