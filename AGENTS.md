@@ -15,6 +15,7 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 328:** machine-readable `docs/icml_secrets_status.json` / tip status / pipeline Next also surface merge tip→main via `main_has_icml_tip` (does not gate paid live).
 **Tick 330:** `human_next` includes the concrete tip PR URL (`tip_pr_url`) so operators do not guess among 300+ draft tip PRs.
 **Tick 331:** tip pickers also scan `cursor/bc-*` cloud cron branches (not only `icml-epistemic-results-*`).
+**Tick 332:** `ICML_HUMAN_UNBLOCK.md` chicken-egg recipe (+ script-header recipes) also fetch/scan `cursor/bc-*` (Tick 331 fixed pickers/AGENTS only).
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).

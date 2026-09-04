@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T06:10Z — Tick 332 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-0f03` (recovered tip ← `ecba` / `bc-…-ecba` Tick 331)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. After Tick 331, tip pickers/AGENTS scan `cursor/bc-*`, but **`ICML_HUMAN_UNBLOCK.md` chicken-egg copy-paste** (and cron/boot_recover header recipes) still only fetched/scanned `icml-epistemic-results-*` — operators following the human unblock doc would miss `bc-*`-only tips. Highest leverage without paid spend: **sync HUMAN_UNBLOCK + script-header chicken-egg to `cursor/bc-*`**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**HUMAN_UNBLOCK chicken-egg scans cursor/bc-* (no API spend; no Portal Save):**
+1. Chicken-egg recovered tip ← Tick 331 (`bc-…-ecba` / `ecba`); confirmed secrets absent; `main` still lacks ICML tip files
+2. Updated `docs/ICML_HUMAN_UNBLOCK.md` chicken-egg fetch + for-each-ref to include `cursor/bc-*`; synced cron/boot_recover header recipes + AGENTS Tick 332 note
+3. Section 12 row + Tick 332 DONE chronicle; READY / lock tests extended
+4. STATUS remains IN_PROGRESS
+
+### Metrics delta
+| Metric | Before (Tick 331) | After (Tick 332) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Tip pickers include `cursor/bc-*` | yes | yes |
+| HUMAN_UNBLOCK chicken-egg includes `cursor/bc-*` | **no** | **yes** |
+| Focused lock test | green | **extended lock green** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **undraft + merge tip PR** linked in `docs/icml_secrets_status.json` `tip_pr_url` into `main`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T04:15Z — Tick 331 (automation cron)
 
 ### Status snapshot

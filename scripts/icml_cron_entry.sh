@@ -23,11 +23,14 @@
 #   bash scripts/icml_cron_entry.sh --preflight-only
 #   bash scripts/icml_cron_entry.sh --live   # forces live attempt (still refuses without secrets)
 #
-# Chicken-egg from main (this script not present yet) — Tick 272 lineage pick
-# (do NOT use committerdate-only head -1; greenfield main branches are newer):
-#   git fetch origin '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*'
+# Chicken-egg from main (this script not present yet) — Tick 272/331/332 lineage pick
+# (do NOT use committerdate-only head -1; greenfield main branches are newer).
+# Tick 331/332: also fetch/scan cursor/bc-* cloud cron boots:
+#   git fetch origin \
+#     '+refs/heads/cursor/icml-epistemic-results-*:refs/remotes/origin/cursor/icml-epistemic-results-*' \
+#     '+refs/heads/cursor/bc-*:refs/remotes/origin/cursor/bc-*'
 #   TIP_REF=$(bash scripts/icml_pick_remote_tip.sh 2>/dev/null)  # if already recovered
-#   # else inline: see AGENTS.md / docs/ICML_HUMAN_UNBLOCK.md Tick 272 recipe
+#   # else inline: see AGENTS.md / docs/ICML_HUMAN_UNBLOCK.md Tick 272/332 recipe
 #   git show "${TIP_REF}:scripts/icml_cron_entry.sh" | bash -s --
 
 set -euo pipefail

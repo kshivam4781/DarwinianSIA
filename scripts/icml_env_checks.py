@@ -1548,10 +1548,10 @@ def resolve_icml_tip_pr(
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:
-    """Tick 327–331: merge tip→main; Tick 330+ concrete PR URL + draft note."""
+    """Tick 327–332: merge tip→main; Tick 330+ concrete PR URL + draft note."""
     base = (
         "Merge the latest ICML tip PR into `main` so cron inherits "
-        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–331 dual "
+        "`docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–332 dual "
         "unblock; `main` still has hackathon-era AGENTS without tip files). "
         "See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock."
     )
@@ -1620,9 +1620,10 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–331 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–332 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
-            "concrete tip PR URL)",
+            "concrete tip PR URL; Tick 332 HUMAN_UNBLOCK chicken-egg also scans "
+            "cursor/bc-*)",
             "Portal Save of docs/icml_portal_save_target.json is optional "
             "(warm boots only; packages bootstrap without it)",
         ]
@@ -1630,7 +1631,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1641,7 +1642,8 @@ def collect_icml_secrets_status() -> dict:
             "main_has_icml_tip is false; Tick 329 cron prints full human_next "
             "on --preflight-only / auto / live-refuse; Tick 330 adds concrete "
             "tip PR URL (+ draft undraft note) via resolve_icml_tip_pr; "
-            "Tick 331 tip lineage also scans cursor/bc-* cloud cron branches"
+            "Tick 331 tip lineage also scans cursor/bc-* cloud cron branches; "
+            "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1980,12 +1982,13 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
             "Tick 330 resolves concrete tip_pr_url via gh; "
-            "Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates"
+            "Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; "
+            "Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,

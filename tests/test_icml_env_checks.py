@@ -1283,6 +1283,19 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     )
     assert "Tick 331" in unblock
     assert "ICML tip lineage scans cursor/bc-* cron boots (Tick 331)" in master
+    # Tick 332: HUMAN_UNBLOCK chicken-egg (+ script headers) must also
+    # fetch/scan cursor/bc-* — Tick 331 fixed pickers/AGENTS only.
+    assert "cursor/bc-*" in unblock
+    # The copy-paste chicken-egg block (not only the Tick 331 prose) must scan bc-*.
+    assert (
+        "refs/remotes/origin/cursor/bc-*" in unblock
+        or "'refs/remotes/origin/cursor/bc-*'" in unblock
+    )
+    assert "Tick 332" in unblock
+    assert "ICML HUMAN_UNBLOCK chicken-egg scans cursor/bc-* (Tick 332)" in master
+    boot = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
+    assert "cursor/bc-*" in boot
+    assert "cursor/bc-*" in cron
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
