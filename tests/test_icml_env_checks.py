@@ -15,6 +15,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 from icml_env_checks import (  # noqa: E402
     DEFAULT_ICML_META_AGENT_PROFILE,
     DEFAULT_ICML_TARGET_AGENT_PROFILE,
+    EPHEMERAL_ICML_RELPATHS,
+    build_icml_open_git_pr_hint,
     collect_icml_secrets_status,
     collect_icml_tip_status,
     committed_g3g4_recipes_match_live_shape,
@@ -39,6 +41,7 @@ from icml_env_checks import (  # noqa: E402
     iter_shape_flag_dicts_from_text,
     live_pipeline_next_steps,
     parse_latest_icml_tick,
+    prefer_tip_pr_commit_branch,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
@@ -1642,6 +1645,45 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "boot_recover" in unblock.lower() or "recover" in unblock.lower()
     assert "ICML tip recover --apply anti-churn checkout (Tick 339)" in master
     assert "Tick 339" in env_checks
+    # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
+    assert "def build_icml_open_git_pr_hint" in env_checks
+    assert "def write_icml_open_git_pr_hint" in env_checks
+    assert "open_git_pr_branch" in env_checks
+    assert "open_git_pr_never_omit_branch" in env_checks
+    assert "never_omit_branch" in env_checks
+    assert "icml_open_git_pr.json" in env_checks
+    assert "Tick 340" in env_checks
+    assert "Tick 340" in unblock
+    assert "never omit" in unblock.lower() or "NEVER omit" in unblock or "open_git_pr" in unblock
+    assert "ICML open_git_pr never-omit-branch (Tick 340)" in master
+    cron_entry340 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 340" in cron_entry340
+    assert "NEVER omit branch=" in cron_entry340 or "never omit" in cron_entry340.lower()
+    agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Tick 340" in agents
+    assert "open_git_pr" in agents
+    assert "omit" in agents.lower()
+    assert "docs/icml_open_git_pr.json" in EPHEMERAL_ICML_RELPATHS
+    hint = build_icml_open_git_pr_hint(
+        {
+            "number": 337,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        }
+    )
+    assert hint is not None
+    assert hint["open_git_pr_branch"] == "cursor/icml-epistemic-results-f49c"
+    assert hint["never_omit_branch"] is True
+    assert prefer_tip_pr_commit_branch(
+        {
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+        }
+    ) == "cursor/icml-epistemic-results-f49c"
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

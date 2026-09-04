@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–338).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
@@ -10,6 +10,8 @@
 # writing tip/secrets status (manual use still OK for agents mid-tick).
 # Tick 339: `icml_boot_recover.sh --apply` + `icml_recover_tip.py --apply`
 # also call this so chicken-egg recover alone lands on tip_pr_commit_branch.
+# Tick 340: even after checkout, open_git_pr MUST pass branch=<tip_pr_commit_branch>
+# (MCP defaults to greenfield boot branch when omitted) — see docs/icml_open_git_pr.json.
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh

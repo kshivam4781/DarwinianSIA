@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -8,6 +8,9 @@
 #       is set (MERGEABLE tip PR), checkout that branch so commits update the
 #       existing tip PR (boot_recover --apply only hard-resets SHA; greenfield
 #       branch names otherwise open a new tip PR every cron)
+#   2c. Tick 340: print open_git_pr never-omit-branch hint
+#       (docs/icml_open_git_pr.json) — MCP defaults to boot branch when branch=
+#       is omitted even after anti-churn checkout
 #   3. If tip OK + fetch_diamond_ok (API keys + HF **or** local diamond CSV)
 #      → live G2→G3→G4 (--fetch-diamond [, --diamond-csv])
 #   4. Else → preflight only WITH --fetch-diamond (Tick 276) and optional
@@ -45,7 +48,7 @@ for arg in "$@"; do
     --preflight-only) MODE="preflight" ;;
     --live) MODE="live" ;;
     -h|--help)
-      sed -n '2,28p' "$0"
+      sed -n '2,35p' "$0"
       exit 0
       ;;
     *)
@@ -241,6 +244,36 @@ print(d.get('tip_pr_commit_branch') or '')
     echo "tip_pr_anti_churn_checkout=skip (no MERGEABLE tip_pr_commit_branch)"
   fi
   unset _anti_branch _cur_branch
+fi
+
+# --- Tick 340: open_git_pr never-omit-branch reminder ----------------------------
+# Even after Tick 337–339 checkout onto tip_pr_commit_branch, open_git_pr MCP
+# defaults to the *boot* greenfield branch when `branch` is omitted → new tip PR.
+if [[ -f docs/icml_open_git_pr.json ]]; then
+  python3 - <<'PY' 2>/dev/null || true
+import json
+from pathlib import Path
+d = json.loads(Path("docs/icml_open_git_pr.json").read_text(encoding="utf-8"))
+b = d.get("open_git_pr_branch") or d.get("tip_pr_commit_branch")
+if b:
+    print(f"=== open_git_pr anti-churn (Tick 340) ===")
+    print(f"ALWAYS pass branch={b}")
+    print("NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)")
+    print(f"hint → docs/icml_open_git_pr.json")
+PY
+elif [[ -f docs/icml_tip_status.json ]]; then
+  _og_branch="$(python3 -c "
+import json
+from pathlib import Path
+d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
+print(d.get('open_git_pr_branch') or d.get('tip_pr_commit_branch') or '')
+" 2>/dev/null || true)"
+  if [[ -n "${_og_branch}" ]]; then
+    echo "=== open_git_pr anti-churn (Tick 340) ==="
+    echo "ALWAYS pass branch=${_og_branch}"
+    echo "NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)"
+  fi
+  unset _og_branch
 fi
 
 SECRETS_OK=0

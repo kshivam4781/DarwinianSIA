@@ -1,5 +1,38 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-04T22:20Z — Tick 340 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tick 337–339 checkout onto `tip_pr_commit_branch`, but `open_git_pr` MCP still defaults to the greenfield *boot* branch when `branch=` is omitted — agents who forget the arg still open a new tip PR every cron and defeat tip→main. Highest leverage without paid spend: **open_git_pr never-omit-branch** (machine-readable hint + cron reminder + lock). Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**open_git_pr never-omit-branch (no API spend; no Portal Save; no new tip PR):**
+1. Recovered tip ← Tick 339 (`f49c`); confirmed secrets absent; `main` still lacks ICML tip files
+2. `docs/icml_open_git_pr.json` + tip/secrets `open_git_pr_branch` / `open_git_pr_never_omit_branch`; cron prints ALWAYS pass branch=; human_next/AGENTS NEVER omit
+3. HUMAN_UNBLOCK / AGENTS / Section 12 + lock tests (58/58); STATUS remains IN_PROGRESS
+4. This tick commits onto `f49c` (updates PR #337) with `open_git_pr branch=cursor/icml-epistemic-results-f49c`
+
+### Metrics delta
+| Metric | Before (Tick 339) | After (Tick 340) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| open_git_pr after anti-churn checkout | omit → greenfield boot branch → new tip PR | **never-omit-branch hint + cron reminder** |
+| Focused tip-PR tests | green | **extended lock green (58/58)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **copy-paste** `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge` (tip PR #337 — still the tip PR under anti-churn). Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T20:20Z — Tick 339 (automation cron)
 
 ### Status snapshot
