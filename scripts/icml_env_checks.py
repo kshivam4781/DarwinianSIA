@@ -1541,41 +1541,10 @@ def resolve_icml_tip_pr(
     if rows:
         return rows[0]
 
-    # Fallback: newest open ICML Tick PR (tip branch may lag the PR head).
-    try:
-        proc = subprocess.run(
-            [
-                "gh",
-                "pr",
-                "list",
-                "--state",
-                "open",
-                "--limit",
-                "20",
-                "--json",
-                "number,url,title,isDraft,headRefName",
-                "--search",
-                "ICML Tick in:title",
-            ],
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if proc.returncode != 0:
-        return None
-    rows = _parse_pr_rows(proc.stdout or "")
-    tip_rows = [
-        r
-        for r in rows
-        if str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-results-")
-        or str(r.get("head_ref") or "").startswith("cursor/icml-epistemic-evolution-")
-        or str(r.get("head_ref") or "").startswith("cursor/bc-")
-    ]
-    return (tip_rows or rows or [None])[0]
+    # No open PR for this tip head yet (common mid-tick before open_git_pr).
+    # Do **not** fall back to an arbitrary "ICML Tick" PR — that mislabels tip_pr_url
+    # (Tick 331: bc-* tip without a PR briefly resolved to stale #322).
+    return None
 
 
 def _merge_tip_to_main_human_next(pr: dict | None = None) -> str:

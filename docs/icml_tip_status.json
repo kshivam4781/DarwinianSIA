@@ -1,21 +1,33 @@
 {
-  "updated_at": "2026-09-04T04:07:22Z",
+  "updated_at": "2026-09-04T04:09:31Z",
   "tick_note": "Tick 269\u2013270/328/330/331: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; Tick 328 reports main_has_icml_tip (merge tip\u2192main dual unblock); Tick 330 resolves concrete tip_pr_url via gh; Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates",
   "local_tick": 331,
-  "remote_tip_tick": 330,
-  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-eb23",
-  "remote_tip_sha": "beff25d",
+  "remote_tip_tick": 331,
+  "remote_tip_ref": "refs/remotes/origin/cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba",
+  "remote_tip_sha": "295c1ca",
   "remote_tip_lineage_score": 6,
   "tip_ok_for_live": true,
   "main_has_icml_tip": false,
-  "tip_pr_url": "https://github.com/kshivam4781/DarwinianSIA/pull/331",
-  "tip_pr_number": 331,
+  "tip_pr_url": "https://github.com/kshivam4781/DarwinianSIA/pull/332",
+  "tip_pr_number": 332,
   "tip_pr_is_draft": true,
-  "tip_pr_head_ref": "cursor/icml-epistemic-results-eb23",
+  "tip_pr_head_ref": "cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba",
   "blockers": [],
   "recover_command": "python3 scripts/icml_recover_tip.py --apply (main boot / no tip scripts: git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply)",
-  "candidates_scanned": 333,
+  "candidates_scanned": 335,
   "top_candidates": [
+    {
+      "ref": "refs/remotes/origin/cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba",
+      "tick": 331,
+      "sha": "295c1ca",
+      "lineage_score": 6
+    },
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-ecba",
+      "tick": 331,
+      "sha": "295c1ca",
+      "lineage_score": 6
+    },
     {
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-eb23",
       "tick": 330,
@@ -32,18 +44,6 @@
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-3d84",
       "tick": 328,
       "sha": "a5ad72e",
-      "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-0482",
-      "tick": 327,
-      "sha": "75c729b",
-      "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-bb05",
-      "tick": 326,
-      "sha": "8788551",
       "lineage_score": 6
     }
   ]

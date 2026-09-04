@@ -470,6 +470,42 @@ def test_branch_from_tip_ref_and_merge_next_without_pr() -> None:
     assert "undraft" not in msg.lower()
 
 
+def test_resolve_icml_tip_pr_no_stale_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tick 331: missing tip-head PR must not fall back to an unrelated ICML PR."""
+    from icml_env_checks import resolve_icml_tip_pr
+    import subprocess
+
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(list(cmd))
+        # First call: gh pr list --head <branch> → empty
+        class R:
+            returncode = 0
+            stdout = "[]"
+            stderr = ""
+
+        return R()
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        "icml_env_checks.list_remote_icml_tip_candidates",
+        lambda **_k: [
+            {
+                "ref": "refs/remotes/origin/cursor/bc-deadbeef-ecba",
+                "tick": 331,
+                "sha": "abc",
+                "lineage_score": 6,
+            }
+        ],
+    )
+    assert resolve_icml_tip_pr(tip_ref="refs/remotes/origin/cursor/bc-deadbeef-ecba") is None
+    # Must not issue a broad "ICML Tick in:title" search (stale-PR hazard).
+    joined = [" ".join(c) for c in calls]
+    assert any("pr" in j and "--head" in j for j in joined)
+    assert not any("ICML Tick in:title" in j for j in joined)
+
+
 def test_tip_ref_prefixes_include_cloud_bc_branches() -> None:
     """Tick 331: tip lineage must scan cursor/bc-* cloud cron boots."""
     from icml_env_checks import (
