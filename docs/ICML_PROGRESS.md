@@ -30,7 +30,7 @@ Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tip P
 | `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
 
 ### Next recommended step
-Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **copy-paste** `gh pr ready <N> --repo kshivam4781/DarwinianSIA && gh pr merge <N> --repo kshivam4781/DarwinianSIA --merge` for the tip PR in `docs/icml_secrets_status.json` (`tip_pr_url` / `tip_pr_merge_commands`) — merge **before next cron** or a new tip PR will supersede. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) **copy-paste** `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge` (tip PR #337 — `https://github.com/kshivam4781/DarwinianSIA/pull/337`; MERGEABLE once checks settle) — merge **before next cron** or a new tip PR will supersede. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
 
 ---
 

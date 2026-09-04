@@ -1,27 +1,33 @@
 {
-  "updated_at": "2026-09-04T14:14:45Z",
+  "updated_at": "2026-09-04T14:15:26Z",
   "tick_note": "Tick 269\u2013270/328/330/331/332/333/334/335/336: tip lineage guard \u2014 cron often boots from main; refuse --live on stale trees; recover via scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; Tick 328 reports main_has_icml_tip (merge tip\u2192main dual unblock); Tick 330 resolves concrete tip_pr_url via gh; Tick 331 also scans cursor/bc-* cloud cron branches as tip candidates; Tick 332 HUMAN_UNBLOCK chicken-egg (+ script headers) also fetch/scan bc-*; Tick 333 same-SHA sibling tip PR fallback when tip head has no PR yet; Tick 334 HEAD/local SHA fallback when tip_ref remote is unpushed; Tick 335 tip PR mergeability (MERGEABLE/CLEAN) in human_next + JSON; Tick 336 tip PR gh copy-paste merge commands + churn warning",
   "local_tick": 336,
-  "remote_tip_tick": 335,
-  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-dbe3",
-  "remote_tip_sha": "41ede84",
+  "remote_tip_tick": 336,
+  "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-f49c",
+  "remote_tip_sha": "37a329c",
   "remote_tip_lineage_score": 6,
   "tip_ok_for_live": true,
   "main_has_icml_tip": false,
-  "tip_pr_url": "https://github.com/kshivam4781/DarwinianSIA/pull/336",
-  "tip_pr_number": 336,
+  "tip_pr_url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+  "tip_pr_number": 337,
   "tip_pr_is_draft": true,
-  "tip_pr_head_ref": "cursor/icml-epistemic-results-dbe3",
+  "tip_pr_head_ref": "cursor/icml-epistemic-results-f49c",
   "tip_pr_mergeable": "MERGEABLE",
   "tip_pr_merge_state_status": "CLEAN",
   "tip_pr_merge_commands": [
-    "gh pr ready 336 --repo kshivam4781/DarwinianSIA",
-    "gh pr merge 336 --repo kshivam4781/DarwinianSIA --merge"
+    "gh pr ready 337 --repo kshivam4781/DarwinianSIA",
+    "gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge"
   ],
   "blockers": [],
   "recover_command": "python3 scripts/icml_recover_tip.py --apply (main boot / no tip scripts: git show <tip>:scripts/icml_boot_recover.sh | bash -s -- --apply)",
-  "candidates_scanned": 339,
+  "candidates_scanned": 340,
   "top_candidates": [
+    {
+      "ref": "refs/remotes/origin/cursor/icml-epistemic-results-f49c",
+      "tick": 336,
+      "sha": "37a329c",
+      "lineage_score": 6
+    },
     {
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-dbe3",
       "tick": 335,
@@ -44,12 +50,6 @@
       "ref": "refs/remotes/origin/cursor/icml-epistemic-results-0f03",
       "tick": 332,
       "sha": "ed1e54d",
-      "lineage_score": 6
-    },
-    {
-      "ref": "refs/remotes/origin/cursor/bc-5113ca94-4af3-4c06-a183-b4a9a84052b6-ecba",
-      "tick": 331,
-      "sha": "c070764",
       "lineage_score": 6
     }
   ]
