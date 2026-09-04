@@ -1,0 +1,73 @@
+# Gate 4 report — 5-seed B vs D
+
+**Timestamp:** 2026-09-04T04:02:56Z
+**Mode:** `preflight`
+**Live G4 ready:** no
+**PRIMARY pass (≥3/5):** no
+
+## Live G4 preflight
+
+| Check | OK | Detail |
+|-------|----|--------|
+| `gpqa_layout` | yes | ok |
+| `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G4 |
+| `anthropic_key` | yes | optional (Nebius meta; ANTHROPIC unused) |
+| `nebius_key` | NO | NEBIUS_API_KEY missing |
+| `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
+| `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$2.80/pair × 5 → projected=$14.00 |
+| `run_ids_free` | yes | all planned run IDs unused |
+| `sequential_only` | yes | 5 seed pair(s); runner executes B then D serially (no parallel GPQA) |
+| `seed_count` | yes | 5 seeds (G4 full multi-seed shape) |
+| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
+| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
+| `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
+| `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
+| `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
+| `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
+| `tip_ok_for_live` | yes | local Tick 330 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-eb23 |
+
+### Planned seed pairs
+
+| Seed | Condition B | Condition D |
+|------|-------------|-------------|
+| 1 | B `1211` | D `1311` |
+| 2 | B `1212` | D `1312` |
+| 3 | B `1213` | D `1313` |
+| 4 | B `1214` | D `1314` |
+| 5 | B `1215` | D `1315` |
+
+### Planned commands (sequential: B then D per seed; never parallel)
+
+1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1211 --eval_subset 5 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1311 --eval_subset 5 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+3. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1212 --eval_subset 5 --no-web --seed 2 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+4. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1312 --eval_subset 5 --no-web --seed 2 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+5. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1213 --eval_subset 5 --no-web --seed 3 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+6. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1313 --eval_subset 5 --no-web --seed 3 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+7. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1214 --eval_subset 5 --no-web --seed 4 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+8. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1314 --eval_subset 5 --no-web --seed 4 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+9. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1215 --eval_subset 5 --no-web --seed 5 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+10. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1315 --eval_subset 5 --no-web --seed 5 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+
+## Blockers (live G4)
+
+- gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
+- nebius_key: NEBIUS_API_KEY missing
+- hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
+
+## Notes
+
+- runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
+- diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
+
+**Live G4 status:** NOT RUN this tick
+
+## Next
+
+1. Ensure live G2 smoke + G3 pilot passed before spending on G4.
+2. Add `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta) + (HF_TOKEN or local gpqa_diamond.csv)` (see `docs/ICML_HUMAN_UNBLOCK.md`).
+3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:
+   `python3 scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`
+4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY (or recover via `--refresh-paper-from-runs`).
+5. Do **not** set STATUS: READY from offline / G4 preflight alone.
+
