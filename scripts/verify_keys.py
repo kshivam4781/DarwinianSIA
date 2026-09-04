@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
 
 
 def load_dotenv() -> None:
@@ -22,6 +25,22 @@ def load_dotenv() -> None:
         value = value.strip().strip('"').strip("'")
         if key and value and key not in os.environ:
             os.environ[key] = value
+
+
+def anthropic_is_required() -> bool:
+    """True when ICML/hackathon live stack still needs Anthropic for meta.
+
+    Tick 308: under default Nebius pydantic-ai meta (Tick 289), Anthropic is
+    optional — operators running this script after adding only NEBIUS must not
+    see a hard FAIL that blocks unblocking live G2→G4.
+    """
+    try:
+        from icml_env_checks import icml_meta_requires_anthropic
+
+        return bool(icml_meta_requires_anthropic())
+    except Exception:
+        # Conservative fallback if env checks are unavailable.
+        return True
 
 
 def check_anthropic() -> tuple[bool, str]:
@@ -89,18 +108,31 @@ def check_tavily() -> tuple[bool, str]:
         return False, f"Tavily key failed: {exc}"
 
 
+def required_key_checks() -> list[tuple[str, object, bool]]:
+    """Ordered (name, checker, required) rows for verify_keys (Tick 308)."""
+    return [
+        ("Anthropic", check_anthropic, anthropic_is_required()),
+        ("Nebius", check_nebius, True),
+        ("Tavily", check_tavily, False),
+    ]
+
+
 def main() -> int:
     load_dotenv()
     print("SIA-CABS API key verification\n")
 
-    checks = [
-        ("Anthropic", check_anthropic, True),
-        ("Nebius", check_nebius, True),
-        ("Tavily", check_tavily, False),
-    ]
+    anth_required = anthropic_is_required()
+    if not anth_required:
+        print(
+            "Note: ANTHROPIC_API_KEY is optional under Tick 289 Nebius "
+            "pydantic-ai meta (required only if ICML_META_AGENT_PROFILE="
+            "default-meta).\n"
+        )
+
+    checks = required_key_checks()
     required_ok = True
     for name, checker, required in checks:
-        ok, message = checker()
+        ok, message = checker()  # type: ignore[operator]
         status = "PASS" if ok else ("FAIL" if required else "SKIP")
         if required and not ok:
             required_ok = False
@@ -108,9 +140,18 @@ def main() -> int:
 
     print()
     if required_ok:
-        print("Required keys verified. Tavily is optional for --tavily / sia-cabs-tools ground.")
+        print(
+            "Required keys verified. Tavily is optional for --tavily / "
+            "sia-cabs-tools ground."
+        )
+        if not anth_required:
+            print(
+                "Anthropic skipped/optional — ICML live needs NEBIUS_API_KEY + "
+                "(HF_TOKEN or local gpqa_diamond.csv); see docs/ICML_HUMAN_UNBLOCK.md."
+            )
         return 0
-    print("Fix failing required keys, then re-run: python scripts/verify_keys.py")
+    print("Fix failing required keys, then re-run: "
+          f"{Path(sys.executable).name} scripts/verify_keys.py")
     return 1
 
 
