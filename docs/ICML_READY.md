@@ -383,6 +383,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 349 open_git_pr description inline — keep `open_git_pr_description` **inline** in `docs/icml_open_git_pr.json` (Tick 348 dropped body from JSON → agents skipped file read); md file still for `gh --body-file`; lock test extended
 - [x] Tick 350 open_git_pr call JSON — write `docs/icml_open_git_pr_call.json` with exact MCP `{branch, title, description}` verbatim; cron prints path; ephemeral + lock test extended
 - [x] Tick 351 tip PR anti-churn UNKNOWN mergeable — `prefer_tip_pr_commit_branch` accepts UNKNOWN/null/empty; cron + checkout fall back to `tip_pr_head_ref`; lock test extended
+- [x] Tick 352 cloud_boot_branch open_git_pr warn — `detect_cloud_boot_branch` + call/secrets JSON `cloud_boot_branch` / `omit_branch_opens_pr_on`; cron/`human_next` warn; Cloud Agent boot ≠ tip anti-churn; lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -395,4 +396,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 351 note: Gate labels / secrets stack through Tick 351 anti-churn UNKNOWN mergeable -->
+<!-- Tick 352 note: Gate labels / secrets stack through Tick 352 cloud_boot_branch open_git_pr warn -->

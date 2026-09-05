@@ -37,6 +37,7 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 
 **Tick 350:** prefer **`docs/icml_open_git_pr_call.json`** — exact MCP args `{branch, title, description}` verbatim (do not omit any). Avoids hunting fields inside the large hint JSON.
 **Tick 351:** `prefer_tip_pr_commit_branch` accepts **UNKNOWN/null/empty** mergeable (not only exact `MERGEABLE`); cron + checkout fall back to `tip_pr_head_ref` so greenfield boots still land on tip PR #337 (`f49c`) instead of opening a new tip PR.
+**Tick 352:** `docs/icml_open_git_pr_call.json` / secrets JSON record **`cloud_boot_branch`** (the MCP default when `branch=` is omitted, e.g. this cron’s `…-1fa6`). Cloud Agent “already on the correct working branch” is the **greenfield boot** and does **not** override tip anti-churn — always pass `branch=` from the call JSON.
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).

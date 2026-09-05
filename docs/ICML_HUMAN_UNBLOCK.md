@@ -65,6 +65,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 351:** **anti-churn UNKNOWN/null mergeable** — `prefer_tip_pr_commit_branch` returns `head_ref` unless CONFLICTING/DIRTY (GitHub often returns null/`UNKNOWN` while computing). Cron + checkout fall back to `tip_pr_head_ref` when `tip_pr_commit_branch` is empty so greenfield boots still land on tip PR #337 (`f49c`) instead of opening a new tip PR.
 
+**Tick 352:** **`cloud_boot_branch` in open_git_pr call JSON** — records the concrete greenfield boot branch MCP defaults to when `branch=` is omitted (e.g. `…-1fa6` vs tip `…-f49c`). Cloud Agent “correct working branch” is that boot and does **not** override tip anti-churn; cron/`human_next` warn on mismatch.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

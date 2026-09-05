@@ -1743,6 +1743,79 @@ ICML_TIP_PR_BODY_RELPATH = "docs/icml_tip_pr_body.md"
 # this instead of hunting fields inside the large open_git_pr hint JSON.
 ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
 
+_REFLOG_CHECKOUT_RE = re.compile(r"checkout: moving from (\S+) to (\S+)")
+
+
+def detect_cloud_boot_branch(
+    *,
+    tip_commit_branch: str | None = None,
+    repo_root: Path | None = None,
+) -> str | None:
+    """Tick 352: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+
+    Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
+    After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
+    but the MCP still defaults to the *boot* branch when ``branch=`` is omitted —
+    opening a **new** tip PR. Surface the concrete boot name (e.g. ``…-1fa6``)
+    in ``docs/icml_open_git_pr_call.json`` / secrets JSON so agents see the
+    mismatch vs tip (e.g. ``…-f49c``).
+
+    Resolution order:
+    1. ``ICML_CLOUD_BOOT_BRANCH`` env override
+    2. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
+    3. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
+    """
+    import subprocess
+
+    env = (os.environ.get("ICML_CLOUD_BOOT_BRANCH") or "").strip()
+    if env:
+        return env
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    tip = (tip_commit_branch or "").strip() or None
+    try:
+        out = subprocess.check_output(
+            ["git", "reflog", "-n", "50", "--format=%gs"],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        out = ""
+    boot_from_main: str | None = None
+    for line in out.splitlines():
+        match = _REFLOG_CHECKOUT_RE.search(line)
+        if not match:
+            continue
+        src, dst = match.group(1), match.group(2)
+        if (
+            tip
+            and dst == tip
+            and src.startswith("cursor/")
+            and src != tip
+        ):
+            return src
+        if (
+            src in {"main", "origin/main"}
+            and dst.startswith("cursor/")
+            and (not tip or dst != tip)
+            and boot_from_main is None
+        ):
+            boot_from_main = dst
+    if boot_from_main:
+        return boot_from_main
+    try:
+        cur = subprocess.check_output(
+            ["git", "branch", "--show-current"],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        cur = ""
+    if cur.startswith("cursor/") and (not tip or cur != tip):
+        return cur
+    return None
+
 
 def suggested_open_git_pr_body(
     *,
@@ -1826,6 +1899,8 @@ def suggested_open_git_pr_body(
         f"test_open_git_pr_description_inline_in_json`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_open_git_pr_call_json_atomic_mcp_args`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_detect_cloud_boot_branch_env_and_mismatch`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2081,7 +2156,11 @@ def build_icml_open_git_pr_hint(
             "Tick 350: also write ``docs/icml_open_git_pr_call.json`` with the "
             "exact MCP args ``{branch, title, description}`` — agents pass "
             "those three fields verbatim (avoids hunting inside the large "
-            "hint JSON)."
+            "hint JSON). "
+            "Tick 352: call JSON also records ``cloud_boot_branch`` (the MCP "
+            "default when ``branch=`` is omitted) so agents see the concrete "
+            "greenfield vs tip mismatch; Cloud Agent 'correct working branch' "
+            "does **not** override tip anti-churn."
         ),
         "open_git_pr_branch": branch,
         "tip_pr_commit_branch": branch,
@@ -2105,6 +2184,8 @@ def build_icml_open_git_pr_hint(
         "open_git_pr_call_file": ICML_OPEN_GIT_PR_CALL_RELPATH,
         "tip_pr_title_edit_commands": title_edit_cmds,
         "never_omit_branch": True,
+        "cloud_boot_branch": None,  # filled in write_icml_open_git_pr_hint
+        "omit_branch_opens_pr_on": None,
         "warning": (
             "NEVER call open_git_pr without branch= — omit defaults to the "
             f"greenfield boot branch and opens a new tip PR. Pass branch=`{branch}`. "
@@ -2116,6 +2197,9 @@ def build_icml_open_git_pr_hint(
             "frozen on existing PRs; still required call shape. "
             f"Tick 350: prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
             "(branch/title/description verbatim). "
+            "Tick 352: call JSON includes ``cloud_boot_branch`` / "
+            "``omit_branch_opens_pr_on`` — Cloud Agent 'correct working branch' "
+            "is the greenfield boot and does **not** override tip anti-churn. "
             "Tick 345–347: MCP may leave GitHub title/body unchanged — run "
             "`tip_pr_title_edit_commands` (`gh pr edit --title "
             f"[--body-file {ICML_TIP_PR_BODY_RELPATH}]`) to refresh; body "
@@ -2166,7 +2250,6 @@ def write_icml_open_git_pr_hint(
     else:
         hint_for_json.pop("open_git_pr_description", None)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(hint_for_json, indent=2) + "\n", encoding="utf-8")
     if isinstance(body_text, str) and body_text.strip():
         body_path.parent.mkdir(parents=True, exist_ok=True)
         body_path.write_text(body_text, encoding="utf-8")
@@ -2177,11 +2260,18 @@ def write_icml_open_git_pr_hint(
             except OSError:
                 pass
     # Tick 350: atomic MCP call payload — branch/title/description only.
+    # Tick 352: also record cloud_boot_branch (MCP default when branch= omitted).
     branch = hint_for_json.get("open_git_pr_branch") or hint_for_json.get(
         "tip_pr_commit_branch"
     )
     title = hint_for_json.get("suggested_open_git_pr_title")
     desc = hint_for_json.get("open_git_pr_description")
+    boot = detect_cloud_boot_branch(
+        tip_commit_branch=str(branch) if branch else None,
+        repo_root=root,
+    )
+    hint_for_json["cloud_boot_branch"] = boot
+    hint_for_json["omit_branch_opens_pr_on"] = boot or "<greenfield-boot-branch>"
     if not isinstance(desc, str) or not desc.strip():
         tick = hint_for_json.get("local_tick") or 0
         desc = (
@@ -2189,34 +2279,54 @@ def write_icml_open_git_pr_hint(
             "(see docs/ICML_PROGRESS.md). STATUS remains IN_PROGRESS."
         )
     if branch and title:
+        note = (
+            "Tick 350: pass these three fields verbatim to open_git_pr MCP "
+            "(branch + title + description). Do not omit any. Prefer this "
+            "file over hunting fields in docs/icml_open_git_pr.json."
+        )
+        if boot and boot != branch:
+            note += (
+                f" Tick 352: cloud_boot_branch=`{boot}` — omitting branch= "
+                f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
+                "Cloud Agent 'correct working branch' does NOT override tip "
+                "anti-churn; always pass branch= from this file."
+            )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),
             "local_tick": hint_for_json.get("local_tick"),
             "tip_pr_number": hint_for_json.get("tip_pr_number"),
             "tip_pr_url": hint_for_json.get("tip_pr_url"),
-            "note": (
-                "Tick 350: pass these three fields verbatim to open_git_pr MCP "
-                "(branch + title + description). Do not omit any. Prefer this "
-                "file over hunting fields in docs/icml_open_git_pr.json."
-            ),
+            "note": note,
             "branch": branch,
             "title": title,
             "description": desc,
+            "cloud_boot_branch": boot,
+            "omit_branch_opens_pr_on": boot or "<greenfield-boot-branch>",
         }
         call_path.parent.mkdir(parents=True, exist_ok=True)
         call_path.write_text(
             json.dumps(call_payload, indent=2) + "\n", encoding="utf-8"
         )
         hint_for_json["open_git_pr_call_file"] = ICML_OPEN_GIT_PR_CALL_RELPATH
+    out.write_text(json.dumps(hint_for_json, indent=2) + "\n", encoding="utf-8")
     return hint_for_json
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
-    """Tick 337–350: push onto tip_pr_commit_branch; never omit open_git_pr branch=/title=/description=."""
+    """Tick 337–352: push onto tip_pr_commit_branch; never omit open_git_pr branch=/title=/description=."""
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch:
         return ""
     n = pr.get("number")
+    boot = detect_cloud_boot_branch(tip_commit_branch=branch)
+    boot_note = ""
+    if boot and boot != branch:
+        boot_note = (
+            f" Tick 352: this run's cloud_boot_branch=`{boot}` — omitting "
+            f"branch= opens a NEW tip PR on `{boot}` (not `{branch}`); "
+            "Cloud Agent 'correct working branch' does NOT override tip "
+            "anti-churn."
+        )
     return (
         f" Agents/cron: do NOT open a new tip PR — checkout `{branch}` "
         f"(tip_pr_commit_branch; Tick 338–339 cron + tip recover --apply "
@@ -2233,6 +2343,9 @@ def _tip_pr_anti_churn_note(pr: dict) -> str:
         f"`docs/icml_open_git_pr.json` (or `{ICML_TIP_PR_BODY_RELPATH}`) when "
         f"tip_pr_body_stale; Tick 350: prefer verbatim "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}` (branch/title/description); "
+        "Tick 352: call JSON records ``cloud_boot_branch`` / "
+        "``omit_branch_opens_pr_on``;"
+        f"{boot_note} "
         "Tick 345–347: if GitHub title/body stays stale, "
         "copy-paste `tip_pr_title_edit_commands` "
         f"(`gh pr edit --title [--body-file {ICML_TIP_PR_BODY_RELPATH}]`) — "
@@ -2401,7 +2514,7 @@ def collect_icml_secrets_status() -> dict:
     title_lines = [title_edit_line] if title_edit_line else []
     tail_lines = [
         "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-        "(Tick 271–349 — recovers tip incl. cursor/bc-* lineage; auto-live "
+        "(Tick 271–352 — recovers tip incl. cursor/bc-* lineage; auto-live "
         "only when fetch_diamond_ok; blocked paths print full human_next + "
         "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
         "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
@@ -2423,6 +2536,10 @@ def collect_icml_secrets_status() -> dict:
         f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
         f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
         "(branch/title/description verbatim); "
+        "Tick 352 call JSON records ``cloud_boot_branch`` / "
+        "``omit_branch_opens_pr_on`` (MCP default when branch= omitted; "
+        "Cloud Agent 'correct working branch' does NOT override tip "
+        "anti-churn); "
         "Tick 333 same-SHA "
         "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
         "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
@@ -2431,16 +2548,34 @@ def collect_icml_secrets_status() -> dict:
         "(warm boots only; packages bootstrap without it)",
     ]
     human_next: list[str] = []
+    tip_commit_branch = prefer_tip_pr_commit_branch(tip_pr)
+    boot_branch = detect_cloud_boot_branch(tip_commit_branch=tip_commit_branch)
+    boot_lines: list[str] = []
+    if (
+        tip_commit_branch
+        and boot_branch
+        and boot_branch != tip_commit_branch
+    ):
+        boot_lines.append(
+            f"Cloud boot branch `{boot_branch}` ≠ tip `{tip_commit_branch}` "
+            "(Tick 352). open_git_pr MUST pass "
+            f"branch=`{tip_commit_branch}` from "
+            f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}` — omitting branch= opens a "
+            f"NEW tip PR on `{boot_branch}`. Cloud Agent 'correct working "
+            "branch' is the greenfield boot and does **not** override tip "
+            "anti-churn."
+        )
     if not fetch_diamond_ok:
         human_next.extend(secrets_lines)
+        human_next.extend(boot_lines)
         human_next.extend(title_lines)
         human_next.extend(merge_lines)
     else:
         human_next.extend(merge_lines)
+        human_next.extend(boot_lines)
         human_next.extend(title_lines)
         human_next.extend(secrets_lines)
     human_next.extend(tail_lines)
-    tip_commit_branch = prefer_tip_pr_commit_branch(tip_pr)
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
@@ -2483,7 +2618,10 @@ def collect_icml_secrets_status() -> dict:
             "`open_git_pr_description` in docs/icml_open_git_pr.json "
             f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
             f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
-            "(branch/title/description verbatim)"
+            "(branch/title/description verbatim); "
+            "Tick 352 call JSON / secrets JSON record ``cloud_boot_branch`` "
+            "(MCP default when branch= omitted; Cloud Agent 'correct working "
+            "branch' does not override tip anti-churn)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2539,6 +2677,10 @@ def collect_icml_secrets_status() -> dict:
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "open_git_pr_branch": tip_commit_branch,
         "open_git_pr_never_omit_branch": tip_commit_branch is not None,
+        # Tick 352: concrete greenfield boot branch MCP defaults to if branch= omitted.
+        "cloud_boot_branch": boot_branch,
+        "omit_branch_opens_pr_on": boot_branch
+        or ("<greenfield-boot-branch>" if tip_commit_branch else None),
         # Tick 342: interim AGENTS bootstrap PR (null when merged / main has tip).
         "agents_bootstrap_branch": ICML_AGENTS_BOOTSTRAP_BRANCH,
         "agents_bootstrap_pr_url": (bootstrap_pr or {}).get("url"),
@@ -2908,6 +3050,9 @@ def collect_icml_tip_status(
     main_has_tip = main_has_icml_tip_files(repo_root=root)
     tip_pr = None if main_has_tip else resolve_icml_tip_pr(tip_ref=tip_ref, repo_root=root)
     tip_commit_branch = prefer_tip_pr_commit_branch(tip_pr)
+    boot_branch = detect_cloud_boot_branch(
+        tip_commit_branch=tip_commit_branch, repo_root=root
+    )
     bootstrap_pr = (
         None if main_has_tip else resolve_icml_agents_bootstrap_pr(repo_root=root)
     )
@@ -2944,7 +3089,9 @@ def collect_icml_tip_status(
             "`open_git_pr_description` in docs/icml_open_git_pr.json "
             f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
             f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
-            "(branch/title/description verbatim)"
+            "(branch/title/description verbatim); "
+            "Tick 352 cloud_boot_branch / omit_branch_opens_pr_on "
+            "(MCP default when branch= omitted)"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2974,6 +3121,10 @@ def collect_icml_tip_status(
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "open_git_pr_branch": tip_commit_branch,
         "open_git_pr_never_omit_branch": tip_commit_branch is not None,
+        # Tick 352: concrete greenfield boot branch MCP defaults to if branch= omitted.
+        "cloud_boot_branch": boot_branch,
+        "omit_branch_opens_pr_on": boot_branch
+        or ("<greenfield-boot-branch>" if tip_commit_branch else None),
         # Tick 342: interim AGENTS bootstrap PR (null when merged / main has tip).
         "agents_bootstrap_branch": ICML_AGENTS_BOOTSTRAP_BRANCH,
         "agents_bootstrap_pr_url": (bootstrap_pr or {}).get("url"),

@@ -256,7 +256,7 @@ print(branch)
   unset _anti_branch _cur_branch
 fi
 
-# --- Tick 340/344–351: open_git_pr never-omit-branch + title/body/description -----
+# --- Tick 340/344–352: open_git_pr never-omit-branch + title/body/description -----
 # Even after Tick 337–339 checkout onto tip_pr_commit_branch, open_git_pr MCP
 # defaults to the *boot* greenfield branch when `branch` is omitted → new tip PR.
 # Tick 344: also print suggested_open_git_pr_title when tip_pr_title_stale.
@@ -266,6 +266,7 @@ fi
 # Tick 348: when tip_pr_body_stale, also pass open_git_pr description= from body file.
 # Tick 349: open_git_pr.json keeps open_git_pr_description inline (no extra file read).
 # Tick 350: prefer docs/icml_open_git_pr_call.json (branch/title/description verbatim).
+# Tick 352: print cloud_boot_branch when it differs from tip (omit → new tip on boot).
 if [[ -f docs/icml_open_git_pr.json ]]; then
   python3 - <<'PY' 2>/dev/null || true
 import json
@@ -273,9 +274,13 @@ from pathlib import Path
 d = json.loads(Path("docs/icml_open_git_pr.json").read_text(encoding="utf-8"))
 b = d.get("open_git_pr_branch") or d.get("tip_pr_commit_branch")
 if b:
-    print(f"=== open_git_pr anti-churn (Tick 340/344–350) ===")
+    print(f"=== open_git_pr anti-churn (Tick 340/344–352) ===")
     print(f"ALWAYS pass branch={b}")
     print("NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)")
+    boot = d.get("cloud_boot_branch") or d.get("omit_branch_opens_pr_on")
+    if boot and boot != b and boot != "<greenfield-boot-branch>":
+        print(f"Tick 352: cloud_boot_branch={boot} — omit opens NEW tip PR on boot (not {b})")
+        print("Cloud Agent 'correct working branch' does NOT override tip anti-churn")
     title = d.get("suggested_open_git_pr_title")
     title_stale = d.get("tip_pr_title_stale")
     body_stale = d.get("tip_pr_body_stale")
@@ -324,7 +329,7 @@ d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
 print(d.get('open_git_pr_branch') or d.get('tip_pr_commit_branch') or '')
 " 2>/dev/null || true)"
   if [[ -n "${_og_branch}" ]]; then
-    echo "=== open_git_pr anti-churn (Tick 340/344–350) ==="
+    echo "=== open_git_pr anti-churn (Tick 340/344–352) ==="
     echo "ALWAYS pass branch=${_og_branch}"
     echo "NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)"
   fi

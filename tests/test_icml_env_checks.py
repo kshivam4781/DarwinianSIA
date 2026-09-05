@@ -881,6 +881,53 @@ def test_prefer_tip_pr_commit_branch_unknown_mergeable() -> None:
     ) is None
 
 
+def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> None:
+    """Tick 352: ICML_CLOUD_BOOT_BRANCH env + call JSON boot fields."""
+    import json
+
+    from icml_env_checks import (
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+        detect_cloud_boot_branch,
+        write_icml_open_git_pr_hint,
+    )
+
+    tip = "cursor/icml-epistemic-results-f49c"
+    boot = "cursor/icml-epistemic-results-1fa6"
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot)
+    assert detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) == boot
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+    (tmp_path / "docs").mkdir()
+    out = tmp_path / "docs" / "icml_open_git_pr.json"
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot)
+    written = write_icml_open_git_pr_hint(
+        path=out,
+        pr={
+            "number": 337,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+            "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+            "body": "## Summary\n- Tick 336: frozen body\n",
+            "head_ref": tip,
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+        repo_root=tmp_path,
+        local_tick=352,
+        fetch_diamond_ok=False,
+    )
+    assert written is not None
+    assert written.get("cloud_boot_branch") == boot
+    assert written.get("omit_branch_opens_pr_on") == boot
+    call = json.loads((tmp_path / ICML_OPEN_GIT_PR_CALL_RELPATH).read_text(encoding="utf-8"))
+    assert call["branch"] == tip
+    assert call["cloud_boot_branch"] == boot
+    assert call["omit_branch_opens_pr_on"] == boot
+    assert boot in call["note"]
+    assert "correct working branch" in call["note"]
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+
 def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
     """Tick 350: write_icml_open_git_pr_hint also writes atomic MCP call JSON."""
     import json
@@ -919,6 +966,11 @@ def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
     assert "NEBIUS" in call["title"]
     assert isinstance(call["description"], str) and "Tick 350" in call["description"]
     assert "PRIMARY blocker" in call["description"] or "NEBIUS" in call["description"]
+    # Tick 352: call JSON records cloud_boot_branch / omit_branch_opens_pr_on.
+    assert "cloud_boot_branch" in call
+    assert "omit_branch_opens_pr_on" in call
+    assert written.get("cloud_boot_branch") == call.get("cloud_boot_branch")
+    assert written.get("omit_branch_opens_pr_on") == call.get("omit_branch_opens_pr_on")
     # Fresh metadata still gets a call JSON (MCP always needs all three args).
     fresh = write_icml_open_git_pr_hint(
         path=out,
@@ -2312,6 +2364,19 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 351" in unblock
     assert "ICML tip PR anti-churn UNKNOWN mergeable (Tick 351)" in master
     assert "Tick 351" in progress
+    # Tick 352: cloud_boot_branch in call JSON + cron print + docs lock.
+    assert "def detect_cloud_boot_branch" in env_checks
+    assert "cloud_boot_branch" in env_checks
+    assert "omit_branch_opens_pr_on" in env_checks
+    assert "Tick 352" in env_checks
+    assert "correct working branch" in env_checks
+    assert "Tick 352" in unblock
+    assert "ICML cloud_boot_branch open_git_pr warn (Tick 352)" in master
+    assert "Tick 352" in progress
+    cron_entry352 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 352" in cron_entry352
+    assert "cloud_boot_branch" in cron_entry352
+    assert "Tick 352" in (root / "AGENTS.md").read_text(encoding="utf-8")
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
