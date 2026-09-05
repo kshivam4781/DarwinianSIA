@@ -49,6 +49,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 343:** **PRIMARY-first `human_next`** — when `fetch_diamond_ok` is false, secrets (+ HF accept) lead cron `human_next` / pipeline Next; tip/bootstrap merge follow. Tip merge is hygiene (chicken-egg recover still works) and does **not** gate paid live. When secrets+HF/CSV are already OK and main lacks tip, Tick 342 bootstrap-first order is unchanged. Aligns cron logs with this dual-unblock table (#1 secrets = path to READY).
 
+**Tick 344:** **secrets-first `suggested_open_git_pr_title`** — tip PR #337 stayed titled Tick 336 through 337–343, so among 300+ drafts it looked superseded. `docs/icml_open_git_pr.json` now exposes `tip_pr_title_stale` + `suggested_open_git_pr_title` (leads with NEBIUS+HF when diamond blocked). Cron prints the suggested title; agents must pass `title=` (and `branch=`) on `open_git_pr`.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

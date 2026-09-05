@@ -1766,29 +1766,115 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
     return None
 
 
-def build_icml_open_git_pr_hint(pr: dict | None = None) -> dict | None:
-    """Tick 340: machine-readable open_git_pr anti-churn args (never omit branch=)."""
+_PR_TITLE_TICK_RE = re.compile(r"\bTick\s+(\d+)\b", re.IGNORECASE)
+
+
+def parse_tick_from_pr_title(title: str | None) -> int | None:
+    """Extract the first ``Tick N`` integer from a tip PR title (Tick 344)."""
+    if not title:
+        return None
+    match = _PR_TITLE_TICK_RE.search(str(title))
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def suggested_open_git_pr_title(
+    *,
+    local_tick: int | None,
+    fetch_diamond_ok: bool | None = None,
+) -> str:
+    """Tick 344: secrets-first tip PR title when live PRIMARY is still blocked.
+
+    Tip PR #337 stayed titled ``Tick 336`` through Ticks 337–343, so among
+    300+ draft tip PRs operators could treat the MERGEABLE tip as superseded.
+    When ``fetch_diamond_ok`` is false, the suggested title leads with the
+    PRIMARY secrets blocker (aligns with Tick 343 human_next ordering).
+    """
+    tick = local_tick if local_tick is not None else 0
+    if fetch_diamond_ok is False:
+        return (
+            f"ICML Tick {tick}: add NEBIUS+HF secrets — live G2→G4 still blocked"
+        )
+    if fetch_diamond_ok is True:
+        return f"ICML Tick {tick}: live stack ready — run cron G2→G4"
+    return f"ICML Tick {tick}: epistemic evolution tip"
+
+
+def build_icml_open_git_pr_hint(
+    pr: dict | None = None,
+    *,
+    repo_root: Path | None = None,
+    local_tick: int | None = None,
+    fetch_diamond_ok: bool | None = None,
+) -> dict | None:
+    """Tick 340/344: open_git_pr anti-churn + secrets-first suggested title."""
+    root = repo_root or _REPO_ROOT
     if pr is None:
-        pr = resolve_icml_tip_pr()
+        pr = resolve_icml_tip_pr(repo_root=root)
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch or not pr:
         return None
+    if local_tick is None:
+        progress_path = root / "docs" / "ICML_PROGRESS.md"
+        if progress_path.is_file():
+            try:
+                local_tick = parse_latest_icml_tick(
+                    progress_path.read_text(encoding="utf-8")
+                )
+            except OSError:
+                local_tick = None
+    if fetch_diamond_ok is None:
+        # Lightweight presence check — avoid re-entering collect_icml_secrets_status
+        # (which itself writes this hint).
+        load_icml_dotenv()
+        nebius = _secret_present("NEBIUS_API_KEY")
+        anthropic = _secret_present("ANTHROPIC_API_KEY")
+        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
+        csv_ok = resolve_diamond_csv_path(repo_root=root) is not None
+        meta_needs = icml_meta_requires_anthropic()
+        secrets_ok = bool(nebius) and (bool(anthropic) if meta_needs else True)
+        fetch_diamond_ok = bool(secrets_ok and (hf or csv_ok))
+    tip_title = str(pr.get("title") or "")
+    title_tick = parse_tick_from_pr_title(tip_title)
+    suggested = suggested_open_git_pr_title(
+        local_tick=local_tick, fetch_diamond_ok=fetch_diamond_ok
+    )
+    title_stale = bool(
+        local_tick is not None
+        and (title_tick is None or title_tick < local_tick)
+    )
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
             "Tick 340: open_git_pr MCP defaults to the greenfield *boot* branch "
             "when `branch` is omitted — that opens a NEW tip PR even after "
             "Tick 337–339 checkout/push onto tip_pr_commit_branch. Always pass "
-            "branch=<open_git_pr_branch>; never omit."
+            "branch=<open_git_pr_branch>; never omit. "
+            "Tick 344: also pass title=`suggested_open_git_pr_title` when "
+            "tip_pr_title_stale (stale titles look superseded among 300+ drafts; "
+            "when fetch_diamond_ok is false the suggested title leads with "
+            "NEBIUS+HF secrets — PRIMARY path to READY)."
         ),
         "open_git_pr_branch": branch,
         "tip_pr_commit_branch": branch,
         "tip_pr_number": pr.get("number"),
         "tip_pr_url": pr.get("url"),
+        "tip_pr_title": tip_title or None,
+        "tip_pr_title_tick": title_tick,
+        "local_tick": local_tick,
+        "fetch_diamond_ok": fetch_diamond_ok,
+        "tip_pr_title_stale": title_stale,
+        "suggested_open_git_pr_title": suggested,
         "never_omit_branch": True,
         "warning": (
             "NEVER call open_git_pr without branch= — omit defaults to the "
-            f"greenfield boot branch and opens a new tip PR. Pass branch=`{branch}`."
+            f"greenfield boot branch and opens a new tip PR. Pass branch=`{branch}`. "
+            "Tick 344: when tip_pr_title_stale, also pass "
+            f"title=`{suggested}` (secrets-first when diamond blocked)."
         ),
     }
 
@@ -1798,11 +1884,18 @@ def write_icml_open_git_pr_hint(
     *,
     pr: dict | None = None,
     repo_root: Path | None = None,
+    local_tick: int | None = None,
+    fetch_diamond_ok: bool | None = None,
 ) -> dict | None:
-    """Write ``docs/icml_open_git_pr.json`` (Tick 340). Removes file when N/A."""
+    """Write ``docs/icml_open_git_pr.json`` (Tick 340/344). Removes file when N/A."""
     root = repo_root or _REPO_ROOT
     out = path or (root / "docs" / "icml_open_git_pr.json")
-    hint = build_icml_open_git_pr_hint(pr)
+    hint = build_icml_open_git_pr_hint(
+        pr,
+        repo_root=root,
+        local_tick=local_tick,
+        fetch_diamond_ok=fetch_diamond_ok,
+    )
     if hint is None:
         if out.is_file():
             try:
@@ -1816,7 +1909,7 @@ def write_icml_open_git_pr_hint(
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
-    """Tick 337–340: push onto tip_pr_commit_branch; never omit open_git_pr branch=."""
+    """Tick 337–340/344: push onto tip_pr_commit_branch; never omit open_git_pr branch=/title."""
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch:
         return ""
@@ -1829,7 +1922,10 @@ def _tip_pr_anti_churn_note(pr: dict) -> str:
         "(bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr "
         f"branch=`{branch}` — Tick 340: NEVER omit branch=; open_git_pr "
         "defaults to the greenfield boot branch and would open a new tip PR; "
-        "see docs/icml_open_git_pr.json)."
+        "see docs/icml_open_git_pr.json; Tick 344: also pass "
+        "title=`suggested_open_git_pr_title` from that JSON when "
+        "tip_pr_title_stale — stale titles look superseded among 300+ drafts; "
+        "secrets-first title when fetch_diamond_ok is false)."
     )
 
 
@@ -1948,7 +2044,7 @@ def collect_icml_secrets_status() -> dict:
         merge_lines.append(_merge_tip_to_main_human_next(tip_pr))
     tail_lines = [
         "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-        "(Tick 271–343 — recovers tip incl. cursor/bc-* lineage; auto-live "
+        "(Tick 271–344 — recovers tip incl. cursor/bc-* lineage; auto-live "
         "only when fetch_diamond_ok; blocked paths print full human_next + "
         "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
         "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
@@ -1956,7 +2052,9 @@ def collect_icml_secrets_status() -> dict:
         "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json) + "
         "Tick 342 AGENTS bootstrap PR in human_next/JSON + "
         "Tick 343 PRIMARY-first human_next (secrets before tip/bootstrap when "
-        "fetch_diamond_ok is false); "
+        "fetch_diamond_ok is false) + "
+        "Tick 344 secrets-first suggested_open_git_pr_title when "
+        "tip_pr_title_stale; "
         "Tick 333 same-SHA "
         "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
         "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
@@ -1976,7 +2074,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340/341/342/343: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340/341/342/343/344: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -2002,7 +2100,9 @@ def collect_icml_secrets_status() -> dict:
             "Tick 342 human_next/JSON surface AGENTS bootstrap PR "
             f"(`{ICML_AGENTS_BOOTSTRAP_BRANCH}`) when open; "
             "Tick 343 PRIMARY-first human_next — secrets before tip/bootstrap "
-            "merge when fetch_diamond_ok is false (tip merge does not gate live)"
+            "merge when fetch_diamond_ok is false (tip merge does not gate live); "
+            "Tick 344 secrets-first suggested_open_git_pr_title when "
+            "tip_pr_title_stale (stale tip PR titles look superseded)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2031,6 +2131,7 @@ def collect_icml_secrets_status() -> dict:
         # Tick 330: concrete tip PR for operators (null when main already has tip).
         "tip_pr_url": (tip_pr or {}).get("url"),
         "tip_pr_number": (tip_pr or {}).get("number"),
+        "tip_pr_title": (tip_pr or {}).get("title"),
         "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
         "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
         # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
@@ -2088,13 +2189,26 @@ def write_icml_secrets_status(
         tip_pr = {
             "number": status.get("tip_pr_number"),
             "url": status.get("tip_pr_url"),
+            "title": status.get("tip_pr_title"),
             "head_ref": status.get("tip_pr_head_ref")
             or status.get("tip_pr_commit_branch"),
             "mergeable": status.get("tip_pr_mergeable"),
             "merge_state_status": status.get("tip_pr_merge_state_status"),
             "is_draft": status.get("tip_pr_is_draft"),
         }
-    write_icml_open_git_pr_hint(pr=tip_pr if status.get("open_git_pr_branch") else None)
+    hint = write_icml_open_git_pr_hint(
+        pr=tip_pr if status.get("open_git_pr_branch") else None,
+        fetch_diamond_ok=bool(status.get("fetch_diamond_ok")),
+    )
+    if hint:
+        status["tip_pr_title"] = hint.get("tip_pr_title")
+        status["tip_pr_title_tick"] = hint.get("tip_pr_title_tick")
+        status["tip_pr_title_stale"] = hint.get("tip_pr_title_stale")
+        status["suggested_open_git_pr_title"] = hint.get(
+            "suggested_open_git_pr_title"
+        )
+        status["local_tick"] = hint.get("local_tick")
+        out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
     return status
 
 
@@ -2394,7 +2508,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340/342/343: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340/342/343/344: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2412,7 +2526,8 @@ def collect_icml_tip_status(
             "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json); "
             "Tick 342 agents_bootstrap_pr_* fields when AGENTS bootstrap PR is open; "
             "Tick 343 secrets status human_next is PRIMARY-first when "
-            "fetch_diamond_ok is false (see collect_icml_secrets_status)"
+            "fetch_diamond_ok is false (see collect_icml_secrets_status); "
+            "Tick 344 secrets-first suggested_open_git_pr_title when tip_pr_title_stale"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2425,6 +2540,7 @@ def collect_icml_tip_status(
         # Tick 330: concrete PR for operators facing 300+ draft tip PRs.
         "tip_pr_url": (tip_pr or {}).get("url"),
         "tip_pr_number": (tip_pr or {}).get("number"),
+        "tip_pr_title": (tip_pr or {}).get("title"),
         "tip_pr_is_draft": (tip_pr or {}).get("is_draft"),
         "tip_pr_head_ref": (tip_pr or {}).get("head_ref"),
         # Tick 335: mergeability so operators know CLEAN vs CONFLICTING.
@@ -2486,13 +2602,26 @@ def write_icml_tip_status(
         tip_pr = {
             "number": status.get("tip_pr_number"),
             "url": status.get("tip_pr_url"),
+            "title": status.get("tip_pr_title"),
             "head_ref": status.get("tip_pr_head_ref")
             or status.get("tip_pr_commit_branch"),
             "mergeable": status.get("tip_pr_mergeable"),
             "merge_state_status": status.get("tip_pr_merge_state_status"),
             "is_draft": status.get("tip_pr_is_draft"),
         }
-    write_icml_open_git_pr_hint(pr=tip_pr, repo_root=root)
+    hint = write_icml_open_git_pr_hint(
+        pr=tip_pr,
+        repo_root=root,
+        local_tick=status.get("local_tick"),
+    )
+    if hint:
+        status["tip_pr_title"] = hint.get("tip_pr_title")
+        status["tip_pr_title_tick"] = hint.get("tip_pr_title_tick")
+        status["tip_pr_title_stale"] = hint.get("tip_pr_title_stale")
+        status["suggested_open_git_pr_title"] = hint.get(
+            "suggested_open_git_pr_title"
+        )
+        out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
     return status
 
 

@@ -246,9 +246,10 @@ print(d.get('tip_pr_commit_branch') or '')
   unset _anti_branch _cur_branch
 fi
 
-# --- Tick 340: open_git_pr never-omit-branch reminder ----------------------------
+# --- Tick 340/344: open_git_pr never-omit-branch + secrets-first title reminder -----
 # Even after Tick 337–339 checkout onto tip_pr_commit_branch, open_git_pr MCP
 # defaults to the *boot* greenfield branch when `branch` is omitted → new tip PR.
+# Tick 344: also print suggested_open_git_pr_title when tip_pr_title_stale.
 if [[ -f docs/icml_open_git_pr.json ]]; then
   python3 - <<'PY' 2>/dev/null || true
 import json
@@ -256,9 +257,15 @@ from pathlib import Path
 d = json.loads(Path("docs/icml_open_git_pr.json").read_text(encoding="utf-8"))
 b = d.get("open_git_pr_branch") or d.get("tip_pr_commit_branch")
 if b:
-    print(f"=== open_git_pr anti-churn (Tick 340) ===")
+    print(f"=== open_git_pr anti-churn (Tick 340/344) ===")
     print(f"ALWAYS pass branch={b}")
     print("NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)")
+    title = d.get("suggested_open_git_pr_title")
+    stale = d.get("tip_pr_title_stale")
+    if title:
+        print(f"suggested title={title}")
+        if stale:
+            print("tip_pr_title_stale=true — pass title= above (secrets-first when diamond blocked)")
     print(f"hint → docs/icml_open_git_pr.json")
 PY
 elif [[ -f docs/icml_tip_status.json ]]; then
@@ -269,7 +276,7 @@ d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
 print(d.get('open_git_pr_branch') or d.get('tip_pr_commit_branch') or '')
 " 2>/dev/null || true)"
   if [[ -n "${_og_branch}" ]]; then
-    echo "=== open_git_pr anti-churn (Tick 340) ==="
+    echo "=== open_git_pr anti-churn (Tick 340/344) ==="
     echo "ALWAYS pass branch=${_og_branch}"
     echo "NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)"
   fi

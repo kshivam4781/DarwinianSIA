@@ -375,6 +375,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 341 main-boot AGENTS chicken-egg bootstrap — branch `cursor/icml-main-agents-bootstrap` (1-file PR onto `main`; not a tip PR); cron cloud instructions stop needing automation memory for recover once merged; lock test extended
 - [x] Tick 342 AGENTS bootstrap PR in human_next — `resolve_icml_agents_bootstrap_pr` + secrets/tip `agents_bootstrap_pr_*` / `agents_bootstrap_merge_commands`; cron `human_next` leads with interim bootstrap when open; lock test extended
 - [x] Tick 343 PRIMARY-first human_next — when `fetch_diamond_ok` is false, secrets (+ HF accept) lead `human_next` / pipeline Next; tip/bootstrap merge follow (does not gate live); lock test extended
+- [x] Tick 344 secrets-first open_git_pr title — `suggested_open_git_pr_title` + `tip_pr_title_stale` in `docs/icml_open_git_pr.json`; secrets-first title when diamond blocked; cron prints suggested title; lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -387,4 +388,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 343 note: Gate labels / secrets stack through Tick 343 PRIMARY-first human_next -->
+<!-- Tick 344 note: Gate labels / secrets stack through Tick 344 secrets-first open_git_pr title -->

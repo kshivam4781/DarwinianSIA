@@ -579,6 +579,59 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     assert merge_idx > 0
 
 
+def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
+    """Tick 344: secrets-first suggested title + tip_pr_title_stale detection."""
+    from icml_env_checks import (
+        build_icml_open_git_pr_hint,
+        parse_tick_from_pr_title,
+        suggested_open_git_pr_title,
+    )
+
+    assert parse_tick_from_pr_title("ICML Tick 336: tip PR gh copy-paste") == 336
+    assert parse_tick_from_pr_title("no tick here") is None
+    blocked = suggested_open_git_pr_title(local_tick=344, fetch_diamond_ok=False)
+    assert "344" in blocked
+    assert "NEBIUS" in blocked or "secrets" in blocked.lower()
+    ready = suggested_open_git_pr_title(local_tick=344, fetch_diamond_ok=True)
+    assert "344" in ready
+    assert "NEBIUS" not in ready
+    hint = build_icml_open_git_pr_hint(
+        {
+            "number": 337,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+            "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+        local_tick=344,
+        fetch_diamond_ok=False,
+    )
+    assert hint is not None
+    assert hint["tip_pr_title_tick"] == 336
+    assert hint["tip_pr_title_stale"] is True
+    assert hint["suggested_open_git_pr_title"] == blocked
+    assert "NEBIUS" in hint["suggested_open_git_pr_title"] or "secrets" in hint[
+        "suggested_open_git_pr_title"
+    ].lower()
+    fresh = build_icml_open_git_pr_hint(
+        {
+            "number": 337,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+            "title": blocked,
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+        local_tick=344,
+        fetch_diamond_ok=False,
+    )
+    assert fresh is not None
+    assert fresh["tip_pr_title_stale"] is False
+
+
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
@@ -1819,6 +1872,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 343" in unblock
     assert "ICML PRIMARY-first human_next (Tick 343)" in master
     assert "Tick 343" in progress
+    # Tick 344: secrets-first suggested open_git_pr title when tip_pr_title_stale.
+    assert "suggested_open_git_pr_title" in env_checks
+    assert "tip_pr_title_stale" in env_checks
+    assert "parse_tick_from_pr_title" in env_checks
+    assert "Tick 344" in env_checks
+    assert "Tick 344" in unblock
+    assert "ICML secrets-first open_git_pr title (Tick 344)" in master
+    assert "Tick 344" in progress
+    cron_entry344 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "suggested_open_git_pr_title" in cron_entry344 or "tip_pr_title_stale" in cron_entry344
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

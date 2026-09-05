@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T06:15Z — Tick 344 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title was stale: **Tick 336** while HEAD was Tick 343
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Tick 343 correctly put secrets first in `human_next`, but tip PR #337 still carried a Tick-336 title — among 300+ draft tip PRs that looks superseded and weakens the dual-unblock surface that also carries the secrets ask. Highest leverage without paid spend: **secrets-first `suggested_open_git_pr_title`** when `tip_pr_title_stale`. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Secrets-first open_git_pr title freshness (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 343 (`f49c`); confirmed secrets absent; tip PR title still Tick 336
+2. `parse_tick_from_pr_title` / `suggested_open_git_pr_title` / `tip_pr_title_stale` on `docs/icml_open_git_pr.json` + tip/secrets status; cron prints suggested title; when diamond blocked title leads with NEBIUS+HF
+3. Lock test + HUMAN_UNBLOCK / AGENTS / Section 12 / READY checklist; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr branch=cursor/icml-epistemic-results-f49c` + secrets-first title)
+
+### Metrics delta
+| Metric | Before (Tick 343) | After (Tick 344) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Tip PR title vs local tick | Tick 336 title / Tick 343 HEAD | **suggested secrets-first Tick 344 title** |
+| `tip_pr_title_stale` in open_git_pr.json | n/a | **true → agents pass title=** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: merge bootstrap `gh pr ready 338 --repo kshivam4781/DarwinianSIA && gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge` and/or tip `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T04:15Z — Tick 343 (automation cron)
 
 ### Status snapshot
