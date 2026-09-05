@@ -25,13 +25,13 @@ Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Ti
 | Metric | Before (Tick 343) | After (Tick 344) |
 |--------|-------------------|------------------|
 | Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
-| Tip PR title vs local tick | Tick 336 title / Tick 343 HEAD | **suggested secrets-first Tick 344 title** |
-| `tip_pr_title_stale` in open_git_pr.json | n/a | **true → agents pass title=** |
+| Tip PR title vs local tick | Tick 336 title / Tick 343 HEAD | JSON suggests secrets-first Tick 344 title; **GitHub title still Tick 336** (`open_git_pr` MCP does not rewrite title on existing PRs) |
+| `tip_pr_title_stale` in open_git_pr.json | n/a | **true → agents pass title=** (MCP may still leave GitHub title stale) |
 | Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
 | `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
 
 ### Next recommended step
-Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: merge bootstrap `gh pr ready 338 --repo kshivam4781/DarwinianSIA && gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge` and/or tip `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: edit tip PR #337 title in GitHub UI to the secrets-first suggested title (MCP does not update titles on existing PRs) and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
 
 ---
 
