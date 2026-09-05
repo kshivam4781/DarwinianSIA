@@ -1,6 +1,6 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-09-04T16:18:01Z
+**Timestamp:** 2026-09-05T04:05:54Z
 **Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
@@ -52,8 +52,9 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Next
 
-1. Merge the latest ICML tip PR into `main` so cron inherits `docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–336 dual unblock; `main` still has hackathon-era AGENTS without tip files). See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock. Concrete tip PR: #337 https://github.com/kshivam4781/DarwinianSIA/pull/337 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts). Copy-paste: `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Merge before next cron (~2h) or a new tip PR will supersede this one among 100+ open draft tip PRs — older tip PRs are superseded; merge only #337.
-2. Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). `ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta (required only if `ICML_META_AGENT_PROFILE=default-meta`). Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.
-3. Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers tip and runs live when `fetch_diamond_ok` (else preflight only).
-4. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
-5. Do **not** set STATUS: READY from offline / preflight alone.
+1. Optional interim (easier than full tip): merge main-only AGENTS chicken-egg bootstrap PR #338 https://github.com/kshivam4781/DarwinianSIA/pull/338 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts) (branch `cursor/icml-main-agents-bootstrap`; Tick 341–342; 1-file — **not** a tip PR; does not replace merging the tip). Copy-paste: `gh pr ready 338 --repo kshivam4781/DarwinianSIA && gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge`. Agents: tip anti-churn tip PR is unchanged — still commit/`open_git_pr` on `tip_pr_commit_branch` only.
+2. Merge the latest ICML tip PR into `main` so cron inherits `docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–340 dual unblock; `main` still has hackathon-era AGENTS without tip files). See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock. Concrete tip PR: #337 https://github.com/kshivam4781/DarwinianSIA/pull/337 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts). Copy-paste: `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Agents/cron: do NOT open a new tip PR — checkout `cursor/icml-epistemic-results-f49c` (tip_pr_commit_branch; Tick 338–339 cron + tip recover --apply auto-checkout via icml_cron_entry / icml_boot_recover / icml_recover_tip) and push here so PR #337 updates (bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr branch=`cursor/icml-epistemic-results-f49c` — Tick 340: NEVER omit branch=; open_git_pr defaults to the greenfield boot branch and would open a new tip PR; see docs/icml_open_git_pr.json). Merge before next cron (~2h). Older tip PRs are superseded; merge only #337.
+3. Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) to automation https://cursor.com/automations/bf73dff3-8f7a-11f1-a7d1-d6b4613131ce (or linked env dashboard). `ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta (required only if `ICML_META_AGENT_PROFILE=default-meta`). Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.
+4. Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers tip and runs live when `fetch_diamond_ok` (else preflight only).
+5. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
+6. Do **not** set STATUS: READY from offline / preflight alone.

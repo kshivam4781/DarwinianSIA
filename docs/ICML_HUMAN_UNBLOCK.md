@@ -47,6 +47,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 342:** `resolve_icml_agents_bootstrap_pr` + `_merge_agents_bootstrap_human_next` — when main lacks tip files and the bootstrap PR is open, secrets/tip JSON + cron `human_next` lead with the interim bootstrap merge (URL + MERGEABLE + gh copy-paste) **before** the full tip #337 line. Tick 341 opened the PR but operators reading cron logs still only saw tip merge.
 
+**Tick 343:** **PRIMARY-first `human_next`** — when `fetch_diamond_ok` is false, secrets (+ HF accept) lead cron `human_next` / pipeline Next; tip/bootstrap merge follow. Tip merge is hygiene (chicken-egg recover still works) and does **not** gate paid live. When secrets+HF/CSV are already OK and main lacks tip, Tick 342 bootstrap-first order is unchanged. Aligns cron logs with this dual-unblock table (#1 secrets = path to READY).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

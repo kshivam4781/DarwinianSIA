@@ -520,6 +520,64 @@ def test_secrets_status_human_next_agents_bootstrap_before_tip(
     assert "Merge the latest ICML tip PR into `main`" in steps[1]
 
 
+def test_secrets_status_human_next_primary_first_when_diamond_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 343: secrets lead human_next when fetch_diamond_ok is false."""
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: None
+    )
+    tip_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "number": 337,
+        "title": "ICML tip",
+        "is_draft": True,
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    boot_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/338",
+        "number": 338,
+        "title": "ICML AGENTS bootstrap",
+        "is_draft": True,
+        "head_ref": "cursor/icml-main-agents-bootstrap",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: tip_pr)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr", lambda **_k: boot_pr
+    )
+    status = collect_icml_secrets_status()
+    assert status["fetch_diamond_ok"] is False
+    assert status["main_has_icml_tip"] is False
+    assert "NEBIUS" in status["human_next"][0]
+    assert "automation" in status["human_next"][0].lower() or "Add" in status["human_next"][0]
+    # Tip/bootstrap still present, but after secrets (+ HF accept line).
+    assert any("pull/338" in line for line in status["human_next"])
+    assert any("#337" in line for line in status["human_next"])
+    boot_idx = next(
+        i for i, line in enumerate(status["human_next"]) if "pull/338" in line
+    )
+    assert boot_idx > 0
+    steps = live_pipeline_next_steps(
+        secrets_ok=False,
+        tip_ok=True,
+        fetch_diamond_ok=False,
+        main_has_icml_tip=False,
+    )
+    assert "NEBIUS_API_KEY" in steps[0]
+    assert any("pull/338" in s for s in steps)
+    assert any("pull/337" in s or "#337" in s for s in steps)
+    merge_idx = next(i for i, s in enumerate(steps) if "Optional interim" in s or "pull/338" in s)
+    assert merge_idx > 0
+
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
@@ -1755,6 +1813,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     progress = (root / "docs" / "ICML_PROGRESS.md").read_text(encoding="utf-8")
     assert "Tick 341" in progress
     assert "Tick 342" in progress
+    # Tick 343: PRIMARY-first human_next when diamond blocked.
+    assert "Tick 343" in env_checks
+    assert "PRIMARY-first" in env_checks or "primary-first" in env_checks.lower()
+    assert "Tick 343" in unblock
+    assert "ICML PRIMARY-first human_next (Tick 343)" in master
+    assert "Tick 343" in progress
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

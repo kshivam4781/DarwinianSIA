@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-05T02:23:13Z",
+  "updated_at": "2026-09-05T04:09:56Z",
   "tick_note": "Tick 340: open_git_pr MCP defaults to the greenfield *boot* branch when `branch` is omitted \u2014 that opens a NEW tip PR even after Tick 337\u2013339 checkout/push onto tip_pr_commit_branch. Always pass branch=<open_git_pr_branch>; never omit.",
   "open_git_pr_branch": "cursor/icml-epistemic-results-f49c",
   "tip_pr_commit_branch": "cursor/icml-epistemic-results-f49c",

@@ -1929,40 +1929,54 @@ def collect_icml_secrets_status() -> dict:
     # Tick 342: surface interim AGENTS bootstrap PR when main still lacks tip.
     bootstrap_pr = None if main_has_tip else resolve_icml_agents_bootstrap_pr()
     human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
-    human_next: list[str] = []
+    # Tick 343: PRIMARY-first ordering — secrets unblock live G2→G4; tip/bootstrap
+    # merge is hygiene (chicken-egg recover still works). When diamond is blocked,
+    # lead with secrets; when secrets+HF/CSV are OK but main lacks tip, lead with
+    # bootstrap/tip merge (unchanged from Tick 342).
+    secrets_lines = [
+        f"Add {human_keys} to automation "
+        f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
+        "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
+        "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
+        "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
+    ]
+    merge_lines: list[str] = []
     if not main_has_tip:
         # Bootstrap first (1-file, easier) then full tip merge.
         if bootstrap_pr is not None:
-            human_next.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
-        human_next.append(_merge_tip_to_main_human_next(tip_pr))
-    human_next.extend(
-        [
-            f"Add {human_keys} to automation "
-            f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
-            "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
-            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
-            "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
-            "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–342 — recovers tip incl. cursor/bc-* lineage; auto-live "
-            "only when fetch_diamond_ok; blocked paths print full human_next + "
-            "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
-            "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
-            "(tip_pr_commit_branch; cron + tip recover --apply auto-checkout) + "
-            "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json) + "
-            "Tick 342 AGENTS bootstrap PR in human_next/JSON; "
-            "Tick 333 same-SHA "
-            "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
-            "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
-            "also scans cursor/bc-*)",
-            "Portal Save of docs/icml_portal_save_target.json is optional "
-            "(warm boots only; packages bootstrap without it)",
-        ]
-    )
+            merge_lines.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
+        merge_lines.append(_merge_tip_to_main_human_next(tip_pr))
+    tail_lines = [
+        "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
+        "(Tick 271–343 — recovers tip incl. cursor/bc-* lineage; auto-live "
+        "only when fetch_diamond_ok; blocked paths print full human_next + "
+        "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
+        "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
+        "(tip_pr_commit_branch; cron + tip recover --apply auto-checkout) + "
+        "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json) + "
+        "Tick 342 AGENTS bootstrap PR in human_next/JSON + "
+        "Tick 343 PRIMARY-first human_next (secrets before tip/bootstrap when "
+        "fetch_diamond_ok is false); "
+        "Tick 333 same-SHA "
+        "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
+        "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
+        "also scans cursor/bc-*)",
+        "Portal Save of docs/icml_portal_save_target.json is optional "
+        "(warm boots only; packages bootstrap without it)",
+    ]
+    human_next: list[str] = []
+    if not fetch_diamond_ok:
+        human_next.extend(secrets_lines)
+        human_next.extend(merge_lines)
+    else:
+        human_next.extend(merge_lines)
+        human_next.extend(secrets_lines)
+    human_next.extend(tail_lines)
     tip_commit_branch = prefer_tip_pr_commit_branch(tip_pr)
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340/341/342: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340/341/342/343: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1986,7 +2000,9 @@ def collect_icml_secrets_status() -> dict:
             "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json; "
             "MCP defaults to greenfield boot branch when branch= omitted); "
             "Tick 342 human_next/JSON surface AGENTS bootstrap PR "
-            f"(`{ICML_AGENTS_BOOTSTRAP_BRANCH}`) when open"
+            f"(`{ICML_AGENTS_BOOTSTRAP_BRANCH}`) when open; "
+            "Tick 343 PRIMARY-first human_next — secrets before tip/bootstrap "
+            "merge when fetch_diamond_ok is false (tip merge does not gate live)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2099,15 +2115,17 @@ def live_pipeline_next_steps(
     steps: list[str] = []
     if main_has_icml_tip is None:
         main_has_icml_tip = main_has_icml_tip_files()
+    merge_steps: list[str] = []
     if main_has_icml_tip is False:
         tip_pr = resolve_icml_tip_pr(tip_ref=tip_ref)
         bootstrap_pr = resolve_icml_agents_bootstrap_pr()
         if bootstrap_pr is not None:
-            steps.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
-        steps.append(_merge_tip_to_main_human_next(tip_pr))
+            merge_steps.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
+        merge_steps.append(_merge_tip_to_main_human_next(tip_pr))
+    tip_stale_steps: list[str] = []
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
-        steps.append(
+        tip_stale_steps.append(
             "Stale / missing ICML tip — prefer single entry: "
             "`bash scripts/icml_cron_entry.sh` (Tick 271; recovers tip then "
             "live/preflight). Or: `python3 scripts/icml_recover_tip.py --apply` "
@@ -2118,6 +2136,7 @@ def live_pipeline_next_steps(
 
     # Explicit False → HF/CSV gap even when API keys present.
     if fetch_diamond_ok is False and secrets_ok:
+        # Tick 343: PRIMARY-first — diamond/HF gap before tip merge hygiene.
         steps.extend(
             [
                 "API keys present but diamond still blocked "
@@ -2131,6 +2150,8 @@ def live_pipeline_next_steps(
                 "Do **not** set STATUS: READY from offline / preflight alone.",
             ]
         )
+        steps.extend(merge_steps)
+        steps.extend(tip_stale_steps)
         return steps
 
     # True → full cron live OK. None + secrets_ok → legacy callers (pre-Tick-274).
@@ -2140,6 +2161,9 @@ def live_pipeline_next_steps(
             if fetch_diamond_ok is True
             else "Secrets present"
         )
+        # Secrets OK: tip/bootstrap merge hygiene can lead (Tick 342).
+        steps.extend(merge_steps)
+        steps.extend(tip_stale_steps)
         steps.extend(
             [
                 f"{label} — preferred single entry:",
@@ -2152,6 +2176,7 @@ def live_pipeline_next_steps(
         )
         return steps
 
+    # Tick 343: secrets missing → PRIMARY-first (secrets before tip/bootstrap).
     steps.extend(
         [
             "Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) "
@@ -2167,6 +2192,8 @@ def live_pipeline_next_steps(
             "Do **not** set STATUS: READY from offline / preflight alone.",
         ]
     )
+    steps.extend(merge_steps)
+    steps.extend(tip_stale_steps)
     return steps
 
 
@@ -2367,7 +2394,7 @@ def collect_icml_tip_status(
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340/342: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340/342/343: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2383,7 +2410,9 @@ def collect_icml_tip_status(
             "Tick 339 tip recover --apply also auto-checkouts tip_pr_commit_branch "
             "(boot_recover + recover_tip); "
             "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json); "
-            "Tick 342 agents_bootstrap_pr_* fields when AGENTS bootstrap PR is open"
+            "Tick 342 agents_bootstrap_pr_* fields when AGENTS bootstrap PR is open; "
+            "Tick 343 secrets status human_next is PRIMARY-first when "
+            "fetch_diamond_ok is false (see collect_icml_secrets_status)"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
