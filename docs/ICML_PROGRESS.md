@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T08:15Z — Tick 345 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title still stale: **Tick 336** on GitHub (MCP does not rewrite titles)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Tick 344 added secrets-first `suggested_open_git_pr_title` + agents pass `title=`, but tip PR #337 **GitHub title stayed Tick 336** — `open_git_pr` MCP does not rewrite titles on existing PRs. Among 300+ draft tip PRs that still looks superseded and weakens the dual-unblock surface that carries the secrets ask. Highest leverage without paid spend: **`tip_pr_title_edit_commands` (`gh pr edit --title`) copy-paste** in human_next / JSON / cron. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Tip PR title edit commands when MCP leaves title stale (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 344 (`f49c`); confirmed secrets absent; tip PR title still Tick 336
+2. `_tip_pr_title_edit_commands` / `_tip_pr_title_edit_human_next`; `tip_pr_title_edit_commands` on `docs/icml_open_git_pr.json` + tip/secrets status; cron prints copy-paste when stale; human_next inserts title-edit after secrets (PRIMARY-first)
+3. Lock test + HUMAN_UNBLOCK / AGENTS / Section 12 / READY checklist; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr branch=cursor/icml-epistemic-results-f49c` + secrets-first title)
+
+### Metrics delta
+| Metric | Before (Tick 344) | After (Tick 345) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Tip PR title refresh path | agents pass title= (MCP no-op on existing PR) | **`gh pr edit --title` copy-paste** in human_next + JSON + cron |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T06:15Z — Tick 344 (automation cron)
 
 ### Status snapshot

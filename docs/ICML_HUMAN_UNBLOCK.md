@@ -51,6 +51,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 344:** **secrets-first `suggested_open_git_pr_title`** — tip PR #337 stayed titled Tick 336 through 337–343, so among 300+ drafts it looked superseded. `docs/icml_open_git_pr.json` now exposes `tip_pr_title_stale` + `suggested_open_git_pr_title` (leads with NEBIUS+HF when diamond blocked). Cron prints the suggested title; agents must pass `title=` (and `branch=`) on `open_git_pr`.
 
+**Tick 345:** **`tip_pr_title_edit_commands` (`gh pr edit --title`)** — Tick 344 found `open_git_pr` MCP does **not** rewrite GitHub titles on existing tip PRs (title stayed Tick 336 even when agents passed `title=`). When `tip_pr_title_stale`, secrets/tip/`open_git_pr` JSON + cron `human_next` expose copy-paste `gh pr edit <N> --repo kshivam4781/DarwinianSIA --title '…'` (secrets-first title when diamond blocked).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 
