@@ -420,6 +420,10 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
         "merge_state_status": "CLEAN",
     }
     monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: fake_pr)
+    # No bootstrap PR → tip merge stays human_next[0] (Tick 342 optional).
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr", lambda **_k: None
+    )
     status = collect_icml_secrets_status()
     assert status["main_has_icml_tip"] is False
     assert status["fetch_diamond_ok"] is True  # merge tip does not gate paid live
@@ -446,6 +450,8 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     # Tick 337: anti-churn fields on secrets JSON.
     assert status["tip_pr_commit_branch"] == "cursor/icml-epistemic-results-45fd"
     assert status["tip_pr_anti_churn"] is True
+    assert status["agents_bootstrap_pr_url"] is None
+    assert status["agents_bootstrap_merge_commands"] == []
     steps = live_pipeline_next_steps(
         secrets_ok=True,
         tip_ok=True,
@@ -456,6 +462,63 @@ def test_secrets_status_human_next_merge_tip_when_main_lacks(
     assert "pull/330" in steps[0]
     assert "gh pr merge 330" in steps[0]
     assert "do NOT open a new tip PR" in steps[0]
+
+
+def test_secrets_status_human_next_agents_bootstrap_before_tip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 342: interim AGENTS bootstrap PR leads human_next when open."""
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
+    tip_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "number": 337,
+        "title": "ICML tip",
+        "is_draft": True,
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    boot_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/338",
+        "number": 338,
+        "title": "ICML AGENTS bootstrap",
+        "is_draft": True,
+        "head_ref": "cursor/icml-main-agents-bootstrap",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: tip_pr)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr", lambda **_k: boot_pr
+    )
+    status = collect_icml_secrets_status()
+    assert "Optional interim" in status["human_next"][0]
+    assert "pull/338" in status["human_next"][0]
+    assert "gh pr ready 338" in status["human_next"][0]
+    assert "gh pr merge 338" in status["human_next"][0]
+    assert "not a tip PR" in status["human_next"][0].lower() or "not** a tip PR" in status["human_next"][0]
+    assert "Merge the latest ICML tip PR into `main`" in status["human_next"][1]
+    assert "#337" in status["human_next"][1]
+    assert status["agents_bootstrap_pr_number"] == 338
+    assert status["agents_bootstrap_pr_url"] == boot_pr["url"]
+    assert status["agents_bootstrap_pr_mergeable"] == "MERGEABLE"
+    assert status["agents_bootstrap_merge_commands"] == [
+        "gh pr ready 338 --repo kshivam4781/DarwinianSIA",
+        "gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge",
+    ]
+    steps = live_pipeline_next_steps(
+        secrets_ok=True,
+        tip_ok=True,
+        fetch_diamond_ok=True,
+        main_has_icml_tip=False,
+    )
+    assert "Optional interim" in steps[0]
+    assert "pull/338" in steps[0]
+    assert "Merge the latest ICML tip PR into `main`" in steps[1]
+
 
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
@@ -1683,8 +1746,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 341" in unblock
     assert "icml-main-agents-bootstrap" in unblock
     assert "ICML main-boot AGENTS chicken-egg bootstrap (Tick 341)" in master
+    # Tick 342: bootstrap PR URL + gh copy-paste in human_next / secrets+tip JSON.
+    assert "resolve_icml_agents_bootstrap_pr" in env_checks
+    assert "agents_bootstrap_pr_url" in env_checks
+    assert "_merge_agents_bootstrap_human_next" in env_checks
+    assert "Tick 342" in unblock
+    assert "ICML AGENTS bootstrap PR in human_next (Tick 342)" in master
     progress = (root / "docs" / "ICML_PROGRESS.md").read_text(encoding="utf-8")
     assert "Tick 341" in progress
+    assert "Tick 342" in progress
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

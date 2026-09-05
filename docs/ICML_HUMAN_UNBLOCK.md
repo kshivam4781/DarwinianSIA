@@ -5,7 +5,7 @@
 `kimi-nebius-pydantic-meta` (Nebius). Set `ICML_META_AGENT_PROFILE=default-meta`
 only if you intentionally want Claude meta (then Anthropic becomes required again).
 
-## Dual human unblock (Tick 327–341 — read first)
+## Dual human unblock (Tick 327–342 — read first)
 
 Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 `1890–1904`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
@@ -15,7 +15,7 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 | **1** | Add **`NEBIUS_API_KEY`** + (`**HF_TOKEN**` or local `gpqa_diamond.csv`) | Required for paid G2→G3→G4 / `--fetch-diamond` |
 | **2** | **Undraft + Merge the latest tip PR into `main`** — concrete URL is in `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` field `tip_pr_url` (refreshed each cron; Tick 330+). Tick **335** also exposes `tip_pr_mergeable` / `tip_pr_merge_state_status` (e.g. MERGEABLE/CLEAN). Tick **336** adds `tip_pr_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`). Tick **337–340** anti-churn: `tip_pr_commit_branch` / `tip_pr_anti_churn` — cron **and** tip recover `--apply` auto-checkout that branch (`icml_cron_entry` / `icml_boot_recover` / `icml_recover_tip` / `bash scripts/icml_checkout_tip_pr_branch.sh`); Tick **340** also writes `docs/icml_open_git_pr.json` and requires `open_git_pr branch=<tip_pr_commit_branch>` (**never omit** — MCP defaults to greenfield boot branch). **Do not open a new tip PR**; merge **#N** via copy-paste `gh` before next cron. Ignore older tip PRs. | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). |
 
-**Tick 341 interim (optional, easier than full tip):** merge the **main-only AGENTS bootstrap** PR on branch `cursor/icml-main-agents-bootstrap` (1 file — chicken-egg recover + dual-unblock copy-paste). This is **not** a tip PR and does **not** replace merging tip **#337**; it only stops cron from injecting hackathon-era `AGENTS.md` with zero ICML recover instructions. Full tip files still require #337.
+**Tick 341–342 interim (optional, easier than full tip):** merge the **main-only AGENTS bootstrap** PR on branch `cursor/icml-main-agents-bootstrap` (1 file — chicken-egg recover + dual-unblock copy-paste). This is **not** a tip PR and does **not** replace merging tip **#337**; it only stops cron from injecting hackathon-era `AGENTS.md` with zero ICML recover instructions. Full tip files still require #337. **Tick 342:** `docs/icml_secrets_status.json` / tip status / `human_next` / pipeline Next now expose `agents_bootstrap_pr_url` + `agents_bootstrap_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`) when that PR is open — cron logs no longer lead with tip #337 alone.
 
 **Tick 328:** `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` / pipeline Next now expose `main_has_icml_tip` and prepend merge tip→main in `human_next` when false (does **not** gate `fetch_diamond_ok`).
 
@@ -44,6 +44,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 **Tick 340:** `open_git_pr` MCP **defaults to the greenfield boot branch** when `branch=` is omitted — even after Tick 337–339 checkout/push onto `tip_pr_commit_branch`. Agents must **never omit** `branch=<tip_pr_commit_branch>`; cron writes `docs/icml_open_git_pr.json` + prints the reminder. tip/secrets JSON also expose `open_git_pr_branch` / `open_git_pr_never_omit_branch`.
 
 **Tick 341:** main-boot **AGENTS chicken-egg bootstrap** — branch `cursor/icml-main-agents-bootstrap` (1-file PR onto `main`). Cron cloud instructions inject `main`'s `AGENTS.md`; without this bootstrap (or full tip #337), every tick starts with hackathon-era guidance and must rely on automation memory for recover. Merge bootstrap **and/or** tip #337; tip anti-churn tip PR remains #337 (`f49c`).
+
+**Tick 342:** `resolve_icml_agents_bootstrap_pr` + `_merge_agents_bootstrap_human_next` — when main lacks tip files and the bootstrap PR is open, secrets/tip JSON + cron `human_next` lead with the interim bootstrap merge (URL + MERGEABLE + gh copy-paste) **before** the full tip #337 line. Tick 341 opened the PR but operators reading cron logs still only saw tip merge.
 
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.

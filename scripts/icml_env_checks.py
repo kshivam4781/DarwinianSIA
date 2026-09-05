@@ -1643,6 +1643,55 @@ def resolve_icml_tip_pr(
     return None
 
 
+# Tick 341–342: interim 1-file AGENTS chicken-egg bootstrap onto main (not a tip PR).
+ICML_AGENTS_BOOTSTRAP_BRANCH = "cursor/icml-main-agents-bootstrap"
+
+
+def resolve_icml_agents_bootstrap_pr(
+    *,
+    repo_root: Path | None = None,
+    branch: str | None = None,
+) -> dict | None:
+    """Resolve the open main-only AGENTS bootstrap PR (Tick 342).
+
+    Tick 341 opened ``cursor/icml-main-agents-bootstrap`` so cron can inject
+    chicken-egg recover without reviewing the full tip. Until operators merge
+    it (or the full tip), ``human_next`` / secrets+tip JSON should surface the
+    concrete bootstrap PR URL + ``gh`` copy-paste — Tick 341 only documented
+    the branch in HUMAN_UNBLOCK, so cron logs still led with tip #337 alone.
+    """
+    root = repo_root or _REPO_ROOT
+    head = (branch or ICML_AGENTS_BOOTSTRAP_BRANCH).strip()
+    if not head:
+        return None
+    rows = _gh_pr_list_for_head(head, repo_root=root)
+    return rows[0] if rows else None
+
+
+def _merge_agents_bootstrap_human_next(pr: dict | None = None) -> str:
+    """Tick 342: interim AGENTS bootstrap merge path (easier than full tip)."""
+    if pr is None:
+        pr = resolve_icml_agents_bootstrap_pr()
+    if not pr:
+        return (
+            "Optional interim: merge main-only AGENTS chicken-egg bootstrap "
+            f"branch `{ICML_AGENTS_BOOTSTRAP_BRANCH}` when open (Tick 341–342; "
+            "1-file PR — not a tip PR). See `docs/ICML_HUMAN_UNBLOCK.md`."
+        )
+    merge_note = _tip_pr_mergeability_note(pr)
+    cmds = _tip_pr_merge_commands(pr)
+    paste = f" Copy-paste: `{' && '.join(cmds)}`." if cmds else ""
+    return (
+        "Optional interim (easier than full tip): merge main-only AGENTS "
+        "chicken-egg bootstrap PR "
+        f"#{pr['number']} {pr['url']}{merge_note} "
+        f"(branch `{pr.get('head_ref') or ICML_AGENTS_BOOTSTRAP_BRANCH}`; "
+        "Tick 341–342; 1-file — **not** a tip PR; does not replace merging the "
+        f"tip).{paste} Agents: tip anti-churn tip PR is unchanged — still "
+        "commit/`open_git_pr` on `tip_pr_commit_branch` only."
+    )
+
+
 def _tip_pr_mergeability_note(pr: dict) -> str:
     """Tick 335: short mergeability hint for human_next (MERGEABLE/CLEAN etc.)."""
     mergeable = str(pr.get("mergeable") or "").strip().upper()
@@ -1877,9 +1926,14 @@ def collect_icml_secrets_status() -> dict:
         )
     main_has_tip = main_has_icml_tip_files()
     tip_pr = None if main_has_tip else resolve_icml_tip_pr()
+    # Tick 342: surface interim AGENTS bootstrap PR when main still lacks tip.
+    bootstrap_pr = None if main_has_tip else resolve_icml_agents_bootstrap_pr()
     human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
     human_next: list[str] = []
     if not main_has_tip:
+        # Bootstrap first (1-file, easier) then full tip merge.
+        if bootstrap_pr is not None:
+            human_next.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
         human_next.append(_merge_tip_to_main_human_next(tip_pr))
     human_next.extend(
         [
@@ -1889,12 +1943,13 @@ def collect_icml_secrets_status() -> dict:
             "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
             "Next cron (or now): `bash scripts/icml_cron_entry.sh` "
-            "(Tick 271–340 — recovers tip incl. cursor/bc-* lineage; auto-live "
+            "(Tick 271–342 — recovers tip incl. cursor/bc-* lineage; auto-live "
             "only when fetch_diamond_ok; blocked paths print full human_next + "
             "concrete tip PR URL + Tick 335 mergeability + Tick 336 gh "
             "copy-paste merge commands + Tick 337–339 tip PR anti-churn "
             "(tip_pr_commit_branch; cron + tip recover --apply auto-checkout) + "
-            "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json); "
+            "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json) + "
+            "Tick 342 AGENTS bootstrap PR in human_next/JSON; "
             "Tick 333 same-SHA "
             "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
             "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
@@ -1907,7 +1962,7 @@ def collect_icml_secrets_status() -> dict:
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340: secrets-first live gate; Portal Save "
+            "Tick 268/273/277/289/292/328/329/330/331/332/333/334/335/336/337/338/339/340/341/342: secrets-first live gate; Portal Save "
             "optional; cron auto-live requires fetch_diamond_ok (NEBIUS + HF/CSV; "
             "ANTHROPIC only when meta provider is anthropic); "
             "human-facing cron/gate Next lines use "
@@ -1929,7 +1984,9 @@ def collect_icml_secrets_status() -> dict:
             "Tick 339 tip recover --apply also auto-checkouts tip_pr_commit_branch "
             "(boot_recover + recover_tip; closes chicken-egg-only path); "
             "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json; "
-            "MCP defaults to greenfield boot branch when branch= omitted)"
+            "MCP defaults to greenfield boot branch when branch= omitted); "
+            "Tick 342 human_next/JSON surface AGENTS bootstrap PR "
+            f"(`{ICML_AGENTS_BOOTSTRAP_BRANCH}`) when open"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -1972,6 +2029,16 @@ def collect_icml_secrets_status() -> dict:
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "open_git_pr_branch": tip_commit_branch,
         "open_git_pr_never_omit_branch": tip_commit_branch is not None,
+        # Tick 342: interim AGENTS bootstrap PR (null when merged / main has tip).
+        "agents_bootstrap_branch": ICML_AGENTS_BOOTSTRAP_BRANCH,
+        "agents_bootstrap_pr_url": (bootstrap_pr or {}).get("url"),
+        "agents_bootstrap_pr_number": (bootstrap_pr or {}).get("number"),
+        "agents_bootstrap_pr_is_draft": (bootstrap_pr or {}).get("is_draft"),
+        "agents_bootstrap_pr_mergeable": (bootstrap_pr or {}).get("mergeable"),
+        "agents_bootstrap_pr_merge_state_status": (bootstrap_pr or {}).get(
+            "merge_state_status"
+        ),
+        "agents_bootstrap_merge_commands": _tip_pr_merge_commands(bootstrap_pr),
         "blockers": blockers,
         "human_next": human_next,
     }
@@ -2034,6 +2101,9 @@ def live_pipeline_next_steps(
         main_has_icml_tip = main_has_icml_tip_files()
     if main_has_icml_tip is False:
         tip_pr = resolve_icml_tip_pr(tip_ref=tip_ref)
+        bootstrap_pr = resolve_icml_agents_bootstrap_pr()
+        if bootstrap_pr is not None:
+            steps.append(_merge_agents_bootstrap_human_next(bootstrap_pr))
         steps.append(_merge_tip_to_main_human_next(tip_pr))
     if tip_ok is False:
         ref = tip_ref or "origin/cursor/icml-epistemic-results-<tip>"
@@ -2290,11 +2360,14 @@ def collect_icml_tip_status(
     main_has_tip = main_has_icml_tip_files(repo_root=root)
     tip_pr = None if main_has_tip else resolve_icml_tip_pr(tip_ref=tip_ref, repo_root=root)
     tip_commit_branch = prefer_tip_pr_commit_branch(tip_pr)
+    bootstrap_pr = (
+        None if main_has_tip else resolve_icml_agents_bootstrap_pr(repo_root=root)
+    )
 
     return {
         "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "tick_note": (
-            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340: tip lineage guard — cron often boots from "
+            "Tick 269–270/328/330/331/332/333/334/335/336/337/338/339/340/342: tip lineage guard — cron often boots from "
             "main; refuse --live on stale trees; recover via "
             "scripts/icml_recover_tip.py or scripts/icml_boot_recover.sh; "
             "Tick 328 reports main_has_icml_tip (merge tip→main dual unblock); "
@@ -2309,7 +2382,8 @@ def collect_icml_tip_status(
             "Tick 338 cron auto-checkout tip_pr_commit_branch after status write; "
             "Tick 339 tip recover --apply also auto-checkouts tip_pr_commit_branch "
             "(boot_recover + recover_tip); "
-            "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json)"
+            "Tick 340 open_git_pr never-omit-branch (docs/icml_open_git_pr.json); "
+            "Tick 342 agents_bootstrap_pr_* fields when AGENTS bootstrap PR is open"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,
@@ -2336,6 +2410,16 @@ def collect_icml_tip_status(
         "tip_pr_anti_churn": tip_commit_branch is not None,
         "open_git_pr_branch": tip_commit_branch,
         "open_git_pr_never_omit_branch": tip_commit_branch is not None,
+        # Tick 342: interim AGENTS bootstrap PR (null when merged / main has tip).
+        "agents_bootstrap_branch": ICML_AGENTS_BOOTSTRAP_BRANCH,
+        "agents_bootstrap_pr_url": (bootstrap_pr or {}).get("url"),
+        "agents_bootstrap_pr_number": (bootstrap_pr or {}).get("number"),
+        "agents_bootstrap_pr_is_draft": (bootstrap_pr or {}).get("is_draft"),
+        "agents_bootstrap_pr_mergeable": (bootstrap_pr or {}).get("mergeable"),
+        "agents_bootstrap_pr_merge_state_status": (bootstrap_pr or {}).get(
+            "merge_state_status"
+        ),
+        "agents_bootstrap_merge_commands": _tip_pr_merge_commands(bootstrap_pr),
         "blockers": blockers,
         "recover_command": (
             "python3 scripts/icml_recover_tip.py --apply "

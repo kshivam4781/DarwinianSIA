@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T02:30Z — Tick 342 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tick 341 opened the 1-file AGENTS bootstrap PR #338, but cron `human_next` / secrets JSON still led with tip #337 alone — operators never saw the easier interim merge path in machine-readable status. Highest leverage without paid spend: **surface bootstrap PR in human_next + secrets/tip JSON**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**AGENTS bootstrap PR in human_next (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 341 (`f49c`); confirmed secrets absent; bootstrap PR #338 still OPEN/MERGEABLE
+2. `resolve_icml_agents_bootstrap_pr` + `_merge_agents_bootstrap_human_next`; secrets/tip JSON `agents_bootstrap_pr_*` / `agents_bootstrap_merge_commands`; human_next + pipeline Next lead with interim bootstrap when open
+3. HUMAN_UNBLOCK / AGENTS / Section 12 / READY checklist + lock tests; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr branch=cursor/icml-epistemic-results-f49c`)
+
+### Metrics delta
+| Metric | Before (Tick 341) | After (Tick 342) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Bootstrap PR visible in cron human_next/JSON | docs-only (HUMAN_UNBLOCK) | **URL + gh copy-paste first in human_next** |
+| Tip PR anti-churn / open_git_pr never-omit | green | unchanged (tip still #337 / `f49c`) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) copy-paste bootstrap `gh pr ready 338 --repo kshivam4781/DarwinianSIA && gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge` **and/or** tip `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T00:25Z — Tick 341 (automation cron)
 
 ### Status snapshot
