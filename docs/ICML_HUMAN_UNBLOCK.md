@@ -63,6 +63,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 350:** **`docs/icml_open_git_pr_call.json`** — atomic MCP call payload with exact `{branch, title, description}` so agents pass all three verbatim without hunting inside the large hint JSON. Cron prints the call-file path; file is ephemeral (Tick 286 set).
 
+**Tick 351:** **anti-churn UNKNOWN/null mergeable** — `prefer_tip_pr_commit_branch` returns `head_ref` unless CONFLICTING/DIRTY (GitHub often returns null/`UNKNOWN` while computing). Cron + checkout fall back to `tip_pr_head_ref` when `tip_pr_commit_branch` is empty so greenfield boots still land on tip PR #337 (`f49c`) instead of opening a new tip PR.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

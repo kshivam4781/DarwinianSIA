@@ -1897,11 +1897,11 @@ def _tip_pr_title_edit_human_next(
 
 
 def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
-    """Tick 337–340: MERGEABLE tip PR head_ref for commits (anti-churn).
+    """Tick 337–340/351: tip PR head_ref for commits (anti-churn).
 
     Cron boots a greenfield ``cursor/…`` branch every tick. Opening a *new*
     tip PR supersedes the MERGEABLE one and defeats tip→main. When the tip PR
-    is MERGEABLE, agents must checkout/push this ``head_ref`` and pass it to
+    is usable, agents must checkout/push this ``head_ref`` and pass it to
     ``open_git_pr(branch=…)`` so the existing PR updates instead.
 
     Tick 338: ``icml_cron_entry.sh`` auto-checkouts this branch after writing
@@ -1913,6 +1913,11 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
     is omitted — even after anti-churn checkout/push onto tip_pr_commit_branch.
     Agents must **never omit** ``branch=<tip_pr_commit_branch>``; see
     ``docs/icml_open_git_pr.json``.
+    Tick 351: accept UNKNOWN/null/empty ``mergeable`` (GitHub often returns
+    null while computing). Requiring exact ``MERGEABLE`` skipped anti-churn on
+    greenfield boots — tip status wrote ``tip_pr_commit_branch=null`` while
+    secrets/open_git_pr still had the head — and agents stayed on the boot
+    branch / opened a new tip PR. Still refuse CONFLICTING/DIRTY.
     """
     if pr is None:
         pr = resolve_icml_tip_pr()
@@ -1925,9 +1930,8 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
         return None
     if mergeable == "CONFLICTING" or state in {"DIRTY"}:
         return None
-    if mergeable == "MERGEABLE":
-        return head
-    return None
+    # MERGEABLE, UNKNOWN, null/empty, or other non-conflicting states.
+    return head
 
 
 _PR_TITLE_TICK_RE = re.compile(r"\bTick\s+(\d+)\b", re.IGNORECASE)

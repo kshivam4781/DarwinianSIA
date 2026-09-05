@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T20:18Z — Tick 351 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-8c85`; cron printed `tip_pr_anti_churn_checkout=skip`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). This tick’s greenfield boot left HEAD on `8c85` after tip recover because `prefer_tip_pr_commit_branch` required exact `MERGEABLE` — GitHub null/`UNKNOWN` mergeable nulls `tip_pr_commit_branch` and cron skips anti-churn, so agents would `open_git_pr` a **new** tip PR. Highest leverage without paid spend: **accept UNKNOWN/null mergeable + tip_pr_head_ref fallback**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Anti-churn UNKNOWN/null mergeable (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 350 (`f49c`); confirmed secrets absent; observed anti-churn skip on greenfield `8c85`
+2. `prefer_tip_pr_commit_branch` returns `head_ref` unless CONFLICTING/DIRTY; cron + `icml_checkout_tip_pr_branch.sh` fall back to `tip_pr_head_ref`; AGENTS / HUMAN_UNBLOCK / Section 12
+3. Lock tests for UNKNOWN/null + Tick 351 markers; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 350) | After (Tick 351) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Anti-churn on UNKNOWN/null mergeable | skip (`tip_pr_commit_branch` null) | **checkout tip head** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T18:25Z — Tick 350 (automation cron)
 
 ### Status snapshot

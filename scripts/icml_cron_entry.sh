@@ -214,19 +214,29 @@ print(f"budget_ledger={ledger_path} created={ledger_created}")
 PY
 fi
 
-# --- Tip PR anti-churn auto-checkout (Tick 338) --------------------------------
+# --- Tip PR anti-churn auto-checkout (Tick 338 / 351) ---------------------------
 # Tick 337 added prefer_tip_pr_commit_branch + a manual checkout script, but
 # cron still left HEAD on the greenfield boot branch after tip recover
 # (boot_recover --apply = git reset --hard tip SHA; branch name unchanged).
 # Agents then open_git_pr on the greenfield name → new tip PR every ~2h.
 # Auto-checkout here so the rest of the tick (and open_git_pr) land on the
-# MERGEABLE tip PR head.
+# tip PR head.
+# Tick 351: fall back to tip_pr_head_ref when tip_pr_commit_branch is empty
+# but head_ref is set and mergeable is not CONFLICTING (GitHub UNKNOWN/null
+# mergeable used to null tip_pr_commit_branch and skip checkout).
 if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]] && [[ -f docs/icml_tip_status.json ]]; then
   _anti_branch="$(python3 -c "
 import json
 from pathlib import Path
 d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
-print(d.get('tip_pr_commit_branch') or '')
+branch = d.get('tip_pr_commit_branch') or ''
+if not branch:
+    mergeable = str(d.get('tip_pr_mergeable') or '').strip().upper()
+    state = str(d.get('tip_pr_merge_state_status') or '').strip().upper()
+    head = (d.get('tip_pr_head_ref') or '').strip()
+    if head and mergeable != 'CONFLICTING' and state != 'DIRTY':
+        branch = head
+print(branch)
 " 2>/dev/null || true)"
   _cur_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
   if [[ -n "${_anti_branch}" ]]; then
@@ -241,12 +251,12 @@ print(d.get('tip_pr_commit_branch') or '')
       fi
     fi
   else
-    echo "tip_pr_anti_churn_checkout=skip (no MERGEABLE tip_pr_commit_branch)"
+    echo "tip_pr_anti_churn_checkout=skip (no usable tip_pr_commit_branch / tip_pr_head_ref)"
   fi
   unset _anti_branch _cur_branch
 fi
 
-# --- Tick 340/344–350: open_git_pr never-omit-branch + title/body/description -----
+# --- Tick 340/344–351: open_git_pr never-omit-branch + title/body/description -----
 # Even after Tick 337–339 checkout onto tip_pr_commit_branch, open_git_pr MCP
 # defaults to the *boot* greenfield branch when `branch` is omitted → new tip PR.
 # Tick 344: also print suggested_open_git_pr_title when tip_pr_title_stale.

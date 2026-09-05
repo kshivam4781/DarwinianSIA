@@ -851,6 +851,36 @@ def test_open_git_pr_description_inline_in_json(tmp_path) -> None:
     assert fresh_written["open_git_pr_pass_description"] is False
 
 
+def test_prefer_tip_pr_commit_branch_unknown_mergeable() -> None:
+    """Tick 351: UNKNOWN/null/empty mergeable still returns tip head_ref."""
+    from icml_env_checks import prefer_tip_pr_commit_branch
+
+    head = "cursor/icml-epistemic-results-f49c"
+    assert prefer_tip_pr_commit_branch(
+        {"head_ref": head, "mergeable": "UNKNOWN", "merge_state_status": "UNSTABLE"}
+    ) == head
+    assert prefer_tip_pr_commit_branch(
+        {"head_ref": head, "mergeable": None, "merge_state_status": None}
+    ) == head
+    assert prefer_tip_pr_commit_branch(
+        {"head_ref": head, "mergeable": "", "merge_state_status": ""}
+    ) == head
+    assert prefer_tip_pr_commit_branch(
+        {
+            "head_ref": head,
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+        }
+    ) == head
+    assert prefer_tip_pr_commit_branch(
+        {
+            "head_ref": head,
+            "mergeable": "CONFLICTING",
+            "merge_state_status": "DIRTY",
+        }
+    ) is None
+
+
 def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
     """Tick 350: write_icml_open_git_pr_hint also writes atomic MCP call JSON."""
     import json
@@ -920,7 +950,7 @@ def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
 
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
-    """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
+    """Tick 335–337/351: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
         _merge_tip_to_main_human_next,
         _tip_pr_merge_commands,
@@ -974,6 +1004,31 @@ def test_tip_pr_mergeability_note_and_merge_next() -> None:
             "merge_state_status": "DIRTY",
         }
     ) is None
+    # Tick 351: UNKNOWN/null/empty mergeable still returns head (anti-churn).
+    assert prefer_tip_pr_commit_branch(
+        {
+            "number": 337,
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "UNKNOWN",
+            "merge_state_status": "UNSTABLE",
+        }
+    ) == "cursor/icml-epistemic-results-f49c"
+    assert prefer_tip_pr_commit_branch(
+        {
+            "number": 337,
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": None,
+            "merge_state_status": None,
+        }
+    ) == "cursor/icml-epistemic-results-f49c"
+    assert prefer_tip_pr_commit_branch(
+        {
+            "number": 337,
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "",
+            "merge_state_status": "",
+        }
+    ) == "cursor/icml-epistemic-results-f49c"
     assert _tip_pr_merge_commands(
         {
             "number": 335,
@@ -2234,6 +2289,29 @@ def test_env_example_and_section4_anthropic_optional() -> None:
             "merge_state_status": "CLEAN",
         }
     ) == "cursor/icml-epistemic-results-f49c"
+    # Tick 351: UNKNOWN/null mergeable anti-churn + cron tip_pr_head_ref fallback.
+    assert prefer_tip_pr_commit_branch(
+        {
+            "head_ref": "cursor/icml-epistemic-results-f49c",
+            "mergeable": "UNKNOWN",
+        }
+    ) == "cursor/icml-epistemic-results-f49c"
+    assert prefer_tip_pr_commit_branch(
+        {"head_ref": "cursor/icml-epistemic-results-f49c", "mergeable": None}
+    ) == "cursor/icml-epistemic-results-f49c"
+    assert "Tick 351" in env_checks
+    assert "UNKNOWN" in env_checks
+    cron_entry351 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 351" in cron_entry351
+    assert "tip_pr_head_ref" in cron_entry351
+    checkout_sh = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "Tick 351" in checkout_sh
+    assert "tip_pr_head_ref" in checkout_sh
+    assert "Tick 351" in unblock
+    assert "ICML tip PR anti-churn UNKNOWN mergeable (Tick 351)" in master
+    assert "Tick 351" in progress
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

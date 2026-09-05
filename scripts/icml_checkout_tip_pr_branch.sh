@@ -45,6 +45,8 @@ fi
 cd "$ROOT"
 
 # Prefer fresh tip/secrets JSON; fall back to resolve via Python.
+# Tick 351: tip_pr_head_ref fallback when tip_pr_commit_branch empty but
+# mergeable is not CONFLICTING (UNKNOWN/null used to skip anti-churn).
 BRANCH=""
 if [[ -f docs/icml_tip_status.json ]]; then
   BRANCH="$(python3 -c "
@@ -52,7 +54,14 @@ import json
 from pathlib import Path
 p = Path('docs/icml_tip_status.json')
 d = json.loads(p.read_text(encoding='utf-8'))
-print(d.get('tip_pr_commit_branch') or '')
+branch = d.get('tip_pr_commit_branch') or ''
+if not branch:
+    mergeable = str(d.get('tip_pr_mergeable') or '').strip().upper()
+    state = str(d.get('tip_pr_merge_state_status') or '').strip().upper()
+    head = (d.get('tip_pr_head_ref') or '').strip()
+    if head and mergeable != 'CONFLICTING' and state != 'DIRTY':
+        branch = head
+print(branch)
 " 2>/dev/null || true)"
 fi
 if [[ -z "${BRANCH}" ]]; then
@@ -67,7 +76,7 @@ print(prefer_tip_pr_commit_branch(pr) or '')
 fi
 
 if [[ -z "${BRANCH}" ]]; then
-  echo "tip_pr_anti_churn: no MERGEABLE tip_pr_commit_branch (main may already have tip, or tip PR CONFLICTING)" >&2
+  echo "tip_pr_anti_churn: no usable tip_pr_commit_branch (main may already have tip, or tip PR CONFLICTING)" >&2
   exit 2
 fi
 
