@@ -57,6 +57,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 347:** **`tip_pr_body_stale` independent of title** — Tick 346 gated `--body-file` on `tip_pr_title_stale` only, so a title-only `gh pr edit` dropped the body paste while GitHub body stayed Tick 336. Now `gh pr list` fetches `body`; `parse_tick_from_pr_body` / `tip_pr_body_stale` drive body-file independently (body-only paste when title is already current).
 
+**Tick 348:** **open_git_pr `description=` when body stale** — Tick 344 told agents to pass `title=` but not `description=`. When `tip_pr_body_stale`, `docs/icml_open_git_pr.json` now exposes `open_git_pr_pass_description` / `open_git_pr_description_file`; agents must pass `description=` from `docs/icml_tip_pr_body.md` (symmetric with `title=`). MCP may still leave GitHub body frozen on existing PRs — human `gh pr edit --body-file` remains the refresh path.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

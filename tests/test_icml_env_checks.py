@@ -740,6 +740,54 @@ def test_tip_pr_body_stale_independent_of_title() -> None:
     assert "gh pr edit 337" in line
 
 
+def test_open_git_pr_pass_description_when_body_stale() -> None:
+    """Tick 348: tip_pr_body_stale → open_git_pr_pass_description + description file."""
+    from icml_env_checks import (
+        ICML_TIP_PR_BODY_RELPATH,
+        build_icml_open_git_pr_hint,
+        suggested_open_git_pr_title,
+    )
+
+    title = suggested_open_git_pr_title(local_tick=348, fetch_diamond_ok=False)
+    stale_body = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: frozen body\n",
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    hint = build_icml_open_git_pr_hint(
+        stale_body, local_tick=348, fetch_diamond_ok=False
+    )
+    assert hint is not None
+    assert hint["tip_pr_body_stale"] is True
+    assert hint["open_git_pr_pass_description"] is True
+    assert hint["open_git_pr_description_file"] == ICML_TIP_PR_BODY_RELPATH
+    assert "description=" in hint["warning"]
+    assert ICML_TIP_PR_BODY_RELPATH in hint["warning"]
+    assert "Tick 348" in hint["tick_note"]
+    # Fresh body → do not require description= pass flag.
+    fresh = build_icml_open_git_pr_hint(
+        {
+            **stale_body,
+            "title": title,
+            "body": (
+                f"## Summary\n- Tick 348: secrets-first body\n"
+                f"- PRIMARY blocker: NEBIUS\n"
+            ),
+        },
+        local_tick=348,
+        fetch_diamond_ok=False,
+    )
+    assert fresh is not None
+    assert fresh["tip_pr_body_stale"] is False
+    assert fresh["open_git_pr_pass_description"] is False
+    assert fresh.get("open_git_pr_description_file") is None
+
+
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
@@ -2016,6 +2064,17 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 347" in unblock
     assert "ICML tip_pr_body_stale independent of title (Tick 347)" in master
     assert "Tick 347" in progress
+    # Tick 348: open_git_pr also pass description= from tip_pr_body.md when body_stale.
+    assert "open_git_pr_pass_description" in env_checks
+    assert "open_git_pr_description_file" in env_checks
+    assert "Tick 348" in env_checks
+    assert "description=" in env_checks
+    assert "Tick 348" in unblock
+    assert "ICML open_git_pr pass description (Tick 348)" in master
+    assert "Tick 348" in progress
+    cron_entry348 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 348" in cron_entry348
+    assert "description=" in cron_entry348
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

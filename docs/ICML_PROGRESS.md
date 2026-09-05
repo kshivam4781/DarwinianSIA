@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T14:15Z — Tick 348 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Tick 344–347 covered title freshness + body-file + independent body staleness, but agents still only passed `title=` / `branch=` on `open_git_pr` — not secrets-first `description=` from `docs/icml_tip_pr_body.md`. Highest leverage without paid spend: **wire `open_git_pr_pass_description` + cron/agent call-shape for `description=`** (symmetric with title=). Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**open_git_pr pass description= when tip_pr_body_stale (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 347 (`f49c`); confirmed secrets absent; tip PR title+body still Tick 336
+2. `open_git_pr_pass_description` / `open_git_pr_description_file` on open_git_pr/tip/secrets JSON; cron prints Tick 348 description= hint; AGENTS / HUMAN_UNBLOCK / anti-churn note
+3. Lock test + Section 12 / READY checklist; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr branch=cursor/icml-epistemic-results-f49c` + secrets-first title + description= from tip_pr_body.md)
+
+### Metrics delta
+| Metric | Before (Tick 347) | After (Tick 348) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| open_git_pr body call-shape | title= + branch= only | **+ description= from tip_pr_body.md when body_stale** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T12:20Z — Tick 347 (automation cron)
 
 ### Status snapshot
