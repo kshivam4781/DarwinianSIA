@@ -61,6 +61,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 349:** **`open_git_pr_description` inline in JSON** — Tick 348 wrote only a file pointer and **dropped** the body string from `docs/icml_open_git_pr.json`, so agents skipped the extra read and never passed `description=`. `write_icml_open_git_pr_hint` now keeps `open_git_pr_description` inline (md file still written for `gh --body-file`). Agents pass `description=` from the JSON field when `tip_pr_body_stale`.
 
+**Tick 350:** **`docs/icml_open_git_pr_call.json`** — atomic MCP call payload with exact `{branch, title, description}` so agents pass all three verbatim without hunting inside the large hint JSON. Cron prints the call-file path; file is ephemeral (Tick 286 set).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

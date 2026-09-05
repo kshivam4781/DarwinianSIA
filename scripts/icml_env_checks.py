@@ -1078,6 +1078,7 @@ EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
         "docs/icml_secrets_status.json",
         "docs/icml_tip_status.json",
         "docs/icml_open_git_pr.json",
+        "docs/icml_open_git_pr_call.json",
         "docs/icml_tip_pr_body.md",
     }
 )
@@ -1738,6 +1739,9 @@ def _tip_pr_merge_commands(pr: dict | None) -> list[str]:
 
 
 ICML_TIP_PR_BODY_RELPATH = "docs/icml_tip_pr_body.md"
+# Tick 350: minimal MCP args file (branch/title/description only) — agents load
+# this instead of hunting fields inside the large open_git_pr hint JSON.
+ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
 
 
 def suggested_open_git_pr_body(
@@ -1767,6 +1771,10 @@ def suggested_open_git_pr_body(
     ``open_git_pr_description`` in ``docs/icml_open_git_pr.json`` (Tick 348 only
     kept a file pointer and dropped the string from JSON — agents skipped the
     extra read and never passed ``description=``).
+
+    Tick 350: also write ``docs/icml_open_git_pr_call.json`` with the exact MCP
+    args ``{branch, title, description}`` so agents pass all three verbatim
+    without hunting fields in the large hint JSON.
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -1792,7 +1800,9 @@ def suggested_open_git_pr_body(
         f"Tick 345 title finding; Tick 346 body confirmation; Tick 347 "
         f"independent ``tip_pr_body_stale``; Tick 348–349 pass "
         f"``description=`` from `open_git_pr_description` in "
-        f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`). "
+        f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
+        f"Tick 350: prefer verbatim args from "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -1814,6 +1824,8 @@ def suggested_open_git_pr_body(
         f"test_open_git_pr_pass_description_when_body_stale`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_open_git_pr_description_inline_in_json`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_open_git_pr_call_json_atomic_mcp_args`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2061,7 +2073,11 @@ def build_icml_open_git_pr_hint(
             "title=; MCP may still leave GitHub body frozen on existing PRs). "
             "Tick 349: ``docs/icml_open_git_pr.json`` keeps the body **inline** "
             "as ``open_git_pr_description`` (Tick 348 dropped it from JSON and "
-            "left only a file pointer — agents skipped the read)."
+            "left only a file pointer — agents skipped the read). "
+            "Tick 350: also write ``docs/icml_open_git_pr_call.json`` with the "
+            "exact MCP args ``{branch, title, description}`` — agents pass "
+            "those three fields verbatim (avoids hunting inside the large "
+            "hint JSON)."
         ),
         "open_git_pr_branch": branch,
         "tip_pr_commit_branch": branch,
@@ -2082,6 +2098,7 @@ def build_icml_open_git_pr_hint(
         "open_git_pr_pass_description": bool(body_stale),
         "open_git_pr_description_file": body_file,
         "open_git_pr_description": suggested_body,
+        "open_git_pr_call_file": ICML_OPEN_GIT_PR_CALL_RELPATH,
         "tip_pr_title_edit_commands": title_edit_cmds,
         "never_omit_branch": True,
         "warning": (
@@ -2093,6 +2110,8 @@ def build_icml_open_git_pr_hint(
             "`open_git_pr_description` in docs/icml_open_git_pr.json (or "
             f"`{ICML_TIP_PR_BODY_RELPATH}`) — MCP may still leave GitHub body "
             "frozen on existing PRs; still required call shape. "
+            f"Tick 350: prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
+            "(branch/title/description verbatim). "
             "Tick 345–347: MCP may leave GitHub title/body unchanged — run "
             "`tip_pr_title_edit_commands` (`gh pr edit --title "
             f"[--body-file {ICML_TIP_PR_BODY_RELPATH}]`) to refresh; body "
@@ -2109,9 +2128,10 @@ def write_icml_open_git_pr_hint(
     local_tick: int | None = None,
     fetch_diamond_ok: bool | None = None,
 ) -> dict | None:
-    """Write ``docs/icml_open_git_pr.json`` (+ tip PR body md; Tick 340/344–349)."""
+    """Write ``docs/icml_open_git_pr.json`` (+ call JSON + tip PR body md; Tick 340/344–350)."""
     root = repo_root or _REPO_ROOT
     out = path or (root / "docs" / "icml_open_git_pr.json")
+    call_path = root / ICML_OPEN_GIT_PR_CALL_RELPATH
     body_path = root / ICML_TIP_PR_BODY_RELPATH
     hint = build_icml_open_git_pr_hint(
         pr,
@@ -2120,16 +2140,12 @@ def write_icml_open_git_pr_hint(
         fetch_diamond_ok=fetch_diamond_ok,
     )
     if hint is None:
-        if out.is_file():
-            try:
-                out.unlink()
-            except OSError:
-                pass
-        if body_path.is_file():
-            try:
-                body_path.unlink()
-            except OSError:
-                pass
+        for stale in (out, call_path, body_path):
+            if stale.is_file():
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
         return None
     body_text = hint.get("suggested_open_git_pr_body") or hint.get(
         "open_git_pr_description"
@@ -2156,11 +2172,43 @@ def write_icml_open_git_pr_hint(
                 body_path.unlink()
             except OSError:
                 pass
+    # Tick 350: atomic MCP call payload — branch/title/description only.
+    branch = hint_for_json.get("open_git_pr_branch") or hint_for_json.get(
+        "tip_pr_commit_branch"
+    )
+    title = hint_for_json.get("suggested_open_git_pr_title")
+    desc = hint_for_json.get("open_git_pr_description")
+    if not isinstance(desc, str) or not desc.strip():
+        tick = hint_for_json.get("local_tick") or 0
+        desc = (
+            f"ICML Tick {tick}: tip PR update on `{branch}` "
+            "(see docs/ICML_PROGRESS.md). STATUS remains IN_PROGRESS."
+        )
+    if branch and title:
+        call_payload = {
+            "updated_at": hint_for_json.get("updated_at"),
+            "local_tick": hint_for_json.get("local_tick"),
+            "tip_pr_number": hint_for_json.get("tip_pr_number"),
+            "tip_pr_url": hint_for_json.get("tip_pr_url"),
+            "note": (
+                "Tick 350: pass these three fields verbatim to open_git_pr MCP "
+                "(branch + title + description). Do not omit any. Prefer this "
+                "file over hunting fields in docs/icml_open_git_pr.json."
+            ),
+            "branch": branch,
+            "title": title,
+            "description": desc,
+        }
+        call_path.parent.mkdir(parents=True, exist_ok=True)
+        call_path.write_text(
+            json.dumps(call_payload, indent=2) + "\n", encoding="utf-8"
+        )
+        hint_for_json["open_git_pr_call_file"] = ICML_OPEN_GIT_PR_CALL_RELPATH
     return hint_for_json
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
-    """Tick 337–349: push onto tip_pr_commit_branch; never omit open_git_pr branch=/title=/description=."""
+    """Tick 337–350: push onto tip_pr_commit_branch; never omit open_git_pr branch=/title=/description=."""
     branch = prefer_tip_pr_commit_branch(pr)
     if not branch:
         return ""
@@ -2179,7 +2227,9 @@ def _tip_pr_anti_churn_note(pr: dict) -> str:
         "secrets-first title when fetch_diamond_ok is false; Tick 348–349: also "
         "pass description= from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` (or `{ICML_TIP_PR_BODY_RELPATH}`) when "
-        "tip_pr_body_stale; Tick 345–347: if GitHub title/body stays stale, "
+        f"tip_pr_body_stale; Tick 350: prefer verbatim "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}` (branch/title/description); "
+        "Tick 345–347: if GitHub title/body stays stale, "
         "copy-paste `tip_pr_title_edit_commands` "
         f"(`gh pr edit --title [--body-file {ICML_TIP_PR_BODY_RELPATH}]`) — "
         "open_git_pr MCP does not rewrite title or body)."
@@ -2367,6 +2417,8 @@ def collect_icml_secrets_status() -> dict:
         "Tick 348–349 open_git_pr also pass description= from "
         "`open_git_pr_description` in docs/icml_open_git_pr.json "
         f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
+        f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
+        "(branch/title/description verbatim); "
         "Tick 333 same-SHA "
         "sibling tip PR fallback; Tick 334 HEAD/local SHA fallback for "
         "unpushed greenfield tip_ref; Tick 332 HUMAN_UNBLOCK chicken-egg "
@@ -2425,7 +2477,9 @@ def collect_icml_secrets_status() -> dict:
             "(gh fetches body; body-only paste after title-only edit); "
             "Tick 348–349 open_git_pr also pass description= from "
             "`open_git_pr_description` in docs/icml_open_git_pr.json "
-            f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale"
+            f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
+            f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
+            "(branch/title/description verbatim)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -2884,7 +2938,9 @@ def collect_icml_tip_status(
             "Tick 347 tip_pr_body_stale independent of tip_pr_title_stale; "
             "Tick 348–349 open_git_pr also pass description= from "
             "`open_git_pr_description` in docs/icml_open_git_pr.json "
-            f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale"
+            f"(or `{ICML_TIP_PR_BODY_RELPATH}`) when tip_pr_body_stale; "
+            f"Tick 350 prefer `{ICML_OPEN_GIT_PR_CALL_RELPATH}` "
+            "(branch/title/description verbatim)"
         ),
         "local_tick": local_tick,
         "remote_tip_tick": remote_tick,

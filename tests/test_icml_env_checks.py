@@ -851,6 +851,74 @@ def test_open_git_pr_description_inline_in_json(tmp_path) -> None:
     assert fresh_written["open_git_pr_pass_description"] is False
 
 
+def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
+    """Tick 350: write_icml_open_git_pr_hint also writes atomic MCP call JSON."""
+    import json
+
+    from icml_env_checks import (
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+        write_icml_open_git_pr_hint,
+    )
+
+    stale = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: frozen body\n",
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    (tmp_path / "docs").mkdir()
+    out = tmp_path / "docs" / "icml_open_git_pr.json"
+    written = write_icml_open_git_pr_hint(
+        path=out,
+        pr=stale,
+        repo_root=tmp_path,
+        local_tick=350,
+        fetch_diamond_ok=False,
+    )
+    assert written is not None
+    assert written.get("open_git_pr_call_file") == ICML_OPEN_GIT_PR_CALL_RELPATH
+    call_path = tmp_path / ICML_OPEN_GIT_PR_CALL_RELPATH
+    assert call_path.is_file()
+    call = json.loads(call_path.read_text(encoding="utf-8"))
+    assert call["branch"] == "cursor/icml-epistemic-results-f49c"
+    assert "Tick 350" in call["title"]
+    assert "NEBIUS" in call["title"]
+    assert isinstance(call["description"], str) and "Tick 350" in call["description"]
+    assert "PRIMARY blocker" in call["description"] or "NEBIUS" in call["description"]
+    # Fresh metadata still gets a call JSON (MCP always needs all three args).
+    fresh = write_icml_open_git_pr_hint(
+        path=out,
+        pr={
+            **stale,
+            "title": "ICML Tick 350: add NEBIUS+HF secrets — live G2→G4 still blocked",
+            "body": "## Summary\n- Tick 350: secrets-first body\n",
+        },
+        repo_root=tmp_path,
+        local_tick=350,
+        fetch_diamond_ok=False,
+    )
+    assert fresh is not None
+    assert fresh["tip_pr_title_stale"] is False
+    assert fresh["tip_pr_body_stale"] is False
+    call2 = json.loads(call_path.read_text(encoding="utf-8"))
+    assert call2["branch"] == "cursor/icml-epistemic-results-f49c"
+    assert call2["title"]
+    assert call2["description"]
+    # No tip PR → call file removed.
+    assert (
+        write_icml_open_git_pr_hint(
+            path=out, pr=None, repo_root=tmp_path, local_tick=350
+        )
+        is None
+    )
+    assert not call_path.exists()
+    assert not out.exists()
+
+
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
@@ -2148,6 +2216,17 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     cron_entry349 = cron_entry348
     assert "Tick 349" in cron_entry349
     assert "open_git_pr_description" in cron_entry349
+    # Tick 350: atomic open_git_pr_call.json with branch/title/description.
+    assert "ICML_OPEN_GIT_PR_CALL_RELPATH" in env_checks
+    assert "icml_open_git_pr_call.json" in env_checks
+    assert "Tick 350" in env_checks
+    assert "Tick 350" in unblock
+    assert "ICML open_git_pr call JSON (Tick 350)" in master
+    assert "Tick 350" in progress
+    cron_entry350 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 350" in cron_entry350
+    assert "icml_open_git_pr_call.json" in cron_entry350
+    assert "docs/icml_open_git_pr_call.json" in EPHEMERAL_ICML_RELPATHS
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

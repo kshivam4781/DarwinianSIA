@@ -381,6 +381,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 347 tip_pr_body_stale independent of title — `gh` fetches body; `parse_tick_from_pr_body`; body-only `--body-file` paste when title already current; lock test extended
 - [x] Tick 348 open_git_pr pass description — when `tip_pr_body_stale`, `open_git_pr_pass_description` + `open_git_pr_description_file`; agents pass `description=` from `docs/icml_tip_pr_body.md` (symmetric with title=); cron prints; lock test extended
 - [x] Tick 349 open_git_pr description inline — keep `open_git_pr_description` **inline** in `docs/icml_open_git_pr.json` (Tick 348 dropped body from JSON → agents skipped file read); md file still for `gh --body-file`; lock test extended
+- [x] Tick 350 open_git_pr call JSON — write `docs/icml_open_git_pr_call.json` with exact MCP `{branch, title, description}` verbatim; cron prints path; ephemeral + lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -393,4 +394,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 349 note: Gate labels / secrets stack through Tick 349 open_git_pr_description inline -->
+<!-- Tick 350 note: Gate labels / secrets stack through Tick 350 open_git_pr_call.json -->
