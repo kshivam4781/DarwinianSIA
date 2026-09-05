@@ -32,6 +32,8 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 346:** MCP also leaves the GitHub **body** frozen (PR #337 still showed Tick 336 description through 345) — `tip_pr_title_edit_commands` now include `--body-file docs/icml_tip_pr_body.md` (secrets-first).
 **Tick 347:** `tip_pr_body_stale` is **independent** of `tip_pr_title_stale` (`gh` fetches body; body-only `--body-file` paste when title is already current — Tick 346 gated body refresh on title_stale only).
 **Tick 348:** when `tip_pr_body_stale`, also pass open_git_pr `description=` from `docs/icml_tip_pr_body.md` (symmetric with Tick 344 `title=`; MCP may still leave GitHub body frozen on existing PRs — still required call shape / new-PR safety).
+
+**Tick 349:** prefer `description=` from **`open_git_pr_description`** in `docs/icml_open_git_pr.json` (inline; Tick 348 file-pointer-only was skipped). Fall back to reading `docs/icml_tip_pr_body.md` if the JSON field is absent.
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).

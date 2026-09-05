@@ -59,6 +59,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 348:** **open_git_pr `description=` when body stale** — Tick 344 told agents to pass `title=` but not `description=`. When `tip_pr_body_stale`, `docs/icml_open_git_pr.json` now exposes `open_git_pr_pass_description` / `open_git_pr_description_file`; agents must pass `description=` from `docs/icml_tip_pr_body.md` (symmetric with `title=`). MCP may still leave GitHub body frozen on existing PRs — human `gh pr edit --body-file` remains the refresh path.
 
+**Tick 349:** **`open_git_pr_description` inline in JSON** — Tick 348 wrote only a file pointer and **dropped** the body string from `docs/icml_open_git_pr.json`, so agents skipped the extra read and never passed `description=`. `write_icml_open_git_pr_hint` now keeps `open_git_pr_description` inline (md file still written for `gh --body-file`). Agents pass `description=` from the JSON field when `tip_pr_body_stale`.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

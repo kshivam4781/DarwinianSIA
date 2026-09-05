@@ -254,6 +254,7 @@ fi
 # Tick 346: MCP also freezes GitHub body — edit cmds include --body-file.
 # Tick 347: tip_pr_body_stale independent of title — print body-only paste too.
 # Tick 348: when tip_pr_body_stale, also pass open_git_pr description= from body file.
+# Tick 349: open_git_pr.json keeps open_git_pr_description inline (no extra file read).
 if [[ -f docs/icml_open_git_pr.json ]]; then
   python3 - <<'PY' 2>/dev/null || true
 import json
@@ -261,7 +262,7 @@ from pathlib import Path
 d = json.loads(Path("docs/icml_open_git_pr.json").read_text(encoding="utf-8"))
 b = d.get("open_git_pr_branch") or d.get("tip_pr_commit_branch")
 if b:
-    print(f"=== open_git_pr anti-churn (Tick 340/344–348) ===")
+    print(f"=== open_git_pr anti-churn (Tick 340/344–349) ===")
     print(f"ALWAYS pass branch={b}")
     print("NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)")
     title = d.get("suggested_open_git_pr_title")
@@ -275,12 +276,20 @@ if b:
         if body_stale:
             print("tip_pr_body_stale=true — include --body-file (independent of title; Tick 347)")
             desc_file = d.get("open_git_pr_description_file") or d.get("tip_pr_body_file")
-            if desc_file or d.get("open_git_pr_pass_description"):
-                print(
-                    f"Tick 348: also pass open_git_pr description= from "
-                    f"{desc_file or 'docs/icml_tip_pr_body.md'} "
-                    "(MCP may still leave GitHub body frozen on existing PRs)"
-                )
+            inline = d.get("open_git_pr_description")
+            if d.get("open_git_pr_pass_description") or desc_file or inline:
+                if inline:
+                    print(
+                        "Tick 349: also pass open_git_pr description= from "
+                        "open_git_pr_description in docs/icml_open_git_pr.json "
+                        "(inline; Tick 348 file pointer alone was skipped by agents)"
+                    )
+                else:
+                    print(
+                        f"Tick 348: also pass open_git_pr description= from "
+                        f"{desc_file or 'docs/icml_tip_pr_body.md'} "
+                        "(MCP may still leave GitHub body frozen on existing PRs)"
+                    )
         print("NOTE: open_git_pr MCP does NOT rewrite GitHub title OR body on existing PRs")
         cmds = d.get("tip_pr_title_edit_commands") or []
         if cmds:

@@ -788,6 +788,69 @@ def test_open_git_pr_pass_description_when_body_stale() -> None:
     assert fresh.get("open_git_pr_description_file") is None
 
 
+def test_open_git_pr_description_inline_in_json(tmp_path) -> None:
+    """Tick 349: write_icml_open_git_pr_hint keeps open_git_pr_description inline."""
+    import json
+    from pathlib import Path
+
+    from icml_env_checks import (
+        ICML_TIP_PR_BODY_RELPATH,
+        write_icml_open_git_pr_hint,
+    )
+
+    stale = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: frozen body\n",
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # write_icml_open_git_pr_hint uses repo_root for body path relative to root
+    out = docs / "icml_open_git_pr.json"
+    written = write_icml_open_git_pr_hint(
+        path=out,
+        pr=stale,
+        repo_root=tmp_path,
+        local_tick=349,
+        fetch_diamond_ok=False,
+    )
+    assert written is not None
+    assert written["tip_pr_body_stale"] is True
+    assert written["open_git_pr_pass_description"] is True
+    desc = written.get("open_git_pr_description")
+    assert isinstance(desc, str) and "Tick 349" in desc
+    assert "PRIMARY blocker" in desc or "NEBIUS" in desc
+    # Internal duplicate key must not appear in persisted JSON.
+    assert "suggested_open_git_pr_body" not in written
+    on_disk = json.loads(out.read_text(encoding="utf-8"))
+    assert on_disk.get("open_git_pr_description") == desc
+    assert "suggested_open_git_pr_body" not in on_disk
+    body_md = tmp_path / ICML_TIP_PR_BODY_RELPATH
+    assert body_md.is_file()
+    assert body_md.read_text(encoding="utf-8") == desc
+    # Fresh GitHub body → no inline description required.
+    fresh_written = write_icml_open_git_pr_hint(
+        path=out,
+        pr={
+            **stale,
+            "title": "ICML Tick 349: add NEBIUS+HF secrets — live G2→G4 still blocked",
+            "body": "## Summary\n- Tick 349: secrets-first body\n",
+        },
+        repo_root=tmp_path,
+        local_tick=349,
+        fetch_diamond_ok=False,
+    )
+    assert fresh_written is not None
+    assert fresh_written["tip_pr_body_stale"] is False
+    assert fresh_written.get("open_git_pr_description") is None
+    assert fresh_written["open_git_pr_pass_description"] is False
+
+
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
@@ -2075,6 +2138,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     cron_entry348 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 348" in cron_entry348
     assert "description=" in cron_entry348
+    # Tick 349: open_git_pr_description kept inline in JSON (Tick 348 dropped it).
+    assert "open_git_pr_description" in env_checks
+    assert "Tick 349" in env_checks
+    assert "inline" in env_checks.lower() or "open_git_pr_description" in env_checks
+    assert "Tick 349" in unblock
+    assert "ICML open_git_pr description inline (Tick 349)" in master
+    assert "Tick 349" in progress
+    cron_entry349 = cron_entry348
+    assert "Tick 349" in cron_entry349
+    assert "open_git_pr_description" in cron_entry349
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",
