@@ -246,12 +246,13 @@ print(d.get('tip_pr_commit_branch') or '')
   unset _anti_branch _cur_branch
 fi
 
-# --- Tick 340/344/345: open_git_pr never-omit-branch + title + gh title-edit -----
+# --- Tick 340/344/345/346/347: open_git_pr never-omit-branch + title/body edit -----
 # Even after Tick 337–339 checkout onto tip_pr_commit_branch, open_git_pr MCP
 # defaults to the *boot* greenfield branch when `branch` is omitted → new tip PR.
 # Tick 344: also print suggested_open_git_pr_title when tip_pr_title_stale.
 # Tick 345: MCP does not rewrite GitHub titles — print tip_pr_title_edit_commands.
 # Tick 346: MCP also freezes GitHub body — edit cmds include --body-file.
+# Tick 347: tip_pr_body_stale independent of title — print body-only paste too.
 if [[ -f docs/icml_open_git_pr.json ]]; then
   python3 - <<'PY' 2>/dev/null || true
 import json
@@ -259,22 +260,26 @@ from pathlib import Path
 d = json.loads(Path("docs/icml_open_git_pr.json").read_text(encoding="utf-8"))
 b = d.get("open_git_pr_branch") or d.get("tip_pr_commit_branch")
 if b:
-    print(f"=== open_git_pr anti-churn (Tick 340/344–346) ===")
+    print(f"=== open_git_pr anti-churn (Tick 340/344–347) ===")
     print(f"ALWAYS pass branch={b}")
     print("NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)")
     title = d.get("suggested_open_git_pr_title")
-    stale = d.get("tip_pr_title_stale")
+    title_stale = d.get("tip_pr_title_stale")
+    body_stale = d.get("tip_pr_body_stale")
     if title:
         print(f"suggested title={title}")
-        if stale:
+    if title_stale or body_stale:
+        if title_stale:
             print("tip_pr_title_stale=true — pass title= above (secrets-first when diamond blocked)")
-            print("NOTE: open_git_pr MCP does NOT rewrite GitHub title OR body on existing PRs")
-            cmds = d.get("tip_pr_title_edit_commands") or []
-            if cmds:
-                print("Copy-paste title+body refresh: " + " && ".join(cmds))
-            body = d.get("tip_pr_body_file")
-            if body:
-                print(f"body file → {body}")
+        if body_stale:
+            print("tip_pr_body_stale=true — include --body-file (independent of title; Tick 347)")
+        print("NOTE: open_git_pr MCP does NOT rewrite GitHub title OR body on existing PRs")
+        cmds = d.get("tip_pr_title_edit_commands") or []
+        if cmds:
+            print("Copy-paste title/body refresh: " + " && ".join(cmds))
+        body = d.get("tip_pr_body_file")
+        if body:
+            print(f"body file → {body}")
     print(f"hint → docs/icml_open_git_pr.json")
 PY
 elif [[ -f docs/icml_tip_status.json ]]; then
@@ -285,7 +290,7 @@ d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
 print(d.get('open_git_pr_branch') or d.get('tip_pr_commit_branch') or '')
 " 2>/dev/null || true)"
   if [[ -n "${_og_branch}" ]]; then
-    echo "=== open_git_pr anti-churn (Tick 340/344–346) ==="
+    echo "=== open_git_pr anti-churn (Tick 340/344–347) ==="
     echo "ALWAYS pass branch=${_og_branch}"
     echo "NEVER omit branch= (MCP defaults to greenfield boot branch → new tip PR)"
   fi

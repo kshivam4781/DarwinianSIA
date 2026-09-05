@@ -55,6 +55,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 346:** **tip PR body-file refresh** — `gh pr view 337` still showed a **Tick 336 body** after Ticks 337–345 (`open_git_pr` MCP does not rewrite title *or* body). When stale, `tip_pr_title_edit_commands` now include `--body-file docs/icml_tip_pr_body.md` (secrets-first dual-unblock text). Cron prints the combined title+body paste.
 
+**Tick 347:** **`tip_pr_body_stale` independent of title** — Tick 346 gated `--body-file` on `tip_pr_title_stale` only, so a title-only `gh pr edit` dropped the body paste while GitHub body stayed Tick 336. Now `gh pr list` fetches `body`; `parse_tick_from_pr_body` / `tip_pr_body_stale` drive body-file independently (body-only paste when title is already current).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

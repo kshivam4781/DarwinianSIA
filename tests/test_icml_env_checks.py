@@ -580,12 +580,13 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
 
 
 def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
-    """Tick 344–346: secrets-first title + body-file + tip_pr_title_stale + gh edit."""
+    """Tick 344–347: secrets-first title + body-file + tip_pr_title_stale + gh edit."""
     from icml_env_checks import (
         ICML_TIP_PR_BODY_RELPATH,
         _tip_pr_title_edit_commands,
         _tip_pr_title_edit_human_next,
         build_icml_open_git_pr_hint,
+        parse_tick_from_pr_body,
         parse_tick_from_pr_title,
         suggested_open_git_pr_body,
         suggested_open_git_pr_title,
@@ -593,22 +594,26 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
 
     assert parse_tick_from_pr_title("ICML Tick 336: tip PR gh copy-paste") == 336
     assert parse_tick_from_pr_title("no tick here") is None
-    blocked = suggested_open_git_pr_title(local_tick=346, fetch_diamond_ok=False)
-    assert "346" in blocked
+    assert parse_tick_from_pr_body("## Summary\n- Tick 336: frozen body") == 336
+    assert parse_tick_from_pr_body("") is None
+    blocked = suggested_open_git_pr_title(local_tick=347, fetch_diamond_ok=False)
+    assert "347" in blocked
     assert "NEBIUS" in blocked or "secrets" in blocked.lower()
-    ready = suggested_open_git_pr_title(local_tick=346, fetch_diamond_ok=True)
-    assert "346" in ready
+    ready = suggested_open_git_pr_title(local_tick=347, fetch_diamond_ok=True)
+    assert "347" in ready
     assert "NEBIUS" not in ready
     body = suggested_open_git_pr_body(
-        local_tick=346, fetch_diamond_ok=False, tip_pr_number=337
+        local_tick=347, fetch_diamond_ok=False, tip_pr_number=337
     )
     assert "PRIMARY blocker" in body
     assert "NEBIUS_API_KEY" in body
     assert ICML_TIP_PR_BODY_RELPATH in body or "body-file" in body
+    assert "tip_pr_body_stale" in body or "347" in body
     pr = {
         "number": 337,
         "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
         "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: tip PR human_next / tip+secrets JSON\n",
         "head_ref": "cursor/icml-epistemic-results-f49c",
         "mergeable": "MERGEABLE",
         "merge_state_status": "CLEAN",
@@ -616,61 +621,123 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     }
     hint = build_icml_open_git_pr_hint(
         pr,
-        local_tick=346,
+        local_tick=347,
         fetch_diamond_ok=False,
     )
     assert hint is not None
     assert hint["tip_pr_title_tick"] == 336
+    assert hint["tip_pr_body_tick"] == 336
     assert hint["tip_pr_title_stale"] is True
+    assert hint["tip_pr_body_stale"] is True
     assert hint["suggested_open_git_pr_title"] == blocked
     assert "NEBIUS" in hint["suggested_open_git_pr_title"] or "secrets" in hint[
         "suggested_open_git_pr_title"
     ].lower()
-    # Tick 345–346: gh pr edit --title --body-file when MCP won't rewrite.
+    # Tick 345–347: gh pr edit --title --body-file when MCP won't rewrite.
     cmds = hint.get("tip_pr_title_edit_commands") or []
-    assert cmds, "expected tip_pr_title_edit_commands when title_stale"
+    assert cmds, "expected tip_pr_title_edit_commands when title/body stale"
     assert "gh pr edit 337" in cmds[0]
     assert "--title" in cmds[0]
     assert "--body-file" in cmds[0]
     assert ICML_TIP_PR_BODY_RELPATH in cmds[0]
-    assert "346" in cmds[0]
+    assert "347" in cmds[0]
     assert hint.get("tip_pr_body_file") == ICML_TIP_PR_BODY_RELPATH
     assert _tip_pr_title_edit_commands(
-        pr, blocked, body_file=ICML_TIP_PR_BODY_RELPATH
+        pr, blocked, body_file=ICML_TIP_PR_BODY_RELPATH, include_title=True
     ) == cmds
     line = _tip_pr_title_edit_human_next(
         pr,
         suggested_title=blocked,
         title_stale=True,
         body_file=ICML_TIP_PR_BODY_RELPATH,
+        body_stale=True,
     )
     assert line is not None
     assert "gh pr edit 337" in line
     assert "body" in line.lower()
     assert "does **not** rewrite" in line or "does not rewrite" in line.lower()
+    # Fresh title+body → no edit commands.
     fresh = build_icml_open_git_pr_hint(
         {
             "number": 337,
             "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
             "title": blocked,
+            "body": suggested_open_git_pr_body(
+                local_tick=347, fetch_diamond_ok=False, tip_pr_number=337
+            ),
             "head_ref": "cursor/icml-epistemic-results-f49c",
             "mergeable": "MERGEABLE",
             "merge_state_status": "CLEAN",
             "is_draft": True,
         },
-        local_tick=346,
+        local_tick=347,
         fetch_diamond_ok=False,
     )
     assert fresh is not None
     assert fresh["tip_pr_title_stale"] is False
+    assert fresh["tip_pr_body_stale"] is False
     assert fresh.get("tip_pr_title_edit_commands") == []
     assert fresh.get("tip_pr_body_file") is None
     assert (
         _tip_pr_title_edit_human_next(
-            pr, suggested_title=blocked, title_stale=False
+            pr, suggested_title=blocked, title_stale=False, body_stale=False
         )
         is None
     )
+
+
+def test_tip_pr_body_stale_independent_of_title() -> None:
+    """Tick 347: title-fresh + body-stale still emits --body-file paste."""
+    from icml_env_checks import (
+        ICML_TIP_PR_BODY_RELPATH,
+        _tip_pr_title_edit_commands,
+        _tip_pr_title_edit_human_next,
+        build_icml_open_git_pr_hint,
+        suggested_open_git_pr_title,
+    )
+
+    title = suggested_open_git_pr_title(local_tick=347, fetch_diamond_ok=False)
+    pr = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": title,  # title already refreshed to local tick
+        "body": "## Summary\n- Tick 336: still frozen body\n",
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    hint = build_icml_open_git_pr_hint(
+        pr, local_tick=347, fetch_diamond_ok=False
+    )
+    assert hint is not None
+    assert hint["tip_pr_title_stale"] is False
+    assert hint["tip_pr_body_stale"] is True
+    assert hint["tip_pr_body_tick"] == 336
+    assert hint.get("tip_pr_body_file") == ICML_TIP_PR_BODY_RELPATH
+    cmds = hint.get("tip_pr_title_edit_commands") or []
+    assert cmds
+    assert "--body-file" in cmds[0]
+    assert ICML_TIP_PR_BODY_RELPATH in cmds[0]
+    # Body-only: no --title (title already current).
+    assert "--title" not in cmds[0]
+    assert cmds == _tip_pr_title_edit_commands(
+        pr,
+        title,
+        body_file=ICML_TIP_PR_BODY_RELPATH,
+        include_title=False,
+    )
+    line = _tip_pr_title_edit_human_next(
+        pr,
+        suggested_title=title,
+        title_stale=False,
+        body_file=ICML_TIP_PR_BODY_RELPATH,
+        body_stale=True,
+    )
+    assert line is not None
+    assert "body" in line.lower()
+    assert "title **and** body" not in line
+    assert "gh pr edit 337" in line
 
 
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
@@ -1942,6 +2009,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 346" in progress
     assert "body-file" in cron_entry344 or "tip_pr_body" in cron_entry344
     assert "docs/icml_tip_pr_body.md" in EPHEMERAL_ICML_RELPATHS
+    # Tick 347: tip_pr_body_stale independent of title_stale (body-only paste).
+    assert "tip_pr_body_stale" in env_checks
+    assert "parse_tick_from_pr_body" in env_checks
+    assert "Tick 347" in env_checks
+    assert "Tick 347" in unblock
+    assert "ICML tip_pr_body_stale independent of title (Tick 347)" in master
+    assert "Tick 347" in progress
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",
