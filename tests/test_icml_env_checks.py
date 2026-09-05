@@ -580,23 +580,31 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
 
 
 def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
-    """Tick 344–345: secrets-first title + tip_pr_title_stale + gh title-edit."""
+    """Tick 344–346: secrets-first title + body-file + tip_pr_title_stale + gh edit."""
     from icml_env_checks import (
+        ICML_TIP_PR_BODY_RELPATH,
         _tip_pr_title_edit_commands,
         _tip_pr_title_edit_human_next,
         build_icml_open_git_pr_hint,
         parse_tick_from_pr_title,
+        suggested_open_git_pr_body,
         suggested_open_git_pr_title,
     )
 
     assert parse_tick_from_pr_title("ICML Tick 336: tip PR gh copy-paste") == 336
     assert parse_tick_from_pr_title("no tick here") is None
-    blocked = suggested_open_git_pr_title(local_tick=345, fetch_diamond_ok=False)
-    assert "345" in blocked
+    blocked = suggested_open_git_pr_title(local_tick=346, fetch_diamond_ok=False)
+    assert "346" in blocked
     assert "NEBIUS" in blocked or "secrets" in blocked.lower()
-    ready = suggested_open_git_pr_title(local_tick=345, fetch_diamond_ok=True)
-    assert "345" in ready
+    ready = suggested_open_git_pr_title(local_tick=346, fetch_diamond_ok=True)
+    assert "346" in ready
     assert "NEBIUS" not in ready
+    body = suggested_open_git_pr_body(
+        local_tick=346, fetch_diamond_ok=False, tip_pr_number=337
+    )
+    assert "PRIMARY blocker" in body
+    assert "NEBIUS_API_KEY" in body
+    assert ICML_TIP_PR_BODY_RELPATH in body or "body-file" in body
     pr = {
         "number": 337,
         "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
@@ -608,7 +616,7 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     }
     hint = build_icml_open_git_pr_hint(
         pr,
-        local_tick=345,
+        local_tick=346,
         fetch_diamond_ok=False,
     )
     assert hint is not None
@@ -618,18 +626,27 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     assert "NEBIUS" in hint["suggested_open_git_pr_title"] or "secrets" in hint[
         "suggested_open_git_pr_title"
     ].lower()
-    # Tick 345: gh pr edit --title copy-paste when MCP won't rewrite titles.
+    # Tick 345–346: gh pr edit --title --body-file when MCP won't rewrite.
     cmds = hint.get("tip_pr_title_edit_commands") or []
     assert cmds, "expected tip_pr_title_edit_commands when title_stale"
     assert "gh pr edit 337" in cmds[0]
     assert "--title" in cmds[0]
-    assert "345" in cmds[0]
-    assert _tip_pr_title_edit_commands(pr, blocked) == cmds
+    assert "--body-file" in cmds[0]
+    assert ICML_TIP_PR_BODY_RELPATH in cmds[0]
+    assert "346" in cmds[0]
+    assert hint.get("tip_pr_body_file") == ICML_TIP_PR_BODY_RELPATH
+    assert _tip_pr_title_edit_commands(
+        pr, blocked, body_file=ICML_TIP_PR_BODY_RELPATH
+    ) == cmds
     line = _tip_pr_title_edit_human_next(
-        pr, suggested_title=blocked, title_stale=True
+        pr,
+        suggested_title=blocked,
+        title_stale=True,
+        body_file=ICML_TIP_PR_BODY_RELPATH,
     )
     assert line is not None
     assert "gh pr edit 337" in line
+    assert "body" in line.lower()
     assert "does **not** rewrite" in line or "does not rewrite" in line.lower()
     fresh = build_icml_open_git_pr_hint(
         {
@@ -641,12 +658,13 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
             "merge_state_status": "CLEAN",
             "is_draft": True,
         },
-        local_tick=345,
+        local_tick=346,
         fetch_diamond_ok=False,
     )
     assert fresh is not None
     assert fresh["tip_pr_title_stale"] is False
     assert fresh.get("tip_pr_title_edit_commands") == []
+    assert fresh.get("tip_pr_body_file") is None
     assert (
         _tip_pr_title_edit_human_next(
             pr, suggested_title=blocked, title_stale=False
@@ -1913,6 +1931,17 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML tip PR title edit commands (Tick 345)" in master
     assert "Tick 345" in progress
     assert "tip_pr_title_edit_commands" in cron_entry344 or "gh pr edit" in cron_entry344
+    # Tick 346: MCP also freezes GitHub body — --body-file secrets-first refresh.
+    assert "suggested_open_git_pr_body" in env_checks
+    assert "ICML_TIP_PR_BODY_RELPATH" in env_checks
+    assert "icml_tip_pr_body.md" in env_checks
+    assert "--body-file" in env_checks
+    assert "Tick 346" in env_checks
+    assert "Tick 346" in unblock
+    assert "ICML tip PR body-file refresh (Tick 346)" in master
+    assert "Tick 346" in progress
+    assert "body-file" in cron_entry344 or "tip_pr_body" in cron_entry344
+    assert "docs/icml_tip_pr_body.md" in EPHEMERAL_ICML_RELPATHS
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

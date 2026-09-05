@@ -377,6 +377,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 343 PRIMARY-first human_next — when `fetch_diamond_ok` is false, secrets (+ HF accept) lead `human_next` / pipeline Next; tip/bootstrap merge follow (does not gate live); lock test extended
 - [x] Tick 344 secrets-first open_git_pr title — `suggested_open_git_pr_title` + `tip_pr_title_stale` in `docs/icml_open_git_pr.json`; secrets-first title when diamond blocked; cron prints suggested title; lock test extended
 - [x] Tick 345 tip PR title edit commands — `tip_pr_title_edit_commands` (`gh pr edit --title`) when `tip_pr_title_stale`; open_git_pr MCP does not rewrite GitHub titles on existing PRs; human_next + cron + JSON; lock test extended
+- [x] Tick 346 tip PR body-file refresh — MCP also freezes GitHub body (PR #337 still Tick 336 desc through 345); `suggested_open_git_pr_body` + `docs/icml_tip_pr_body.md`; edit cmds include `--body-file`; lock test extended
 
 ## Gate tracker (Section 21.5)
 
@@ -389,4 +390,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 345 note: Gate labels / secrets stack through Tick 345 tip PR title edit commands -->
+<!-- Tick 346 note: Gate labels / secrets stack through Tick 346 tip PR body-file refresh -->

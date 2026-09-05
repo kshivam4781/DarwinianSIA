@@ -53,6 +53,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 345:** **`tip_pr_title_edit_commands` (`gh pr edit --title`)** — Tick 344 found `open_git_pr` MCP does **not** rewrite GitHub titles on existing tip PRs (title stayed Tick 336 even when agents passed `title=`). When `tip_pr_title_stale`, secrets/tip/`open_git_pr` JSON + cron `human_next` expose copy-paste `gh pr edit <N> --repo kshivam4781/DarwinianSIA --title '…'` (secrets-first title when diamond blocked).
 
+**Tick 346:** **tip PR body-file refresh** — `gh pr view 337` still showed a **Tick 336 body** after Ticks 337–345 (`open_git_pr` MCP does not rewrite title *or* body). When stale, `tip_pr_title_edit_commands` now include `--body-file docs/icml_tip_pr_body.md` (secrets-first dual-unblock text). Cron prints the combined title+body paste.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 
