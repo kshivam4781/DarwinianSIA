@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-05T00:25Z — Tick 341 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto MERGEABLE tip PR #337 head)
+- Also opened: `cursor/icml-main-agents-bootstrap` (main-only AGENTS chicken-egg; **not** a tip PR)
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on secrets + tip→main merge. Tip anti-churn (Ticks 337–340) works, but cron still injects **hackathon-era `AGENTS.md` from `main`** into cloud instructions — agents must rediscover chicken-egg via memory every 2h while tip #337 (400+ commits) stays unmerged. Highest leverage without paid spend: **main-boot AGENTS chicken-egg bootstrap** (1-file PR, easy merge). Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Main-boot AGENTS chicken-egg bootstrap (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 340 (`f49c`); confirmed secrets absent; `main` still lacks ICML tip files
+2. Branch `cursor/icml-main-agents-bootstrap` from `origin/main`: replace hackathon `AGENTS.md` with chicken-egg recover + dual-unblock copy-paste (merge tip #337 + secrets)
+3. Tip docs / Section 12 / lock test note Tick 341; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr branch=cursor/icml-epistemic-results-f49c`); bootstrap uses its own branch (not a tip PR)
+
+### Metrics delta
+| Metric | Before (Tick 340) | After (Tick 341) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Cron `main` AGENTS injects ICML chicken-egg | hackathon-only (no recover) | **bootstrap PR ready to merge** |
+| Tip PR anti-churn / open_git_pr never-omit | green | unchanged (tip still #337 / `f49c`) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked; also needs tip→main merge |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`); (2) merge **bootstrap** `cursor/icml-main-agents-bootstrap` **and/or** copy-paste `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge` (full tip). Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-04T22:20Z — Tick 340 (automation cron)
 
 ### Status snapshot

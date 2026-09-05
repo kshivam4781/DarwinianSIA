@@ -1677,6 +1677,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert hint is not None
     assert hint["open_git_pr_branch"] == "cursor/icml-epistemic-results-f49c"
     assert hint["never_omit_branch"] is True
+    # Tick 341: main-boot AGENTS chicken-egg bootstrap (not a tip PR).
+    assert "Tick 341" in agents
+    assert "icml-main-agents-bootstrap" in agents or "main-agents-bootstrap" in agents
+    assert "Tick 341" in unblock
+    assert "icml-main-agents-bootstrap" in unblock
+    assert "ICML main-boot AGENTS chicken-egg bootstrap (Tick 341)" in master
+    progress = (root / "docs" / "ICML_PROGRESS.md").read_text(encoding="utf-8")
+    assert "Tick 341" in progress
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",

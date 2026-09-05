@@ -24,6 +24,7 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 338:** `icml_cron_entry.sh` **auto-checkouts** `tip_pr_commit_branch` after tip/secrets status write (Tick 337 left this manual; without it, greenfield boot branch names still opened a new tip PR every cron).
 **Tick 339:** `icml_boot_recover.sh --apply` + `icml_recover_tip.py --apply` also auto-checkout `tip_pr_commit_branch` (Tick 338 only covered cron_entry; chicken-egg recover alone still left greenfield branch names).
 **Tick 340:** `open_git_pr` MCP defaults to the greenfield *boot* branch when `branch=` is omitted — **never omit**; pass `branch=<tip_pr_commit_branch>` (see `docs/icml_open_git_pr.json`). Checkout alone is not enough.
+**Tick 341:** `main` still injects hackathon-era `AGENTS.md` into cron cloud instructions. A **minimal main-only bootstrap PR** (`cursor/icml-main-agents-bootstrap`) adds this chicken-egg recover block to `main` without requiring review of the full tip PR first — merge it **or** tip #337. Not a new tip PR (anti-churn tip remains #337 / `f49c`).
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).
