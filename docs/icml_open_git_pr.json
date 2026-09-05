@@ -1,16 +1,19 @@
 {
-  "updated_at": "2026-09-05T08:06:24Z",
-  "tick_note": "Tick 340: open_git_pr MCP defaults to the greenfield *boot* branch when `branch` is omitted \u2014 that opens a NEW tip PR even after Tick 337\u2013339 checkout/push onto tip_pr_commit_branch. Always pass branch=<open_git_pr_branch>; never omit. Tick 344: also pass title=`suggested_open_git_pr_title` when tip_pr_title_stale (stale titles look superseded among 300+ drafts; when fetch_diamond_ok is false the suggested title leads with NEBIUS+HF secrets \u2014 PRIMARY path to READY).",
+  "updated_at": "2026-09-05T08:10:24Z",
+  "tick_note": "Tick 340: open_git_pr MCP defaults to the greenfield *boot* branch when `branch` is omitted \u2014 that opens a NEW tip PR even after Tick 337\u2013339 checkout/push onto tip_pr_commit_branch. Always pass branch=<open_git_pr_branch>; never omit. Tick 344: also pass title=`suggested_open_git_pr_title` when tip_pr_title_stale (stale titles look superseded among 300+ drafts; when fetch_diamond_ok is false the suggested title leads with NEBIUS+HF secrets \u2014 PRIMARY path to READY). Tick 345: open_git_pr MCP does **not** rewrite GitHub titles on existing PRs \u2014 when tip_pr_title_stale, use `tip_pr_title_edit_commands` (`gh pr edit --title`) copy-paste.",
   "open_git_pr_branch": "cursor/icml-epistemic-results-f49c",
   "tip_pr_commit_branch": "cursor/icml-epistemic-results-f49c",
   "tip_pr_number": 337,
   "tip_pr_url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
   "tip_pr_title": "ICML Tick 336: tip PR gh copy-paste merge commands",
   "tip_pr_title_tick": 336,
-  "local_tick": 344,
+  "local_tick": 345,
   "fetch_diamond_ok": false,
   "tip_pr_title_stale": true,
-  "suggested_open_git_pr_title": "ICML Tick 344: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked",
+  "suggested_open_git_pr_title": "ICML Tick 345: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked",
+  "tip_pr_title_edit_commands": [
+    "gh pr edit 337 --repo kshivam4781/DarwinianSIA --title 'ICML Tick 345: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked'"
+  ],
   "never_omit_branch": true,
-  "warning": "NEVER call open_git_pr without branch= \u2014 omit defaults to the greenfield boot branch and opens a new tip PR. Pass branch=`cursor/icml-epistemic-results-f49c`. Tick 344: when tip_pr_title_stale, also pass title=`ICML Tick 344: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked` (secrets-first when diamond blocked)."
+  "warning": "NEVER call open_git_pr without branch= \u2014 omit defaults to the greenfield boot branch and opens a new tip PR. Pass branch=`cursor/icml-epistemic-results-f49c`. Tick 344: when tip_pr_title_stale, also pass title=`ICML Tick 345: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked` (secrets-first when diamond blocked). Tick 345: MCP may leave the GitHub title unchanged \u2014 run `tip_pr_title_edit_commands` (`gh pr edit --title`) to refresh."
 }
