@@ -75,6 +75,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 356:** **boot-file gitignore + discard survive** — Tick 354–355 made `docs/icml_cloud_boot_branch.txt` the durable fallback, but it was listed in `EPHEMERAL_ICML_RELPATHS`, so `discard_ephemeral_icml_dirt` (tip `--apply`) **unlinked** it as untracked. Also not gitignored → risk of committing a boot name onto tip. Now gitignored + excluded from ephemeral discard.
 
+**Tick 357:** **reject short boot poison + checkout persist** — a bare suffix (e.g. `48b0`) written into the boot file poisoned `detect_cloud_boot_branch` ahead of reflog (which still had `cursor/icml-epistemic-results-48b0`). Now only full `cursor/*` ≠ tip names persist/read; invalid files are unlinked. `icml_checkout_tip_pr_branch.sh` also persists the current greenfield boot *before* tip checkout (mid-tick agents often skip cron capture).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

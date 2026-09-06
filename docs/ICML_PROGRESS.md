@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T08:15Z — Tick 357 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-48b0`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Separately, this tick reproduced a boot-file poison: a bare suffix (`48b0`) in `docs/icml_cloud_boot_branch.txt` made `detect_cloud_boot_branch` return nonsense ahead of reflog (which still had `cursor/icml-epistemic-results-48b0`). Mid-tick `icml_checkout_tip_pr_branch.sh` also did not persist the greenfield boot before tip switch when cron capture had not run. Highest leverage without paid spend: **reject short boot poison + checkout-time persist**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**reject short boot poison + checkout persist (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 356 (`f49c`); confirmed secrets absent; boot `48b0` vs tip `f49c`
+2. `_is_valid_cloud_boot_branch_name` (full `cursor/*` ≠ tip); invalid boot files unlinked on read; `icml_checkout_tip_pr_branch.sh` persists before tip checkout; AGENTS / HUMAN_UNBLOCK / Section 12 / paper_artifacts
+3. Lock test `test_reject_short_boot_poison_and_checkout_persists` + Tick 357 markers; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 356) | After (Tick 357) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Short boot-file poison (`48b0`) | accepted by detect | **rejected + unlinked → reflog heal** |
+| Mid-tick tip checkout boot persist | none (cron-only) | **checkout script persists** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T06:15Z — Tick 356 (automation cron)
 
 ### Status snapshot

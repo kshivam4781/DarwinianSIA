@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
@@ -12,6 +12,9 @@
 # also call this so chicken-egg recover alone lands on tip_pr_commit_branch.
 # Tick 340: even after checkout, open_git_pr MUST pass branch=<tip_pr_commit_branch>
 # (MCP defaults to greenfield boot branch when omitted) — see docs/icml_open_git_pr.json.
+# Tick 357: persist current greenfield ``cursor/*`` boot to
+# ``docs/icml_cloud_boot_branch.txt`` *before* switching to tip (agents often
+# call this mid-tick without cron capture; also rejects short poison names).
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh
@@ -83,6 +86,24 @@ fi
 echo "tip_pr_commit_branch=${BRANCH}"
 if [[ "${DRY_RUN}" -eq 1 ]]; then
   exit 0
+fi
+
+# Tick 357: persist greenfield boot BEFORE tip checkout so mid-tick agents
+# (and chicken-egg recover) keep a durable MCP-default warn even when cron
+# capture did not run. Rejects short poison (must be full cursor/* ≠ tip).
+CUR="$(git branch --show-current 2>/dev/null || true)"
+if [[ -n "${CUR}" && "${CUR}" != "${BRANCH}" && "${CUR}" == cursor/* ]]; then
+  python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import persist_cloud_boot_branch
+boot = '''${CUR}'''.strip()
+tip = '''${BRANCH}'''.strip()
+got = persist_cloud_boot_branch(boot, tip_commit_branch=tip)
+if got:
+    print(f'persisted_cloud_boot_branch={got}')
+" 2>/dev/null || true
 fi
 
 git fetch origin "${BRANCH}:refs/remotes/origin/${BRANCH}" 2>/dev/null \

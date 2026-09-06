@@ -1755,20 +1755,42 @@ ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
 _REFLOG_CHECKOUT_RE = re.compile(r"checkout: moving from (\S+) to (\S+)")
 
 
+def _is_valid_cloud_boot_branch_name(
+    boot: str | None,
+    *,
+    tip_commit_branch: str | None = None,
+) -> bool:
+    """Tick 357: boot must be a full ``cursor/*`` ref ≠ tip (reject short poison).
+
+    Agents sometimes write a bare suffix (e.g. ``48b0``) into
+    ``docs/icml_cloud_boot_branch.txt``. That poisoned the detect chain
+    ahead of reflog (which still had ``cursor/icml-epistemic-results-48b0``),
+    so ``open_git_pr`` warn / call JSON recorded a nonsense boot name.
+    """
+    name = (boot or "").strip()
+    if not name or not name.startswith("cursor/"):
+        return False
+    tip = (tip_commit_branch or "").strip() or None
+    if tip and name == tip:
+        return False
+    return True
+
+
 def persist_cloud_boot_branch(
     boot: str | None,
     *,
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 354/356: write gitignored ``docs/icml_cloud_boot_branch.txt`` when boot ≠ tip.
+    """Tick 354/356/357: write gitignored ``docs/icml_cloud_boot_branch.txt`` when boot ≠ tip.
 
-    Returns the persisted boot name, or ``None`` when skipped (empty / equals tip).
+    Returns the persisted boot name, or ``None`` when skipped (empty / equals tip /
+    not a full ``cursor/*`` name — Tick 357).
     """
-    name = (boot or "").strip()
     tip = (tip_commit_branch or "").strip() or None
-    if not name or (tip and name == tip):
+    if not _is_valid_cloud_boot_branch_name(boot, tip_commit_branch=tip):
         return None
+    name = (boot or "").strip()
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     path = root / ICML_CLOUD_BOOT_BRANCH_RELPATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1781,7 +1803,10 @@ def _read_persisted_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 354/356: read gitignored boot file when present and ≠ tip."""
+    """Tick 354/356/357: read gitignored boot file when present, valid, and ≠ tip.
+
+    Tick 357: unlink short/invalid poison so reflog / current-branch can win.
+    """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     path = root / ICML_CLOUD_BOOT_BRANCH_RELPATH
     tip = (tip_commit_branch or "").strip() or None
@@ -1789,7 +1814,11 @@ def _read_persisted_cloud_boot_branch(
         name = path.read_text(encoding="utf-8").strip().splitlines()[0].strip()
     except (OSError, IndexError):
         return None
-    if not name or (tip and name == tip):
+    if not _is_valid_cloud_boot_branch_name(name, tip_commit_branch=tip):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
         return None
     return name
 
@@ -1799,7 +1828,7 @@ def detect_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 352–354: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+    """Tick 352–357: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
 
     Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
     After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
@@ -1814,12 +1843,16 @@ def detect_cloud_boot_branch(
        anti-churn checkout, and preserves it across ``ICML_CRON_REEXEC``).
        Tick 354: **ignore** when env equals ``tip_commit_branch`` (false capture
        after an agent already checked out tip before cron).
+       Tick 357: **ignore** short/non-``cursor/*`` poison names.
     2. Gitignored ``docs/icml_cloud_boot_branch.txt`` (Tick 354 persist;
-       Tick 356: survives discard / tip --apply; never committed)
+       Tick 356: survives discard / tip --apply; never committed;
+       Tick 357: invalid short names are unlinked so reflog can win)
     3. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
     4. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
 
     When a non-tip boot is resolved, persist it to the ephemeral file.
+    Tick 357: ``icml_checkout_tip_pr_branch.sh`` also persists *before* tip
+    checkout so mid-tick agents without cron capture still keep the warn.
     """
     import subprocess
 
@@ -1828,9 +1861,7 @@ def detect_cloud_boot_branch(
 
     def _accept(candidate: str | None) -> str | None:
         name = (candidate or "").strip()
-        if not name:
-            return None
-        if tip and name == tip:
+        if not _is_valid_cloud_boot_branch_name(name, tip_commit_branch=tip):
             return None
         return name
 
@@ -1863,15 +1894,13 @@ def detect_cloud_boot_branch(
         if (
             tip
             and dst == tip
-            and src.startswith("cursor/")
-            and src != tip
+            and _is_valid_cloud_boot_branch_name(src, tip_commit_branch=tip)
         ):
             persist_cloud_boot_branch(src, tip_commit_branch=tip, repo_root=root)
             return src
         if (
             src in {"main", "origin/main"}
-            and dst.startswith("cursor/")
-            and (not tip or dst != tip)
+            and _is_valid_cloud_boot_branch_name(dst, tip_commit_branch=tip)
             and boot_from_main is None
         ):
             boot_from_main = dst
@@ -1889,7 +1918,7 @@ def detect_cloud_boot_branch(
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         cur = ""
-    cur_ok = _accept(cur if cur.startswith("cursor/") else None)
+    cur_ok = _accept(cur)
     if cur_ok:
         persist_cloud_boot_branch(cur_ok, tip_commit_branch=tip, repo_root=root)
         return cur_ok
@@ -1941,6 +1970,9 @@ def suggested_open_git_pr_body(
     Tick 355: ``icml_cron_entry.sh`` must not refresh the boot file when a
     pre-set ``ICML_CLOUD_BOOT_BRANCH`` equals tip (that clobbers the real
     greenfield boot); unset the false env and keep boot file / reflog.
+
+    Tick 357: reject short/non-``cursor/*`` boot poison; ``icml_checkout_tip_pr_branch.sh``
+    persists the current greenfield boot *before* tip checkout.
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -1968,12 +2000,14 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–356: cron exports "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–357: cron exports "
         f"`ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores "
         f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`; Tick 355 "
         f"unsets env==tip and does not clobber the boot file with tip; "
         f"Tick 356 gitignores the boot file + excludes it from ephemeral "
-        f"discard so tip --apply cannot wipe it). "
+        f"discard so tip --apply cannot wipe it; Tick 357 rejects short/"
+        f"non-``cursor/*`` boot poison + ``icml_checkout_tip_pr_branch.sh`` "
+        f"persists boot before tip checkout). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2007,6 +2041,8 @@ def suggested_open_git_pr_body(
         f"test_cron_entry_unsets_env_eq_tip_no_boot_clobber`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_boot_file_gitignored_survives_ephemeral_discard`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_reject_short_boot_poison_and_checkout_persists`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2392,7 +2428,7 @@ def write_icml_open_git_pr_hint(
         )
         if boot and boot != branch:
             note += (
-                f" Tick 352–356: cloud_boot_branch=`{boot}` — omitting branch= "
+                f" Tick 352–357: cloud_boot_branch=`{boot}` — omitting branch= "
                 f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
                 "Cloud Agent 'correct working branch' does NOT override tip "
                 "anti-churn; always pass branch= from this file. "
@@ -2401,7 +2437,9 @@ def write_icml_open_git_pr_hint(
                 f"persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`. "
                 "Tick 355: cron unsets env==tip and does not clobber the boot "
                 "file with tip. Tick 356: boot file is gitignored + excluded "
-                "from ephemeral discard (survives tip --apply)."
+                "from ephemeral discard (survives tip --apply). "
+                "Tick 357: reject short/non-cursor/* boot poison; checkout "
+                "script persists boot before tip switch."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),
