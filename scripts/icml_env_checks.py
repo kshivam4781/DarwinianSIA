@@ -1927,6 +1927,10 @@ def suggested_open_git_pr_body(
 
     Tick 354: ignore env when it equals tip (false capture after tip checkout);
     persist true boot to ephemeral ``docs/icml_cloud_boot_branch.txt``.
+
+    Tick 355: ``icml_cron_entry.sh`` must not refresh the boot file when a
+    pre-set ``ICML_CLOUD_BOOT_BRANCH`` equals tip (that clobbers the real
+    greenfield boot); unset the false env and keep boot file / reflog.
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -1954,9 +1958,10 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–354: cron exports "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–355: cron exports "
         f"`ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores "
-        f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`). "
+        f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`; Tick 355 "
+        f"unsets env==tip and does not clobber the boot file with tip). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -1986,6 +1991,8 @@ def suggested_open_git_pr_body(
         f"test_cron_entry_captures_boot_branch_before_tip_recover`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_detect_cloud_boot_branch_ignores_env_eq_tip`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_cron_entry_unsets_env_eq_tip_no_boot_clobber`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2371,13 +2378,15 @@ def write_icml_open_git_pr_hint(
         )
         if boot and boot != branch:
             note += (
-                f" Tick 352–354: cloud_boot_branch=`{boot}` — omitting branch= "
+                f" Tick 352–355: cloud_boot_branch=`{boot}` — omitting branch= "
                 f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
                 "Cloud Agent 'correct working branch' does NOT override tip "
                 "anti-churn; always pass branch= from this file. "
                 "Tick 353: cron exports ICML_CLOUD_BOOT_BRANCH before tip recover. "
                 "Tick 354: ignores env==tip (false capture after tip checkout) + "
-                f"persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`."
+                f"persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`. "
+                "Tick 355: cron unsets env==tip and does not clobber the boot "
+                "file with tip."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),

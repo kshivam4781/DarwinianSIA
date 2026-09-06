@@ -71,6 +71,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 354:** **false-boot ignore + persist** — if an agent checks out tip *before* cron, Tick 353 would export tip as “boot”. `detect_cloud_boot_branch` now ignores `ICML_CLOUD_BOOT_BRANCH` when it equals `tip_pr_commit_branch`, prefers ephemeral `docs/icml_cloud_boot_branch.txt`, and cron skips capture when already on tip (falls back to reflog).
 
+**Tick 355:** **no tip-boot-file clobber** — Tick 354 fixed Python detect + the unset-env capture path, but the preserved-env `elif` still wrote tip into `docs/icml_cloud_boot_branch.txt` when `ICML_CLOUD_BOOT_BRANCH` was pre-set to tip (agent mistake / prior re-exec). Cron now unsets env==tip and keeps the real boot file / reflog.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

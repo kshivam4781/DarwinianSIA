@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–354).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–355).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -7,6 +7,8 @@
 #       *before* tip recover / anti-churn checkout (survives ICML_CRON_REEXEC)
 #   1c. Tick 354: skip false boot capture when already on tip; persist
 #       docs/icml_cloud_boot_branch.txt; detect ignores env==tip
+#   1d. Tick 355: if ICML_CLOUD_BOOT_BRANCH already equals tip (false capture /
+#       prior re-exec), unset it and do NOT clobber the boot file with tip
 #   2. Writes tip + secrets status (presence only; loads .env for missing keys)
 #   2b. Tick 338: tip PR anti-churn auto-checkout — when tip_pr_commit_branch
 #       is set (MERGEABLE tip PR), checkout that branch so commits update the
@@ -106,9 +108,23 @@ if [[ -z "${ICML_CLOUD_BOOT_BRANCH:-}" ]]; then
   unset _icml_boot
 elif [[ -n "${ICML_CLOUD_BOOT_BRANCH:-}" ]]; then
   # Re-exec / agent-provided boot: keep env and refresh ephemeral file when ≠ tip.
-  mkdir -p docs
-  printf '%s\n' "${ICML_CLOUD_BOOT_BRANCH}" > docs/icml_cloud_boot_branch.txt
-  echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (preserved; Tick 354 boot file refreshed)"
+  # Tick 355: if env equals tip (false capture after tip checkout, or a prior
+  # buggy re-exec), do NOT overwrite docs/icml_cloud_boot_branch.txt with tip —
+  # that clobbers the real greenfield boot and leaves detect with only reflog.
+  # Unset the false env so Python status writers use the boot file / reflog.
+  _tip_guess=""
+  if [[ -f docs/ICML_PROGRESS.md ]] && [[ -f scripts/icml_pick_remote_tip.sh ]]; then
+    _tip_guess="$(bash scripts/icml_pick_remote_tip.sh 2>/dev/null | sed 's|refs/remotes/origin/||;s|refs/heads/||' || true)"
+  fi
+  if [[ -n "${_tip_guess}" && "${ICML_CLOUD_BOOT_BRANCH}" == "${_tip_guess}" ]]; then
+    echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} equals tip (Tick 355 false capture) — unset; keep boot file / reflog"
+    unset ICML_CLOUD_BOOT_BRANCH
+  else
+    mkdir -p docs
+    printf '%s\n' "${ICML_CLOUD_BOOT_BRANCH}" > docs/icml_cloud_boot_branch.txt
+    echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (preserved; Tick 354–355 boot file refreshed)"
+  fi
+  unset _tip_guess
 fi
 
 # --- Tip recover (chicken-egg) -------------------------------------------------

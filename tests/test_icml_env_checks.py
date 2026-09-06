@@ -929,6 +929,7 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
     assert boot in call["note"]
     assert "correct working branch" in call["note"]
     assert "Tick 354" in call["note"]
+    assert "Tick 355" in call["note"]
     assert "ICML_CLOUD_BOOT_BRANCH" in call["note"]
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
 
@@ -964,22 +965,42 @@ def test_detect_cloud_boot_branch_ignores_env_eq_tip(monkeypatch, tmp_path) -> N
 
 
 def test_cron_entry_captures_boot_branch_before_tip_recover() -> None:
-    """Tick 353–354: icml_cron_entry.sh exports ICML_CLOUD_BOOT_BRANCH before tip recover."""
+    """Tick 353–355: icml_cron_entry.sh exports ICML_CLOUD_BOOT_BRANCH before tip recover."""
     from pathlib import Path
 
     text = Path("scripts/icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 353" in text
     assert "Tick 354" in text
+    assert "Tick 355" in text
     assert "ICML_CLOUD_BOOT_BRANCH" in text
     assert "capture before tip recover" in text
     assert "icml_cloud_boot_branch.txt" in text
     assert "already on tip" in text
+    # Tick 355: preserved-env path must not clobber boot file when env==tip.
+    assert "equals tip (Tick 355 false capture)" in text
+    assert "do NOT clobber" in text or "does not clobber" in text or "keep boot file" in text
     # Capture block must appear before tip recover section.
     idx_capture = text.index("ICML_CLOUD_BOOT_BRANCH")
     idx_recover = text.index("# --- Tip recover (chicken-egg)")
     assert idx_capture < idx_recover
     # Must preserve across re-exec (only set when unset).
     assert '[[ -z "${ICML_CLOUD_BOOT_BRANCH:-}" ]]' in text
+
+
+def test_cron_entry_unsets_env_eq_tip_no_boot_clobber() -> None:
+    """Tick 355: pre-set ICML_CLOUD_BOOT_BRANCH==tip must not overwrite boot file."""
+    from pathlib import Path
+
+    text = Path("scripts/icml_cron_entry.sh").read_text(encoding="utf-8")
+    # Preserved-env branch must detect tip equality and unset rather than printf tip.
+    assert "Tick 355" in text
+    assert "equals tip (Tick 355 false capture)" in text
+    assert "unset ICML_CLOUD_BOOT_BRANCH" in text
+    # The false-capture branch must appear in the elif preserved-env path.
+    idx_elif = text.index('elif [[ -n "${ICML_CLOUD_BOOT_BRANCH:-}" ]]')
+    idx_355 = text.index("Tick 355 false capture", idx_elif)
+    idx_recover = text.index("# --- Tip recover (chicken-egg)")
+    assert idx_elif < idx_355 < idx_recover
 
 
 def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
@@ -1621,14 +1642,19 @@ def test_live_pipeline_next_steps_secrets_first() -> None:
 
 
 def test_live_pipeline_next_steps_tip_before_secrets() -> None:
+    """Tick 343: secrets lead when fetch/secrets blocked — tip recover is secondary.
+
+    Historical name kept; pre-343 expected tip recover first. PRIMARY-first
+    (Tick 343) puts NEBIUS/HF ahead of tip recover even when tip_ok is False.
+    """
     steps = live_pipeline_next_steps(
         secrets_ok=False,
         tip_ok=False,
         tip_ref="origin/cursor/icml-epistemic-results-de52",
         main_has_icml_tip=True,
     )
-    assert "icml_cron_entry.sh" in steps[0]
-    assert "NEBIUS_API_KEY" in steps[1]
+    assert "NEBIUS_API_KEY" in steps[0]
+    assert any("icml_cron_entry.sh" in s for s in steps)
 
 
 def test_icml_boot_recover_script_exists_and_help() -> None:
@@ -2431,23 +2457,31 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 352" in cron_entry352
     assert "cloud_boot_branch" in cron_entry352
     assert "Tick 352" in (root / "AGENTS.md").read_text(encoding="utf-8")
-    # Tick 353–354: cron early boot capture + ignore env==tip + persist boot file.
+    # Tick 353–355: cron early boot capture + ignore env==tip + persist boot file
+    # + Tick 355: do not clobber boot file when preserved env equals tip.
     assert "ICML_CLOUD_BOOT_BRANCH" in env_checks
     assert "persist_cloud_boot_branch" in env_checks
     assert "ICML_CLOUD_BOOT_BRANCH_RELPATH" in env_checks
     assert "Tick 354" in env_checks
+    assert "Tick 355" in env_checks
     assert "icml_cloud_boot_branch.txt" in env_checks
     cron_entry354 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 353" in cron_entry354
     assert "Tick 354" in cron_entry354
+    assert "Tick 355" in cron_entry354
     assert "icml_cloud_boot_branch.txt" in cron_entry354
     assert "already on tip" in cron_entry354
+    assert "Tick 355 false capture" in cron_entry354
     assert "docs/icml_cloud_boot_branch.txt" in EPHEMERAL_ICML_RELPATHS
     assert "Tick 354" in unblock
+    assert "Tick 355" in unblock
     assert "ICML cron early boot-branch capture (Tick 353)" in master
     assert "ICML false-boot ignore + persist (Tick 354)" in master
+    assert "ICML cron no tip-boot-file clobber (Tick 355)" in master
     assert "Tick 354" in progress
+    assert "Tick 355" in progress
     assert "Tick 354" in (root / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Tick 355" in (root / "AGENTS.md").read_text(encoding="utf-8")
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env
