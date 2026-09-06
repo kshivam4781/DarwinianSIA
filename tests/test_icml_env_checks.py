@@ -882,22 +882,25 @@ def test_prefer_tip_pr_commit_branch_unknown_mergeable() -> None:
 
 
 def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> None:
-    """Tick 352–353: ICML_CLOUD_BOOT_BRANCH env + call JSON boot fields."""
+    """Tick 352–354: ICML_CLOUD_BOOT_BRANCH env + call JSON boot fields."""
     import json
 
     from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
         ICML_OPEN_GIT_PR_CALL_RELPATH,
         detect_cloud_boot_branch,
         write_icml_open_git_pr_hint,
     )
 
     tip = "cursor/icml-epistemic-results-f49c"
-    boot = "cursor/icml-epistemic-results-e24a"
+    boot = "cursor/icml-epistemic-results-6a00"
     monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot)
     assert detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) == boot
+    # Tick 354: non-tip env also persists ephemeral boot file.
+    assert (tmp_path / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
 
-    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs").mkdir(exist_ok=True)
     out = tmp_path / "docs" / "icml_open_git_pr.json"
     monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot)
     written = write_icml_open_git_pr_hint(
@@ -913,7 +916,7 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
             "is_draft": True,
         },
         repo_root=tmp_path,
-        local_tick=353,
+        local_tick=354,
         fetch_diamond_ok=False,
     )
     assert written is not None
@@ -925,19 +928,52 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
     assert call["omit_branch_opens_pr_on"] == boot
     assert boot in call["note"]
     assert "correct working branch" in call["note"]
-    assert "Tick 353" in call["note"]
+    assert "Tick 354" in call["note"]
     assert "ICML_CLOUD_BOOT_BRANCH" in call["note"]
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
 
 
+def test_detect_cloud_boot_branch_ignores_env_eq_tip(monkeypatch, tmp_path) -> None:
+    """Tick 354: env==tip is a false capture; prefer persisted boot / reflog."""
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        detect_cloud_boot_branch,
+        persist_cloud_boot_branch,
+    )
+
+    tip = "cursor/icml-epistemic-results-f49c"
+    boot = "cursor/icml-epistemic-results-6a00"
+    (tmp_path / "docs").mkdir()
+    # False capture: agent checked out tip before cron exported current as boot.
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", tip)
+    assert (
+        detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) is None
+    )
+    # Persisted true boot wins over false env==tip.
+    persist_cloud_boot_branch(boot, tip_commit_branch=tip, repo_root=tmp_path)
+    assert (
+        detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) == boot
+    )
+    assert (tmp_path / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
+    # persist refuses to overwrite with tip.
+    assert persist_cloud_boot_branch(tip, tip_commit_branch=tip, repo_root=tmp_path) is None
+    assert (
+        detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) == boot
+    )
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+
 def test_cron_entry_captures_boot_branch_before_tip_recover() -> None:
-    """Tick 353: icml_cron_entry.sh exports ICML_CLOUD_BOOT_BRANCH before tip recover."""
+    """Tick 353–354: icml_cron_entry.sh exports ICML_CLOUD_BOOT_BRANCH before tip recover."""
     from pathlib import Path
 
     text = Path("scripts/icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 353" in text
+    assert "Tick 354" in text
     assert "ICML_CLOUD_BOOT_BRANCH" in text
     assert "capture before tip recover" in text
+    assert "icml_cloud_boot_branch.txt" in text
+    assert "already on tip" in text
     # Capture block must appear before tip recover section.
     idx_capture = text.index("ICML_CLOUD_BOOT_BRANCH")
     idx_recover = text.index("# --- Tip recover (chicken-egg)")
@@ -2395,6 +2431,23 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 352" in cron_entry352
     assert "cloud_boot_branch" in cron_entry352
     assert "Tick 352" in (root / "AGENTS.md").read_text(encoding="utf-8")
+    # Tick 353–354: cron early boot capture + ignore env==tip + persist boot file.
+    assert "ICML_CLOUD_BOOT_BRANCH" in env_checks
+    assert "persist_cloud_boot_branch" in env_checks
+    assert "ICML_CLOUD_BOOT_BRANCH_RELPATH" in env_checks
+    assert "Tick 354" in env_checks
+    assert "icml_cloud_boot_branch.txt" in env_checks
+    cron_entry354 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 353" in cron_entry354
+    assert "Tick 354" in cron_entry354
+    assert "icml_cloud_boot_branch.txt" in cron_entry354
+    assert "already on tip" in cron_entry354
+    assert "docs/icml_cloud_boot_branch.txt" in EPHEMERAL_ICML_RELPATHS
+    assert "Tick 354" in unblock
+    assert "ICML cron early boot-branch capture (Tick 353)" in master
+    assert "ICML false-boot ignore + persist (Tick 354)" in master
+    assert "Tick 354" in progress
+    assert "Tick 354" in (root / "AGENTS.md").read_text(encoding="utf-8")
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

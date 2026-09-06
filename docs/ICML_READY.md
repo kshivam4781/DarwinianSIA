@@ -385,6 +385,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 351 tip PR anti-churn UNKNOWN mergeable — `prefer_tip_pr_commit_branch` accepts UNKNOWN/null/empty; cron + checkout fall back to `tip_pr_head_ref`; lock test extended
 - [x] Tick 352 cloud_boot_branch open_git_pr warn — `detect_cloud_boot_branch` + call/secrets JSON `cloud_boot_branch` / `omit_branch_opens_pr_on`; cron/`human_next` warn; Cloud Agent boot ≠ tip anti-churn; lock test extended
 - [x] Tick 353 cron early boot-branch capture — `icml_cron_entry.sh` exports `ICML_CLOUD_BOOT_BRANCH` before tip recover / anti-churn (survives `ICML_CRON_REEXEC`); lock tests extended
+- [x] Tick 354 false-boot ignore + persist — `detect_cloud_boot_branch` ignores env==tip; ephemeral `docs/icml_cloud_boot_branch.txt`; cron skips capture when already on tip; lock tests extended
 
 ## Gate tracker (Section 21.5)
 
@@ -397,4 +398,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 353 note: Gate labels / secrets stack through Tick 353 cron early boot-branch capture -->
+<!-- Tick 354 note: Gate labels / secrets stack through Tick 354 false-boot ignore + persist -->

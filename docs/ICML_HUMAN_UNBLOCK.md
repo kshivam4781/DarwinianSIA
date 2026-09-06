@@ -69,6 +69,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 353:** **cron captures `ICML_CLOUD_BOOT_BRANCH` before tip recover** — `icml_cron_entry.sh` exports the current `cursor/*` boot branch *before* tip recover / anti-churn checkout (preserved across `ICML_CRON_REEXEC`) so boot detection does not depend on noisy post-reset reflog. Call JSON note references Tick 353.
 
+**Tick 354:** **false-boot ignore + persist** — if an agent checks out tip *before* cron, Tick 353 would export tip as “boot”. `detect_cloud_boot_branch` now ignores `ICML_CLOUD_BOOT_BRANCH` when it equals `tip_pr_commit_branch`, prefers ephemeral `docs/icml_cloud_boot_branch.txt`, and cron skips capture when already on tip (falls back to reflog).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

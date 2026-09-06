@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–354).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
 #   1b. Tick 353: export ICML_CLOUD_BOOT_BRANCH from git branch --show-current
 #       *before* tip recover / anti-churn checkout (survives ICML_CRON_REEXEC)
+#   1c. Tick 354: skip false boot capture when already on tip; persist
+#       docs/icml_cloud_boot_branch.txt; detect ignores env==tip
 #   2. Writes tip + secrets status (presence only; loads .env for missing keys)
 #   2b. Tick 338: tip PR anti-churn auto-checkout — when tip_pr_commit_branch
 #       is set (MERGEABLE tip PR), checkout that branch so commits update the
@@ -75,15 +77,38 @@ echo "=== ICML cron entry (Tick 271–273) mode=${MODE} ==="
 # ``ICML_CLOUD_BOOT_BRANCH``; without an early capture, reflog after
 # ``git reset --hard`` + tip checkout can miss this boot (or surface a stale
 # prior boot). Preserve across ``ICML_CRON_REEXEC`` (export survives exec).
+# Tick 354: if HEAD is *already* the remote tip (agent checked out tip before
+# cron), do NOT export current as boot — leave unset so detect uses reflog /
+# ephemeral ``docs/icml_cloud_boot_branch.txt``. When a true greenfield boot
+# is captured, also persist that file for Python status writers.
 if [[ -z "${ICML_CLOUD_BOOT_BRANCH:-}" ]]; then
   _icml_boot="$(git branch --show-current 2>/dev/null || true)"
   case "${_icml_boot}" in
     cursor/icml-epistemic-results-*|cursor/icml-epistemic-evolution-*|cursor/bc-*)
-      export ICML_CLOUD_BOOT_BRANCH="${_icml_boot}"
-      echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (Tick 353 capture before tip recover)"
+      _skip_boot_capture=0
+      if [[ -f docs/ICML_PROGRESS.md ]] && [[ -f scripts/icml_pick_remote_tip.sh ]]; then
+        _tip_guess="$(bash scripts/icml_pick_remote_tip.sh 2>/dev/null | sed 's|refs/remotes/origin/||;s|refs/heads/||' || true)"
+        if [[ -n "${_tip_guess}" && "${_icml_boot}" == "${_tip_guess}" ]]; then
+          _skip_boot_capture=1
+          echo "ICML_CLOUD_BOOT_BRANCH unset (Tick 354: already on tip ${_icml_boot}; prefer reflog / boot file)"
+        fi
+      fi
+      if [[ "${_skip_boot_capture}" -eq 0 ]]; then
+        export ICML_CLOUD_BOOT_BRANCH="${_icml_boot}"
+        echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (Tick 353 capture before tip recover)"
+        mkdir -p docs
+        printf '%s\n' "${ICML_CLOUD_BOOT_BRANCH}" > docs/icml_cloud_boot_branch.txt
+        echo "persisted docs/icml_cloud_boot_branch.txt (Tick 354)"
+      fi
+      unset _tip_guess _skip_boot_capture
       ;;
   esac
   unset _icml_boot
+elif [[ -n "${ICML_CLOUD_BOOT_BRANCH:-}" ]]; then
+  # Re-exec / agent-provided boot: keep env and refresh ephemeral file when ≠ tip.
+  mkdir -p docs
+  printf '%s\n' "${ICML_CLOUD_BOOT_BRANCH}" > docs/icml_cloud_boot_branch.txt
+  echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (preserved; Tick 354 boot file refreshed)"
 fi
 
 # --- Tip recover (chicken-egg) -------------------------------------------------
