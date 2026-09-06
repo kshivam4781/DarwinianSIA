@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T20:15Z — Tick 363 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-e792`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 361–362 scoring/offline Fig 2 alignment, the **live G4 paper pack** still (1) defaulted Fig 2 title field to `memory`, (2) omitted auto-resolved DNA `field=` from Live H2 rows, (3) omitted Tick 360 `mean_final_gap` / `primary_final_pass` from Live Table 1 summary, and (4) Winner column ignored gens@25%/cost@25%. Highest leverage without paid spend: **complete live paper-pack PRIMARY/MECHANISM surfacing**.
+
+### What this tick did (ONE step)
+**Live G4 paper-pack H2 field + PRIMARY gap (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 362 (`f49c`); confirmed secrets absent; boot `e792` vs tip `f49c`
+2. `write_live_bvd_figures` majority-votes H2 field for Fig 2 title (default `auto`, not `memory`); `refresh_paper_artifacts_live` emits `field=` + `mean_final_gap`/`primary_final_pass`; Winner attributes gens25/cost25
+3. Aligned Live Table 1 stub columns to @30%/cost; tests for refresh + fig2 field; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 362) | After (Tick 363) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live Fig 2 DNA field default | hard-coded `memory` | **majority auto field** (`auto` if empty) |
+| Live Table 1 PRIMARY gap | absent | **`mean_final_gap` + `primary_final_pass`** |
+| Live H2 row field | omitted | **`field=tool_strategy` etc.** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T18:05Z — Tick 362 (automation cron)
 
 ### Status snapshot

@@ -493,10 +493,48 @@ def render_live_table1_rows(
                 winners.append("B_final")
             else:
                 winners.append("tie_final")
+        # Tick 363: attribute BOTH PRIMARY gens thresholds (25% or 30%).
+        b_g25 = b.get("gens_to_25")
+        d_g25 = d.get("gens_to_25")
+        if d_g25 is not None and (b_g25 is None or (isinstance(b_g25, int) and d_g25 < b_g25)):
+            winners.append("D_gens25")
+        elif b_g25 is not None and (d_g25 is None or (isinstance(d_g25, int) and b_g25 < d_g25)):
+            winners.append("B_gens25")
         if d_g30 is not None and (b_g30 is None or (isinstance(b_g30, int) and d_g30 < b_g30)):
             winners.append("D_gens30")
         elif b_g30 is not None and (d_g30 is None or (isinstance(d_g30, int) and b_g30 < d_g30)):
             winners.append("B_gens30")
+        b_c30 = b.get("cost_to_30") if isinstance(b.get("cost_to_30"), dict) else None
+        d_c30 = d.get("cost_to_30") if isinstance(d.get("cost_to_30"), dict) else None
+        b_c25 = b.get("cost_to_25") if isinstance(b.get("cost_to_25"), dict) else None
+        d_c25 = d.get("cost_to_25") if isinstance(d.get("cost_to_25"), dict) else None
+
+        def _cost_win(b_payload: Any, d_payload: Any, label: str) -> None:
+            b_c = b_payload.get("cost") if isinstance(b_payload, dict) else None
+            d_c = d_payload.get("cost") if isinstance(d_payload, dict) else None
+            if d_c is None and b_c is None:
+                return
+            if d_c is not None and b_c is None:
+                winners.append(f"D_{label}")
+            elif b_c is not None and d_c is None:
+                winners.append(f"B_{label}")
+            elif (
+                isinstance(d_c, (int, float))
+                and isinstance(b_c, (int, float))
+                and float(b_c) > 0
+                and float(d_c) <= 0.85 * float(b_c)
+            ):
+                winners.append(f"D_{label}")
+            elif (
+                isinstance(d_c, (int, float))
+                and isinstance(b_c, (int, float))
+                and float(d_c) > 0
+                and float(b_c) <= 0.85 * float(d_c)
+            ):
+                winners.append(f"B_{label}")
+
+        _cost_win(b_c25, d_c25, "cost25")
+        _cost_win(b_c30, d_c30, "cost30")
         rows_out.append(
             "| {seed} | {bf} | {df} | {bg} | {dg} | {bc} | {dc} | {w} |".format(
                 seed=plan.seed,
@@ -576,15 +614,23 @@ def write_live_bvd_figures(
         plt.close(fig)
         written.append(str(path))
 
-    # Fig 2: pooled DNA trait counts across Condition D runs
+    # Fig 2: pooled DNA trait counts across Condition D runs.
+    # Tick 363: title field = majority of auto-resolved H2 fields (Tick 361),
+    # not a hard-coded ``memory`` default (offline Tick 362 alignment).
     pooled: dict[str, int] = {}
-    field = "memory"
+    field_votes: dict[str, int] = {}
     for payload in h2_by_d_run.values():
         if not isinstance(payload, dict) or "error" in payload:
             continue
-        field = str(payload.get("field") or field)
+        fld = payload.get("field")
+        if isinstance(fld, str) and fld.strip():
+            key = fld.strip()
+            field_votes[key] = field_votes.get(key, 0) + 1
         for k, v in (payload.get("counts") or {}).items():
             pooled[str(k)] = pooled.get(str(k), 0) + int(v)
+    field = "auto"
+    if field_votes:
+        field = max(field_votes.items(), key=lambda kv: (kv[1], kv[0]))[0]
     if pooled:
         fig, ax = plt.subplots(figsize=(6.5, 4))
         labels = list(pooled.keys())
@@ -627,11 +673,16 @@ def refresh_paper_artifacts_live(
         "|------|-------------|-------------|------------|------------|------------|------------|--------|\n"
     )
     body = "\n".join(render_live_table1_rows(plans, comparison)) + "\n"
+    # Tick 363: surface Tick 360 mean_final_gap / primary_final_pass in Live Table 1.
+    gap = comparison.get("mean_final_gap")
+    gap_s = _fmt_num(gap) if gap is not None else "—"
     summary = (
         f"\nPRIMARY flags: gens30={comparison.get('primary_gens30_pass')} "
         f"cost30={comparison.get('primary_cost30_pass')} "
         f"gens25={comparison.get('primary_gens25_pass')} "
         f"cost25={comparison.get('primary_cost25_pass')}; "
+        f"primary_final_pass={comparison.get('primary_final_pass')} "
+        f"mean_final_gap={gap_s}; "
         f"D final wins={comparison.get('d_wins_final')}/"
         f"{comparison.get('n_pairs')}. "
         f"Run IDs B={[p.b_run_id for p in plans]} D={[p.d_run_id for p in plans]}.\n"
@@ -645,7 +696,10 @@ def refresh_paper_artifacts_live(
         if not isinstance(payload, dict):
             continue
         share = payload.get("in_bias_share")
-        h2_bits.append(f"{name}: in_bias_share={_fmt_num(share)}")
+        # Tick 363: include auto-resolved DNA field (Tick 361) so live MECHANISM
+        # rows show tool_strategy / retry_policy rather than an implied memory.
+        fld = payload.get("field") or "auto"
+        h2_bits.append(f"{name}: field={fld} in_bias_share={_fmt_num(share)}")
     h2_line = (
         f"H2 live DNA skew: **{'PASS' if h2_ok else 'FAIL/partial'}** "
         f"({'; '.join(h2_bits) if h2_bits else 'no H2 payloads'}).\n"

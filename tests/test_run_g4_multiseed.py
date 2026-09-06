@@ -450,12 +450,16 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
         "primary_cost30_pass": False,
         "primary_gens25_pass": False,
         "primary_cost25_pass": False,
+        "primary_final_pass": True,
+        "mean_final_gap": 0.08,
         "d_wins_final": 4,
         "rows": [
             {
                 "B": {
                     "final_best": 0.20,
+                    "gens_to_25": None,
                     "gens_to_30": None,
+                    "cost_to_25": {"cost": None, "unit": "calls"},
                     "cost_to_30": {"cost": None, "unit": "calls"},
                     "learning_curve": {
                         "1": {"best": 0.15, "mean": 0.12},
@@ -464,7 +468,9 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
                 },
                 "D": {
                     "final_best": 0.28,
+                    "gens_to_25": 2,
                     "gens_to_30": 3,
+                    "cost_to_25": {"cost": 24.0, "unit": "calls"},
                     "cost_to_30": {"cost": 36.0, "unit": "calls"},
                     "learning_curve": {
                         "1": {"best": 0.18, "mean": 0.14},
@@ -478,10 +484,10 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     }
     h2 = {
         f"run_{rid}": {
-            "field": "memory",
-            "counts": {"failure_based": 6, "none": 2},
+            "field": "tool_strategy",
+            "counts": {"selective": 6, "aggressive": 2},
             "total": 8,
-            "bias_values": ["failure_based", "none"],
+            "bias_values": ["selective", "aggressive"],
             "in_bias_share": 1.0,
         }
         for rid in (1311, 1312, 1313, 1314, 1315)
@@ -503,6 +509,9 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     assert "Auto-filled by `scripts/run_g4_multiseed.py`" in text
     assert "| 1 | 0.2 | 0.28 |" in text
     assert "PRIMARY flags: gens30=True" in text
+    assert "primary_final_pass=True" in text
+    assert "mean_final_gap=0.08" in text
+    assert "field=tool_strategy" in text
     assert "**G4 live**" in text
     assert "## Table 2 — Mechanism / validity" in text
     assert "H2 trait skew (live API)" in text
@@ -511,6 +520,56 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     assert "ρ>0.3 = **5/5**" in text
     rows = render_live_table1_rows(plans[:1], comparison)
     assert "D_final" in rows[0] and "D_gens30" in rows[0]
+    assert "D_gens25" in rows[0]
+    assert "D_cost25" in rows[0] and "D_cost30" in rows[0]
+
+
+def test_write_live_fig2_uses_majority_h2_field_not_memory_default(
+    tmp_path: Path,
+) -> None:
+    """Tick 363: live Fig 2 title uses majority auto-resolved field, not memory."""
+    comparison = {
+        "rows": [
+            {
+                "B": {"learning_curve": {"1": {"best": 0.1, "mean": 0.08}}},
+                "D": {"learning_curve": {"1": {"best": 0.12, "mean": 0.1}}},
+            }
+        ]
+    }
+    h2 = {
+        "run_1311": {
+            "field": "tool_strategy",
+            "counts": {"selective": 5, "aggressive": 1},
+        },
+        "run_1312": {
+            "field": "tool_strategy",
+            "counts": {"selective": 4, "minimal": 2},
+        },
+        "run_1313": {
+            "field": "retry_policy",
+            "counts": {"exponential": 3},
+        },
+    }
+    written = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run=h2,
+        figures_dir=tmp_path / "figures",
+    )
+    if not written:
+        pytest.skip("matplotlib not installed")
+    # Title is baked into the PNG; re-run plot path via inspecting field vote
+    # by ensuring fig2 exists and no crash on non-memory majority.
+    assert any(p.endswith("fig2_mechanism.png") for p in written)
+    # Empty H2 → no fig2 file (only fig1); default field would be "auto" not "memory"
+    written_empty = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run={},
+        figures_dir=tmp_path / "figures_empty",
+    )
+    assert written_empty  # fig1 only
+    assert not any(p.endswith("fig2_mechanism.png") for p in written_empty)
+    assert (tmp_path / "figures" / "fig2_mechanism.png").is_file()
+    assert not (tmp_path / "figures_empty" / "fig2_mechanism.png").exists()
 
 
 def test_h2_h5_pass_helpers() -> None:

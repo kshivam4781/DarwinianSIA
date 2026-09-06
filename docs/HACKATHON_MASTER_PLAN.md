@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-06 (Section 21 ICML; Tick 362 offline Fig2 primary H2; Tick 361 live H2 bias-field auto-resolve; Tick 360 PRIMARY mean_final_gap; …)
+**Last updated:** 2026-09-06 (Section 21 ICML; Tick 363 live G4 paper-pack H2+gap; Tick 362 offline Fig2 primary H2; Tick 361 live H2 bias-field auto-resolve; Tick 360 PRIMARY mean_final_gap; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -956,7 +956,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML PRIMARY mean_final_gap (Tick 360) | **DONE** | `compare_b_vs_d` emits `mean_final_b/d/gap` + `primary_final_pass`; G4 `primary_criteria_pass` + READY checklist use mean gap >1pp for criterion (c); G3 promising fallback no longer dead |
 | ICML live H2 bias-field auto-resolve (Tick 361) | **DONE** | `resolve_h2_bias_field` / `compute_h2(field=None)` / G4 `score_live_h2` auto-pick biased DNA field (prefer `tool_strategy`); closes latent MECHANISM false-fail when bias≠memory |
 | ICML offline Fig2 primary H2 field (Tick 362) | **DONE** | Offline `_maybe_figures` + `D_h2_share` use primary `h2` (not `h2_memory`); regen Figs 1–2; fields tool_strategy/retry_policy |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–361 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML live G4 paper-pack H2+gap (Tick 363) | **DONE** | Live Fig 2 majority auto field; Table 1 `mean_final_gap`/`primary_final_pass`; H2 `field=`; Winner gens25/cost25 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–363 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2501,4 +2502,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **ICML live H2 bias-field auto-resolve (Tick 361):** G4 `score_live_h2` / `compute_h2` previously hard-coded DNA field `memory`, while CABS contradictions and the publishable case study typically steer `tool_strategy`. Empty `bias_values` on the wrong field caused a latent live MECHANISM false-fail. Now `resolve_h2_bias_field` auto-picks the biased field (prefer `tool_strategy`). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Offline Fig 2 primary H2 field (Tick 362):** Tick 361 fixed scoring/summarize, but offline paper Fig 2 still plotted `h2_memory` and summary `D_h2_share` ignored primary `h2`. `_maybe_figures` + brief rows now follow auto-resolved field (regen shows `tool_strategy` / `retry_policy`, not memory). STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
+
+**Live G4 paper-pack H2 field + PRIMARY gap (Tick 363):** After Tick 361–362, live G4 `write_live_bvd_figures` still defaulted Fig 2 title to `memory`, Live H2 rows omitted `field=`, and Live Table 1 omitted Tick 360 `mean_final_gap` / `primary_final_pass` (Winner also ignored gens@25%/cost@25%). Fixed so secrets→live G4 writes a coherent MECHANISM/PRIMARY paper pack. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 

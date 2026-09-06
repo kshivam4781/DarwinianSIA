@@ -85,6 +85,10 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.
 
+**Tick 362:** **offline Fig 2 primary H2** — paper Fig 2 / `D_h2_share` follow auto-resolved `h2` (typically `tool_strategy`), not hard-coded `h2_memory`.
+
+**Tick 363:** **live G4 paper-pack H2 field + PRIMARY gap** — live Fig 2 majority-votes DNA field (not `memory` default); Live Table 1 emits `mean_final_gap` / `primary_final_pass`; H2 rows include `field=`; Winner attributes gens@25%/cost@25%.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

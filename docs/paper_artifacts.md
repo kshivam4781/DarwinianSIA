@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–360** live stack hardening (… **Tick 359 call-JSON gitignore + discard survive**; **Tick 360 PRIMARY `mean_final_gap` / `primary_final_pass` in `compare_b_vs_d`**; **Tick 361 live H2 bias-field auto-resolve**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–363** live stack hardening (… **Tick 361 live H2 bias-field auto-resolve**; **Tick 362 offline Fig 2 primary H2**; **Tick 363 live G4 paper-pack H2 field + PRIMARY `mean_final_gap`**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
@@ -46,9 +46,11 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 
 ### Live GPQA
 
-| Seed | B final acc | D final acc | B gens@25% | D gens@25% | B tokens | D tokens | Winner |
-|------|-------------|-------------|------------|------------|----------|----------|--------|
+| Seed | B final acc | D final acc | B gens@30% | D gens@30% | B cost@30% | D cost@30% | Winner |
+|------|-------------|-------------|------------|------------|------------|------------|--------|
 | — | — | — | — | — | — | — | — |
+
+_Live Table 1 columns match G4 `refresh_paper_artifacts_live` (Tick 28/363). Winner also attributes gens@25% / cost@25% when present (PRIMARY (a)/(b)). Stub empty until live G4._
 
 ## Table 2 — Mechanism / validity
 
@@ -93,7 +95,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
-- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`.
+- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`. Live G4 Fig 2 / Table 1 / H2 rows still omitted field + mean gap until Tick **363**.
 - Same-allele cross-agent “contradictions” previously created singleton bias pools that wiped better elites; Tick 10 skips those pools — still **unverified on live GPQA**.
 - Pre-Tick-7 bias treated both contradiction sides uniformly; now fitness-weighted + preferred-allele anchoring (unit-tested) but **unverified on live GPQA**.
 - Soft bias-aware crossover (Tick 11) raised offline final seed wins to 3/5 but **hurt gens-to-30% (0/5) and H5 (2/5)** vs Tick 10.
