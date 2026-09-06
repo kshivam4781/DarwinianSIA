@@ -26,6 +26,7 @@ from run_g4_multiseed import (  # noqa: E402
     refresh_paper_artifacts_live,
     render_live_table1_rows,
     run_preflight,
+    score_live_h2,
     update_icml_ready_from_g4,
     write_gate4_report,
     write_live_bvd_figures,
@@ -738,3 +739,31 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def test_score_live_h2_auto_resolves_tool_strategy(tmp_path: Path, monkeypatch) -> None:
+    """Tick 361: G4 live H2 defaults to biased field, not hard-coded memory."""
+    import epistemic_results as er
+
+    run = tmp_path / "run_1311"
+    for i, allele in enumerate(["selective", "selective", "selective", "aggressive"]):
+        agent = run / "gen_3" / f"agent_{i}"
+        agent.mkdir(parents=True)
+        (agent / "agent_dna.json").write_text(
+            json.dumps({"tool_strategy": allele, "memory": "none"}),
+            encoding="utf-8",
+        )
+
+    monkeypatch.setattr(
+        er,
+        "_load_mutation_bias_map",
+        lambda _run_dir: {"tool_strategy": ["selective", "aggressive"]},
+    )
+    # score_live_h2 imports compute_h2 from epistemic_results inside the function;
+    # patching er._load_mutation_bias_map is enough because compute_h2 uses that.
+    out = score_live_h2([run])
+    payload = out["run_1311"]
+    assert payload["field"] == "tool_strategy"
+    assert payload["bias_values"] == ["selective", "aggressive"]
+    assert payload["in_bias_share"] == pytest.approx(1.0)
+    assert h2_skew_pass({ "run_1311": payload })

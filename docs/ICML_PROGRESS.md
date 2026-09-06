@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T16:20Z — Tick 361 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/bc-50a2eb6c-55ca-4711-8474-fc7a10ec96c2-312f`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Separately, G4 live H2 (`score_live_h2`) hard-coded DNA field ``memory``, while the publishable case study and typical CABS mutation bias steer ``tool_strategy``. Empty ``bias_values`` on the wrong field → latent live MECHANISM false-fail even when preferred alleles dominate. Highest leverage without paid spend: **auto-resolve H2 field from mutation bias**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**Live H2 bias-field auto-resolve (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 360 (`f49c`); confirmed secrets absent; boot `…-312f` vs tip `f49c`
+2. `resolve_h2_bias_field` + `_load_mutation_bias_map`; `compute_h2(field=None)` / `score_live_h2` default auto; `summarize_run` emits primary `h2` (+ legacy `h2_memory`); fig2 prefers primary `h2`
+3. Tests: `test_resolve_h2_bias_field_prefers_tool_strategy`, `test_score_live_h2_auto_resolves_tool_strategy`; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 360) | After (Tick 361) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Live H2 DNA field | hard-coded `memory` | **auto from bias** (prefer `tool_strategy`) |
+| Latent H2 false-fail when bias≠memory | yes | **fixed** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T14:15Z — Tick 360 (automation cron)
 
 ### Status snapshot

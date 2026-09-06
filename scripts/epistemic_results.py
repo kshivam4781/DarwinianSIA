@@ -198,29 +198,80 @@ def collect_dna_traits(run_dir: Path, field: str = "memory") -> Counter:
     return counts
 
 
+def _load_mutation_bias_map(run_dir: Path) -> dict[str, list[str]]:
+    """Best-effort load of Condition D mutation bias from the run belief store."""
+    from contextlib import suppress
+
+    with suppress(Exception):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "SIA"))
+        from sia.evolution.cabs_bridge import load_mutation_bias
+
+        bias_map = load_mutation_bias(str(run_dir))
+        if isinstance(bias_map, dict):
+            return {
+                str(k): [str(v) for v in (vals or [])]
+                for k, vals in bias_map.items()
+                if vals
+            }
+    return {}
+
+
+def resolve_h2_bias_field(
+    run_dir: Path,
+    *,
+    preferred: tuple[str, ...] = ("tool_strategy", "memory", "verification"),
+) -> str:
+    """Pick the DNA field CABS actually biased (Tick 361).
+
+    Live H2 previously hard-coded ``memory``, but offline/live contradictions and
+    the publishable case study steer ``tool_strategy``. Scoring the wrong field
+    yields empty ``bias_values`` → false MECHANISM fail even when preferred
+    alleles dominate the disputed trait.
+    """
+    bias_map = _load_mutation_bias_map(run_dir)
+    if not bias_map:
+        return "memory"
+    # Prefer multi-allele contradiction pools (≥2), then preferred field order,
+    # then largest candidate pool.
+    scored: list[tuple[int, int, int, str]] = []
+    for i, field in enumerate(preferred):
+        cands = bias_map.get(field) or []
+        if not cands:
+            continue
+        multi = 1 if len(cands) >= 2 else 0
+        scored.append((multi, len(cands), -i, field))
+    for field, cands in bias_map.items():
+        if field in preferred or not cands:
+            continue
+        multi = 1 if len(cands) >= 2 else 0
+        scored.append((multi, len(cands), -100, field))
+    if not scored:
+        return "memory"
+    scored.sort(reverse=True)
+    return scored[0][3]
+
+
 def compute_h2(
     run_dir: Path,
-    field: str = "memory",
+    field: str | None = "memory",
     bias_values: list[str] | None = None,
 ) -> dict[str, Any]:
-    """H2 helper: fraction of DNA trait values that fall in contradiction bias pool."""
-    counts = collect_dna_traits(run_dir, field)
+    """H2 helper: fraction of DNA trait values that fall in contradiction bias pool.
+
+    Pass ``field=None`` (Tick 361) to auto-resolve the biased DNA field from the
+    run's mutation-bias map (prefer ``tool_strategy`` over hard-coded ``memory``).
+    """
+    resolved = resolve_h2_bias_field(run_dir) if field is None else field
+    counts = collect_dna_traits(run_dir, resolved)
     total = sum(counts.values())
     bias = list(bias_values or [])
     if not bias:
-        # Infer from belief_store mutation-bias-like signals if present
-        from contextlib import suppress
-
-        with suppress(Exception):
-            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "SIA"))
-            from sia.evolution.cabs_bridge import load_mutation_bias
-
-            bias_map = load_mutation_bias(str(run_dir))
-            bias = list(bias_map.get(field, []))
+        bias_map = _load_mutation_bias_map(run_dir)
+        bias = list(bias_map.get(resolved, []))
     in_bias = sum(counts[v] for v in counts if v in bias) if bias else 0
     share = (in_bias / total) if total else None
     return {
-        "field": field,
+        "field": resolved,
         "counts": dict(counts),
         "total": total,
         "bias_values": bias,
@@ -387,7 +438,11 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
     gens = sorted(fitness)
     final = fitness[gens[-1]] if gens else {"best": 0.0, "mean": 0.0}
     h5 = compute_h5(run_dir)
-    h2 = compute_h2(run_dir, field="memory")
+    # Tick 361: primary H2 follows the biased DNA field (often tool_strategy).
+    h2 = compute_h2(run_dir, field=None)
+    h2_memory = (
+        h2 if h2.get("field") == "memory" else compute_h2(run_dir, field="memory")
+    )
     cost25 = cost_to_threshold(run_dir, 0.25)
     cost30 = cost_to_threshold(run_dir, 0.30)
     return {
@@ -400,7 +455,9 @@ def summarize_run(run_dir: Path) -> dict[str, Any]:
         "cost_to_25": cost25,
         "cost_to_30": cost30,
         "h5": h5,
-        "h2_memory": h2,
+        "h2": h2,
+        "h2_field": h2.get("field"),
+        "h2_memory": h2_memory,
         "learning_curve": {str(g): fitness[g] for g in gens},
     }
 
@@ -561,7 +618,7 @@ def _maybe_write_figures(summary: dict[str, Any], out_dir: Path) -> list[str]:
         plt.close(fig)
         written.append(str(path))
 
-    h2 = summary.get("h2_memory") or {}
+    h2 = summary.get("h2") or summary.get("h2_memory") or {}
     counts = h2.get("counts") or {}
     if counts:
         fig, ax = plt.subplots(figsize=(6, 4))

@@ -83,6 +83,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
+**Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

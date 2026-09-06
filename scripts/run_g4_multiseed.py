@@ -403,8 +403,14 @@ def h5_validity_pass(h5_by_d_run: dict[str, Any]) -> bool:
     return n_pass == n_total and n_pass >= 1
 
 
-def score_live_h2(d_dirs: list[Path], field: str = "memory") -> dict[str, Any]:
-    """Compute H2 DNA trait skew for each Condition D run directory."""
+def score_live_h2(d_dirs: list[Path], field: str | None = None) -> dict[str, Any]:
+    """Compute H2 DNA trait skew for each Condition D run directory.
+
+    Tick 361: default ``field=None`` auto-resolves the biased DNA field from the
+    run's mutation-bias map (prefer ``tool_strategy``). Hard-coded ``memory``
+    previously yielded empty bias_values when CABS steered tool_strategy — a
+    latent live MECHANISM false-fail.
+    """
     from epistemic_results import compute_h2
 
     out: dict[str, Any] = {}

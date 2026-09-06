@@ -391,3 +391,50 @@ def test_cost_to_threshold_reads_submission_json_fallback(tmp_path: Path):
     assert hit["generation"] == 2
     assert hit["unit"] == "tokens"
     assert hit["cost"] == pytest.approx(1100.0)
+
+def test_resolve_h2_bias_field_prefers_tool_strategy(tmp_path: Path, monkeypatch):
+    """Tick 361: live H2 must score the DNA field CABS actually biased."""
+    from epistemic_results import compute_h2, resolve_h2_bias_field
+
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {
+            "tool_strategy": ["selective", "aggressive"],
+            "memory": ["none"],
+        },
+    )
+    assert resolve_h2_bias_field(tmp_path) == "tool_strategy"
+
+    # Empty bias → memory fallback.
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {},
+    )
+    assert resolve_h2_bias_field(tmp_path) == "memory"
+
+    # Multi-allele pool preferred over singleton preferred-name field.
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {
+            "memory": ["failure_based", "none", "success_based"],
+            "tool_strategy": ["selective"],
+        },
+    )
+    assert resolve_h2_bias_field(tmp_path) == "memory"
+
+    # compute_h2(field=None) follows resolve + loads bias for that field.
+    run = tmp_path / "run_h2_auto"
+    agent = run / "gen_3" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "agent_dna.json").write_text(
+        json.dumps({"tool_strategy": "selective", "memory": "none"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {"tool_strategy": ["selective", "aggressive"]},
+    )
+    h2 = compute_h2(run, field=None)
+    assert h2["field"] == "tool_strategy"
+    assert h2["bias_values"] == ["selective", "aggressive"]
+    assert h2["in_bias_share"] == pytest.approx(1.0)
