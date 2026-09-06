@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–355).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–356).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
@@ -9,6 +9,8 @@
 #       docs/icml_cloud_boot_branch.txt; detect ignores env==tip
 #   1d. Tick 355: if ICML_CLOUD_BOOT_BRANCH already equals tip (false capture /
 #       prior re-exec), unset it and do NOT clobber the boot file with tip
+#   1e. Tick 356: boot file is gitignored + excluded from ephemeral discard so
+#       tip --apply cannot wipe the durable fallback (and cannot tip-poison)
 #   2. Writes tip + secrets status (presence only; loads .env for missing keys)
 #   2b. Tick 338: tip PR anti-churn auto-checkout — when tip_pr_commit_branch
 #       is set (MERGEABLE tip PR), checkout that branch so commits update the

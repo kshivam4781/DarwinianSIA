@@ -1064,9 +1064,16 @@ def budget_spent_ledger_path(repo_root: Path | None = None) -> Path:
     return root / "docs" / "icml_budget_spent.json"
 
 
-# Preflight / status writers only — safe to discard before tip --apply (Tick 286).
+# Per-VM greenfield boot branch for open_git_pr warn (Tick 354 persist;
+# Tick 356: gitignored — survive discard / tip --apply; never commit).
 ICML_CLOUD_BOOT_BRANCH_RELPATH = "docs/icml_cloud_boot_branch.txt"
 
+# Preflight / status writers only — safe to discard before tip --apply (Tick 286).
+# Tick 356: do NOT list ICML_CLOUD_BOOT_BRANCH_RELPATH here. Tick 354–355 made
+# that file the durable fallback when env is unset (already-on-tip skip /
+# env==tip unset). discard_ephemeral_icml_dirt previously unlinked it as
+# "untracked removed", wiping the boot name right before tip --apply.
+# Gitignore the path instead so porcelain never sees it and tip stays clean.
 EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
     {
         "docs/gate2_report.md",
@@ -1082,8 +1089,6 @@ EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
         "docs/icml_open_git_pr.json",
         "docs/icml_open_git_pr_call.json",
         "docs/icml_tip_pr_body.md",
-        # Tick 354: persisted greenfield boot (not tip) for open_git_pr warn
-        ICML_CLOUD_BOOT_BRANCH_RELPATH,
     }
 )
 
@@ -1756,7 +1761,7 @@ def persist_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 354: write ephemeral ``docs/icml_cloud_boot_branch.txt`` when boot ≠ tip.
+    """Tick 354/356: write gitignored ``docs/icml_cloud_boot_branch.txt`` when boot ≠ tip.
 
     Returns the persisted boot name, or ``None`` when skipped (empty / equals tip).
     """
@@ -1776,7 +1781,7 @@ def _read_persisted_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 354: read ephemeral boot file when present and ≠ tip."""
+    """Tick 354/356: read gitignored boot file when present and ≠ tip."""
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     path = root / ICML_CLOUD_BOOT_BRANCH_RELPATH
     tip = (tip_commit_branch or "").strip() or None
@@ -1809,7 +1814,8 @@ def detect_cloud_boot_branch(
        anti-churn checkout, and preserves it across ``ICML_CRON_REEXEC``).
        Tick 354: **ignore** when env equals ``tip_commit_branch`` (false capture
        after an agent already checked out tip before cron).
-    2. Ephemeral ``docs/icml_cloud_boot_branch.txt`` (Tick 354) when ≠ tip
+    2. Gitignored ``docs/icml_cloud_boot_branch.txt`` (Tick 354 persist;
+       Tick 356: survives discard / tip --apply; never committed)
     3. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
     4. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
 
@@ -1928,6 +1934,10 @@ def suggested_open_git_pr_body(
     Tick 354: ignore env when it equals tip (false capture after tip checkout);
     persist true boot to ephemeral ``docs/icml_cloud_boot_branch.txt``.
 
+    Tick 356: boot file is gitignored and excluded from ephemeral discard so
+    tip ``--apply`` / ``discard_ephemeral_icml_dirt`` cannot wipe the durable
+    fallback Tick 354–355 rely on (and cannot accidentally commit a boot name).
+
     Tick 355: ``icml_cron_entry.sh`` must not refresh the boot file when a
     pre-set ``ICML_CLOUD_BOOT_BRANCH`` equals tip (that clobbers the real
     greenfield boot); unset the false env and keep boot file / reflog.
@@ -1958,10 +1968,12 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–355: cron exports "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–356: cron exports "
         f"`ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores "
         f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`; Tick 355 "
-        f"unsets env==tip and does not clobber the boot file with tip). "
+        f"unsets env==tip and does not clobber the boot file with tip; "
+        f"Tick 356 gitignores the boot file + excludes it from ephemeral "
+        f"discard so tip --apply cannot wipe it). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -1993,6 +2005,8 @@ def suggested_open_git_pr_body(
         f"test_detect_cloud_boot_branch_ignores_env_eq_tip`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_cron_entry_unsets_env_eq_tip_no_boot_clobber`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_boot_file_gitignored_survives_ephemeral_discard`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2378,7 +2392,7 @@ def write_icml_open_git_pr_hint(
         )
         if boot and boot != branch:
             note += (
-                f" Tick 352–355: cloud_boot_branch=`{boot}` — omitting branch= "
+                f" Tick 352–356: cloud_boot_branch=`{boot}` — omitting branch= "
                 f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
                 "Cloud Agent 'correct working branch' does NOT override tip "
                 "anti-churn; always pass branch= from this file. "
@@ -2386,7 +2400,8 @@ def write_icml_open_git_pr_hint(
                 "Tick 354: ignores env==tip (false capture after tip checkout) + "
                 f"persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`. "
                 "Tick 355: cron unsets env==tip and does not clobber the boot "
-                "file with tip."
+                "file with tip. Tick 356: boot file is gitignored + excluded "
+                "from ephemeral discard (survives tip --apply)."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),

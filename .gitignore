@@ -18,3 +18,7 @@ gpqa_diamond.csv
 # Tick 285: docs/icml_budget_spent.json is NOT gitignored — amounts are not
 # secrets; committing the ledger is required for cross-VM cron resume
 # (runs/ stay gitignored and do not survive fresh cloud boots).
+# Tick 356: per-VM greenfield boot branch for open_git_pr warn — must NOT be
+# committed (would poison tip with a stale boot name) and must survive
+# discard_ephemeral_icml_dirt / tip --apply (gitignored → invisible to porcelain).
+docs/icml_cloud_boot_branch.txt

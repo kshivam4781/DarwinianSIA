@@ -1,5 +1,5 @@
 ## Summary
-- Tick 355: tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345 title finding; Tick 346 body confirmation; Tick 347 independent ``tip_pr_body_stale``; Tick 348–349 pass ``description=`` from `open_git_pr_description` in `docs/icml_open_git_pr.json` or `docs/icml_tip_pr_body.md`; Tick 350: prefer verbatim args from `docs/icml_open_git_pr_call.json`; Tick 353–355: cron exports `ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores env==tip + persists `docs/icml_cloud_boot_branch.txt`; Tick 355 unsets env==tip and does not clobber the boot file with tip). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
+- Tick 356: tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345 title finding; Tick 346 body confirmation; Tick 347 independent ``tip_pr_body_stale``; Tick 348–349 pass ``description=`` from `open_git_pr_description` in `docs/icml_open_git_pr.json` or `docs/icml_tip_pr_body.md`; Tick 350: prefer verbatim args from `docs/icml_open_git_pr_call.json`; Tick 353–356: cron exports `ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores env==tip + persists `docs/icml_cloud_boot_branch.txt`; Tick 355 unsets env==tip and does not clobber the boot file with tip; Tick 356 gitignores the boot file + excludes it from ephemeral discard so tip --apply cannot wipe it). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
 - **PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) so cron can run live G2→G3→G4.
 - Offline PRIMARY/H5 unchanged (`1890–1904`); STATUS remains IN_PROGRESS (not READY).
 
@@ -18,4 +18,5 @@
 - [x] `pytest tests/test_icml_env_checks.py::test_cron_entry_captures_boot_branch_before_tip_recover`
 - [x] `pytest tests/test_icml_env_checks.py::test_detect_cloud_boot_branch_ignores_env_eq_tip`
 - [x] `pytest tests/test_icml_env_checks.py::test_cron_entry_unsets_env_eq_tip_no_boot_clobber`
+- [x] `pytest tests/test_icml_env_checks.py::test_boot_file_gitignored_survives_ephemeral_discard`
 - [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass
