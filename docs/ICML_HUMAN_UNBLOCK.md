@@ -77,6 +77,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 357:** **reject short boot poison + checkout persist** — a bare suffix (e.g. `48b0`) written into the boot file poisoned `detect_cloud_boot_branch` ahead of reflog (which still had `cursor/icml-epistemic-results-48b0`). Now only full `cursor/*` ≠ tip names persist/read; invalid files are unlinked. `icml_checkout_tip_pr_branch.sh` also persists the current greenfield boot *before* tip checkout (mid-tick agents often skip cron capture).
 
+**Tick 358:** **checkout refreshes open_git_pr call JSON** — Tick 357 persisted boot on checkout but left a *stale* `docs/icml_open_git_pr_call.json` from a prior cron (e.g. `cloud_boot_branch` still `…-48b0` while this boot is `…-05af`). Mid-tick agents that only run the checkout script then read the wrong omit-branch warn. Checkout now calls `refresh_open_git_pr_after_tip_checkout` so call JSON matches the just-persisted boot.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

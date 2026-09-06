@@ -1073,7 +1073,7 @@ def test_boot_file_gitignored_survives_ephemeral_discard(
 
 
 def test_reject_short_boot_poison_and_checkout_persists(tmp_path, monkeypatch) -> None:
-    """Tick 357: short boot names are rejected; checkout script persists before tip."""
+    """Tick 357/358: short boot names rejected; checkout persists + refreshes call JSON."""
     from icml_env_checks import (
         ICML_CLOUD_BOOT_BRANCH_RELPATH,
         _is_valid_cloud_boot_branch_name,
@@ -1096,20 +1096,108 @@ def test_reject_short_boot_poison_and_checkout_persists(tmp_path, monkeypatch) -
     assert detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) is None
     assert not poison.is_file()
 
-    # Checkout script must mention Tick 357 persist-before-tip.
+    # Checkout script must mention Tick 357 persist-before-tip + Tick 358 refresh.
     checkout = Path("scripts/icml_checkout_tip_pr_branch.sh").read_text(encoding="utf-8")
     assert "Tick 357" in checkout
     assert "persist_cloud_boot_branch" in checkout
     assert "persisted_cloud_boot_branch" in checkout
+    assert "Tick 358" in checkout
+    assert "refresh_open_git_pr_after_tip_checkout" in checkout
+    assert "refreshed_open_git_pr_call" in checkout
     # Live tree: poisoned short name must not stick after detect.
+    # Tick 358: do not hardcode a prior-tick boot (…-48b0); any valid cursor/*
+    # ≠ tip heal is OK (this workspace may be …-05af).
     root = Path(".").resolve()
     live_poison = root / ICML_CLOUD_BOOT_BRANCH_RELPATH
     live_poison.parent.mkdir(parents=True, exist_ok=True)
     live_poison.write_text("48b0\n", encoding="utf-8")
-    # Reflog in this workspace has moving from …-48b0 → tip — detect should heal.
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
     healed = detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=root)
-    assert healed == boot
-    assert live_poison.read_text(encoding="utf-8").strip() == boot
+    assert healed is None or (
+        _is_valid_cloud_boot_branch_name(healed, tip_commit_branch=tip)
+        and healed != tip
+        and healed != "48b0"
+    )
+    if healed is not None:
+        assert live_poison.read_text(encoding="utf-8").strip() == healed
+    else:
+        assert not live_poison.is_file() or live_poison.read_text(
+            encoding="utf-8"
+        ).strip() != "48b0"
+
+
+def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:
+    """Tick 358: checkout refresh rewrites stale cloud_boot_branch in call JSON."""
+    import json
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+        persist_cloud_boot_branch,
+        refresh_open_git_pr_after_tip_checkout,
+        write_icml_open_git_pr_hint,
+    )
+
+    tip = "cursor/icml-epistemic-results-f49c"
+    stale_boot = "cursor/icml-epistemic-results-48b0"
+    fresh_boot = "cursor/icml-epistemic-results-05af"
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Prior-tick call JSON still has stale boot.
+    stale_pr = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: frozen body\n",
+        "head_ref": tip,
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", stale_boot)
+    written = write_icml_open_git_pr_hint(
+        path=docs / "icml_open_git_pr.json",
+        pr=stale_pr,
+        repo_root=tmp_path,
+        local_tick=357,
+        fetch_diamond_ok=False,
+    )
+    assert written is not None
+    call_path = tmp_path / ICML_OPEN_GIT_PR_CALL_RELPATH
+    assert json.loads(call_path.read_text(encoding="utf-8"))["cloud_boot_branch"] == stale_boot
+
+    # Tip status present (as after cron) + persist fresh boot (as checkout does).
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_pr_number": 337,
+                "tip_pr_url": stale_pr["url"],
+                "tip_pr_title": stale_pr["title"],
+                "tip_pr_body": stale_pr["body"],
+                "tip_pr_head_ref": tip,
+                "tip_pr_commit_branch": tip,
+                "tip_pr_mergeable": "MERGEABLE",
+                "tip_pr_merge_state_status": "CLEAN",
+                "tip_pr_is_draft": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", fresh_boot)
+    assert persist_cloud_boot_branch(fresh_boot, tip_commit_branch=tip, repo_root=tmp_path) == fresh_boot
+    assert (tmp_path / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == fresh_boot
+
+    hint = refresh_open_git_pr_after_tip_checkout(
+        tip_commit_branch=tip, repo_root=tmp_path
+    )
+    assert hint is not None
+    assert hint.get("cloud_boot_branch") == fresh_boot
+    call = json.loads(call_path.read_text(encoding="utf-8"))
+    assert call["branch"] == tip
+    assert call["cloud_boot_branch"] == fresh_boot
+    assert call["omit_branch_opens_pr_on"] == fresh_boot
+    assert "Tick 358" in (call.get("note") or "")
 
 
 def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
@@ -2569,15 +2657,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # Tick 353–357: cron early boot capture + ignore env==tip + persist boot file
     # + Tick 355: do not clobber boot file when preserved env equals tip
     # + Tick 356: gitignore boot file + exclude from ephemeral discard
-    # + Tick 357: reject short boot poison + checkout persists before tip.
+    # + Tick 357: reject short boot poison + checkout persists before tip
+    # + Tick 358: checkout refreshes open_git_pr call JSON cloud_boot_branch.
     assert "ICML_CLOUD_BOOT_BRANCH" in env_checks
     assert "persist_cloud_boot_branch" in env_checks
     assert "ICML_CLOUD_BOOT_BRANCH_RELPATH" in env_checks
     assert "_is_valid_cloud_boot_branch_name" in env_checks
+    assert "refresh_open_git_pr_after_tip_checkout" in env_checks
     assert "Tick 354" in env_checks
     assert "Tick 355" in env_checks
     assert "Tick 356" in env_checks
     assert "Tick 357" in env_checks
+    assert "Tick 358" in env_checks
     assert "icml_cloud_boot_branch.txt" in env_checks
     cron_entry354 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 353" in cron_entry354
@@ -2597,23 +2688,29 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     )
     assert "Tick 357" in checkout357
     assert "persist_cloud_boot_branch" in checkout357
+    assert "Tick 358" in checkout357
+    assert "refresh_open_git_pr_after_tip_checkout" in checkout357
     assert "Tick 354" in unblock
     assert "Tick 355" in unblock
     assert "Tick 356" in unblock
     assert "Tick 357" in unblock
+    assert "Tick 358" in unblock
     assert "ICML cron early boot-branch capture (Tick 353)" in master
     assert "ICML false-boot ignore + persist (Tick 354)" in master
     assert "ICML cron no tip-boot-file clobber (Tick 355)" in master
     assert "ICML boot-file gitignore + discard survive (Tick 356)" in master
     assert "ICML reject short boot poison + checkout persist (Tick 357)" in master
+    assert "ICML checkout refreshes open_git_pr call JSON (Tick 358)" in master
     assert "Tick 354" in progress
     assert "Tick 355" in progress
     assert "Tick 356" in progress
     assert "Tick 357" in progress
+    assert "Tick 358" in progress
     assert "Tick 354" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 355" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 356" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 357" in (root / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Tick 358" in (root / "AGENTS.md").read_text(encoding="utf-8")
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

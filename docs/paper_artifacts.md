@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–357** live stack hardening (… **Tick 353 cron early `ICML_CLOUD_BOOT_BRANCH` capture**; **Tick 354 false-boot ignore + persist `docs/icml_cloud_boot_branch.txt`**; **Tick 355 no tip-boot-file clobber**; **Tick 356 boot-file gitignore + discard survive**; **Tick 357 reject short boot poison + checkout persist**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–358** live stack hardening (… **Tick 353 cron early `ICML_CLOUD_BOOT_BRANCH` capture**; **Tick 354 false-boot ignore + persist `docs/icml_cloud_boot_branch.txt`**; **Tick 355 no tip-boot-file clobber**; **Tick 356 boot-file gitignore + discard survive**; **Tick 357 reject short boot poison + checkout persist**; **Tick 358 checkout refreshes open_git_pr call JSON**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 

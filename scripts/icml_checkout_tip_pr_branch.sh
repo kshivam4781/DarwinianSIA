@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357–358).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
@@ -15,6 +15,9 @@
 # Tick 357: persist current greenfield ``cursor/*`` boot to
 # ``docs/icml_cloud_boot_branch.txt`` *before* switching to tip (agents often
 # call this mid-tick without cron capture; also rejects short poison names).
+# Tick 358: after checkout, refresh ``docs/icml_open_git_pr_call.json`` so
+# ``cloud_boot_branch`` matches the just-persisted boot (not a stale prior-tick
+# value left when agents skip full cron status rewrite).
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh
@@ -120,3 +123,17 @@ else
 fi
 
 echo "Checked out ${BRANCH} (anti-churn — push here; open_git_pr branch=${BRANCH})"
+
+# Tick 358: rewrite open_git_pr call JSON so cloud_boot_branch matches the
+# boot just persisted above (stale prior-tick call JSON otherwise misleads).
+python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import refresh_open_git_pr_after_tip_checkout
+hint = refresh_open_git_pr_after_tip_checkout(tip_commit_branch='''${BRANCH}'''.strip())
+if hint:
+    boot = hint.get('cloud_boot_branch') or ''
+    call = hint.get('open_git_pr_call_file') or 'docs/icml_open_git_pr_call.json'
+    print(f'refreshed_open_git_pr_call={call} cloud_boot_branch={boot or \"<none>\"}')
+" 2>/dev/null || true

@@ -389,6 +389,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 355 cron no tip-boot-file clobber — preserved-env `elif` unsets `ICML_CLOUD_BOOT_BRANCH` when == tip; does not overwrite boot file with tip; lock tests extended
 - [x] Tick 356 boot-file gitignore + discard survive — `docs/icml_cloud_boot_branch.txt` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; tip `--apply` cannot wipe boot fallback; lock test `test_boot_file_gitignored_survives_ephemeral_discard`
 - [x] Tick 357 reject short boot poison + checkout persist — `_is_valid_cloud_boot_branch_name` rejects bare suffixes; invalid boot file unlinked; `icml_checkout_tip_pr_branch.sh` persists greenfield boot before tip switch; lock test `test_reject_short_boot_poison_and_checkout_persists`
+- [x] Tick 358 checkout refreshes open_git_pr call JSON — `refresh_open_git_pr_after_tip_checkout` after tip checkout so `cloud_boot_branch` matches just-persisted boot (not stale prior-tick); de-flaked Tick 357 live-tree assert; lock test `test_refresh_open_git_pr_after_tip_checkout_updates_boot`
 
 ## Gate tracker (Section 21.5)
 
@@ -401,4 +402,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 357 note: Gate labels / secrets stack through Tick 357 reject short boot poison + checkout persist -->
+<!-- Tick 358 note: Gate labels / secrets stack through Tick 358 checkout refreshes open_git_pr call JSON -->

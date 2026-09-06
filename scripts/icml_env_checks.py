@@ -2439,7 +2439,10 @@ def write_icml_open_git_pr_hint(
                 "file with tip. Tick 356: boot file is gitignored + excluded "
                 "from ephemeral discard (survives tip --apply). "
                 "Tick 357: reject short/non-cursor/* boot poison; checkout "
-                "script persists boot before tip switch."
+                "script persists boot before tip switch. "
+                "Tick 358: checkout also refreshes this call JSON so "
+                "cloud_boot_branch matches the just-persisted boot (not a "
+                "stale prior-tick value)."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),
@@ -2460,6 +2463,94 @@ def write_icml_open_git_pr_hint(
         hint_for_json["open_git_pr_call_file"] = ICML_OPEN_GIT_PR_CALL_RELPATH
     out.write_text(json.dumps(hint_for_json, indent=2) + "\n", encoding="utf-8")
     return hint_for_json
+
+
+def refresh_open_git_pr_after_tip_checkout(
+    *,
+    tip_commit_branch: str | None = None,
+    repo_root: Path | None = None,
+) -> dict | None:
+    """Tick 358: after tip checkout (+ boot persist), rewrite open_git_pr call JSON.
+
+    Tick 357 persisted the greenfield boot on checkout but left a *stale*
+    ``docs/icml_open_git_pr_call.json`` from a prior cron (e.g.
+    ``cloud_boot_branch`` still ``…-48b0`` while this boot is ``…-05af``).
+    Mid-tick agents that only run ``icml_checkout_tip_pr_branch.sh`` (no full
+    cron status rewrite) then read the wrong omit-branch warn. Refresh here
+    so ``cloud_boot_branch`` matches the just-persisted boot file / env.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    tip = (tip_commit_branch or "").strip() or None
+    pr: dict | None = None
+    tip_status_path = root / "docs" / "icml_tip_status.json"
+    if tip_status_path.is_file():
+        try:
+            d = json.loads(tip_status_path.read_text(encoding="utf-8"))
+            if d.get("tip_pr_number") or d.get("tip_pr_url") or d.get(
+                "tip_pr_head_ref"
+            ):
+                pr = {
+                    "number": d.get("tip_pr_number"),
+                    "url": d.get("tip_pr_url"),
+                    "title": d.get("tip_pr_title"),
+                    "body": d.get("tip_pr_body") or "",
+                    "head_ref": d.get("tip_pr_head_ref")
+                    or d.get("tip_pr_commit_branch")
+                    or tip,
+                    "mergeable": d.get("tip_pr_mergeable"),
+                    "merge_state_status": d.get("tip_pr_merge_state_status"),
+                    "is_draft": d.get("tip_pr_is_draft"),
+                }
+                tip = (
+                    tip
+                    or prefer_tip_pr_commit_branch(pr)
+                    or (d.get("tip_pr_commit_branch") or None)
+                )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            pr = None
+    if pr is None:
+        try:
+            pr = resolve_icml_tip_pr(tip_ref=tip, repo_root=root)
+        except Exception:
+            pr = None
+    if pr is None and tip:
+        # Minimal stub so call JSON still records branch + current boot.
+        pr = {
+            "number": None,
+            "url": None,
+            "title": None,
+            "body": "",
+            "head_ref": tip,
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        }
+    if pr is None:
+        return None
+    local_tick: int | None = None
+    progress_path = root / "docs" / "ICML_PROGRESS.md"
+    if progress_path.is_file():
+        try:
+            local_tick = parse_latest_icml_tick(
+                progress_path.read_text(encoding="utf-8")
+            )
+        except OSError:
+            local_tick = None
+    fetch_ok: bool | None = None
+    secrets_path = root / "docs" / "icml_secrets_status.json"
+    if secrets_path.is_file():
+        try:
+            sec = json.loads(secrets_path.read_text(encoding="utf-8"))
+            if "fetch_diamond_ok" in sec:
+                fetch_ok = bool(sec.get("fetch_diamond_ok"))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            fetch_ok = None
+    return write_icml_open_git_pr_hint(
+        repo_root=root,
+        pr=pr,
+        local_tick=local_tick,
+        fetch_diamond_ok=fetch_ok,
+    )
 
 
 def _tip_pr_anti_churn_note(pr: dict) -> str:
