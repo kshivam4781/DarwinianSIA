@@ -488,6 +488,8 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
             "counts": {"selective": 6, "aggressive": 2},
             "total": 8,
             "bias_values": ["selective", "aggressive"],
+            "preferred_value": "selective",
+            "preferred_share": 0.75,
             "in_bias_share": 1.0,
         }
         for rid in (1311, 1312, 1313, 1314, 1315)
@@ -512,6 +514,7 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     assert "primary_final_pass=True" in text
     assert "mean_final_gap=0.08" in text
     assert "field=tool_strategy" in text
+    assert "preferred_share=0.75" in text
     assert "**G4 live**" in text
     assert "## Table 2 — Mechanism / validity" in text
     assert "H2 trait skew (live API)" in text
@@ -590,6 +593,8 @@ def test_h2_h5_pass_helpers() -> None:
         {
             f"r{i}": {
                 "in_bias_share": 0.75,
+                "preferred_share": 0.75,
+                "preferred_value": "failure_based",
                 "counts": {"failure_based": 3, "none": 1},
                 "total": 4,
                 "bias_values": ["failure_based"],
@@ -601,9 +606,38 @@ def test_h2_h5_pass_helpers() -> None:
         {
             f"r{i}": {
                 "in_bias_share": 0.2,
+                "preferred_share": 0.2,
                 "counts": {"a": 1, "b": 4},
                 "total": 5,
                 "bias_values": [],
+            }
+            for i in range(5)
+        }
+    )
+    # Tick 364: in_bias_share=1.0 but loser allele dominates → MECHANISM fail.
+    assert not h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 1.0,
+                "preferred_share": 0.25,
+                "preferred_value": "selective",
+                "counts": {"selective": 1, "aggressive": 3},
+                "total": 4,
+                "bias_values": ["selective", "aggressive"],
+            }
+            for i in range(5)
+        }
+    )
+    # Preferred majority with full pool membership → pass.
+    assert h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 1.0,
+                "preferred_share": 0.75,
+                "preferred_value": "selective",
+                "counts": {"selective": 3, "aggressive": 1},
+                "total": 4,
+                "bias_values": ["selective", "aggressive"],
             }
             for i in range(5)
         }
@@ -824,5 +858,21 @@ def test_score_live_h2_auto_resolves_tool_strategy(tmp_path: Path, monkeypatch) 
     payload = out["run_1311"]
     assert payload["field"] == "tool_strategy"
     assert payload["bias_values"] == ["selective", "aggressive"]
+    assert payload["preferred_value"] == "selective"
     assert payload["in_bias_share"] == pytest.approx(1.0)
+    assert payload["preferred_share"] == pytest.approx(0.75)
     assert h2_skew_pass({ "run_1311": payload })
+
+    # Loser-dominated population: pool membership still 1.0 but preferred_share low.
+    run_lose = tmp_path / "run_1312"
+    for i, allele in enumerate(["selective", "aggressive", "aggressive", "aggressive"]):
+        agent = run_lose / "gen_3" / f"agent_{i}"
+        agent.mkdir(parents=True)
+        (agent / "agent_dna.json").write_text(
+            json.dumps({"tool_strategy": allele, "memory": "none"}),
+            encoding="utf-8",
+        )
+    lose = score_live_h2([run_lose])["run_1312"]
+    assert lose["preferred_share"] == pytest.approx(0.25)
+    assert lose["in_bias_share"] == pytest.approx(1.0)
+    assert not h2_skew_pass({"run_1312": lose})

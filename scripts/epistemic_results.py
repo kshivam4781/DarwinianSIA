@@ -253,13 +253,18 @@ def resolve_h2_bias_field(
 
 def compute_h2(
     run_dir: Path,
-    field: str | None = "memory",
+    field: str | None = None,
     bias_values: list[str] | None = None,
 ) -> dict[str, Any]:
-    """H2 helper: fraction of DNA trait values that fall in contradiction bias pool.
+    """H2 helper: DNA trait skew under contradiction bias (Tick 361 / 364).
 
-    Pass ``field=None`` (Tick 361) to auto-resolve the biased DNA field from the
-    run's mutation-bias map (prefer ``tool_strategy`` over hard-coded ``memory``).
+    Default ``field=None`` auto-resolves the biased DNA field from the run's
+    mutation-bias map (prefer ``tool_strategy`` over hard-coded ``memory``).
+
+    Tick 364: also emit ``preferred_value`` / ``preferred_share`` (first bias
+    allele = fitness-weighted winner). Pool membership alone (``in_bias_share``)
+    is not MECHANISM skew — a population dominated by the *loser* allele still
+    has ``in_bias_share=1.0``.
     """
     resolved = resolve_h2_bias_field(run_dir) if field is None else field
     counts = collect_dna_traits(run_dir, resolved)
@@ -270,6 +275,9 @@ def compute_h2(
         bias = list(bias_map.get(resolved, []))
     in_bias = sum(counts[v] for v in counts if v in bias) if bias else 0
     share = (in_bias / total) if total else None
+    preferred = str(bias[0]) if bias else None
+    preferred_count = int(counts.get(preferred, 0)) if preferred else 0
+    preferred_share = (preferred_count / total) if (preferred and total) else None
     return {
         "field": resolved,
         "counts": dict(counts),
@@ -277,6 +285,9 @@ def compute_h2(
         "bias_values": bias,
         "in_bias_count": in_bias,
         "in_bias_share": share,
+        "preferred_value": preferred,
+        "preferred_count": preferred_count,
+        "preferred_share": preferred_share,
     }
 
 

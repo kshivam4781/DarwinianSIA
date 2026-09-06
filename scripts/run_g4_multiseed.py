@@ -423,23 +423,35 @@ def score_live_h2(d_dirs: list[Path], field: str | None = None) -> dict[str, Any
 
 
 def h2_skew_pass(h2_by_d_run: dict[str, Any], *, min_share: float = 0.5) -> bool:
-    """MECHANISM live H2: ≥3/5 D runs show in-bias DNA share ≥ min_share (or max allele ≥ min_share)."""
+    """MECHANISM live H2: ≥3/5 D runs show *preferred*-allele DNA share ≥ min_share.
+
+    Tick 364: require the fitness-weighted preferred allele (first ``bias_values``
+    entry / ``preferred_share``), not mere contradiction-pool membership
+    (``in_bias_share``). A population dominated by the loser allele still has
+    ``in_bias_share=1.0`` and previously false-passed MECHANISM.
+    """
     n_pass = 0
     n_total = 0
     for payload in h2_by_d_run.values():
         if not isinstance(payload, dict) or "error" in payload:
             continue
         n_total += 1
-        share = payload.get("in_bias_share")
-        if isinstance(share, (int, float)) and float(share) >= min_share:
+        pref_share = payload.get("preferred_share")
+        if pref_share is None:
+            # Derive from counts + preferred_value / bias_values[0] when missing.
+            preferred = payload.get("preferred_value")
+            bias = list(payload.get("bias_values") or [])
+            if preferred is None and bias:
+                preferred = bias[0]
+            counts = payload.get("counts") or {}
+            total = int(payload.get("total") or 0) or sum(
+                int(v) for v in counts.values()
+            )
+            if preferred is not None and total > 0:
+                pref_share = int(counts.get(str(preferred), 0)) / float(total)
+        if isinstance(pref_share, (int, float)) and float(pref_share) >= min_share:
             n_pass += 1
             continue
-        counts = payload.get("counts") or {}
-        total = int(payload.get("total") or 0) or sum(int(v) for v in counts.values())
-        if total > 0 and counts:
-            max_share = max(int(v) for v in counts.values()) / float(total)
-            if max_share >= min_share and payload.get("bias_values"):
-                n_pass += 1
     if n_total >= 5:
         return n_pass >= 3
     return n_pass >= 1 and n_pass == n_total
@@ -696,10 +708,16 @@ def refresh_paper_artifacts_live(
         if not isinstance(payload, dict):
             continue
         share = payload.get("in_bias_share")
+        pref = payload.get("preferred_share")
+        pref_v = payload.get("preferred_value")
         # Tick 363: include auto-resolved DNA field (Tick 361) so live MECHANISM
         # rows show tool_strategy / retry_policy rather than an implied memory.
+        # Tick 364: also surface preferred_share (MECHANISM pass key).
         fld = payload.get("field") or "auto"
-        h2_bits.append(f"{name}: field={fld} in_bias_share={_fmt_num(share)}")
+        h2_bits.append(
+            f"{name}: field={fld} preferred={pref_v or '—'} "
+            f"preferred_share={_fmt_num(pref)} in_bias_share={_fmt_num(share)}"
+        )
     h2_line = (
         f"H2 live DNA skew: **{'PASS' if h2_ok else 'FAIL/partial'}** "
         f"({'; '.join(h2_bits) if h2_bits else 'no H2 payloads'}).\n"

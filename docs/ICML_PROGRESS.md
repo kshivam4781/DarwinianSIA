@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T22:15Z — Tick 364 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-4226`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 361–363 field/paper-pack alignment, live H2 `h2_skew_pass` still treated contradiction-**pool membership** (`in_bias_share`) as MECHANISM skew. A population dominated by the *loser* allele (e.g. 25% selective / 75% aggressive with preferred=`selective`) scores `in_bias_share=1.0` and would **false-pass** live MECHANISM. Highest leverage without paid spend: **require preferred-allele share**.
+
+### What this tick did (ONE step)
+**H2 preferred-allele share (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 363 (`f49c`); confirmed secrets absent; boot `4226` vs tip `f49c`
+2. `compute_h2` emits `preferred_value` / `preferred_share` (first `bias_values` entry); default `field=None` auto-resolves
+3. `h2_skew_pass` requires `preferred_share ≥ 0.5` (derives from counts when missing); Live Table 2 H2 rows surface preferred share
+4. Tests: `test_h2_h5_pass_helpers` loser-dominated reject; `test_score_live_h2_auto_resolves_tool_strategy` preferred_share; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 363) | After (Tick 364) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Live H2 pass key | `in_bias_share` (pool) | **`preferred_share`** (winner allele) |
+| Loser-dominated false MECHANISM pass | yes | **fixed** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T20:15Z — Tick 363 (automation cron)
 
 ### Status snapshot

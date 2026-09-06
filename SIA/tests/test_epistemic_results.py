@@ -437,4 +437,11 @@ def test_resolve_h2_bias_field_prefers_tool_strategy(tmp_path: Path, monkeypatch
     h2 = compute_h2(run, field=None)
     assert h2["field"] == "tool_strategy"
     assert h2["bias_values"] == ["selective", "aggressive"]
+    assert h2["preferred_value"] == "selective"
     assert h2["in_bias_share"] == pytest.approx(1.0)
+    assert h2["preferred_share"] == pytest.approx(1.0)
+
+    # Default field=None (Tick 364) matches explicit None.
+    h2_default = compute_h2(run)
+    assert h2_default["field"] == "tool_strategy"
+    assert h2_default["preferred_share"] == pytest.approx(1.0)
