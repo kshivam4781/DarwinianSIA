@@ -1074,6 +1074,10 @@ ICML_CLOUD_BOOT_BRANCH_RELPATH = "docs/icml_cloud_boot_branch.txt"
 # env==tip unset). discard_ephemeral_icml_dirt previously unlinked it as
 # "untracked removed", wiping the boot name right before tip --apply.
 # Gitignore the path instead so porcelain never sees it and tip stays clean.
+# Tick 359: do NOT list ICML_OPEN_GIT_PR_CALL_RELPATH here either. Tip HEAD
+# committed call JSON with a prior-tick cloud_boot_branch (e.g. …-48b0);
+# discard_ephemeral ``git restore`` re-poisoned fresh boots after tip --apply
+# (same class of bug as Tick 356 for the boot file). Gitignore + exclude.
 EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
     {
         "docs/gate2_report.md",
@@ -1087,7 +1091,6 @@ EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
         "docs/icml_secrets_status.json",
         "docs/icml_tip_status.json",
         "docs/icml_open_git_pr.json",
-        "docs/icml_open_git_pr_call.json",
         "docs/icml_tip_pr_body.md",
     }
 )
@@ -2004,7 +2007,7 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–358: cron exports "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–359: cron exports "
         f"`ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores "
         f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`; Tick 355 "
         f"unsets env==tip and does not clobber the boot file with tip; "
@@ -2013,7 +2016,9 @@ def suggested_open_git_pr_body(
         f"non-``cursor/*`` boot poison + ``icml_checkout_tip_pr_branch.sh`` "
         f"persists boot before tip checkout; Tick 358 checkout also refreshes "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}` so ``cloud_boot_branch`` matches "
-        f"the just-persisted boot). "
+        f"the just-persisted boot; Tick 359 gitignores call JSON + excludes "
+        f"it from ephemeral discard so tip --apply cannot ``git restore`` a "
+        f"stale committed boot name). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2051,6 +2056,8 @@ def suggested_open_git_pr_body(
         f"test_reject_short_boot_poison_and_checkout_persists`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_refresh_open_git_pr_after_tip_checkout_updates_boot`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_call_json_gitignored_survives_ephemeral_discard`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2436,7 +2443,7 @@ def write_icml_open_git_pr_hint(
         )
         if boot and boot != branch:
             note += (
-                f" Tick 352–357: cloud_boot_branch=`{boot}` — omitting branch= "
+                f" Tick 352–359: cloud_boot_branch=`{boot}` — omitting branch= "
                 f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
                 "Cloud Agent 'correct working branch' does NOT override tip "
                 "anti-churn; always pass branch= from this file. "
@@ -2450,7 +2457,10 @@ def write_icml_open_git_pr_hint(
                 "script persists boot before tip switch. "
                 "Tick 358: checkout also refreshes this call JSON so "
                 "cloud_boot_branch matches the just-persisted boot (not a "
-                "stale prior-tick value)."
+                "stale prior-tick value). "
+                "Tick 359: this call JSON is gitignored + excluded from "
+                "ephemeral discard so tip --apply cannot git-restore a stale "
+                "committed boot name."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),

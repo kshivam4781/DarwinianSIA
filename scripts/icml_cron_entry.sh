@@ -306,6 +306,20 @@ print(branch)
   if [[ -n "${_anti_branch}" ]]; then
     if [[ "${_cur_branch}" == "${_anti_branch}" ]]; then
       echo "tip_pr_anti_churn_checkout=already_on ${_anti_branch}"
+      # Tick 359: even when already on tip, refresh call JSON so a prior
+      # tip --apply git-restore (tracked stale boot) cannot leave agents
+      # reading poisoned cloud_boot_branch. (Call JSON is also gitignored
+      # + excluded from EPHEMERAL as of Tick 359; refresh is belt+suspenders.)
+      python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import refresh_open_git_pr_after_tip_checkout
+hint = refresh_open_git_pr_after_tip_checkout(tip_commit_branch='''${_anti_branch}'''.strip())
+if hint:
+    boot = hint.get('cloud_boot_branch') or ''
+    print(f'refreshed_open_git_pr_call_already_on cloud_boot_branch={boot or \"<none>\"}')
+" 2>/dev/null || true
     else
       echo "tip_pr_anti_churn_checkout: ${_cur_branch} → ${_anti_branch}"
       if bash scripts/icml_checkout_tip_pr_branch.sh; then

@@ -1072,6 +1072,105 @@ def test_boot_file_gitignored_survives_ephemeral_discard(
     assert "Tick 356" in root_gi
 
 
+def test_call_json_gitignored_survives_ephemeral_discard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 359: call JSON must survive discard (gitignored; not ephemeral).
+
+    Tip HEAD previously committed ``docs/icml_open_git_pr_call.json`` with a
+    prior-tick ``cloud_boot_branch`` (e.g. …-48b0). ``discard_ephemeral`` then
+    ``git restore``'d that stale boot onto fresh VMs after tip --apply.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        EPHEMERAL_ICML_RELPATHS,
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+        discard_ephemeral_icml_dirt,
+        is_ephemeral_icml_path,
+        porcelain_dirty_paths,
+        write_icml_open_git_pr_hint,
+    )
+
+    tip = "cursor/icml-epistemic-results-f49c"
+    fresh_boot = "cursor/icml-epistemic-results-1624"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.md").write_text("clean\n", encoding="utf-8")
+    (docs / "ICML_PROGRESS.md").write_text("## Tick 359\n", encoding="utf-8")
+    (repo / ".gitignore").write_text(
+        "docs/icml_cloud_boot_branch.txt\n"
+        "docs/icml_open_git_pr_call.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "docs", ".gitignore"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    # Dirty an ephemeral report + write fresh call JSON (as cron does).
+    (docs / "gate2_report.md").write_text("dirty preflight\n", encoding="utf-8")
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", fresh_boot)
+    pr = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "title": "ICML Tick 336: tip PR gh copy-paste merge commands",
+        "body": "## Summary\n- Tick 336: frozen body\n",
+        "head_ref": tip,
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+        "is_draft": True,
+    }
+    written = write_icml_open_git_pr_hint(
+        path=docs / "icml_open_git_pr.json",
+        pr=pr,
+        repo_root=repo,
+        local_tick=359,
+        fetch_diamond_ok=False,
+    )
+    assert written is not None
+    call_path = repo / ICML_OPEN_GIT_PR_CALL_RELPATH
+    assert call_path.is_file()
+    assert json.loads(call_path.read_text(encoding="utf-8"))["cloud_boot_branch"] == fresh_boot
+    assert ICML_OPEN_GIT_PR_CALL_RELPATH not in EPHEMERAL_ICML_RELPATHS
+    assert is_ephemeral_icml_path(ICML_OPEN_GIT_PR_CALL_RELPATH) is False
+    dirty = porcelain_dirty_paths(repo)
+    assert ICML_OPEN_GIT_PR_CALL_RELPATH not in dirty
+    assert "docs/gate2_report.md" in dirty
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok, detail
+    assert call_path.is_file(), "Tick 359: call JSON must survive ephemeral discard"
+    assert (
+        json.loads(call_path.read_text(encoding="utf-8"))["cloud_boot_branch"]
+        == fresh_boot
+    )
+    # Root .gitignore + cron already_on refresh markers.
+    root_gi = Path(".gitignore").read_text(encoding="utf-8")
+    assert "docs/icml_open_git_pr_call.json" in root_gi
+    assert "Tick 359" in root_gi
+    cron = Path("scripts/icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 359" in cron
+    assert "refreshed_open_git_pr_call_already_on" in cron
+
+
 def test_reject_short_boot_poison_and_checkout_persists(tmp_path, monkeypatch) -> None:
     """Tick 357/358: short boot names rejected; checkout persists + refreshes call JSON."""
     from icml_env_checks import (
@@ -2610,7 +2709,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     cron_entry350 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 350" in cron_entry350
     assert "icml_open_git_pr_call.json" in cron_entry350
-    assert "docs/icml_open_git_pr_call.json" in EPHEMERAL_ICML_RELPATHS
+    # Tick 359: call JSON left EPHEMERAL (was restored to stale committed boot).
+    assert "docs/icml_open_git_pr_call.json" not in EPHEMERAL_ICML_RELPATHS
     assert prefer_tip_pr_commit_branch(
         {
             "head_ref": "cursor/icml-epistemic-results-f49c",
@@ -2658,7 +2758,8 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # + Tick 355: do not clobber boot file when preserved env equals tip
     # + Tick 356: gitignore boot file + exclude from ephemeral discard
     # + Tick 357: reject short boot poison + checkout persists before tip
-    # + Tick 358: checkout refreshes open_git_pr call JSON cloud_boot_branch.
+    # + Tick 358: checkout refreshes open_git_pr call JSON cloud_boot_branch
+    # + Tick 359: call JSON gitignored + excluded from ephemeral discard.
     assert "ICML_CLOUD_BOOT_BRANCH" in env_checks
     assert "persist_cloud_boot_branch" in env_checks
     assert "ICML_CLOUD_BOOT_BRANCH_RELPATH" in env_checks
@@ -2669,11 +2770,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 356" in env_checks
     assert "Tick 357" in env_checks
     assert "Tick 358" in env_checks
+    assert "Tick 359" in env_checks
     assert "icml_cloud_boot_branch.txt" in env_checks
     cron_entry354 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
     assert "Tick 353" in cron_entry354
     assert "Tick 354" in cron_entry354
     assert "Tick 355" in cron_entry354
+    assert "Tick 359" in cron_entry354
+    assert "refreshed_open_git_pr_call_already_on" in cron_entry354
     assert "icml_cloud_boot_branch.txt" in cron_entry354
     assert "already on tip" in cron_entry354
     assert "Tick 355 false capture" in cron_entry354
@@ -2683,6 +2787,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         encoding="utf-8"
     )
     assert "Tick 356" in (root / ".gitignore").read_text(encoding="utf-8")
+    # Tick 359: call JSON must NOT be ephemeral / must be gitignored.
+    assert "docs/icml_open_git_pr_call.json" not in EPHEMERAL_ICML_RELPATHS
+    assert "docs/icml_open_git_pr_call.json" in (root / ".gitignore").read_text(
+        encoding="utf-8"
+    )
+    assert "Tick 359" in (root / ".gitignore").read_text(encoding="utf-8")
     checkout357 = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
         encoding="utf-8"
     )
@@ -2695,22 +2805,26 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 356" in unblock
     assert "Tick 357" in unblock
     assert "Tick 358" in unblock
+    assert "Tick 359" in unblock
     assert "ICML cron early boot-branch capture (Tick 353)" in master
     assert "ICML false-boot ignore + persist (Tick 354)" in master
     assert "ICML cron no tip-boot-file clobber (Tick 355)" in master
     assert "ICML boot-file gitignore + discard survive (Tick 356)" in master
     assert "ICML reject short boot poison + checkout persist (Tick 357)" in master
     assert "ICML checkout refreshes open_git_pr call JSON (Tick 358)" in master
+    assert "ICML call-JSON gitignore + discard survive (Tick 359)" in master
     assert "Tick 354" in progress
     assert "Tick 355" in progress
     assert "Tick 356" in progress
     assert "Tick 357" in progress
     assert "Tick 358" in progress
+    assert "Tick 359" in progress
     assert "Tick 354" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 355" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 356" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 357" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "Tick 358" in (root / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Tick 359" in (root / "AGENTS.md").read_text(encoding="utf-8")
     # Tick 311: load_env.ps1 must be Nebius-first and mark Anthropic optional.
     load_env = (root / "scripts" / "load_env.ps1").read_text(encoding="utf-8")
     assert "NEBIUS_API_KEY" in load_env

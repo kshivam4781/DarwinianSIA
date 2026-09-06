@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T12:15Z — Tick 359 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-1624`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Separately, tip HEAD still **committed** `docs/icml_open_git_pr_call.json` with prior-tick `cloud_boot_branch=…-48b0`. `discard_ephemeral_icml_dirt` then **`git restore`**'d that stale boot onto fresh VMs after tip `--apply` — same poison class as Tick 356 for the boot file (Tick 358 only refreshed on checkout, not against restore). Highest leverage without paid spend: **gitignore + untrack + exclude call JSON from ephemeral discard** (+ cron `already_on` refresh). Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**call-JSON gitignore + discard survive (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 358 (`f49c`); confirmed secrets absent; boot `1624` vs tip `f49c`
+2. `.gitignore` + remove from `EPHEMERAL_ICML_RELPATHS`; `git rm --cached`; cron `already_on` refreshes call JSON; AGENTS / HUMAN_UNBLOCK / Section 12 / paper_artifacts
+3. Lock test `test_call_json_gitignored_survives_ephemeral_discard` + Tick 359 markers; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 358) | After (Tick 359) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Call JSON vs tip `--apply` discard | `git restore` → stale `…-48b0` | **survives (gitignored)** |
+| Call JSON tip-poison risk | tracked / committed boot | **gitignored + untracked** |
+| Cron `already_on` tip | no call-JSON refresh | **refreshes cloud_boot_branch** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T10:15Z — Tick 358 (automation cron)
 
 ### Status snapshot

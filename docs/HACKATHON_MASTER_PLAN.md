@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-06 (Section 21 ICML; Tick 358 checkout refreshes open_git_pr call JSON; Tick 357 reject short boot poison + checkout persist; Tick 356 boot-file gitignore + discard survive; …)
+**Last updated:** 2026-09-06 (Section 21 ICML; Tick 359 call-JSON gitignore + discard survive; Tick 358 checkout refreshes open_git_pr call JSON; Tick 357 reject short boot poison + checkout persist; Tick 356 boot-file gitignore + discard survive; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -952,7 +952,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML boot-file gitignore + discard survive (Tick 356) | **DONE** | `docs/icml_cloud_boot_branch.txt` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS` so tip `--apply` discard cannot wipe boot fallback / tip poison |
 | ICML reject short boot poison + checkout persist (Tick 357) | **DONE** | `_is_valid_cloud_boot_branch_name` rejects bare suffixes; checkout script persists greenfield boot before tip switch |
 | ICML checkout refreshes open_git_pr call JSON (Tick 358) | **DONE** | `refresh_open_git_pr_after_tip_checkout` after tip checkout; call JSON `cloud_boot_branch` matches just-persisted boot (not stale prior-tick) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–358 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML call-JSON gitignore + discard survive (Tick 359) | **DONE** | `docs/icml_open_git_pr_call.json` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; cron `already_on` refreshes; tip `--apply` cannot `git restore` stale committed boot |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–359 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2488,3 +2489,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **ICML reject short boot poison + checkout persist (Tick 357):** This cron booted greenfield `cursor/icml-epistemic-results-48b0`. A bare suffix (`48b0`) in the boot file poisoned `detect_cloud_boot_branch` ahead of reflog. Now only full `cursor/*` ≠ tip names are accepted (invalid files unlinked); `icml_checkout_tip_pr_branch.sh` persists the current greenfield boot *before* tip checkout. Portal Save skipped. STATUS remains IN_PROGRESS.
 
 **ICML checkout refreshes open_git_pr call JSON (Tick 358):** This cron booted greenfield `cursor/icml-epistemic-results-05af`. Tick 357 persisted boot on checkout but left stale `docs/icml_open_git_pr_call.json` from a prior cron (e.g. `cloud_boot_branch` still `…-48b0`). Mid-tick agents that only run the checkout script then read the wrong omit-branch warn. Checkout now calls `refresh_open_git_pr_after_tip_checkout` so call JSON matches the just-persisted boot. Also de-flaked Tick 357 live-tree assert (no hardcoded prior-tick boot). Portal Save skipped. STATUS remains IN_PROGRESS.
+
+**ICML call-JSON gitignore + discard survive (Tick 359):** This cron booted greenfield `cursor/icml-epistemic-results-1624`. Tip HEAD still committed `docs/icml_open_git_pr_call.json` with prior-tick boot `…-48b0`; `discard_ephemeral` `git restore` re-poisoned fresh boots after tip `--apply` (same class as Tick 356). Call JSON now gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; cron `already_on` tip also refreshes. Portal Save skipped. STATUS remains IN_PROGRESS.

@@ -79,6 +79,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 358:** **checkout refreshes open_git_pr call JSON** — Tick 357 persisted boot on checkout but left a *stale* `docs/icml_open_git_pr_call.json` from a prior cron (e.g. `cloud_boot_branch` still `…-48b0` while this boot is `…-05af`). Mid-tick agents that only run the checkout script then read the wrong omit-branch warn. Checkout now calls `refresh_open_git_pr_after_tip_checkout` so call JSON matches the just-persisted boot.
 
+**Tick 359:** **call-JSON gitignore + discard survive** — tip HEAD still *committed* `docs/icml_open_git_pr_call.json` with a prior-tick boot (`…-48b0`). `discard_ephemeral_icml_dirt` then `git restore`'d that stale boot onto fresh VMs after tip `--apply` (same class of bug as Tick 356 for the boot file). Call JSON is now gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; cron `already_on` tip also refreshes call JSON.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

@@ -22,3 +22,7 @@ gpqa_diamond.csv
 # committed (would poison tip with a stale boot name) and must survive
 # discard_ephemeral_icml_dirt / tip --apply (gitignored → invisible to porcelain).
 docs/icml_cloud_boot_branch.txt
+# Tick 359: open_git_pr MCP call JSON carries cloud_boot_branch — must NOT be
+# committed (tip HEAD had Tick-357 `…-48b0`; discard_ephemeral restore re-poisoned
+# fresh boots) and must survive tip --apply (gitignored + not in EPHEMERAL).
+docs/icml_open_git_pr_call.json
