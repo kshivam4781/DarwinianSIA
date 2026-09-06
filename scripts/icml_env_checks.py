@@ -1973,6 +1973,10 @@ def suggested_open_git_pr_body(
 
     Tick 357: reject short/non-``cursor/*`` boot poison; ``icml_checkout_tip_pr_branch.sh``
     persists the current greenfield boot *before* tip checkout.
+
+    Tick 358: after tip checkout, refresh ``docs/icml_open_git_pr_call.json`` so
+    ``cloud_boot_branch`` matches the just-persisted boot (not a stale
+    prior-tick value when agents skip full cron status rewrite).
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -2000,14 +2004,16 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–357: cron exports "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353–358: cron exports "
         f"`ICML_CLOUD_BOOT_BRANCH` before tip recover; Tick 354 ignores "
         f"env==tip + persists `{ICML_CLOUD_BOOT_BRANCH_RELPATH}`; Tick 355 "
         f"unsets env==tip and does not clobber the boot file with tip; "
         f"Tick 356 gitignores the boot file + excludes it from ephemeral "
         f"discard so tip --apply cannot wipe it; Tick 357 rejects short/"
         f"non-``cursor/*`` boot poison + ``icml_checkout_tip_pr_branch.sh`` "
-        f"persists boot before tip checkout). "
+        f"persists boot before tip checkout; Tick 358 checkout also refreshes "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}` so ``cloud_boot_branch`` matches "
+        f"the just-persisted boot). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2043,6 +2049,8 @@ def suggested_open_git_pr_body(
         f"test_boot_file_gitignored_survives_ephemeral_discard`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_reject_short_boot_poison_and_checkout_persists`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_refresh_open_git_pr_after_tip_checkout_updates_boot`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
