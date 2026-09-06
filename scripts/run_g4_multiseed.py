@@ -357,15 +357,26 @@ def run_preflight(
 
 
 def primary_criteria_pass(comparison: dict[str, Any] | None) -> bool:
-    """PRIMARY: D beats B on ≥3/5 for gens30, cost30, or non-trivial final wins (≥3)."""
+    """PRIMARY: D beats B on ≥3/5 for gens30, cost30, or non-trivial final gap."""
     if not comparison or int(comparison.get("n_pairs") or 0) < 5:
         return False
     if comparison.get("primary_gens30_pass") or comparison.get("primary_cost30_pass"):
         return True
     if comparison.get("primary_gens25_pass") or comparison.get("primary_cost25_pass"):
         return True
-    # Criterion (c): non-trivial mean gap via ≥3/5 final wins (>1pp each)
-    return int(comparison.get("d_wins_final") or 0) >= 3
+    # Criterion (c): prefer explicit primary_final_pass (Tick 360 mean gap);
+    # fall back to ≥3/5 final wins (>1pp) for older compare payloads.
+    if comparison.get("primary_final_pass") is True:
+        return True
+    if int(comparison.get("d_wins_final") or 0) >= 3:
+        gap = comparison.get("mean_final_gap")
+        if gap is None:
+            return True
+        try:
+            return float(gap) > 0.01
+        except (TypeError, ValueError):
+            return True
+    return False
 
 
 def h5_pass_count(h5_by_d_run: dict[str, Any]) -> tuple[int, int]:
@@ -715,8 +726,17 @@ def update_icml_ready_from_g4(
         text = _check_line(text, " D beats B on ≥3/5 seeds for gens-to-threshold")
     if cmp_.get("primary_cost30_pass") or cmp_.get("primary_cost25_pass"):
         text = _check_line(text, " D beats B on ≥3/5 seeds for cost-to-threshold")
-    if int(cmp_.get("d_wins_final") or 0) >= 3:
-        text = _check_line(text, " Non-trivial mean final accuracy gap")
+    # Tick 360: prefer primary_final_pass (mean gap >1pp + ≥3/5 seed wins).
+    if cmp_.get("primary_final_pass") is True or int(cmp_.get("d_wins_final") or 0) >= 3:
+        gap = cmp_.get("mean_final_gap")
+        gap_ok = True
+        if gap is not None:
+            try:
+                gap_ok = float(gap) > 0.01
+            except (TypeError, ValueError):
+                gap_ok = True
+        if gap_ok:
+            text = _check_line(text, " Non-trivial mean final accuracy gap")
 
     if h2_pass:
         text = _check_line(text, " Live API-run H2 DNA trait skew under contradiction bias")

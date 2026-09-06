@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–359** live stack hardening (… **Tick 353 cron early `ICML_CLOUD_BOOT_BRANCH` capture**; **Tick 354 false-boot ignore + persist `docs/icml_cloud_boot_branch.txt`**; **Tick 355 no tip-boot-file clobber**; **Tick 356 boot-file gitignore + discard survive**; **Tick 357 reject short boot poison + checkout persist**; **Tick 358 checkout refreshes open_git_pr call JSON**; **Tick 359 call-JSON gitignore + discard survive**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–360** live stack hardening (… **Tick 359 call-JSON gitignore + discard survive**; **Tick 360 PRIMARY `mean_final_gap` / `primary_final_pass` in `compare_b_vs_d`**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
@@ -42,7 +42,7 @@ Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300
 | 44 | 0.2220 | 0.3109 | 2 | 2 | 40 | 40 calls | D / tie / tie |
 | 55 | 0.2550 | 0.3266 | — | 4 | — | 80 calls | D / D / D |
 
-Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b) at **pop4×eval5×max_gen6**). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json` (Tick 300). Tick-23 eval3 pilot retained historically as `1830–1844`.
+Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b) at **pop4×eval5×max_gen6**). Tick **360**: `compare.primary_final_pass=true` (`mean_final_gap≈0.0615` >1pp). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json` (Tick 300 + Tick 360 mean-gap fields). Tick-23 eval3 pilot retained historically as `1830–1844`.
 
 ### Live GPQA
 

@@ -372,6 +372,30 @@ def test_primary_criteria_pass_and_h5_count() -> None:
             "d_wins_final": 3,
         }
     )
+    # Tick 360: explicit primary_final_pass / mean gap gate for criterion (c).
+    assert primary_criteria_pass(
+        {
+            "n_pairs": 5,
+            "primary_gens30_pass": False,
+            "primary_cost30_pass": False,
+            "primary_gens25_pass": False,
+            "primary_cost25_pass": False,
+            "primary_final_pass": True,
+            "d_wins_final": 3,
+            "mean_final_gap": 0.06,
+        }
+    )
+    assert not primary_criteria_pass(
+        {
+            "n_pairs": 5,
+            "primary_gens30_pass": False,
+            "primary_cost30_pass": False,
+            "primary_gens25_pass": False,
+            "primary_cost25_pass": False,
+            "d_wins_final": 3,
+            "mean_final_gap": 0.005,  # ~0.5pp noise
+        }
+    )
     assert not primary_criteria_pass(
         {
             "n_pairs": 5,

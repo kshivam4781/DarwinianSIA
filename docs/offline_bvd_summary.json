@@ -41,7 +41,11 @@
     "primary_gens25_pass": false,
     "primary_gens30_pass": true,
     "primary_cost25_pass": false,
-    "primary_cost30_pass": true
+    "primary_cost30_pass": true,
+    "mean_final_b": 0.2526,
+    "mean_final_d": 0.3141,
+    "mean_final_gap": 0.0615,
+    "primary_final_pass": true
   },
   "compare_rows_brief": [
     {
@@ -384,5 +388,5 @@
     "delta_horizon": 2,
     "note": "H5 uses population-mean forward \u0394fitness over the next 1\u20132 gens after DNA steering is active (gen\u22652), matching \u03b5-greedy discovery lag."
   },
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 360: compare includes mean_final_* + primary_final_pass for PRIMARY criterion (c)."
 }

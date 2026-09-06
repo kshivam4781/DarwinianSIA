@@ -459,9 +459,15 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
     b_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
     d_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
     n = min(len(b_runs), len(d_runs))
+    b_finals: list[float] = []
+    d_finals: list[float] = []
     for i in range(n):
         b = summarize_run(b_runs[i])
         d = summarize_run(d_runs[i])
+        b_final = float(b.get("final_best") or 0.0)
+        d_final = float(d.get("final_best") or 0.0)
+        b_finals.append(b_final)
+        d_finals.append(d_final)
         for key, bucket in (("gens_to_25", "gens25"), ("gens_to_30", "gens30")):
             winner = _gens_win(d.get(key), b.get(key))
             if winner == "D":
@@ -479,11 +485,28 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
                 d_wins[bucket] += 1
             elif winner == "B":
                 b_wins[bucket] += 1
-        if d["final_best"] > b["final_best"] + 0.01:
+        if d_final > b_final + 0.01:
             d_wins["final"] += 1
-        elif b["final_best"] > d["final_best"] + 0.01:
+        elif b_final > d_final + 0.01:
             b_wins["final"] += 1
         rows.append({"seed_idx": i, "B": b, "D": d})
+    # Tick 360: emit mean final gap for PRIMARY criterion (c) + G3→G4 promising
+    # fallback (run_icml_live_pipeline.g3_pilot_promising). Prior compare payloads
+    # only had d_wins_final, so mean_final_* lookups were always None.
+    mean_final_b = (sum(b_finals) / n) if n else None
+    mean_final_d = (sum(d_finals) / n) if n else None
+    mean_final_gap = (
+        (mean_final_d - mean_final_b)
+        if mean_final_b is not None and mean_final_d is not None
+        else None
+    )
+    # Criterion (c): ≥3/5 seed final wins (>1pp) AND mean gap >1pp (not noise).
+    primary_final_pass = (
+        n >= 5
+        and d_wins["final"] >= 3
+        and mean_final_gap is not None
+        and mean_final_gap > 0.01
+    )
     return {
         "n_pairs": n,
         "d_wins_gens25": d_wins["gens25"],
@@ -496,10 +519,14 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         "b_wins_cost30": b_wins["cost30"],
         "d_wins_final": d_wins["final"],
         "b_wins_final": b_wins["final"],
+        "mean_final_b": mean_final_b,
+        "mean_final_d": mean_final_d,
+        "mean_final_gap": mean_final_gap,
         "primary_gens25_pass": d_wins["gens25"] >= 3 and n >= 5,
         "primary_gens30_pass": d_wins["gens30"] >= 3 and n >= 5,
         "primary_cost25_pass": d_wins["cost25"] >= 3 and n >= 5,
         "primary_cost30_pass": d_wins["cost30"] >= 3 and n >= 5,
+        "primary_final_pass": primary_final_pass,
         "rows": rows,
     }
 

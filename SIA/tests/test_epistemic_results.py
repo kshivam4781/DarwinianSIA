@@ -280,6 +280,36 @@ def test_compare_b_vs_d_counts_gens30_reach(tmp_path: Path):
     assert out["b_wins_cost30"] == 0
 
 
+def test_compare_b_vs_d_emits_mean_final_gap(tmp_path: Path):
+    """Tick 360: mean_final_* + primary_final_pass for PRIMARY (c) / G3 promising."""
+    # Five pairs: D wins final on all with ~6pp mean gap.
+    b_runs = [
+        _mk_run(tmp_path, 100 + i, [0.20, 0.22, 0.24]) for i in range(5)
+    ]
+    d_runs = [
+        _mk_run(tmp_path, 200 + i, [0.20, 0.26, 0.30]) for i in range(5)
+    ]
+    out = compare_b_vs_d(b_runs, d_runs)
+    assert out["n_pairs"] == 5
+    assert out["d_wins_final"] == 5
+    assert out["mean_final_b"] == pytest.approx(0.24)
+    assert out["mean_final_d"] == pytest.approx(0.30)
+    assert out["mean_final_gap"] == pytest.approx(0.06)
+    assert out["primary_final_pass"] is True
+    # ≥3/5 seed wins but mean gap ≤1pp → criterion (c) fails (noise).
+    mix_b = [
+        _mk_run(tmp_path, 500 + i, [0.20, 0.250 if i < 3 else 0.300])
+        for i in range(5)
+    ]
+    mix_d = [
+        _mk_run(tmp_path, 600 + i, [0.20, 0.265 if i < 3 else 0.301])
+        for i in range(5)
+    ]
+    mix = compare_b_vs_d(mix_b, mix_d)
+    assert mix["d_wins_final"] == 3
+    assert mix["mean_final_gap"] == pytest.approx(0.0094, abs=1e-4)
+    assert mix["primary_final_pass"] is False
+
 def test_cost_to_threshold_prefers_tokens_and_savings(tmp_path: Path):
     """Live token fields beat call fallback; ≥15% fewer tokens → D cost win."""
     b = _mk_run(tmp_path, 10, [0.20, 0.31], pop=2, tokens_per_agent=1000)

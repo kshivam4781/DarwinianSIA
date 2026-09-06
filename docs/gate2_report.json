@@ -1,13 +1,12 @@
 {
-  "timestamp": "2026-09-05T18:18:43Z",
-  "mode": "preflight",
-  "run_id": 1300,
+  "timestamp": "2026-09-06T14:06:23Z",
+  "mode": "dry-run",
+  "run_id": 1910,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
     "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
-    "nebius_key: NEBIUS_API_KEY missing",
-    "hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+    "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
     {
@@ -36,9 +35,9 @@
       "detail": "NEBIUS_API_KEY missing"
     },
     {
-      "name": "hf_token",
-      "ok": false,
-      "detail": "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
     },
     {
       "name": "budget",
@@ -48,7 +47,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1910 unused"
     },
     {
       "name": "per_run_venv",
@@ -73,7 +72,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 349 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 359 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "command": [
@@ -93,7 +92,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1910",
     "--eval_subset",
     "5",
     "--no-web",
@@ -105,5 +104,31 @@
     "--target-agent-profile",
     "kimi-nebius-target"
   ],
-  "post": []
+  "post": [
+    {
+      "name": "run_dir",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1910"
+    },
+    {
+      "name": "belief_store",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1910/belief_store"
+    },
+    {
+      "name": "epistemic_value_jsonl",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "cabs_json",
+      "ok": true,
+      "detail": "contradictions/beliefs present"
+    },
+    {
+      "name": "scoped_mutation_bias",
+      "ok": true,
+      "detail": "fields=['memory', 'tool_strategy']"
+    }
+  ]
 }

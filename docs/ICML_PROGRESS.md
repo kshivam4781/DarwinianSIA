@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T14:15Z — Tick 360 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-ff25`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Separately, `compare_b_vs_d` never emitted `mean_final_gap` / `primary_final_pass`, so (1) `g3_pilot_promising`'s mean-gap fallback was dead code and (2) PRIMARY criterion (c) could pass on ≥3/5 seed wins even when mean gap was ≤1pp noise. Highest leverage without paid spend: **emit mean-final fields + wire criterion (c)**. Portal Save re-link intentionally skipped. G2 dry-run `run_1910` verified green.
+
+### What this tick did (ONE step)
+**PRIMARY mean_final_gap in compare_b_vs_d (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 359 (`f49c`); confirmed secrets absent; boot `ff25` vs tip `f49c`
+2. `compare_b_vs_d` → `mean_final_b/d/gap` + `primary_final_pass`; G4 `primary_criteria_pass` + READY checklist; offline summary patched; AGENTS/HUMAN_UNBLOCK/Section 12 / paper_artifacts
+3. Tests: `test_compare_b_vs_d_emits_mean_final_gap`, primary_criteria mean-gap reject, G3 promising on `mean_final_gap`; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 359) | After (Tick 360) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| Offline `primary_final_pass` / mean gap | missing from compare | **true** / ~**6.15pp** |
+| G3 promising mean-gap fallback | dead (`mean_final_*` absent) | **wired** |
+| Criterion (c) noise reject (gap≤1pp) | seed-wins only | **mean gap >1pp required** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T12:15Z — Tick 359 (automation cron)
 
 ### Status snapshot

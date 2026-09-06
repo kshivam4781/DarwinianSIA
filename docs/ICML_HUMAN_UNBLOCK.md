@@ -81,6 +81,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 359:** **call-JSON gitignore + discard survive** — tip HEAD still *committed* `docs/icml_open_git_pr_call.json` with a prior-tick boot (`…-48b0`). `discard_ephemeral_icml_dirt` then `git restore`'d that stale boot onto fresh VMs after tip `--apply` (same class of bug as Tick 356 for the boot file). Call JSON is now gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; cron `already_on` tip also refreshes call JSON.
 
+**Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

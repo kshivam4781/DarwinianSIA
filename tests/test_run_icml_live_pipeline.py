@@ -562,7 +562,9 @@ def test_g3_pilot_promising_on_d_win() -> None:
         {"mean_final_b": 0.2, "mean_final_d": 0.25},
         {},
     ) is True
-
+    # Tick 360: mean_final_gap alone (emitted by compare_b_vs_d) is promising.
+    assert g3_pilot_promising({"mean_final_gap": 0.05}, {}) is True
+    assert g3_pilot_promising({"mean_final_gap": 0.005}, {}) is False
 
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
