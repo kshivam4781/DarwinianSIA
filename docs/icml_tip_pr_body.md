@@ -1,5 +1,5 @@
 ## Summary
-- Tick 352: tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345 title finding; Tick 346 body confirmation; Tick 347 independent ``tip_pr_body_stale``; Tick 348–349 pass ``description=`` from `open_git_pr_description` in `docs/icml_open_git_pr.json` or `docs/icml_tip_pr_body.md`; Tick 350: prefer verbatim args from `docs/icml_open_git_pr_call.json`). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
+- Tick 353: tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345 title finding; Tick 346 body confirmation; Tick 347 independent ``tip_pr_body_stale``; Tick 348–349 pass ``description=`` from `open_git_pr_description` in `docs/icml_open_git_pr.json` or `docs/icml_tip_pr_body.md`; Tick 350: prefer verbatim args from `docs/icml_open_git_pr_call.json`; Tick 353: cron exports `ICML_CLOUD_BOOT_BRANCH` before tip recover). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
 - **PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) so cron can run live G2→G3→G4.
 - Offline PRIMARY/H5 unchanged (`1890–1904`); STATUS remains IN_PROGRESS (not READY).
 
@@ -15,4 +15,5 @@
 - [x] `pytest tests/test_icml_env_checks.py::test_open_git_pr_description_inline_in_json`
 - [x] `pytest tests/test_icml_env_checks.py::test_open_git_pr_call_json_atomic_mcp_args`
 - [x] `pytest tests/test_icml_env_checks.py::test_detect_cloud_boot_branch_env_and_mismatch`
+- [x] `pytest tests/test_icml_env_checks.py::test_cron_entry_captures_boot_branch_before_tip_recover`
 - [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass

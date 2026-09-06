@@ -67,6 +67,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 352:** **`cloud_boot_branch` in open_git_pr call JSON** — records the concrete greenfield boot branch MCP defaults to when `branch=` is omitted (e.g. `…-1fa6` vs tip `…-f49c`). Cloud Agent “correct working branch” is that boot and does **not** override tip anti-churn; cron/`human_next` warn on mismatch.
 
+**Tick 353:** **cron captures `ICML_CLOUD_BOOT_BRANCH` before tip recover** — `icml_cron_entry.sh` exports the current `cursor/*` boot branch *before* tip recover / anti-churn checkout (preserved across `ICML_CRON_REEXEC`) so boot detection does not depend on noisy post-reset reflog. Call JSON note references Tick 353.
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

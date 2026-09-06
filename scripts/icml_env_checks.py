@@ -1751,17 +1751,19 @@ def detect_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 352: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+    """Tick 352–353: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
 
     Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
     After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
     but the MCP still defaults to the *boot* branch when ``branch=`` is omitted —
-    opening a **new** tip PR. Surface the concrete boot name (e.g. ``…-1fa6``)
+    opening a **new** tip PR. Surface the concrete boot name (e.g. ``…-e24a``)
     in ``docs/icml_open_git_pr_call.json`` / secrets JSON so agents see the
     mismatch vs tip (e.g. ``…-f49c``).
 
     Resolution order:
-    1. ``ICML_CLOUD_BOOT_BRANCH`` env override
+    1. ``ICML_CLOUD_BOOT_BRANCH`` env override (Tick 353: ``icml_cron_entry.sh``
+       exports this from ``git branch --show-current`` *before* tip recover /
+       anti-churn checkout, and preserves it across ``ICML_CRON_REEXEC``)
     2. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
     3. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
     """
@@ -1848,6 +1850,9 @@ def suggested_open_git_pr_body(
     Tick 350: also write ``docs/icml_open_git_pr_call.json`` with the exact MCP
     args ``{branch, title, description}`` so agents pass all three verbatim
     without hunting fields in the large hint JSON.
+
+    Tick 353: cron exports ``ICML_CLOUD_BOOT_BRANCH`` before tip recover so
+    ``cloud_boot_branch`` detection does not depend on post-reset reflog.
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -1875,7 +1880,8 @@ def suggested_open_git_pr_body(
         f"``description=`` from `open_git_pr_description` in "
         f"`docs/icml_open_git_pr.json` or `{ICML_TIP_PR_BODY_RELPATH}`; "
         f"Tick 350: prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`; Tick 353: cron exports "
+        f"`ICML_CLOUD_BOOT_BRANCH` before tip recover). "
         f"Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -1901,6 +1907,8 @@ def suggested_open_git_pr_body(
         f"test_open_git_pr_call_json_atomic_mcp_args`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_detect_cloud_boot_branch_env_and_mismatch`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_cron_entry_captures_boot_branch_before_tip_recover`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -2286,10 +2294,11 @@ def write_icml_open_git_pr_hint(
         )
         if boot and boot != branch:
             note += (
-                f" Tick 352: cloud_boot_branch=`{boot}` — omitting branch= "
+                f" Tick 352–353: cloud_boot_branch=`{boot}` — omitting branch= "
                 f"opens a NEW tip PR on that greenfield boot (not `{branch}`). "
                 "Cloud Agent 'correct working branch' does NOT override tip "
-                "anti-churn; always pass branch= from this file."
+                "anti-churn; always pass branch= from this file. "
+                "Tick 353: cron exports ICML_CLOUD_BOOT_BRANCH before tip recover."
             )
         call_payload = {
             "updated_at": hint_for_json.get("updated_at"),

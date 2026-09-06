@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T00:15Z — Tick 353 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-e24a`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY (G2→G3→G4) remains blocked on **secrets** (NEBIUS + HF/CSV). Tick 352 records `cloud_boot_branch` after the fact via reflog; after `git reset --hard` + tip anti-churn checkout the reflog can miss or stale-pick the boot. Highest leverage without paid spend: **export `ICML_CLOUD_BOOT_BRANCH` at cron start before tip recover**. Portal Save re-link intentionally skipped.
+
+### What this tick did (ONE step)
+**cron early boot-branch capture (no API spend; no Portal Save; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 352 (`f49c`); confirmed secrets absent; observed boot `e24a` vs tip `f49c`
+2. `icml_cron_entry.sh` exports `ICML_CLOUD_BOOT_BRANCH` from `git branch --show-current` *before* tip recover (survives `ICML_CRON_REEXEC`); call JSON note + AGENTS / HUMAN_UNBLOCK / Section 12
+3. Lock tests `test_cron_entry_captures_boot_branch_before_tip_recover` + Tick 353 markers; STATUS remains IN_PROGRESS
+4. Tip commits stay on `f49c` (`open_git_pr` from `docs/icml_open_git_pr_call.json`)
+
+### Metrics delta
+| Metric | Before (Tick 352) | After (Tick 353) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 @ live shape | unchanged |
+| cloud_boot_branch source | post-checkout reflog / current | **cron pre-recover env capture** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` / cron human_next to refresh tip PR #337 title+body, and/or merge bootstrap/tip. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-05T22:15Z — Tick 352 (automation cron)
 
 ### Status snapshot

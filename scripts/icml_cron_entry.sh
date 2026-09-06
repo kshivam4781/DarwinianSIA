@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353).
 #
 # Cron often boots from main without ICML tip docs. This entry:
 #   1. Recovers the highest-Tick tip (chicken-egg safe)
+#   1b. Tick 353: export ICML_CLOUD_BOOT_BRANCH from git branch --show-current
+#       *before* tip recover / anti-churn checkout (survives ICML_CRON_REEXEC)
 #   2. Writes tip + secrets status (presence only; loads .env for missing keys)
 #   2b. Tick 338: tip PR anti-churn auto-checkout — when tip_pr_commit_branch
 #       is set (MERGEABLE tip PR), checkout that branch so commits update the
@@ -67,6 +69,22 @@ else
 fi
 
 echo "=== ICML cron entry (Tick 271–273) mode=${MODE} ==="
+
+# Tick 353: capture greenfield boot branch BEFORE tip recover / anti-churn
+# checkout mutates HEAD. ``detect_cloud_boot_branch`` prefers
+# ``ICML_CLOUD_BOOT_BRANCH``; without an early capture, reflog after
+# ``git reset --hard`` + tip checkout can miss this boot (or surface a stale
+# prior boot). Preserve across ``ICML_CRON_REEXEC`` (export survives exec).
+if [[ -z "${ICML_CLOUD_BOOT_BRANCH:-}" ]]; then
+  _icml_boot="$(git branch --show-current 2>/dev/null || true)"
+  case "${_icml_boot}" in
+    cursor/icml-epistemic-results-*|cursor/icml-epistemic-evolution-*|cursor/bc-*)
+      export ICML_CLOUD_BOOT_BRANCH="${_icml_boot}"
+      echo "ICML_CLOUD_BOOT_BRANCH=${ICML_CLOUD_BOOT_BRANCH} (Tick 353 capture before tip recover)"
+      ;;
+  esac
+  unset _icml_boot
+fi
 
 # --- Tip recover (chicken-egg) -------------------------------------------------
 # Tick 272: pick tip by highest Tick + lineage among refs that actually contain

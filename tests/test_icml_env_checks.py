@@ -882,7 +882,7 @@ def test_prefer_tip_pr_commit_branch_unknown_mergeable() -> None:
 
 
 def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> None:
-    """Tick 352: ICML_CLOUD_BOOT_BRANCH env + call JSON boot fields."""
+    """Tick 352–353: ICML_CLOUD_BOOT_BRANCH env + call JSON boot fields."""
     import json
 
     from icml_env_checks import (
@@ -892,7 +892,7 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
     )
 
     tip = "cursor/icml-epistemic-results-f49c"
-    boot = "cursor/icml-epistemic-results-1fa6"
+    boot = "cursor/icml-epistemic-results-e24a"
     monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot)
     assert detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=tmp_path) == boot
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
@@ -913,7 +913,7 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
             "is_draft": True,
         },
         repo_root=tmp_path,
-        local_tick=352,
+        local_tick=353,
         fetch_diamond_ok=False,
     )
     assert written is not None
@@ -925,7 +925,25 @@ def test_detect_cloud_boot_branch_env_and_mismatch(monkeypatch, tmp_path) -> Non
     assert call["omit_branch_opens_pr_on"] == boot
     assert boot in call["note"]
     assert "correct working branch" in call["note"]
+    assert "Tick 353" in call["note"]
+    assert "ICML_CLOUD_BOOT_BRANCH" in call["note"]
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+
+def test_cron_entry_captures_boot_branch_before_tip_recover() -> None:
+    """Tick 353: icml_cron_entry.sh exports ICML_CLOUD_BOOT_BRANCH before tip recover."""
+    from pathlib import Path
+
+    text = Path("scripts/icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 353" in text
+    assert "ICML_CLOUD_BOOT_BRANCH" in text
+    assert "capture before tip recover" in text
+    # Capture block must appear before tip recover section.
+    idx_capture = text.index("ICML_CLOUD_BOOT_BRANCH")
+    idx_recover = text.index("# --- Tip recover (chicken-egg)")
+    assert idx_capture < idx_recover
+    # Must preserve across re-exec (only set when unset).
+    assert '[[ -z "${ICML_CLOUD_BOOT_BRANCH:-}" ]]' in text
 
 
 def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
