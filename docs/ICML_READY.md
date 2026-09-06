@@ -393,6 +393,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 359 call-JSON gitignore + discard survive — `docs/icml_open_git_pr_call.json` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS` (tip HEAD `git restore` used to re-poison `…-48b0`); cron `already_on` refreshes; lock test `test_call_json_gitignored_survives_ephemeral_discard`
 - [x] Tick 360 PRIMARY mean_final_gap — `compare_b_vs_d` emits `mean_final_b/d/gap` + `primary_final_pass`; G4 criterion (c) + G3 promising use mean gap >1pp; offline summary `primary_final_pass=true` (~6.15pp)
 - [x] Tick 361 live H2 bias-field auto-resolve — `resolve_h2_bias_field` / `compute_h2(field=None)` / G4 `score_live_h2` prefer `tool_strategy` over hard-coded `memory` (latent MECHANISM false-fail fix)
+- [x] Tick 362 offline Fig 2 primary H2 field — `_maybe_figures` + `D_h2_share` use auto-resolved `h2` (not `h2_memory`); regen Figs 1–2 at `1890–1904`
 
 ## Gate tracker (Section 21.5)
 
@@ -405,4 +406,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 361 note: Gate labels / secrets stack through Tick 361 live H2 bias-field auto-resolve; live still blocked on NEBIUS+HF -->
+<!-- Tick 362 note: Gate labels / secrets stack through Tick 362 offline Fig2 primary H2; live still blocked on NEBIUS+HF -->

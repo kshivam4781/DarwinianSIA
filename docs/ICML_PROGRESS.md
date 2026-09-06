@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-06T18:05Z — Tick 362 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-6090`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Tick 361 fixed live H2 field auto-resolve in scoring, but offline paper Fig 2 (`_maybe_figures`) and `D_h2_share` still read hard-coded `h2_memory` — so the publishable mechanism figure could show memory alleles while the case study / CABS bias steers `tool_strategy` (or `retry_policy`). Highest leverage without paid spend: **align offline Fig 2 + summary H2 with primary auto-resolved field**.
+
+### What this tick did (ONE step)
+**Offline Fig 2 / summary primary-H2 alignment (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 361 (`f49c`); confirmed secrets absent; boot `6090` vs tip `f49c`
+2. `offline_bvd_case_study._maybe_figures` plots `h2` (fallback `h2_memory`) with field in title; `compare_rows_brief` emits `D_h2_field` + primary `D_h2_share`
+3. Regenerated offline Bvd `1890–1904` + Figs 1–2; H2 fields observed: tool_strategy / retry_policy (not memory); PRIMARY unchanged (final 5/5, gens30/cost30 4/5, gap ~6.15pp, H5 5/5)
+4. Test: `test_offline_fig2_uses_primary_h2_field_not_memory`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 361) | After (Tick 362) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Offline Fig 2 DNA field | hard-coded `h2_memory` | **primary `h2`** (auto field) |
+| Summary `D_h2_field` | absent | **tool_strategy / retry_policy** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T16:20Z — Tick 361 (automation cron)
 
 ### Status snapshot

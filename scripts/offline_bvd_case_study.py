@@ -504,16 +504,19 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
     except ValueError:
         written.append(str(path))
 
-    # Fig 2 from first D run H2 histogram via summarize
+    # Fig 2 from first D run primary H2 (Tick 362: prefer auto-resolved field,
+    # typically tool_strategy — not hard-coded h2_memory / memory alleles).
     if d_runs:
         s = summarize_run(d_runs[0])
-        counts = (s.get("h2_memory") or {}).get("counts") or {}
+        h2 = s.get("h2") or s.get("h2_memory") or {}
+        counts = h2.get("counts") or {}
         if counts:
+            field = str(h2.get("field") or s.get("h2_field") or "memory")
             fig, ax = plt.subplots(figsize=(6, 4))
             labels = list(counts.keys())
             vals = [counts[k] for k in labels]
             ax.bar(labels, vals, color="#2a6f97")
-            ax.set_title("H2 DNA memory histogram (Condition D dry-run)")
+            ax.set_title(f"H2 DNA {field} histogram (Condition D dry-run)")
             ax.set_ylabel("count")
             ax.tick_params(axis="x", rotation=30)
             path = out_dir / "fig2_mechanism.png"
@@ -668,7 +671,14 @@ def main(argv: list[str] | None = None) -> int:
                 "D_h5_pass": (r["D"].get("h5") or {}).get("pass"),
                 "D_h5_key": (r["D"].get("h5") or {}).get("fitness_key"),
                 "D_h5_horizon": (r["D"].get("h5") or {}).get("delta_horizon"),
-                "D_h2_share": (r["D"].get("h2_memory") or {}).get("in_bias_share"),
+                # Tick 362: primary H2 (auto field), not legacy h2_memory-only.
+                "D_h2_field": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
+                    "field"
+                )
+                or r["D"].get("h2_field"),
+                "D_h2_share": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
+                    "in_bias_share"
+                ),
             }
             for r in compare.get("rows", [])
         ],

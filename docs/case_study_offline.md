@@ -29,10 +29,14 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
   "b_wins_cost30": 0,
   "d_wins_final": 5,
   "b_wins_final": 0,
+  "mean_final_b": 0.2526,
+  "mean_final_d": 0.3141,
+  "mean_final_gap": 0.0615,
   "primary_gens25_pass": false,
   "primary_gens30_pass": true,
   "primary_cost25_pass": false,
-  "primary_cost30_pass": true
+  "primary_cost30_pass": true,
+  "primary_final_pass": true
 }
 ```
 

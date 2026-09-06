@@ -45,6 +45,95 @@ def _write_agent(run_dir: Path, gen: int, agent_id: int, *, trait: str, fitness:
     )
 
 
+def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypatch):
+    """Tick 362: offline Fig 2 must plot primary H2 (tool_strategy), not h2_memory."""
+    from offline_bvd_case_study import _maybe_figures
+
+    d_run = tmp_path / "run_d"
+    d_run.mkdir()
+    # summarize_run returns conflicting primary vs memory histograms — fig2 must
+    # follow primary ``h2`` (tool_strategy), not legacy ``h2_memory``.
+    fake = {
+        "learning_curve": {
+            "1": {"best": 0.2, "mean": 0.18},
+            "2": {"best": 0.25, "mean": 0.22},
+            "3": {"best": 0.31, "mean": 0.28},
+        },
+        "h2": {
+            "field": "tool_strategy",
+            "counts": {"selective": 9, "aggressive": 3},
+            "in_bias_share": 0.75,
+        },
+        "h2_field": "tool_strategy",
+        "h2_memory": {
+            "field": "memory",
+            "counts": {"short_summary": 8, "none": 4},
+            "in_bias_share": 0.1,
+        },
+    }
+    monkeypatch.setattr("offline_bvd_case_study.summarize_run", lambda _p: fake)
+
+    captured: dict[str, object] = {}
+
+    class _Ax:
+        def bar(self, labels, vals, color=None):  # noqa: ANN001
+            captured["labels"] = list(labels)
+            captured["vals"] = list(vals)
+
+        def plot(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+        def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+        def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+        def set_title(self, title, *a, **k):  # noqa: ANN001, ARG002
+            captured["title"] = title
+
+        def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+        def grid(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+        def legend(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    class _Fig:
+        def tight_layout(self):
+            return None
+
+        def savefig(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    class _Plt:
+        @staticmethod
+        def subplots(*a, **k):  # noqa: ANN001, ARG002
+            return _Fig(), _Ax()
+
+        @staticmethod
+        def close(*a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    import types
+    import sys
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+    fake_pyplot = _Plt()
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", fake_pyplot)
+
+    out = tmp_path / "figs"
+    written = _maybe_figures([], [d_run], out)
+    assert any("fig2_mechanism.png" in p for p in written)
+    assert captured.get("labels") == ["selective", "aggressive"]
+    assert "tool_strategy" in str(captured.get("title"))
+    assert "memory" not in str(captured.get("title")).lower()
+
+
 def test_preferred_share_helper():
     traits = [{"trait": "stepwise"}, {"trait": "direct"}, {"trait": "stepwise"}, {"trait": "hierarchical"}]
     assert preferred_share(traits, "stepwise") == 0.5

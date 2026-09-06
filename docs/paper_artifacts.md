@@ -84,7 +84,7 @@ Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; ge
 | 1 | Accuracy / cost curves B vs D (offline draft) | `docs/figures/fig1_learning_curves.png` |
 | 2 | H2 DNA skew / case-study support (offline draft) | `docs/figures/fig2_mechanism.png` |
 
-Offline Figs 1–2 regenerated at Tick **302** from live-shape pilot `1890–1904` (summary `figures` locked; Tick 300 had left `figures: []` when matplotlib was absent).
+Offline Figs 1–2 regenerated at Tick **362** from live-shape pilot `1890–1904` using **primary H2** (auto-resolved DNA field — typically `tool_strategy`, not hard-coded `memory`; Tick 302 first populated on-disk paths).
 
 ## Case study (offline)
 
@@ -93,7 +93,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
-- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**.
+- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`.
 - Same-allele cross-agent “contradictions” previously created singleton bias pools that wiped better elites; Tick 10 skips those pools — still **unverified on live GPQA**.
 - Pre-Tick-7 bias treated both contradiction sides uniformly; now fitness-weighted + preferred-allele anchoring (unit-tested) but **unverified on live GPQA**.
 - Soft bias-aware crossover (Tick 11) raised offline final seed wins to 3/5 but **hurt gens-to-30% (0/5) and H5 (2/5)** vs Tick 10.
