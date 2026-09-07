@@ -17,6 +17,7 @@ from run_icml_live_pipeline import (  # noqa: E402
     bump_spent_reconciled,
     g2_resume_gates_ok,
     g3_pilot_promising,
+    load_g3_metrics_for_g4,
     project_budget,
     run_preflight_stack,
     sync_spent_from_completed_stages,
@@ -648,6 +649,149 @@ def test_g2_resume_refuses_zero_fitness_local_artifacts(
     assert resume["g2_gates_failed"] is True
     assert resume["g2_done"] is False
     assert any("Tick 372" in d for d in resume["details"])
+
+
+def test_g3_resume_rescores_local_when_sidecar_preflight(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 373: resume-complete G3 + preflight sidecar → re-score local, not null."""
+    import run_icml_live_pipeline as pipe
+    import run_g3_pilot as g3
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Preflight sidecar with null comparison (the mid-stack crash failure mode).
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "h5_by_d_run": {},
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+
+    b_dir = tmp_path / "runs" / "run_1201"
+    d_dir = tmp_path / "runs" / "run_1301"
+    b_dir.mkdir(parents=True)
+    d_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: set(ids) <= {1201, 1301})
+    monkeypatch.setattr(
+        pipe,
+        "_resolve_run_dirs",
+        lambda ids: [b_dir if i == 1201 else d_dir for i in ids],
+    )
+
+    fake_cmp = {
+        "n_pairs": 1,
+        "d_wins_gens30": 1,
+        "d_wins_final": 1,
+        "mean_final_gap": 0.05,
+        "mean_final_b": 0.2,
+        "mean_final_d": 0.25,
+    }
+
+    def _fake_score(b_dirs, d_dirs):
+        assert b_dirs == [b_dir]
+        assert d_dirs == [d_dir]
+        return fake_cmp, {"run_1301": {"spearman_rho": 0.6}}, {"run_1301": {"preferred_share": 0.75}}
+
+    monkeypatch.setattr(g3, "score_pilot", _fake_score)
+
+    comparison, h5, h2, src = load_g3_metrics_for_g4(
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        report_md=docs / "gate3_report.md",
+    )
+    assert comparison == fake_cmp
+    assert h5["run_1301"]["spearman_rho"] == 0.6
+    assert h2["run_1301"]["preferred_share"] == 0.75
+    assert "re-scored G3 from local" in src
+    assert g3_pilot_promising(comparison, h5) is True
+
+
+def test_g3_resume_refuses_preflight_sidecar_without_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 373: no local G3 + preflight/null sidecar → refuse G4 metrics."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": {"d_wins_gens30": 1, "mean_final_gap": 0.2},
+                "h5_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    comparison, h5, h2, src = load_g3_metrics_for_g4(
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        report_md=docs / "gate3_report.md",
+    )
+    assert comparison is None
+    assert h5 == {}
+    assert h2 == {}
+    assert "refuse G4" in src
+    assert g3_pilot_promising(comparison, h5) is False
+
+
+def test_g3_resume_trusts_live_executed_sidecar_ledger_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 373: ledger-only resume may trust a live-executed gate3 sidecar."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    live_cmp = {
+        "n_pairs": 1,
+        "d_wins_cost30": 1,
+        "mean_final_gap": 0.03,
+        "mean_final_b": 0.22,
+        "mean_final_d": 0.25,
+    }
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": live_cmp,
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.55}},
+                "h2_by_d_run": {"run_1301": {"preferred_share": 0.6}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    comparison, h5, h2, src = load_g3_metrics_for_g4(
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        report_md=docs / "gate3_report.md",
+    )
+    assert comparison == live_cmp
+    assert h5["run_1301"]["spearman_rho"] == 0.55
+    assert h2["run_1301"]["preferred_share"] == 0.6
+    assert "trusted live-executed gate3 sidecar" in src
+    assert g3_pilot_promising(comparison, h5) is True
 
 
 def test_preflight_stack_not_ready_without_keys(

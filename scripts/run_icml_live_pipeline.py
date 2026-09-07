@@ -21,6 +21,10 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 372: G2 resume re-validates post-run gates (incl. nonzero fitness);
     a 0%-fitness G2 still has results.json so Tick 284 alone would skip G2
     and auto-burn G3/G4 — refuse resume-complete until gates pass
+  - Tick 373: G3→G4 gate re-scores local G3 B/D artifacts (or requires a
+    live-executed gate3 sidecar). A resume-skipped G3 with only a preflight /
+    null comparison must not auto-burn ~$14 G4, and a completed local G3 must
+    not stall G4 because the sidecar was never written after a mid-stack crash.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -483,6 +487,82 @@ def _load_gate3_sidecar(
         data.get("comparison"),
         data.get("h5_by_d_run") or {},
         data.get("h2_by_d_run") or {},
+    )
+
+
+def _load_gate3_sidecar_raw(report_md: Path) -> dict[str, Any]:
+    """Full gate3 JSON (mode/executed + compare) for Tick 373 G4 gate trust checks."""
+    sidecar = report_md.with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def load_g3_metrics_for_g4(
+    *,
+    g3_b_ids: list[int],
+    g3_d_ids: list[int],
+    report_md: Path | None = None,
+) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any], str]:
+    """Tick 373: authoritative G3→G4 metrics (prefer local re-score).
+
+    Resume can skip the G3 runner when B/D ``results.json`` exist, but the
+    committed ``gate3_report.json`` is often still ``mode=preflight`` with
+    ``comparison=null`` (crash after runs / fresh VM with only run dirs).
+    Trusting that sidecar would either:
+      - auto-refuse G4 forever despite a PRIMARY-shaped local pilot, or
+      - (if comparison were ever filled from offline) risk a false G4 burn.
+    Re-score from local dirs when present. Ledger-only / no-local fallback
+    accepts the sidecar **only** when ``mode=="live"`` and ``executed`` and a
+    non-null comparison exist.
+    """
+    report_md = report_md or (REPO_ROOT / "docs" / "gate3_report.md")
+    g3_ids = list(g3_b_ids) + list(g3_d_ids)
+    if g3_ids and stage_runs_complete(g3_ids):
+        b_dirs = _resolve_run_dirs(list(g3_b_ids))
+        d_dirs = _resolve_run_dirs(list(g3_d_ids))
+        if len(b_dirs) == len(g3_b_ids) and len(d_dirs) == len(g3_d_ids):
+            comparison, h5, h2 = g3.score_pilot(b_dirs, d_dirs)
+            return (
+                comparison,
+                h5 or {},
+                h2 or {},
+                "Tick 373: re-scored G3 from local B/D run dirs",
+            )
+        return (
+            None,
+            {},
+            {},
+            "Tick 373: local G3 run IDs marked complete but dirs unresolved — "
+            "refuse G4 until artifacts are present or gate3 live sidecar exists",
+        )
+
+    data = _load_gate3_sidecar_raw(report_md)
+    comparison = data.get("comparison")
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    if (
+        mode == "live"
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+    ):
+        return (
+            comparison,
+            data.get("h5_by_d_run") or {},
+            data.get("h2_by_d_run") or {},
+            "Tick 373: trusted live-executed gate3 sidecar (no local G3 dirs)",
+        )
+    return (
+        None,
+        {},
+        {},
+        "Tick 373: no local G3 artifacts and no live-executed gate3 comparison "
+        f"(mode={mode or 'missing'!r}, executed={executed}) — refuse G4 auto-advance",
     )
 
 
@@ -1158,7 +1238,12 @@ def run_live_stack(
             f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})"
         )
 
-    comparison, h5, h2 = _load_gate3_sidecar(REPO_ROOT / "docs" / "gate3_report.md")
+    comparison, h5, h2, g3_metric_src = load_g3_metrics_for_g4(
+        g3_b_ids=g3_b_ids,
+        g3_d_ids=g3_d_ids,
+        report_md=REPO_ROOT / "docs" / "gate3_report.md",
+    )
+    report.notes.append(g3_metric_src)
     promising = g3_pilot_promising(comparison, h5)
     report.g3_promising = promising
     report.g3_comparison = comparison

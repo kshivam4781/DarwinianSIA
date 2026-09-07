@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T16:05Z — Tick 373 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-85b5`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 372's G2 resume re-validation, a **resume-skipped G3** still trusted `gate3_report.json`, which is often still `mode=preflight` with `comparison=null` (mid-stack crash / sidecar never written). That either stalls G4 despite a PRIMARY-shaped local pilot or (if comparison were ever filled from offline) risks a false ~$14 G4 burn. Highest leverage without paid spend: **G3 resume re-score for G4 gate**.
+
+### What this tick did (ONE step)
+**G3 resume re-score for G4 gate (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 372 (`f49c`); confirmed secrets absent; boot `85b5` vs tip `f49c`
+2. `load_g3_metrics_for_g4` re-scores from local B/D run dirs when present; ledger-only fallback accepts sidecar only when `mode=="live"` + `executed` + non-null comparison
+3. Tests: `test_g3_resume_rescores_local_when_sidecar_preflight` / `test_g3_resume_refuses_preflight_sidecar_without_local` / `test_g3_resume_trusts_live_executed_sidecar_ledger_only`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 372) | After (Tick 373) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| G2 resume after 0%-fitness | refuse G3/G4 | unchanged |
+| G3 resume → G4 metrics | trusted sidecar (often preflight/null) | **re-score local; live-executed sidecar only** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T14:15Z — Tick 372 (automation cron)
 
 ### Status snapshot

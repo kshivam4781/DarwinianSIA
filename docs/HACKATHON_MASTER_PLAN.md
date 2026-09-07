@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-07 (Section 21 ICML; Tick 372 G2 resume post-run re-validation; Tick 371 G2 nonzero-fitness; …)
+**Last updated:** 2026-09-07 (Section 21 ICML; Tick 373 G3 resume re-score for G4; Tick 372 G2 resume; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -966,7 +966,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML G3→G4 PRIMARY-only gate (Tick 370) | **DONE** | `g3_pilot_promising` requires PRIMARY-shaped D win / mean_final_gap>1pp; H5 alone no longer auto-spends ~$14 G4 (`--force-g4` override) |
 | ICML G2 nonzero-fitness gate (Tick 371) | **DONE** | `validate_g2_artifacts` requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0); blocks 0%/unscored G2 from auto-advancing paid G3/G4 |
 | ICML G2 resume re-validation (Tick 372) | **DONE** | Resume re-runs `validate_g2_artifacts` on local G2; 0%-fitness `results.json` no longer resume-skips into paid G3/G4 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–369 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML G3 resume re-score for G4 (Tick 373) | **DONE** | `load_g3_metrics_for_g4` re-scores local G3 B/D (or requires live-executed sidecar); preflight/null comparison no longer drives G4 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–373 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -1855,7 +1856,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **G4 full paper-pack refresh (2026-08-06 Tick 28):** Same runner now also scores live H2 DNA skew, refreshes Table 2 H2/H5 marker rows, rewrites Figs 1–2 from B vs D curves + pooled H2 histograms, and updates `docs/ICML_READY.md` checklist (sets STATUS: READY only when PRIMARY + MECHANISM + live H5 + paper all pass). Recovery without re-spend: `python3 scripts/run_g4_multiseed.py --refresh-paper-from-runs --b-run-dirs ... --d-run-dirs ...` (READY requires explicit `--allow-ready` on refresh).
 
-**Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29; Tick 370–371 gates):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot shows a **PRIMARY-shaped** D win (gens/cost/final or mean_final_gap>1pp; Tick 370 — H5 alone is not enough; `--force-g4` overrides). Tick **371**: G2 post-run validation requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0) so 0%/unscored smoke cannot auto-advance into paid G3/G4. Preferred live entry: `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
+**Unified live G2→G3→G4 pipeline (2026-08-06 Tick 29; Tick 370–373 gates):** `scripts/run_icml_live_pipeline.py` chains the gate runners in one process so a cron tick with freshly injected keys can finish PRIMARY + paper pack without stopping after G2/G3. Projects full-stack spend (defaults G2 $1 + G3 $4 + G4 $15 ≤ $20), bumps `SIA_BUDGET_SPENT_USD` between stages, materializes diamond once at n=15, and only launches G4 when the G3 pilot shows a **PRIMARY-shaped** D win (gens/cost/final or mean_final_gap>1pp; Tick 370 — H5 alone is not enough; `--force-g4` overrides). Tick **371**: G2 post-run validation requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0) so 0%/unscored smoke cannot auto-advance into paid G3/G4. Tick **372**: G2 resume re-validates those gates. Tick **373**: G3→G4 metrics re-score from local B/D dirs (or require live-executed gate3 sidecar) so a preflight/null sidecar cannot drive or stall G4. Preferred live entry: `python3 scripts/run_icml_live_pipeline.py --live --fetch-diamond`. Preflight this tick: live ready **no** (no keys / no linked env).
 
 **Linked Cursor environment (2026-08-06 Tick 30):** Created personal transitional draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` and committed `.cursor/environment.json` (user-site pip install of `sia-cabs[dev]`, `SIA[dev]`, `huggingface_hub` — avoids missing `python3.12-venv`/`ensurepip`). Prior ticks had `environment: null` so secrets could not inject. **Tick 289/310:** live blocked on `NEBIUS_API_KEY` + (`HF_TOKEN` or local CSV); `ANTHROPIC_API_KEY` optional under Nebius pydantic-ai meta (accepted `Idavidrein/gpqa` when using HF).
 
@@ -2531,4 +2532,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G2 nonzero-fitness post-run gate (Tick 371):** After Tick 370 tightened G3→G4, G2 could still PASS on CABS artifacts alone with **0% / missing** fitness (silent parse/eval failure) and auto-burn ~$19 on G3+G4. `validate_g2_artifacts` now requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **G2 resume post-run re-validation (Tick 372):** After Tick 371, a 0%-fitness G2 still writes `results.json`, so Tick 284 resume would skip G2 and auto-burn ~$19 on G3+G4. `sync_spent_from_completed_stages` now re-validates local G2 via `validate_g2_artifacts` and refuses resume-complete until gates pass. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**G3 resume re-score for G4 gate (Tick 373):** After Tick 372, a resume-skipped G3 still trusted `gate3_report.json`, often still `mode=preflight` with `comparison=null`. That stalls G4 despite a PRIMARY-shaped local pilot, or (if comparison were filled from offline) risks a false ~$14 G4 burn. `load_g3_metrics_for_g4` re-scores from local B/D dirs when present; ledger-only fallback requires live-executed sidecar + non-null comparison. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
