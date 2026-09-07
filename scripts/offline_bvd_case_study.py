@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from epistemic_results import (  # noqa: E402
     compare_b_vs_d,
+    h2_preferred_seed_pass,
     summarize_run,
 )
 from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
@@ -223,6 +224,19 @@ def _load_gen_traits(layout: RunLayout, gen: int, field: str, max_agents: int = 
             }
         )
     return traits
+
+
+def _brief_h2_fields(d_summary: dict) -> dict:
+    """Tick 362/365/366: primary H2 preferred-share fields for compare brief."""
+    h2 = d_summary.get("h2") or d_summary.get("h2_memory") or {}
+    share = h2.get("preferred_share")
+    return {
+        "D_h2_field": h2.get("field") or d_summary.get("h2_field"),
+        "D_h2_preferred": h2.get("preferred_value"),
+        "D_h2_share": share,
+        "D_h2_in_bias_share": h2.get("in_bias_share"),
+        "D_h2_pass": h2_preferred_seed_pass(h2),
+    }
 
 
 def preferred_share(traits: list[dict], preferred: str) -> float | None:
@@ -686,22 +700,8 @@ def main(argv: list[str] | None = None) -> int:
                 "D_h5_pass": (r["D"].get("h5") or {}).get("pass"),
                 "D_h5_key": (r["D"].get("h5") or {}).get("fitness_key"),
                 "D_h5_horizon": (r["D"].get("h5") or {}).get("delta_horizon"),
-                # Tick 362: primary H2 (auto field), not legacy h2_memory-only.
-                # Tick 365: D_h2_share = preferred_share (MECHANISM pass key);
-                # keep in_bias_share separately (pool membership ≠ skew).
-                "D_h2_field": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
-                    "field"
-                )
-                or r["D"].get("h2_field"),
-                "D_h2_preferred": (
-                    r["D"].get("h2") or r["D"].get("h2_memory") or {}
-                ).get("preferred_value"),
-                "D_h2_share": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
-                    "preferred_share"
-                ),
-                "D_h2_in_bias_share": (
-                    r["D"].get("h2") or r["D"].get("h2_memory") or {}
-                ).get("in_bias_share"),
+                # Tick 362/365/366: primary preferred-share H2 (+ pass flag).
+                **_brief_h2_fields(r["D"]),
             }
             for r in compare.get("rows", [])
         ],

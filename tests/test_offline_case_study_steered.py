@@ -147,6 +147,8 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
 
 def test_offline_compare_brief_uses_preferred_share_not_in_bias():
     """Tick 365: D_h2_share is preferred_share (MECHANISM), not pool membership."""
+    from offline_bvd_case_study import _brief_h2_fields
+
     # Mimic compare_rows_brief extraction without a full offline pilot.
     row = {
         "seed_idx": 0,
@@ -165,21 +167,50 @@ def test_offline_compare_brief_uses_preferred_share_not_in_bias():
             },
         },
     }
-    h2 = row["D"].get("h2") or {}
-    brief = {
-        "D_h2_field": h2.get("field"),
-        "D_h2_preferred": h2.get("preferred_value"),
-        "D_h2_share": h2.get("preferred_share"),
-        "D_h2_in_bias_share": h2.get("in_bias_share"),
-    }
+    brief = _brief_h2_fields(row["D"])
     assert brief["D_h2_share"] == 0.25
     assert brief["D_h2_in_bias_share"] == 1.0
     assert brief["D_h2_preferred"] == "selective"
     assert brief["D_h2_share"] != brief["D_h2_in_bias_share"]
+    assert brief["D_h2_pass"] is False  # Tick 366: preferred < 0.5
     traits = [{"trait": "stepwise"}, {"trait": "direct"}, {"trait": "stepwise"}, {"trait": "hierarchical"}]
     assert preferred_share(traits, "stepwise") == 0.5
     assert preferred_share([], "stepwise") is None
 
+
+def test_offline_compare_brief_emits_h2_pass():
+    """Tick 366: D_h2_pass follows preferred_share ≥ 0.5 (not in_bias_share)."""
+    from offline_bvd_case_study import _brief_h2_fields
+
+    win = _brief_h2_fields(
+        {
+            "h2": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.75,
+                "in_bias_share": 1.0,
+            }
+        }
+    )
+    lose = _brief_h2_fields(
+        {
+            "h2": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.29,
+                "in_bias_share": 1.0,
+            }
+        }
+    )
+    assert win["D_h2_pass"] is True
+    assert lose["D_h2_pass"] is False
+    # Committed offline summary must advertise aggregate preferred-pass.
+    summary = json.loads((REPO / "docs" / "offline_bvd_summary.json").read_text())
+    cmp = summary["compare"]
+    assert cmp.get("d_wins_h2") == 4
+    assert cmp.get("h2_preferred_pass") is True
+    passes = [bool(r.get("D_h2_pass")) for r in summary["compare_rows_brief"]]
+    assert passes == [True, False, True, True, True]
 
 def test_offline_bvd_defaults_match_live_shape():
     """Tick 304: CLI defaults must track icml_g3g4_live_shape(), not hardcoded ints."""

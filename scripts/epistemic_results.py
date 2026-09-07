@@ -522,10 +522,42 @@ def _cost_win(
     return None
 
 
+def h2_preferred_seed_pass(
+    h2_payload: dict[str, Any] | None, *, min_share: float = 0.5
+) -> bool:
+    """True when Condition D preferred-allele share meets MECHANISM skew floor.
+
+    Tick 366: same key as live ``h2_skew_pass`` (preferred ≥ min_share), not
+    contradiction-pool ``in_bias_share``.
+    """
+    if not isinstance(h2_payload, dict):
+        return False
+    pref_share = h2_payload.get("preferred_share")
+    if pref_share is None:
+        preferred = h2_payload.get("preferred_value")
+        bias = list(h2_payload.get("bias_values") or [])
+        if preferred is None and bias:
+            preferred = bias[0]
+        counts = h2_payload.get("counts") or {}
+        total = int(h2_payload.get("total") or 0) or sum(
+            int(v) for v in counts.values()
+        )
+        if preferred is not None and total > 0:
+            pref_share = int(counts.get(str(preferred), 0)) / float(total)
+    return isinstance(pref_share, (int, float)) and float(pref_share) >= min_share
+
+
 def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
     rows = []
     b_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
-    d_wins = {"gens25": 0, "gens30": 0, "final": 0, "cost25": 0, "cost30": 0}
+    d_wins = {
+        "gens25": 0,
+        "gens30": 0,
+        "final": 0,
+        "cost25": 0,
+        "cost30": 0,
+        "h2": 0,
+    }
     n = min(len(b_runs), len(d_runs))
     b_finals: list[float] = []
     d_finals: list[float] = []
@@ -557,6 +589,9 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
             d_wins["final"] += 1
         elif b_final > d_final + 0.01:
             b_wins["final"] += 1
+        # Tick 366: aggregate preferred-allele H2 (MECHANISM) seed wins.
+        if h2_preferred_seed_pass(d.get("h2") or d.get("h2_memory")):
+            d_wins["h2"] += 1
         rows.append({"seed_idx": i, "B": b, "D": d})
     # Tick 360: emit mean final gap for PRIMARY criterion (c) + G3→G4 promising
     # fallback (run_icml_live_pipeline.g3_pilot_promising). Prior compare payloads
@@ -575,6 +610,8 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         and mean_final_gap is not None
         and mean_final_gap > 0.01
     )
+    # MECHANISM H2: ≥3/5 D seeds with preferred_share ≥ 0.5 (Tick 364/366).
+    h2_preferred_pass = n >= 5 and d_wins["h2"] >= 3
     return {
         "n_pairs": n,
         "d_wins_gens25": d_wins["gens25"],
@@ -587,6 +624,7 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         "b_wins_cost30": b_wins["cost30"],
         "d_wins_final": d_wins["final"],
         "b_wins_final": b_wins["final"],
+        "d_wins_h2": d_wins["h2"],
         "mean_final_b": mean_final_b,
         "mean_final_d": mean_final_d,
         "mean_final_gap": mean_final_gap,
@@ -595,6 +633,7 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
         "primary_cost25_pass": d_wins["cost25"] >= 3 and n >= 5,
         "primary_cost30_pass": d_wins["cost30"] >= 3 and n >= 5,
         "primary_final_pass": primary_final_pass,
+        "h2_preferred_pass": h2_preferred_pass,
         "rows": rows,
     }
 

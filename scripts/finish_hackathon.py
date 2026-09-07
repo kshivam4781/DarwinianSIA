@@ -61,7 +61,10 @@ def _offline_bvd_blurb() -> str:
         f"(primary_gens30={cmp_.get('primary_gens30_pass')}); "
         f"cost30 D wins {cmp_.get('d_wins_cost30')}/5 "
         f"(primary_cost30={cmp_.get('primary_cost30_pass')}); "
-        f"final D wins {cmp_.get('d_wins_final')}/5\n"
+        f"final D wins {cmp_.get('d_wins_final')}/5 "
+        f"(primary_final={cmp_.get('primary_final_pass')}); "
+        f"H2 preferred D wins {cmp_.get('d_wins_h2')}/5 "
+        f"(h2_preferred_pass={cmp_.get('h2_preferred_pass')})\n"
         f"  NOT live GPQA — do not set ICML_READY from offline alone."
     )
 

@@ -24,11 +24,12 @@ Harness: `scripts/offline_bvd_case_study.py` at **Nebius live G3/G4 shape** (`ic
 | Gens-to-25% | Both hit gen1 (still saturated at 25%) |
 | Gen-1 ≥30% | **0/5** seeds (saturation still fixed) |
 | H5 ρ>0.3 (D seeds) | **5/5** (0.4 / 0.8 / 0.8 / 1.0 / 0.4) — mean forward Δ; gen≥2; horizon=2 |
+| H2 preferred ≥0.5 (D seeds) | **4/5** (Tick 366; shares ≈0.71/0.29/0.83/0.67/0.75; seed **22** fails) — MECHANISM still OK via case study |
 | Case study | `docs/case_study_offline.md` (`run_1900`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
 | Figures | `docs/figures/fig1_learning_curves.png`, `fig2_mechanism.png` |
-| Summary JSON | `docs/offline_bvd_summary.json` (`shape` locked to live) |
+| Summary JSON | `docs/offline_bvd_summary.json` (`shape` locked to live; Tick 366 `d_wins_h2` / `h2_preferred_pass`) |
 
-**Finding:** Tick 300 re-pilots offline B vs D at the **exact live Nebius shape** (eval5, not Tick-23 eval3). Fitness/gens/H5 identical to Tick 23; cost@30% scales with eval_subset (e.g. seed 11: 80 calls vs prior 48). Confirms PRIMARY-shaped offline signal before paid G2→G3→G4. Case study on `run_1900`: contradiction `selective` vs `aggressive` → preferred `selective` share **0.25→0.5→0.75** with lift **+0.0436**.
+**Finding:** Tick 300 re-pilots offline B vs D at the **exact live Nebius shape** (eval5, not Tick-23 eval3). Fitness/gens/H5 identical to Tick 23; cost@30% scales with eval_subset (e.g. seed 11: 80 calls vs prior 48). Confirms PRIMARY-shaped offline signal before paid G2→G3→G4. Case study on `run_1900`: contradiction `selective` vs `aggressive` → preferred `selective` share **0.25→0.5→0.75** with lift **+0.0436**. Tick **366** aggregates preferred-allele H2: **4/5** seeds pass (≥0.5); seed 22 preferred≈0.29 is an honest MECHANISM miss covered by the case study (not pool `in_bias_share=1.0`).
 
 Prior Tick-23 pilot `1830–1834` / `1840–1844` remains the first post-steering H2 snapshot (eval3). Tick-22 `1810–1814` / `1820–1824` remains the first offline cost30 **4/5** snapshot. Tick-20 `1780–1784` / `1790–1794` remains the first offline gens30 **4/5** snapshot. Tick-8 hash-fitness “D final 4/5” remains **withdrawn** (non-causal).
 <!-- OFFLINE_G3_PILOT_END -->

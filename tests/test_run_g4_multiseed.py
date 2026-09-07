@@ -644,6 +644,96 @@ def test_h2_h5_pass_helpers() -> None:
     )
 
 
+def test_compare_b_vs_d_h2_preferred_aggregate(monkeypatch) -> None:
+    """Tick 366: compare_b_vs_d emits d_wins_h2 / h2_preferred_pass from preferred_share."""
+    from epistemic_results import compare_b_vs_d, h2_preferred_seed_pass
+
+    assert h2_preferred_seed_pass(
+        {"preferred_share": 0.75, "in_bias_share": 1.0}
+    )
+    assert not h2_preferred_seed_pass(
+        {"preferred_share": 0.29, "in_bias_share": 1.0}
+    )
+    # Derive from counts when preferred_share missing.
+    assert h2_preferred_seed_pass(
+        {
+            "preferred_value": "selective",
+            "counts": {"selective": 3, "aggressive": 1},
+            "total": 4,
+            "bias_values": ["selective", "aggressive"],
+        }
+    )
+
+    shares = [0.71, 0.29, 0.83, 0.67, 0.75]
+
+    def fake_summarize(run_dir: Path) -> dict:
+        name = Path(run_dir).name
+        # B runs: no preferred share; D runs: cycle shares.
+        if "b" in name.lower() or name.startswith("run_b"):
+            return {
+                "final_best": 0.25,
+                "gens_to_25": 1,
+                "gens_to_30": None,
+                "cost_to_25": {"cost": 20},
+                "cost_to_30": {},
+                "h5": {"spearman_rho": 0.0, "pass": False},
+                "h2": {"preferred_share": 0.1, "in_bias_share": 0.1},
+            }
+        idx = int(str(run_dir).rstrip("/").split("_")[-1]) % 5
+        return {
+            "final_best": 0.32,
+            "gens_to_25": 1,
+            "gens_to_30": 4,
+            "cost_to_25": {"cost": 20},
+            "cost_to_30": {"cost": 80, "unit": "calls"},
+            "h5": {"spearman_rho": 0.8, "pass": True},
+            "h2": {
+                "preferred_share": shares[idx],
+                "in_bias_share": 1.0,
+                "preferred_value": "selective",
+            },
+        }
+
+    import epistemic_results as er
+
+    monkeypatch.setattr(er, "summarize_run", fake_summarize)
+    b_runs = [Path(f"/tmp/run_b_{i}") for i in range(5)]
+    d_runs = [Path(f"/tmp/run_d_{i}") for i in range(5)]
+    out = compare_b_vs_d(b_runs, d_runs)
+    assert out["d_wins_h2"] == 4
+    assert out["h2_preferred_pass"] is True
+    assert out["d_wins_final"] == 5
+    assert out["primary_final_pass"] is True
+    # Tick 364: in_bias_share=1.0 but loser allele dominates → MECHANISM fail.
+    assert not h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 1.0,
+                "preferred_share": 0.25,
+                "preferred_value": "selective",
+                "counts": {"selective": 1, "aggressive": 3},
+                "total": 4,
+                "bias_values": ["selective", "aggressive"],
+            }
+            for i in range(5)
+        }
+    )
+    # Preferred majority with full pool membership → pass.
+    assert h2_skew_pass(
+        {
+            f"r{i}": {
+                "in_bias_share": 1.0,
+                "preferred_share": 0.75,
+                "preferred_value": "selective",
+                "counts": {"selective": 3, "aggressive": 1},
+                "total": 4,
+                "bias_values": ["selective", "aggressive"],
+            }
+            for i in range(5)
+        }
+    )
+
+
 def test_update_icml_ready_sets_ready_only_when_all_pass(tmp_path: Path) -> None:
     ready = tmp_path / "ICML_READY.md"
     ready.write_text(
