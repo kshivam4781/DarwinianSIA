@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-07 (Section 21 ICML; Tick 368 live G3 H2 + mean_final_gap; Tick 367 live G4 H2 preferred-pass aggregate; Tick 366 offline H2 preferred-pass aggregate; …)
+**Last updated:** 2026-09-07 (Section 21 ICML; Tick 369 live pipeline G3 H2 + mean_final_gap surfacing; Tick 368 live G3 H2 + mean_final_gap; Tick 367 live G4 H2 preferred-pass aggregate; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -962,7 +962,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML offline H2 preferred-pass aggregate (Tick 366) | **DONE** | `compare_b_vs_d` emits `d_wins_h2`/`h2_preferred_pass`; brief `D_h2_pass`; gate3+Table 2 report preferred **4/5** (seed 22 fail) |
 | ICML live G4 H2 preferred-pass aggregate (Tick 367) | **DONE** | Live Table 1/2 + gate4 report surface `d_wins_h2`/`h2_preferred_pass`; `apply_paper_pack` prefers compare aggregate when n≥5 |
 | ICML live G3 H2 + mean_final_gap (Tick 368) | **DONE** | `score_pilot` returns H2; gate3 live metrics surface preferred_share + mean_final_gap / primary_final_pass / d_wins_h2 (G4 Tick 360/367 parity) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–366 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML live pipeline G3 H2 + gap (Tick 369) | **DONE** | `_load_gate3_sidecar` returns H2; pipeline G3→G4 gate surfaces mean_final_gap / d_wins_h2 / preferred_share (not binary promising only) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–369 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2519,4 +2520,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Live G4 H2 preferred-pass aggregate (Tick 367):** Tick 366 added offline `d_wins_h2` / `h2_preferred_pass`, but live G4 paper pack / gate4 metrics still showed only binary `skew_pass`. Now Live Table 1/2 + gate4 report surface `d_wins_h2=N/5` + `h2_preferred_pass`, and `apply_paper_pack` prefers the compare aggregate when n≥5. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Live G3 H2 + mean_final_gap (Tick 368):** After Tick 367, live G3 still scored only compare+H5 — no preferred-share H2 or mean_final_gap in gate3 live metrics — so G3→G4 operators would miss MECHANISM + PRIMARY criterion (c) before 5-seed spend. `score_pilot` now returns H2 via `score_live_h2`; `write_gate3_report` surfaces mean_final_gap / primary_final_pass / d_wins_h2 / h2_preferred_pass + per-run preferred_share; G4 `apply_paper_pack` unpacks the 3-tuple. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Live pipeline G3 H2 + mean_final_gap surfacing (Tick 369):** After Tick 368 wrote H2 + mean_final_gap into the gate3 sidecar, `run_icml_live_pipeline` still showed only a binary `g3_promising` flag (ignored `h2_by_d_run`). Now `_load_gate3_sidecar` returns H2; `write_pipeline_report` surfaces mean_final_gap / primary_final_pass / d_wins_h2 / preferred_share in the G3→G4 gate so operators reading `icml_live_pipeline_report.md` see MECHANISM + PRIMARY (c) before 5-seed spend. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 

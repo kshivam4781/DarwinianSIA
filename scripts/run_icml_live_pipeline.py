@@ -108,6 +108,9 @@ class PipelineReport:
     budget: dict[str, Any] = field(default_factory=dict)
     ready_for_live: bool = False
     g3_promising: bool | None = None
+    # Tick 369: surface G3 compare + H2 from gate3 sidecar (not binary promising only).
+    g3_comparison: dict[str, Any] | None = None
+    g3_h2_by_d_run: dict[str, Any] = field(default_factory=dict)
     stopped_after: str | None = None
     icml_ready_status: str | None = None
 
@@ -406,15 +409,22 @@ def _read_icml_ready_status(path: Path) -> str | None:
     return m.group(1) if m else None
 
 
-def _load_gate3_sidecar(report_md: Path) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+def _load_gate3_sidecar(
+    report_md: Path,
+) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any]]:
+    """Load gate3 sidecar compare + H5 + H2 (Tick 369: H2 was written but ignored)."""
     sidecar = report_md.with_suffix(".json")
     if not sidecar.is_file():
-        return None, {}
+        return None, {}, {}
     try:
         data = json.loads(sidecar.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return None, {}
-    return data.get("comparison"), data.get("h5_by_d_run") or {}
+        return None, {}, {}
+    return (
+        data.get("comparison"),
+        data.get("h5_by_d_run") or {},
+        data.get("h2_by_d_run") or {},
+    )
 
 
 def write_pipeline_report(report: PipelineReport, path: Path) -> None:
@@ -457,6 +467,46 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         lines.append("G3 promising: n/a (G3 not scored this run)")
     else:
         lines.append(f"G3 promising: **{'yes' if report.g3_promising else 'no'}**")
+    # Tick 369: after Tick 368 wrote H2 + mean_final_gap into gate3, the pipeline
+    # still showed only a binary promising flag — operators reading
+    # icml_live_pipeline_report.md would miss MECHANISM + PRIMARY (c) before G4.
+    cmp_ = report.g3_comparison or {}
+    if cmp_:
+        mean_gap = cmp_.get("mean_final_gap")
+        mean_gap_s = (
+            f"{float(mean_gap):.4f}"
+            if isinstance(mean_gap, (int, float))
+            else "—"
+        )
+        n_pairs = cmp_.get("n_pairs", "—")
+        lines.extend(
+            [
+                "",
+                "### G3 pilot metrics (from gate3 sidecar)",
+                "",
+                f"- Mean final gap (D−B): **{mean_gap_s}** "
+                f"(primary_final_pass={cmp_.get('primary_final_pass')})",
+                f"- D gens30 / cost30 / final wins: "
+                f"**{cmp_.get('d_wins_gens30', '—')}** / "
+                f"**{cmp_.get('d_wins_cost30', '—')}** / "
+                f"**{cmp_.get('d_wins_final', '—')}** (n={n_pairs})",
+                f"- H2 preferred ≥0.5: **{cmp_.get('d_wins_h2', '—')}/{n_pairs}** "
+                f"(h2_preferred_pass={cmp_.get('h2_preferred_pass')})",
+            ]
+        )
+        if report.g3_h2_by_d_run:
+            lines.extend(["", "#### H2 per Condition D run", ""])
+            for name, h2 in report.g3_h2_by_d_run.items():
+                if not isinstance(h2, dict):
+                    continue
+                fld = h2.get("field") or "auto"
+                lines.append(
+                    f"- `{name}`: field=`{fld}` "
+                    f"preferred=`{h2.get('preferred_value')}` "
+                    f"preferred_share=`{h2.get('preferred_share')}` "
+                    f"in_bias_share=`{h2.get('in_bias_share')}`"
+                )
+            lines.append("")
     if report.stopped_after:
         lines.append(f"Stopped after: `{report.stopped_after}`")
     if report.blockers:
@@ -508,6 +558,8 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
                 "blockers": report.blockers,
                 "notes": report.notes,
                 "g3_promising": report.g3_promising,
+                "g3_comparison": report.g3_comparison,
+                "g3_h2_by_d_run": report.g3_h2_by_d_run,
                 "stopped_after": report.stopped_after,
                 "icml_ready_status": report.icml_ready_status,
             },
@@ -1013,10 +1065,23 @@ def run_live_stack(
             f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})"
         )
 
-    comparison, h5 = _load_gate3_sidecar(REPO_ROOT / "docs" / "gate3_report.md")
+    comparison, h5, h2 = _load_gate3_sidecar(REPO_ROOT / "docs" / "gate3_report.md")
     promising = g3_pilot_promising(comparison, h5)
     report.g3_promising = promising
+    report.g3_comparison = comparison
+    report.g3_h2_by_d_run = h2 or {}
     report.notes.append(f"g3_promising={promising}")
+    if comparison and comparison.get("mean_final_gap") is not None:
+        report.notes.append(
+            f"g3_mean_final_gap={comparison.get('mean_final_gap')} "
+            f"primary_final_pass={comparison.get('primary_final_pass')}"
+        )
+    if comparison and comparison.get("d_wins_h2") is not None:
+        report.notes.append(
+            f"g3_d_wins_h2={comparison.get('d_wins_h2')}/"
+            f"{comparison.get('n_pairs')} "
+            f"h2_preferred_pass={comparison.get('h2_preferred_pass')}"
+        )
 
     if stop_after == "g3":
         report.stopped_after = "G3"

@@ -318,7 +318,11 @@ def test_live_skips_completed_g2(
     monkeypatch.setattr(
         pipe,
         "_load_gate3_sidecar",
-        lambda _p: ({"d_wins_gens30": 1}, {"run_1301": {"spearman_rho": 0.5}}),
+        lambda _p: (
+            {"d_wins_gens30": 1, "n_pairs": 1, "mean_final_gap": 0.05},
+            {"run_1301": {"spearman_rho": 0.5}},
+            {},
+        ),
     )
     # Stop after G3 so we don't need G4.
     rc = pipe.main(
@@ -406,7 +410,11 @@ def test_live_skips_g2_from_committed_ledger_without_run_dirs(
     monkeypatch.setattr(
         pipe,
         "_load_gate3_sidecar",
-        lambda _p: ({"d_wins_gens30": 1}, {"run_1301": {"spearman_rho": 0.5}}),
+        lambda _p: (
+            {"d_wins_gens30": 1, "n_pairs": 1},
+            {"run_1301": {"spearman_rho": 0.5}},
+            {},
+        ),
     )
     rc = pipe.main(
         [
@@ -730,6 +738,87 @@ def test_write_pipeline_report(tmp_path: Path) -> None:
     sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
     assert sidecar["ready_for_live"] is False
     assert sidecar["stages"][0]["name"] == "G2"
+
+
+def test_write_pipeline_report_surfaces_g3_h2_and_mean_gap(tmp_path: Path) -> None:
+    """Tick 369: pipeline G3→G4 gate shows mean_final_gap + H2 preferred (not binary only)."""
+    report = PipelineReport(
+        timestamp="2026-09-07T08:00:00Z",
+        mode="live",
+        budget=project_budget(),
+        ready_for_live=True,
+        g3_promising=True,
+        g3_comparison={
+            "n_pairs": 1,
+            "d_wins_gens30": 1,
+            "d_wins_cost30": 1,
+            "d_wins_final": 1,
+            "mean_final_gap": 0.0615,
+            "primary_final_pass": True,
+            "d_wins_h2": 1,
+            "h2_preferred_pass": False,  # n<5 → aggregate False; per-run still shown
+        },
+        g3_h2_by_d_run={
+            "run_1301": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.75,
+                "in_bias_share": 1.0,
+            }
+        },
+        notes=["g3_promising=True"],
+    )
+    path = tmp_path / "icml_live_pipeline_report.md"
+    write_pipeline_report(report, path)
+    text = path.read_text(encoding="utf-8")
+    assert "G3 promising: **yes**" in text
+    assert "mean_final_gap" in text.lower() or "Mean final gap" in text
+    assert "0.0615" in text
+    assert "primary_final_pass=True" in text
+    assert "h2_preferred_pass" in text
+    assert "d_wins_h2" in text or "H2 preferred ≥0.5: **1/1**" in text
+    assert "preferred_share=`0.75`" in text or "preferred_share=0.75" in text
+    assert "tool_strategy" in text
+    sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert sidecar["g3_promising"] is True
+    assert sidecar["g3_comparison"]["mean_final_gap"] == 0.0615
+    assert sidecar["g3_h2_by_d_run"]["run_1301"]["preferred_share"] == 0.75
+
+
+def test_load_gate3_sidecar_returns_h2(tmp_path: Path) -> None:
+    """Tick 369: sidecar loader returns h2_by_d_run (Tick 368 wrote it; pipeline ignored)."""
+    from run_icml_live_pipeline import _load_gate3_sidecar
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    md = docs / "gate3_report.md"
+    md.write_text("# Gate 3\n", encoding="utf-8")
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "comparison": {
+                    "n_pairs": 1,
+                    "mean_final_gap": 0.04,
+                    "d_wins_h2": 1,
+                    "h2_preferred_pass": False,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.6}},
+                "h2_by_d_run": {
+                    "run_1301": {
+                        "field": "tool_strategy",
+                        "preferred_value": "selective",
+                        "preferred_share": 0.8,
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    cmp_, h5, h2 = _load_gate3_sidecar(md)
+    assert cmp_ is not None
+    assert cmp_["mean_final_gap"] == 0.04
+    assert h5["run_1301"]["spearman_rho"] == 0.6
+    assert h2["run_1301"]["preferred_share"] == 0.8
 
 
 def test_live_refuses_over_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

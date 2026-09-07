@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T08:10Z — Tick 369 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-66ab`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 368 wrote preferred-share H2 + `mean_final_gap` into gate3 live metrics/sidecar, **`run_icml_live_pipeline` still showed only a binary `g3_promising` flag** (ignored `h2_by_d_run`) — operators reading `icml_live_pipeline_report.md` would miss MECHANISM + PRIMARY criterion (c) before 5-seed G4 spend. Highest leverage without paid spend: **surface G3 H2 + mean_final_gap in the live pipeline G3→G4 gate**.
+
+### What this tick did (ONE step)
+**Live pipeline G3 H2 + mean_final_gap surfacing (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 368 (`f49c`); confirmed secrets absent; boot `66ab` vs tip `f49c`
+2. `_load_gate3_sidecar` returns H2; `PipelineReport` stores `g3_comparison` / `g3_h2_by_d_run`; `write_pipeline_report` surfaces mean_final_gap / primary_final_pass / d_wins_h2 / preferred_share in G3→G4 gate
+3. Tests: pipeline report H2+gap + sidecar loader; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 368) | After (Tick 369) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Live G3 metrics (gate3) | H2 + mean_final_gap | unchanged |
+| Live pipeline G3→G4 gate | binary `g3_promising` only | **+ mean_final_gap + H2 preferred** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T06:05Z — Tick 368 (automation cron)
 
 ### Status snapshot
