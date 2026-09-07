@@ -2,6 +2,8 @@
 
 **STATUS: IN_PROGRESS**
 
+_Tick 376: partial-stage spend reconcile landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
+
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
 ## Criteria

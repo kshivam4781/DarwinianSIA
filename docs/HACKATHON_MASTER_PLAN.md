@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-07 (Section 21 ICML; Tick 375 partial G3/G4 pair resume; Tick 374 G4 resume paper-pack; …)
+**Last updated:** 2026-09-07 (Section 21 ICML; Tick 376 partial-stage spend reconcile; Tick 375 partial pair resume; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -969,6 +969,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G3 resume re-score for G4 (Tick 373) | **DONE** | `load_g3_metrics_for_g4` re-scores local G3 B/D (or requires live-executed sidecar); preflight/null comparison no longer drives G4 |
 | ICML G4 resume paper-pack refresh (Tick 374) | **DONE** | `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D + `apply_paper_pack` (or requires live-executed sidecar); resume-skip no longer leaves ICML_READY stuck |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–375 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML partial-stage spend reconcile (Tick 376) | **DONE** | Sync bills complete-but-partial G3/G4; pipeline `project_budget` remaining pairs; post-G3/G4 absolute re-sync |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2540,3 +2541,4 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Partial G3/G4 pair resume (Tick 375):** After Tick 374, a mid-stack crash that left only *some* B/D pairs complete still bricked the next cron — preflight treated every existing run dir as occupied and projected full N× pair cost. `classify_plan_run_occupancy` + `run_sequential_live` now resume-skip complete Darwinian runs; incomplete dirs still block (never overwrite); G3/G4/pipeline budget projects remaining pairs only. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
+**Partial-stage spend reconcile (Tick 376):** After Tick 375, mid-stack complete G3/G4 pairs were still invisible to `SIA_BUDGET_SPENT_USD` until the whole stage finished, and pipeline `project_budget` still billed full N× pairs. Sync now reconciles complete-but-partial runs; preflight/live stack projects remaining pairs; post-G3/G4 absolute re-sync avoids double-count. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

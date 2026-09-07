@@ -21,6 +21,8 @@ from run_icml_live_pipeline import (  # noqa: E402
     project_budget,
     refresh_g4_paper_pack_on_resume,
     run_preflight_stack,
+    complete_run_ids_among,
+    remaining_seed_pairs,
     sync_spent_from_completed_stages,
     write_pipeline_report,
     PipelineReport,
@@ -650,6 +652,153 @@ def test_g2_resume_refuses_zero_fitness_local_artifacts(
     assert resume["g2_gates_failed"] is True
     assert resume["g2_done"] is False
     assert any("Tick 372" in d for d in resume["details"])
+
+
+def _mk_complete_run(root: Path, run_id: int, *, cost_usd: float = 0.5) -> Path:
+    run_dir = root / "runs" / f"run_{run_id}"
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "total_cost_usd": cost_usd}),
+        encoding="utf-8",
+    )
+    return run_dir
+
+
+def test_sync_spent_bills_partial_g4_pairs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 376: mid-stack complete G4 pairs count toward spent without g4_done."""
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 only",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # G2 complete + gates ok
+    g2_dir = _mk_complete_run(tmp_path, 1300, cost_usd=0.4)
+    store = g2_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n",
+        encoding="utf-8",
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+
+    # Only first of 5 G4 pairs complete (2 runs)
+    b1 = _mk_complete_run(tmp_path, 1211, cost_usd=0.3)
+    d1 = _mk_complete_run(tmp_path, 1311, cost_usd=0.3)
+
+    def _run_dir(rid: int):
+        mapping = {
+            1300: g2_dir,
+            1211: b1,
+            1311: d1,
+        }
+        return mapping.get(rid)
+
+    monkeypatch.setattr(g2, "_run_dir_for", _run_dir)
+    monkeypatch.setattr(pipe.g3, "_run_dir_for", _run_dir)
+    monkeypatch.setattr(
+        pipe,
+        "_resolve_run_dirs",
+        lambda ids: [p for rid in ids if (p := _run_dir(rid)) is not None],
+    )
+    # Keep G2 gates from failing on missing extras — stub ok.
+    monkeypatch.setattr(pipe, "g2_resume_gates_ok", lambda rid: (True, "ok"))
+
+    resume = sync_spent_from_completed_stages(
+        g2_run_id=1300,
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+    )
+    assert resume["g2_done"] is True
+    assert resume["g3_done"] is False
+    assert resume["g4_done"] is False
+    assert any("Tick 376 G4 partial" in d for d in resume["details"])
+    assert float(resume["spent"]) > 2.0  # G2 + partial G4, not G2-only undercount
+    # Stage G4 must not be marked complete
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert "G4" not in (ledger.get("stages_complete") or [])
+    assert 1211 in ledger.get("run_ids", [])
+    assert 1311 in ledger.get("run_ids", [])
+
+
+def test_remaining_seed_pairs_counts_incomplete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 376: remaining_seed_pairs ignores complete pairs."""
+    import run_icml_live_pipeline as pipe
+
+    b1 = _mk_complete_run(tmp_path, 1211)
+    d1 = _mk_complete_run(tmp_path, 1311)
+
+    def _run_dir(rid: int):
+        return {1211: b1, 1311: d1}.get(rid)
+
+    monkeypatch.setattr(pipe.g2, "_run_dir_for", _run_dir)
+    monkeypatch.setattr(pipe.g3, "_run_dir_for", _run_dir)
+    n = remaining_seed_pairs(
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    assert n == 4
+    assert complete_run_ids_among([1211, 1212, 1311]) == [1211, 1311]
+
+
+def test_project_budget_uses_remaining_pairs_after_partial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 376: stack projection bills remaining pairs only."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "8.0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20.0")
+    # 2 of 5 G4 pairs remaining → ~$5.6 at $2.80/pair (Nebius default)
+    bud = project_budget(
+        g3_pairs=0,
+        g4_pairs=2,
+        skip_g2=True,
+        skip_g3=True,
+        skip_g4=False,
+    )
+    from icml_env_checks import default_g4_pair_estimate_usd
+
+    assert bud["g4_pairs"] == 2
+    assert bud["g4_estimate"] == pytest.approx(2 * float(default_g4_pair_estimate_usd()))
+    assert bud["projected"] == pytest.approx(8.0 + bud["g4_estimate"])
+    assert bud["projected"] < 20.0
+    # Contrast: full 5 would be larger
+    full = project_budget(
+        g3_pairs=0,
+        g4_pairs=5,
+        skip_g2=True,
+        skip_g3=True,
+        skip_g4=False,
+    )
+    assert bud["g4_estimate"] < full["g4_estimate"]
+
 
 
 def test_g3_resume_rescores_local_when_sidecar_preflight(

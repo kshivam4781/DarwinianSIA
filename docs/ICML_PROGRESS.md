@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T22:04Z — Tick 376 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-f2f4`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 375's partial pair resume, mid-stack complete G3/G4 pairs were still **invisible** to `SIA_BUDGET_SPENT_USD` until the whole stage finished (bump only after `g3/g4.main` success), and pipeline `project_budget` still billed full N× pairs when the stage was incomplete — so remaining-pair projection could under-count already-burned USD and green-light an over-ceiling stack. Highest leverage without paid spend: **partial-stage spend reconcile + remaining-pair pipeline budget**.
+
+### What this tick did (ONE step)
+**Partial-stage spend reconcile (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 375 (`f49c`); confirmed secrets absent; boot `f2f4` vs tip `f49c`
+2. `sync_spent_from_completed_stages` now bills complete-but-partial G3/G4 runs (does not mark stage done); post-G3/G4 uses absolute re-sync (no double-count); preflight/live `project_budget` uses `remaining_seed_pairs`
+3. Tests: `test_sync_spent_bills_partial_g4_pairs` / `test_remaining_seed_pairs_counts_incomplete` / `test_project_budget_uses_remaining_pairs_after_partial`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 375) | After (Tick 376) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Mid-stack partial B/D pairs | resume-skip; remaining-pair gate budget | **+ spent reconcile for complete partials; pipeline stack remaining-pair** |
+| Post-G3/G4 spend | bump (double-count risk after partial) | **absolute re-sync** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T20:15Z — Tick 375 (automation cron)
 
 ### Status snapshot

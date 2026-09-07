@@ -32,6 +32,12 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 375: mid-stack G3/G4 crashes that leave *some* B/D pairs complete no
     longer brick the next cron on run_ids_free occupied — completed runs are
     resume-skipped; only incomplete dirs block; budget projects remaining pairs.
+  - Tick 376: after Tick 375, mid-stack complete pairs were still **invisible**
+    to ``SIA_BUDGET_SPENT_USD`` until the whole stage finished (bump only after
+    g3/g4.main success). Pipeline ``project_budget`` also still billed full N×
+    pairs when the stage was incomplete. Now sync reconciles spend for
+    complete-but-partial G3/G4 runs, and preflight/live stack projects
+    remaining pairs only.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -244,6 +250,28 @@ def stage_runs_complete(run_ids: list[int]) -> bool:
     return True
 
 
+def complete_run_ids_among(run_ids: list[int]) -> list[int]:
+    """Tick 376: run IDs whose Darwinian dirs already have results.json."""
+    out: list[int] = []
+    for rid in run_ids:
+        found = g2._run_dir_for(rid) or g3._run_dir_for(rid)
+        if darwinian_run_complete(found):
+            out.append(rid)
+    return out
+
+
+def remaining_seed_pairs(b_ids: list[int], d_ids: list[int]) -> int:
+    """Tick 376: how many B/D seed pairs still need a live launch."""
+    if not b_ids or not d_ids or len(b_ids) != len(d_ids):
+        return max(len(b_ids), len(d_ids), 0)
+    plans = [
+        g3.PilotPlan(seed=i + 1, b_run_id=b, d_run_id=d)
+        for i, (b, d) in enumerate(zip(b_ids, d_ids))
+    ]
+    _, _, needing = g3.classify_plan_run_occupancy(plans)
+    return int(needing)
+
+
 def bump_spent_reconciled(
     run_ids: list[int],
     *,
@@ -304,6 +332,9 @@ def sync_spent_from_completed_stages(
     Tick 372: local G2 artifacts must also pass ``validate_g2_artifacts`` (nonzero
     fitness, CABS store, bias) before ``g2_done`` — otherwise refuse
     resume-skip so G3/G4 cannot auto-advance on a failed smoke.
+    Tick 376: mid-stack G3/G4 partial completes (some pairs done, stage not
+    finished) still contribute reconciled spend so remaining-pair budget
+    projection cannot under-count already-burned USD.
     """
     from icml_env_checks import reconcile_gate_spend_usd
 
@@ -384,6 +415,20 @@ def sync_spent_from_completed_stages(
         details.append(f"G3: {det}")
         stages.append("G3")
         all_ids.extend(g3_ids)
+    else:
+        # Tick 376: bill complete-but-partial G3 runs (do not mark stage done).
+        partial_ids = complete_run_ids_among(g3_ids)
+        if partial_ids:
+            dirs = _resolve_run_dirs(partial_ids)
+            est = g3_pair_estimate_usd() * (len(partial_ids) / 2.0)
+            if dirs:
+                any_local = True
+                amt, det = reconcile_gate_spend_usd(dirs, fallback_estimate=est)
+                total += amt
+                details.append(
+                    f"Tick 376 G3 partial ({len(partial_ids)}/{len(g3_ids)} runs): {det}"
+                )
+                all_ids.extend(partial_ids)
     if g4_done:
         dirs = _resolve_run_dirs(g4_ids)
         est = g4_pair_estimate_usd() * max(1, len(g4_b_ids))
@@ -396,9 +441,25 @@ def sync_spent_from_completed_stages(
         details.append(f"G4: {det}")
         stages.append("G4")
         all_ids.extend(g4_ids)
+    else:
+        # Tick 376: bill complete-but-partial G4 runs (do not mark stage done).
+        partial_ids = complete_run_ids_among(g4_ids)
+        if partial_ids:
+            dirs = _resolve_run_dirs(partial_ids)
+            est = g4_pair_estimate_usd() * (len(partial_ids) / 2.0)
+            if dirs:
+                any_local = True
+                amt, det = reconcile_gate_spend_usd(dirs, fallback_estimate=est)
+                total += amt
+                details.append(
+                    f"Tick 376 G4 partial ({len(partial_ids)}/{len(g4_ids)} runs): {det}"
+                )
+                all_ids.extend(partial_ids)
 
-    if stages and any_local:
+    if (stages or all_ids) and any_local:
         # Prefer artifact-reconciled spend when local runs exist.
+        # Tick 376: also persist when only partial G3/G4 completes exist
+        # (stages may be empty / G2-only).
         os.environ["SIA_BUDGET_SPENT_USD"] = f"{total:.4f}"
         write_budget_spent_ledger(
             spent_usd=total,
@@ -943,13 +1004,21 @@ def run_preflight_stack(
         f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
         f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
     )
+    # Tick 376: bill remaining pairs only; include partial-stage spend from sync.
+    g3_need = 0 if resume.get("g3_done") else remaining_seed_pairs(g3_b_ids, g3_d_ids)
+    g4_need = 0 if resume.get("g4_done") else remaining_seed_pairs(g4_b_ids, g4_d_ids)
     report.budget = project_budget(
-        g3_pairs=len(g3.parse_int_list(g3_seeds)),
-        g4_pairs=5,
+        g3_pairs=g3_need,
+        g4_pairs=g4_need,
         skip_g2=bool(resume.get("g2_done")),
         skip_g3=bool(resume.get("g3_done")),
         skip_g4=bool(resume.get("g4_done")),
     )
+    if g3_need < len(g3_b_ids) or g4_need < len(g4_b_ids):
+        report.notes.append(
+            f"Tick 376 remaining-pair stack budget — G3 {g3_need}/{len(g3_b_ids)} "
+            f"G4 {g4_need}/{len(g4_b_ids)} pairs still need live work"
+        )
 
     fetch_args: list[str] = []
     if diamond_csv is not None:
@@ -1222,13 +1291,21 @@ def run_live_stack(
         )
         report.stopped_after = "G2"
         return 4
+    # Tick 376: bill remaining pairs only; include partial-stage spend from sync.
+    g3_need = 0 if resume.get("g3_done") else remaining_seed_pairs(g3_b_ids, g3_d_ids)
+    g4_need = 0 if resume.get("g4_done") else remaining_seed_pairs(g4_b_ids, g4_d_ids)
     report.budget = project_budget(
-        g3_pairs=len(g3.parse_int_list(g3_seeds)),
-        g4_pairs=5,
+        g3_pairs=g3_need,
+        g4_pairs=g4_need,
         skip_g2=bool(resume.get("g2_done")),
         skip_g3=bool(resume.get("g3_done")),
         skip_g4=bool(resume.get("g4_done")),
     )
+    if g3_need < len(g3_b_ids) or g4_need < len(g4_b_ids):
+        report.notes.append(
+            f"Tick 376 remaining-pair stack budget — G3 {g3_need}/{len(g3_b_ids)} "
+            f"G4 {g4_need}/{len(g4_b_ids)} pairs still need live work"
+        )
 
     if not report.budget.get("ok"):
         report.blockers.append(
@@ -1345,21 +1422,28 @@ def run_live_stack(
                 detail="sequential B then D pilot",
             )
         )
+        # Tick 376: re-sync absolute spend (includes any mid-stack partials
+        # already billed) instead of bump_spent_reconciled which would
+        # double-count complete pairs from a prior crash.
+        resync = sync_spent_from_completed_stages(
+            g2_run_id=g2_run_id,
+            g3_b_ids=g3_b_ids,
+            g3_d_ids=g3_d_ids,
+            g4_b_ids=g4_b_ids,
+            g4_d_ids=g4_d_ids,
+        )
+        report.notes.append(
+            f"G3 spend re-sync (Tick 376): spent=${float(resync.get('spent') or 0):.4f}"
+            + (
+                f" — {'; '.join(resync.get('details') or [])}"
+                if resync.get("details")
+                else ""
+            )
+        )
         if not g3_ok:
             report.blockers.append(f"G3 live failed (exit {rc})")
             report.stopped_after = "G3"
             return rc if rc else 4
-        g3_ids = g3_b_ids + g3_d_ids
-        g3_amt, g3_spend_detail = bump_spent_reconciled(
-            g3_ids,
-            fallback_estimate=float(
-                report.budget.get("g3_estimate") or g3_pair_estimate_usd()
-            ),
-            stage="G3",
-        )
-        report.notes.append(
-            f"G3 spend reconcile: {g3_spend_detail} (bumped ${g3_amt:.4f})"
-        )
 
     comparison, h5, h2, g3_metric_src = load_g3_metrics_for_g4(
         g3_b_ids=g3_b_ids,
@@ -1479,14 +1563,21 @@ def run_live_stack(
             detail="5-seed B vs D + paper pack",
         )
     )
-    g4_ids = g4_b_ids + g4_d_ids
-    g4_amt, g4_spend_detail = bump_spent_reconciled(
-        g4_ids,
-        fallback_estimate=g4_need,
-        stage="G4",
+    # Tick 376: absolute re-sync after G4 (avoid double-count of partial pairs).
+    resync = sync_spent_from_completed_stages(
+        g2_run_id=g2_run_id,
+        g3_b_ids=g3_b_ids,
+        g3_d_ids=g3_d_ids,
+        g4_b_ids=g4_b_ids,
+        g4_d_ids=g4_d_ids,
     )
     report.notes.append(
-        f"G4 spend reconcile: {g4_spend_detail} (bumped ${g4_amt:.4f})"
+        f"G4 spend re-sync (Tick 376): spent=${float(resync.get('spent') or 0):.4f}"
+        + (
+            f" — {'; '.join(resync.get('details') or [])}"
+            if resync.get("details")
+            else ""
+        )
     )
     report.stopped_after = "G4"
     if not g4_ok:
