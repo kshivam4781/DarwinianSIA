@@ -15,9 +15,11 @@ Hard stops (never violate):
   - ``--live`` refuses when local ICML tip lags remote tip (Tick 305; same
     tip lineage guard as pipeline Tick 269 — use ``--allow-stale-tip`` only
     for recovery)
-  - refuses existing run IDs (never overwrite)
+  - refuses incomplete/corrupt existing run dirs (never overwrite)
+  - Tick 375: completed B/D run IDs are resume-skipped (not blockers) so a
+    mid-stack crash can finish remaining pairs without picking new IDs
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
-  - optional rough spend estimate before launching paid pairs
+  - optional rough spend estimate before launching paid pairs (remaining only)
 
 Modes:
   --preflight-only   check blockers; refresh live section of docs/gate3_report.md
@@ -60,6 +62,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     committed_g3g4_recipes_match_live_shape,
     committed_offline_bvd_matches_live_shape,
+    darwinian_run_complete,
     default_g3_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
@@ -176,6 +179,37 @@ def _run_dir_for(run_id: int) -> Path | None:
         if path.exists():
             return path
     return None
+
+
+def classify_plan_run_occupancy(
+    plans: list[PilotPlan],
+) -> tuple[list[str], list[str], int]:
+    """Tick 375: split planned run IDs into resume-complete vs blocked.
+
+    Returns ``(resume_ok, blocked_incomplete, pairs_needing_work)``.
+    - ``resume_ok``: dirs that already have Darwinian ``results.json`` (skip).
+    - ``blocked_incomplete``: dirs that exist but are incomplete — never overwrite.
+    - ``pairs_needing_work``: seed pairs where B and/or D still need a live launch
+      (drives remaining budget projection).
+    """
+    resume_ok: list[str] = []
+    blocked: list[str] = []
+    pairs_needing = 0
+    for plan in plans:
+        pair_needs = False
+        for rid, label in ((plan.b_run_id, "B"), (plan.d_run_id, "D")):
+            existing = _run_dir_for(rid)
+            if existing is None:
+                pair_needs = True
+                continue
+            if darwinian_run_complete(existing):
+                resume_ok.append(f"{label} run_{rid} @ {existing}")
+            else:
+                blocked.append(f"{label} run_{rid} @ {existing} (incomplete)")
+                pair_needs = True
+        if pair_needs:
+            pairs_needing += 1
+    return resume_ok, blocked, pairs_needing
 
 
 def _find_sia_python() -> list[str]:
@@ -338,30 +372,41 @@ def run_preflight(
     spent = _budget_spent()
     ceiling = _budget_ceiling()
     n_pairs = len(plans)
-    projected = spent + estimate * n_pairs
+    resume_ok, blocked_incomplete, pairs_needing = classify_plan_run_occupancy(plans)
+    # Tick 375: project only pairs that still need a live launch.
+    billable_pairs = pairs_needing
+    projected = spent + estimate * billable_pairs
     budget_ok = spent < ceiling and projected <= ceiling
+    resume_note = (
+        f"; resume-skip {len(resume_ok)} complete run(s)" if resume_ok else ""
+    )
     report.add(
         "budget",
         budget_ok,
         (
             f"spent=${spent:.2f} ceiling=${ceiling:.2f} "
-            f"estimate=${estimate:.2f}/pair × {n_pairs} → projected=${projected:.2f}"
+            f"estimate=${estimate:.2f}/pair × {billable_pairs} remaining "
+            f"(of {n_pairs} planned) → projected=${projected:.2f}"
+            f"{resume_note}"
         )
         + ("" if budget_ok else " — would exceed ceiling; refuse paid G3"),
     )
 
-    occupied: list[str] = []
-    for plan in plans:
-        for rid, label in ((plan.b_run_id, "B"), (plan.d_run_id, "D")):
-            existing = _run_dir_for(rid)
-            if existing is not None:
-                occupied.append(f"{label} run_{rid} @ {existing}")
     report.add(
         "run_ids_free",
-        not occupied,
-        "all planned run IDs unused"
-        if not occupied
-        else f"occupied: {'; '.join(occupied)} — pick unused integers",
+        not blocked_incomplete,
+        (
+            "all planned run IDs unused"
+            if not resume_ok and not blocked_incomplete
+            else (
+                f"resume-ok complete: {', '.join(resume_ok)}"
+                + (
+                    f"; BLOCK incomplete: {', '.join(blocked_incomplete)}"
+                    if blocked_incomplete
+                    else " — Tick 375 will skip complete runs"
+                )
+            )
+        ),
     )
 
     # Sequential-only invariant (documentation check — runner never forks)
@@ -696,7 +741,12 @@ def run_sequential_live(
     elite_count: int,
     max_gen: int,
 ) -> tuple[list[Path], list[Path], list[str]]:
-    """Execute B then D for each seed. Never launches two GPQA jobs at once."""
+    """Execute B then D for each seed. Never launches two GPQA jobs at once.
+
+    Tick 375: if a planned run ID already has a complete Darwinian
+    ``results.json``, resume-skip it (never overwrite). Incomplete existing
+    dirs abort (preflight should have blocked them).
+    """
     env = os.environ.copy()
     env.setdefault("SIA_CABS_ROOT", str(REPO_ROOT))
     b_dirs: list[Path] = []
@@ -708,6 +758,20 @@ def run_sequential_live(
             ("B", plan.b_run_id, b_dirs),
             ("D", plan.d_run_id, d_dirs),
         ):
+            existing = _run_dir_for(run_id)
+            if darwinian_run_complete(existing):
+                assert existing is not None
+                bucket.append(existing)
+                notes.append(
+                    f"{condition} run_{run_id} resume-skip (already complete) → {existing}"
+                )
+                continue
+            if existing is not None:
+                notes.append(
+                    f"{condition} run_{run_id} exists but incomplete at {existing}; "
+                    "aborting (never overwrite)"
+                )
+                return b_dirs, d_dirs, notes
             cmd = build_sia_command(
                 condition=condition,
                 run_id=run_id,

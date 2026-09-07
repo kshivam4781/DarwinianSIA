@@ -630,3 +630,136 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def _write_complete_run(run_dir: Path) -> None:
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text('{"accuracy": 0.2}', encoding="utf-8")
+
+
+def test_classify_plan_run_occupancy_resume_vs_incomplete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 375: complete runs are resume-ok; incomplete dirs block."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    (tmp_path / "SIA" / "runs").mkdir(parents=True)
+
+    complete = tmp_path / "runs" / "run_1201"
+    _write_complete_run(complete)
+    incomplete = tmp_path / "runs" / "run_1202"
+    incomplete.mkdir(parents=True)
+
+    plans = [
+        PilotPlan(seed=1, b_run_id=1201, d_run_id=1301),  # B complete, D missing
+        PilotPlan(seed=2, b_run_id=1202, d_run_id=1302),  # B incomplete
+    ]
+    resume_ok, blocked, needing = mod.classify_plan_run_occupancy(plans)
+    assert any("1201" in s for s in resume_ok)
+    assert any("1202" in s and "incomplete" in s for s in blocked)
+    assert needing == 2
+
+
+def test_g3_preflight_resume_skips_complete_run_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 375: completed planned IDs do not clear run_ids_free."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    # Make non-synthetic so other checks aren't the only focus — still may fail
+    # diamond synthetic check; we only assert run_ids_free.
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(mod, "write_icml_tip_status", lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 375})
+
+    _write_complete_run(tmp_path / "runs" / "run_1201")
+    _write_complete_run(tmp_path / "runs" / "run_1301")
+
+    plans = [PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)]
+    report = mod.run_preflight(mode="preflight", plans=plans)
+    names = {c.name: c for c in report.checks}
+    assert names["run_ids_free"].ok is True
+    assert "resume-ok" in names["run_ids_free"].detail or "Tick 375" in names["run_ids_free"].detail
+    assert "remaining" in names["budget"].detail
+    # Both complete → 0 billable pairs
+    assert "0 remaining" in names["budget"].detail
+
+
+def test_run_sequential_live_resume_skips_complete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 375: already-complete B/D are skipped; only missing IDs launch."""
+    import run_g3_pilot as mod
+
+    calls: list[str] = []
+
+    def fake_run(cmd, cwd=None, env=None):  # noqa: ANN001
+        rid = cmd[cmd.index("--run_id") + 1]
+        cond = "D" if "--cabs-inline" in cmd else "B"
+        calls.append(f"{cond}:{rid}")
+        run_dir = tmp_path / "SIA" / "runs" / f"run_{rid}"
+        _write_complete_run(run_dir)
+
+        class P:
+            returncode = 0
+
+        return P()
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    (tmp_path / "SIA" / "runs").mkdir(parents=True)
+
+    # Seed1 fully complete; seed2 missing
+    _write_complete_run(tmp_path / "runs" / "run_1201")
+    _write_complete_run(tmp_path / "runs" / "run_1301")
+
+    report = G3PreflightReport(
+        timestamp="t",
+        mode="live",
+        plans=[
+            PilotPlan(seed=1, b_run_id=1201, d_run_id=1301),
+            PilotPlan(seed=2, b_run_id=1202, d_run_id=1302),
+        ],
+        ready_for_live=True,
+    )
+    b_dirs, d_dirs, notes = mod.run_sequential_live(
+        report,
+        cwd=tmp_path / "SIA",
+        eval_subset=5,
+        population_size=4,
+        elite_count=2,
+        max_gen=6,
+    )
+    assert calls == ["B:1202", "D:1302"]
+    assert len(b_dirs) == 2 and len(d_dirs) == 2
+    assert any("resume-skip" in n for n in notes)

@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T20:15Z — Tick 375 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-a7d2`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 374's full-G4 resume paper-pack path, a **mid-stack crash that leaves only some B/D pairs complete** still bricked the next cron: G3/G4 preflight treated every existing run dir as `run_ids_free` occupied, refused live, and projected full N× pair cost even when only 1–2 pairs remained. Highest leverage without paid spend: **partial G3/G4 pair resume**.
+
+### What this tick did (ONE step)
+**Partial G3/G4 pair resume (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 374 (`f49c`); confirmed secrets absent; boot `a7d2` vs tip `f49c`
+2. `classify_plan_run_occupancy` + `run_sequential_live` resume-skip complete Darwinian runs; incomplete dirs still block (never overwrite); budget projects **remaining** pairs only
+3. Wired into G3/G4 preflight + pipeline G4 remaining-pair budget; tests: `test_classify_plan_run_occupancy_resume_vs_incomplete` / `test_g3_preflight_resume_skips_complete_run_ids` / `test_run_sequential_live_resume_skips_complete` / `test_g4_preflight_resume_skips_complete_run_ids`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 374) | After (Tick 375) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| G4 resume → paper pack (all pairs done) | re-score local + pack | unchanged |
+| Mid-stack partial B/D pairs | **occupied brick** / full N× budget | **resume-skip complete; bill remaining** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T18:05Z — Tick 374 (automation cron)
 
 ### Status snapshot

@@ -15,9 +15,11 @@ Hard stops (never violate):
   - ``--live`` refuses when local ICML tip lags remote tip (Tick 305; same
     tip lineage guard as pipeline Tick 269 — use ``--allow-stale-tip`` only
     for recovery)
-  - refuses existing run IDs (never overwrite)
+  - refuses incomplete/corrupt existing run dirs (never overwrite)
+  - Tick 375: completed B/D run IDs are resume-skipped (not blockers) so a
+    mid-stack crash can finish remaining pairs without picking new IDs
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
-  - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × 5 ≤ remaining budget
+  - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
 Modes:
   --preflight-only          check blockers; write docs/gate4_report.md
@@ -84,6 +86,7 @@ from run_g3_pilot import (  # noqa: E402
     _task_dir,
     _utc_now,
     build_sia_command,
+    classify_plan_run_occupancy,
     parse_int_list,
     run_sequential_live,
     score_pilot,
@@ -226,30 +229,41 @@ def run_preflight(
     spent = _budget_spent()
     ceiling = _budget_ceiling()
     n_pairs = len(plans)
-    projected = spent + estimate * n_pairs
+    resume_ok, blocked_incomplete, pairs_needing = classify_plan_run_occupancy(plans)
+    # Tick 375: project only pairs that still need a live launch (mid-stack resume).
+    billable_pairs = pairs_needing
+    projected = spent + estimate * billable_pairs
     budget_ok = spent < ceiling and projected <= ceiling
+    resume_note = (
+        f"; resume-skip {len(resume_ok)} complete run(s)" if resume_ok else ""
+    )
     report.add(
         "budget",
         budget_ok,
         (
             f"spent=${spent:.2f} ceiling=${ceiling:.2f} "
-            f"estimate=${estimate:.2f}/pair × {n_pairs} → projected=${projected:.2f}"
+            f"estimate=${estimate:.2f}/pair × {billable_pairs} remaining "
+            f"(of {n_pairs} planned) → projected=${projected:.2f}"
+            f"{resume_note}"
         )
         + ("" if budget_ok else " — would exceed ceiling; refuse paid G4"),
     )
 
-    occupied: list[str] = []
-    for plan in plans:
-        for rid, label in ((plan.b_run_id, "B"), (plan.d_run_id, "D")):
-            existing = _run_dir_for(rid)
-            if existing is not None:
-                occupied.append(f"{label} run_{rid} @ {existing}")
     report.add(
         "run_ids_free",
-        not occupied,
-        "all planned run IDs unused"
-        if not occupied
-        else f"occupied: {', '.join(occupied)} — pick unused integers",
+        not blocked_incomplete,
+        (
+            "all planned run IDs unused"
+            if not resume_ok and not blocked_incomplete
+            else (
+                f"resume-ok complete: {', '.join(resume_ok)}"
+                + (
+                    f"; BLOCK incomplete: {', '.join(blocked_incomplete)}"
+                    if blocked_incomplete
+                    else " — Tick 375 will skip complete runs"
+                )
+            )
+        ),
     )
 
     report.add(

@@ -29,6 +29,9 @@ Hard stops (delegated to gate runners; never violate here either):
     (or requires a live-executed gate4 sidecar). A completed G4 whose
     gate4_report.json stayed mode=preflight (crash after pairs / pack never
     ran) must not leave ICML_READY stuck IN_PROGRESS forever.
+  - Tick 375: mid-stack G3/G4 crashes that leave *some* B/D pairs complete no
+    longer brick the next cron on run_ids_free occupied — completed runs are
+    resume-skipped; only incomplete dirs block; budget projects remaining pairs.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -1402,13 +1405,21 @@ def run_live_stack(
         report.notes.append("skipped G4 — G3 pilot not promising")
         return 0
 
-    # Remaining budget for G4
+    # Remaining budget for G4 (Tick 375: bill only pairs still needing work)
     remaining = _budget_ceiling() - _budget_spent()
-    g4_need = float(
-        report.budget.get("g4_estimate")
-        if report.budget.get("g4_estimate") is not None
-        else (g4_pair_estimate_usd() * 5)
-    )
+    try:
+        seeds = g4.parse_int_list(g4_seeds)
+        plans = g4.build_g4_plans(seeds, list(g4_b_ids), list(g4_d_ids))
+        _, _, pairs_needing = g3.classify_plan_run_occupancy(plans)
+    except ValueError:
+        pairs_needing = len(g4_b_ids) or 5
+    g4_need = float(g4_pair_estimate_usd() * max(0, int(pairs_needing)))
+    if pairs_needing < len(g4_b_ids):
+        report.notes.append(
+            f"Tick 375: G4 remaining-pair budget — {pairs_needing}/"
+            f"{len(g4_b_ids)} pairs still need live work "
+            f"(estimate ${g4_need:.2f})"
+        )
     if resume.get("g4_done"):
         report.add_stage(
             StageResult(

@@ -1136,3 +1136,59 @@ def test_score_live_h2_auto_resolves_tool_strategy(tmp_path: Path, monkeypatch) 
     assert lose["preferred_share"] == pytest.approx(0.25)
     assert lose["in_bias_share"] == pytest.approx(1.0)
     assert not h2_skew_pass({"run_1312": lose})
+
+
+def _write_complete_run(run_dir: Path) -> None:
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text('{"accuracy": 0.2}', encoding="utf-8")
+
+
+def test_g4_preflight_resume_skips_complete_run_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 375: partial G4 complete pairs do not fail run_ids_free."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(mod, "write_icml_tip_status", lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 375})
+
+    # 2 of 5 pairs complete
+    for rid in (1211, 1311, 1212, 1312):
+        _write_complete_run(tmp_path / "runs" / f"run_{rid}")
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = run_preflight(mode="preflight", plans=plans)
+    names = {c.name: c for c in report.checks}
+    assert names["run_ids_free"].ok is True
+    assert "resume-ok" in names["run_ids_free"].detail
+    assert "3 remaining" in names["budget"].detail

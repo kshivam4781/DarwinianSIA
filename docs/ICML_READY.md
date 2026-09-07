@@ -30,8 +30,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Post-steering case-study H2 (Tick 23) — preferred DNA share at gen≥3 (not fair-bred gen2); multi-allele + fitness-aligned selection (`tests/test_offline_case_study_steered.py`)
 - [x] Live G2 preflight runner (Tick 24) — `scripts/run_g2_smoke.py` hard-stops paid smoke without keys / non-smoke GPQA / free run_id / budget (`docs/gate2_report.md`)
 - [x] GPQA diamond materializer (Tick 25) — `scripts/prepare_gpqa_diamond.py` + `run_g2_smoke.py --fetch-diamond` (HF/CSV → SIA schema; never commit JSON)
-- [x] Live G3 sequential pilot runner (Tick 26) — `scripts/run_g3_pilot.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / occupied run IDs; preserves offline gate3 block (`docs/gate3_report.md`)
-- [x] Live G4 5-seed sequential runner (Tick 27) — `scripts/run_g4_multiseed.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / occupied run IDs; refreshes Live Table 1 in `docs/paper_artifacts.md` (`docs/gate4_report.md`)
+- [x] Live G3 sequential pilot runner (Tick 26) — `scripts/run_g3_pilot.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / incomplete run dirs (Tick 375 resume-skips complete); preserves offline gate3 block (`docs/gate3_report.md`)
+- [x] Live G4 5-seed sequential runner (Tick 27) — `scripts/run_g4_multiseed.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / incomplete run dirs (Tick 375 resume-skips complete); refreshes Live Table 1 in `docs/paper_artifacts.md` (`docs/gate4_report.md`)
 - [x] G4 full paper-pack refresh (Tick 28) — live H2 scoring + Table 2 H2/H5 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery (READY only when criteria pass + `--allow-ready`)
 - [x] Unified live G2→G3→G4 pipeline (Tick 29) — `scripts/run_icml_live_pipeline.py` chains gates serially under one budget projection; G3→G4 promising gate; `docs/icml_live_pipeline_report.md`
 - [x] Linked Cursor environment for live stack (Tick 30) — draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` + `.cursor/environment.json` (was `environment: null` every prior tick); secrets still required
@@ -406,6 +406,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 372 G2 resume post-run re-validation — local G2 `results.json` with 0% fitness no longer resume-skips into paid G3/G4 (`g2_resume_gates_ok` / `sync_spent_from_completed_stages`)
 - [x] Tick 373 G3 resume re-score for G4 — `load_g3_metrics_for_g4` re-scores local G3 B/D (or requires live-executed sidecar); preflight/null comparison no longer drives ~$14 G4
 - [x] Tick 374 G4 resume paper-pack refresh — `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D + `apply_paper_pack` (or requires live-executed sidecar); resume-skip no longer leaves ICML_READY stuck
+- [x] Tick 375 partial G3/G4 pair resume — complete B/D runs resume-skip (not occupied blockers); incomplete dirs still refuse overwrite; budget bills remaining pairs only
 
 ## Gate tracker (Section 21.5)
 
@@ -413,9 +414,9 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–374** nonzero-fitness + G2/G3/G4 resume hardening); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
+| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 300 live-shape `1890–1904`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **4/5** Tick 366; post-steer H2 on `run_1900`); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score); NOT STARTED (blocked on keys; run after G2) |
-| G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack refresh); **live** NOT STARTED (blocked on keys; run after G3) |
+| G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29/374 pipeline but NOT STARTED |
 
-<!-- Tick 374 note: Gate labels / secrets stack through Tick 374 G4 resume paper-pack; live still blocked on NEBIUS+HF -->
+<!-- Tick 375 note: Gate labels / secrets stack through Tick 375 partial pair resume; live still blocked on NEBIUS+HF -->
