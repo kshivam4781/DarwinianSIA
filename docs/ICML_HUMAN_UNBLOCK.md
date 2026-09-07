@@ -89,6 +89,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 363:** **live G4 paper-pack H2 field + PRIMARY gap** — live Fig 2 majority-votes DNA field (not `memory` default); Live Table 1 emits `mean_final_gap` / `primary_final_pass`; H2 rows include `field=`; Winner attributes gens@25%/cost@25%.
 
+**Tick 370:** **G3→G4 PRIMARY-only promising gate** — H5 ρ>0.3 alone no longer auto-spends ~$14 on 5-seed G4; require gens/cost/final wins or mean_final_gap>1pp (`--force-g4` override). H5/H2 remain report-only (Tick 369).
+
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  
 Do **not** set `ICML_READY` from offline alone.
 

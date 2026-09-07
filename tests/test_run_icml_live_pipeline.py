@@ -562,10 +562,11 @@ def test_run_preflight_stack_default_diamond_n_is_budget_fit() -> None:
 def test_g3_pilot_promising_on_d_win() -> None:
     assert g3_pilot_promising({"d_wins_gens30": 1, "n_pairs": 1}, {}) is True
     assert g3_pilot_promising({"d_wins_final": 0, "d_wins_gens30": 0}, {}) is False
+    # Tick 370: H5 alone must NOT auto-advance to paid G4 (PRIMARY required).
     assert g3_pilot_promising(
         {"d_wins_final": 0},
         {"run_1301": {"spearman_rho": 0.55}},
-    ) is True
+    ) is False
     assert g3_pilot_promising(
         {"mean_final_b": 0.2, "mean_final_d": 0.25},
         {},
@@ -573,6 +574,11 @@ def test_g3_pilot_promising_on_d_win() -> None:
     # Tick 360: mean_final_gap alone (emitted by compare_b_vs_d) is promising.
     assert g3_pilot_promising({"mean_final_gap": 0.05}, {}) is True
     assert g3_pilot_promising({"mean_final_gap": 0.005}, {}) is False
+    # PRIMARY win still wins even if H5 is weak/missing.
+    assert g3_pilot_promising(
+        {"d_wins_cost30": 1},
+        {"run_1301": {"spearman_rho": 0.0}},
+    ) is True
 
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

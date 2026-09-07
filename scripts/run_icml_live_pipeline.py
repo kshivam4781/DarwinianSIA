@@ -372,7 +372,15 @@ def sync_spent_from_completed_stages(
 
 
 def g3_pilot_promising(comparison: dict[str, Any] | None, h5_by_d_run: dict[str, Any]) -> bool:
-    """Cheap G3→G4 gate: any PRIMARY-shaped D win on the pilot seed, or H5 ρ>0.3."""
+    """G3→G4 gate: require PRIMARY-shaped D evidence (Tick 370).
+
+    Tick 29–369 also treated H5 ρ>0.3 alone as promising, which could auto-spend
+    ~$14 on 5-seed G4 when the pilot had **no** PRIMARY-shaped D win (gens/cost/
+    final / mean_final_gap). End-goal criterion 1 is PRIMARY; H5 is VALIDITY and
+    remains surfaced in the pipeline / gate3 report (Tick 369). Use ``--force-g4``
+    to override. ``h5_by_d_run`` is retained for call-site / API compatibility.
+    """
+    _ = h5_by_d_run  # informational only after Tick 370 (not an auto-G4 signal)
     if comparison:
         for key in (
             "d_wins_gens30",
@@ -392,12 +400,6 @@ def g3_pilot_promising(comparison: dict[str, Any] | None, h5_by_d_run: dict[str,
         if isinstance(mb, (int, float)) and isinstance(md, (int, float)):
             if float(md) - float(mb) > 0.01:
                 return True
-    for payload in (h5_by_d_run or {}).values():
-        if not isinstance(payload, dict) or "error" in payload:
-            continue
-        rho = payload.get("spearman_rho")
-        if isinstance(rho, (int, float)) and float(rho) > 0.3:
-            return True
     return False
 
 
@@ -1094,7 +1096,10 @@ def run_live_stack(
                 name="G4",
                 attempted=False,
                 ok=False,
-                skipped_reason="G3 not promising (no D win / H5); pass --force-g4 to override",
+                skipped_reason=(
+                    "G3 not promising (no PRIMARY-shaped D win; H5 alone is not "
+                    "enough after Tick 370); pass --force-g4 to override"
+                ),
             )
         )
         report.stopped_after = "G3"

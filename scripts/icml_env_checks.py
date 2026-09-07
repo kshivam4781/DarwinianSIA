@@ -2000,14 +2000,12 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **live pipeline G3 H2 + mean_final_gap surfacing** — after "
-        f"Tick 368 wrote preferred-share H2 + `mean_final_gap` into gate3 live "
-        f"metrics/sidecar, `run_icml_live_pipeline` still showed only a binary "
-        f"`g3_promising` flag (ignored `h2_by_d_run`). Now `_load_gate3_sidecar` "
-        f"returns H2; `write_pipeline_report` surfaces mean_final_gap / "
-        f"primary_final_pass / d_wins_h2 / preferred_share in the G3→G4 gate "
-        f"(operators reading `icml_live_pipeline_report.md` see MECHANISM + "
-        f"PRIMARY (c) before 5-seed spend). Tip PR GitHub **title and body** "
+        f"- Tick {tick}: **G3→G4 PRIMARY-only promising gate** — after Tick 369 "
+        f"surfaced H2 + `mean_final_gap` in the live pipeline report, "
+        f"`g3_pilot_promising` could still auto-spend ~$14 on 5-seed G4 when the "
+        f"pilot had **only** H5 ρ>0.3 (no PRIMARY-shaped D win). Now the gate "
+        f"requires gens/cost/final wins or mean_final_gap>1pp; H5/H2 stay in the "
+        f"report; use `--force-g4` to override. Tip PR GitHub **title and body** "
         f"stay frozen when using `open_git_pr` MCP (does **not** rewrite either "
         f"on existing PRs — Tick 345–350; prefer verbatim args from "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -2025,9 +2023,9 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
-        f"test_write_pipeline_report_surfaces_g3_h2_and_mean_gap`\n"
+        f"test_g3_pilot_promising_on_d_win`\n"
         f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
-        f"test_load_gate3_sidecar_returns_h2`\n"
+        f"test_write_pipeline_report_surfaces_g3_h2_and_mean_gap`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
