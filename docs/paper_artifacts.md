@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–364** live stack hardening (… **Tick 361 live H2 bias-field auto-resolve**; **Tick 362 offline Fig 2 primary H2**; **Tick 363 live G4 paper-pack H2 field + PRIMARY `mean_final_gap`**; **Tick 364 H2 preferred-allele share**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–365** live stack hardening (… **Tick 361 live H2 bias-field auto-resolve**; **Tick 362 offline Fig 2 primary H2**; **Tick 363 live G4 paper-pack H2 field + PRIMARY `mean_final_gap`**; **Tick 364 H2 preferred-allele share**; **Tick 365 offline/gate4 preferred-share surfacing**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
@@ -86,7 +86,7 @@ _Live Table 1 columns match G4 `refresh_paper_artifacts_live` (Tick 28/363). Win
 | 1 | Accuracy / cost curves B vs D (offline draft) | `docs/figures/fig1_learning_curves.png` |
 | 2 | H2 DNA skew / case-study support (offline draft) | `docs/figures/fig2_mechanism.png` |
 
-Offline Figs 1–2 regenerated at Tick **362** from live-shape pilot `1890–1904` using **primary H2** (auto-resolved DNA field — typically `tool_strategy`, not hard-coded `memory`; Tick 302 first populated on-disk paths).
+Offline Figs 1–2 regenerated at Tick **365** from live-shape pilot `1890–1904` using **primary H2** + **preferred-allele** annotation (Tick 362 field alignment; Tick 365 prefer=/share= titles). Tick 302 first populated on-disk paths.
 
 ## Case study (offline)
 
@@ -95,7 +95,7 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 ## Limitations (honest, keep updated)
 
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
-- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`. Live G4 Fig 2 / Table 1 / H2 rows still omitted field + mean gap until Tick **363**. Tick **364** further requires **preferred-allele** share (not mere contradiction-pool membership) so loser-dominated populations cannot false-pass H2.
+- Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`. Live G4 Fig 2 / Table 1 / H2 rows still omitted field + mean gap until Tick **363**. Tick **364** further requires **preferred-allele** share (not mere contradiction-pool membership) so loser-dominated populations cannot false-pass H2. Tick **365** aligns offline `D_h2_share` / Fig 2 / gate4 H2 report with that preferred-share key (regen shows honest shares, e.g. seed 22 ≈0.29 vs prior pool 1.0).
 - Same-allele cross-agent “contradictions” previously created singleton bias pools that wiped better elites; Tick 10 skips those pools — still **unverified on live GPQA**.
 - Pre-Tick-7 bias treated both contradiction sides uniformly; now fitness-weighted + preferred-allele anchoring (unit-tested) but **unverified on live GPQA**.
 - Soft bias-aware crossover (Tick 11) raised offline final seed wins to 3/5 but **hurt gens-to-30% (0/5) and H5 (2/5)** vs Tick 10.

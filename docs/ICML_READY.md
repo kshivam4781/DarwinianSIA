@@ -396,6 +396,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 362 offline Fig 2 primary H2 field — `_maybe_figures` + `D_h2_share` use auto-resolved `h2` (not `h2_memory`); regen Figs 1–2 at `1890–1904`
 - [x] Tick 363 live G4 paper-pack H2 field + PRIMARY gap — Fig 2 majority auto field (not `memory`); Live Table 1 `mean_final_gap`/`primary_final_pass`; H2 rows `field=`; Winner gens25/cost25
 - [x] Tick 364 H2 preferred-allele share — `compute_h2` emits `preferred_share`; `h2_skew_pass` requires preferred ≥0.5 (not mere `in_bias_share`); closes loser-dominated MECHANISM false-pass
+- [x] Tick 365 offline/gate4 preferred-share surfacing — `D_h2_share`/`Fig 2`/gate4 H2 report use preferred_share (not pool `in_bias_share`); regen `1890–1904` honest shares
 
 ## Gate tracker (Section 21.5)
 
@@ -408,4 +409,4 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29 pipeline but NOT STARTED |
 
-<!-- Tick 364 note: Gate labels / secrets stack through Tick 364 H2 preferred-allele share; live still blocked on NEBIUS+HF -->
+<!-- Tick 365 note: Gate labels / secrets stack through Tick 365 offline preferred-share surfacing; live still blocked on NEBIUS+HF -->

@@ -506,17 +506,32 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
 
     # Fig 2 from first D run primary H2 (Tick 362: prefer auto-resolved field,
     # typically tool_strategy — not hard-coded h2_memory / memory alleles).
+    # Tick 365: title surfaces preferred allele + preferred_share (MECHANISM key).
     if d_runs:
         s = summarize_run(d_runs[0])
         h2 = s.get("h2") or s.get("h2_memory") or {}
         counts = h2.get("counts") or {}
         if counts:
             field = str(h2.get("field") or s.get("h2_field") or "memory")
+            pref = h2.get("preferred_value")
+            pref_share = h2.get("preferred_share")
             fig, ax = plt.subplots(figsize=(6, 4))
             labels = list(counts.keys())
             vals = [counts[k] for k in labels]
-            ax.bar(labels, vals, color="#2a6f97")
-            ax.set_title(f"H2 DNA {field} histogram (Condition D dry-run)")
+            colors = [
+                "#1b4332" if pref and str(lab) == str(pref) else "#2a6f97"
+                for lab in labels
+            ]
+            ax.bar(labels, vals, color=colors)
+            title = f"H2 DNA {field} histogram (Condition D dry-run)"
+            if pref is not None:
+                share_s = (
+                    f"{float(pref_share):.2f}"
+                    if isinstance(pref_share, (int, float))
+                    else "—"
+                )
+                title = f"{title}; prefer={pref} share={share_s}"
+            ax.set_title(title)
             ax.set_ylabel("count")
             ax.tick_params(axis="x", rotation=30)
             path = out_dir / "fig2_mechanism.png"
@@ -672,13 +687,21 @@ def main(argv: list[str] | None = None) -> int:
                 "D_h5_key": (r["D"].get("h5") or {}).get("fitness_key"),
                 "D_h5_horizon": (r["D"].get("h5") or {}).get("delta_horizon"),
                 # Tick 362: primary H2 (auto field), not legacy h2_memory-only.
+                # Tick 365: D_h2_share = preferred_share (MECHANISM pass key);
+                # keep in_bias_share separately (pool membership ≠ skew).
                 "D_h2_field": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
                     "field"
                 )
                 or r["D"].get("h2_field"),
+                "D_h2_preferred": (
+                    r["D"].get("h2") or r["D"].get("h2_memory") or {}
+                ).get("preferred_value"),
                 "D_h2_share": (r["D"].get("h2") or r["D"].get("h2_memory") or {}).get(
-                    "in_bias_share"
+                    "preferred_share"
                 ),
+                "D_h2_in_bias_share": (
+                    r["D"].get("h2") or r["D"].get("h2_memory") or {}
+                ).get("in_bias_share"),
             }
             for r in compare.get("rows", [])
         ],

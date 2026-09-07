@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-06 (Section 21 ICML; Tick 364 H2 preferred-allele share; Tick 363 live G4 paper-pack H2+gap; Tick 362 offline Fig2 primary H2; Tick 361 live H2 bias-field auto-resolve; …)
+**Last updated:** 2026-09-07 (Section 21 ICML; Tick 365 offline/gate4 preferred-share surfacing; Tick 364 H2 preferred-allele share; Tick 363 live G4 paper-pack H2+gap; Tick 362 offline Fig2 primary H2; Tick 361 live H2 bias-field auto-resolve; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -958,7 +958,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML offline Fig2 primary H2 field (Tick 362) | **DONE** | Offline `_maybe_figures` + `D_h2_share` use primary `h2` (not `h2_memory`); regen Figs 1–2; fields tool_strategy/retry_policy |
 | ICML live G4 paper-pack H2+gap (Tick 363) | **DONE** | Live Fig 2 majority auto field; Table 1 `mean_final_gap`/`primary_final_pass`; H2 `field=`; Winner gens25/cost25 |
 | ICML H2 preferred-allele share (Tick 364) | **DONE** | `compute_h2` emits `preferred_share`; `h2_skew_pass` requires preferred ≥0.5 (not mere `in_bias_share`); closes latent MECHANISM false-pass when loser allele dominates pool |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–363 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML offline/gate4 preferred-share surface (Tick 365) | **DONE** | Offline `D_h2_share` + Fig 2 + gate4 H2 report use preferred_share (not pool `in_bias_share`); regen `1890–1904` honest shares |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–365 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2507,4 +2508,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Live G4 paper-pack H2 field + PRIMARY gap (Tick 363):** After Tick 361–362, live G4 `write_live_bvd_figures` still defaulted Fig 2 title to `memory`, Live H2 rows omitted `field=`, and Live Table 1 omitted Tick 360 `mean_final_gap` / `primary_final_pass` (Winner also ignored gens@25%/cost@25%). Fixed so secrets→live G4 writes a coherent MECHANISM/PRIMARY paper pack. STATUS remains IN_PROGRESS (still needs NEBIUS + HF/CSV).
 
 **ICML H2 preferred-allele share (Tick 364):** Live H2 `h2_skew_pass` previously treated contradiction-pool membership (`in_bias_share`) as MECHANISM skew — a population dominated by the *loser* allele still scored `in_bias_share=1.0` and false-passed. Now `compute_h2` emits `preferred_value`/`preferred_share` (first bias allele) and `h2_skew_pass` requires preferred share ≥0.5; default `compute_h2(field=None)` auto-resolves. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Offline/gate4 preferred-share surfacing (Tick 365):** Tick 364 fixed the pass helper, but offline `D_h2_share` / Fig 2 / gate4 H2 report still showed pool `in_bias_share` (often 1.0), hiding loser-dominated seeds. Now brief rows + figures + gate4 report surface preferred allele/share; regen `1890–1904` keeps PRIMARY unchanged with honest preferred shares. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 

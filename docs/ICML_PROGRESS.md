@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T00:10Z — Tick 365 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/bc-5a240ef2-00f2-42ac-aa06-dbe0bc7931cb-2b35`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 364 made `h2_skew_pass` use `preferred_share`, offline `D_h2_share` / Fig 2 titles / gate4 H2 report still reported **pool** `in_bias_share` (often 1.0), so paper surfaces would overstate MECHANISM skew and hide loser-dominated seeds (e.g. seed 22 preferred≈0.29). Highest leverage without paid spend: **align offline + gate4 + Fig 2 with preferred_share**.
+
+### What this tick did (ONE step)
+**Offline/gate4 preferred-share surfacing (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 364 (`f49c`); confirmed secrets absent; boot `bc-5a240ef2-…` vs tip `f49c`
+2. Offline `compare_rows_brief`: `D_h2_share` = `preferred_share`; add `D_h2_preferred` + `D_h2_in_bias_share`; Fig 2 titles annotate prefer=/share=; live Fig 2 majority preferred allele; gate4 H2 section mirrors paper-pack fields
+3. Regenerated offline Bvd `1890–1904` + Figs 1–2 — PRIMARY unchanged (final 5/5, gens30/cost30 4/5, gap ~6.15pp, H5 5/5); preferred shares now honest (e.g. 0.71/0.29/0.83/0.67/0.75 vs prior all-1.0 pool shares)
+4. Tests: fig2 preferred annotation; compare-brief preferred≠in_bias; gate4 report preferred_share; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 364) | After (Tick 365) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| Offline `D_h2_share` meaning | `in_bias_share` (pool; often 1.0) | **`preferred_share`** (winner allele) |
+| Offline seed22 preferred share | hidden (reported 1.0) | **~0.29** (honest; <0.5) |
+| Gate4 H2 report | `in_bias_share` only | **field + preferred + preferred_share + in_bias** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-06T22:15Z — Tick 364 (automation cron)
 
 ### Status snapshot

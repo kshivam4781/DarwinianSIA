@@ -64,7 +64,9 @@
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
-      "D_h2_share": 1.0
+      "D_h2_preferred": "selective",
+      "D_h2_share": 0.7083333333333334,
+      "D_h2_in_bias_share": 1.0
     },
     {
       "seed": 22,
@@ -82,7 +84,9 @@
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
-      "D_h2_share": 1.0
+      "D_h2_preferred": "selective",
+      "D_h2_share": 0.2916666666666667,
+      "D_h2_in_bias_share": 1.0
     },
     {
       "seed": 33,
@@ -100,7 +104,9 @@
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "retry_policy",
-      "D_h2_share": 1.0
+      "D_h2_preferred": "error_specific",
+      "D_h2_share": 0.8333333333333334,
+      "D_h2_in_bias_share": 1.0
     },
     {
       "seed": 44,
@@ -118,7 +124,9 @@
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
-      "D_h2_share": 1.0
+      "D_h2_preferred": "selective",
+      "D_h2_share": 0.6666666666666666,
+      "D_h2_in_bias_share": 1.0
     },
     {
       "seed": 55,
@@ -136,7 +144,9 @@
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "retry_policy",
-      "D_h2_share": 1.0
+      "D_h2_preferred": "generic",
+      "D_h2_share": 0.75,
+      "D_h2_in_bias_share": 1.0
     }
   ],
   "case_study": {

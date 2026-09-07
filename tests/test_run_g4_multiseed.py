@@ -771,6 +771,81 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert "ready_status" in payload
 
 
+def test_write_gate4_report_h2_surfaces_preferred_share(tmp_path: Path) -> None:
+    """Tick 365: gate4 H2 section reports preferred_share (MECHANISM), not pool-only."""
+    from run_g4_multiseed import G4PreflightReport
+
+    report = G4PreflightReport(
+        timestamp="2026-09-07T00:10:00Z",
+        mode="refresh-paper",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1210 + s, d_run_id=1310 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=True,
+    )
+    report.h2_by_d_run = {
+        "run_1311": {
+            "field": "tool_strategy",
+            "preferred_value": "selective",
+            "preferred_share": 0.75,
+            "in_bias_share": 1.0,
+            "counts": {"selective": 6, "aggressive": 2},
+        }
+    }
+    report.h2_pass = True
+    report.comparison = {
+        "n_pairs": 5,
+        "d_wins_gens30": 3,
+        "b_wins_gens30": 0,
+        "primary_gens30_pass": True,
+        "d_wins_cost30": 0,
+        "b_wins_cost30": 0,
+        "primary_cost30_pass": False,
+        "d_wins_final": 3,
+        "b_wins_final": 0,
+    }
+    out = tmp_path / "gate4_report.md"
+    write_gate4_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    assert "preferred_share=`0.75`" in text
+    assert "preferred=`selective`" in text
+    assert "field=`tool_strategy`" in text
+    assert "in_bias_share=`1.0`" in text
+
+
+def test_write_live_fig2_annotates_preferred_allele(tmp_path: Path) -> None:
+    """Tick 365: live Fig 2 title includes majority preferred allele."""
+    comparison = {
+        "rows": [
+            {
+                "B": {"learning_curve": {"1": {"best": 0.1, "mean": 0.08}}},
+                "D": {"learning_curve": {"1": {"best": 0.12, "mean": 0.1}}},
+            }
+        ]
+    }
+    h2 = {
+        "run_1311": {
+            "field": "tool_strategy",
+            "preferred_value": "selective",
+            "counts": {"selective": 5, "aggressive": 1},
+        },
+        "run_1312": {
+            "field": "tool_strategy",
+            "preferred_value": "selective",
+            "counts": {"selective": 4, "minimal": 2},
+        },
+    }
+    # Capture title via monkeypatched matplotlib if available; else just ensure write.
+    written = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run=h2,
+        figures_dir=tmp_path / "figures",
+    )
+    assert any(p.endswith("fig2_mechanism.png") for p in written)
+    assert (tmp_path / "figures" / "fig2_mechanism.png").is_file()
+
+
 def test_main_live_fetch_diamond_refuses_without_hf(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

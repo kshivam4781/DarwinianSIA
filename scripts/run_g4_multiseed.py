@@ -629,8 +629,10 @@ def write_live_bvd_figures(
     # Fig 2: pooled DNA trait counts across Condition D runs.
     # Tick 363: title field = majority of auto-resolved H2 fields (Tick 361),
     # not a hard-coded ``memory`` default (offline Tick 362 alignment).
+    # Tick 365: title also surfaces majority preferred allele (MECHANISM key).
     pooled: dict[str, int] = {}
     field_votes: dict[str, int] = {}
+    pref_votes: dict[str, int] = {}
     for payload in h2_by_d_run.values():
         if not isinstance(payload, dict) or "error" in payload:
             continue
@@ -638,17 +640,31 @@ def write_live_bvd_figures(
         if isinstance(fld, str) and fld.strip():
             key = fld.strip()
             field_votes[key] = field_votes.get(key, 0) + 1
+        pref = payload.get("preferred_value")
+        if isinstance(pref, str) and pref.strip():
+            pkey = pref.strip()
+            pref_votes[pkey] = pref_votes.get(pkey, 0) + 1
         for k, v in (payload.get("counts") or {}).items():
             pooled[str(k)] = pooled.get(str(k), 0) + int(v)
     field = "auto"
     if field_votes:
         field = max(field_votes.items(), key=lambda kv: (kv[1], kv[0]))[0]
+    preferred = None
+    if pref_votes:
+        preferred = max(pref_votes.items(), key=lambda kv: (kv[1], kv[0]))[0]
     if pooled:
         fig, ax = plt.subplots(figsize=(6.5, 4))
         labels = list(pooled.keys())
         vals = [pooled[k] for k in labels]
-        ax.bar(labels, vals)
-        ax.set_title(f"Fig 2 — Live H2 DNA trait histogram ({field})")
+        colors = [
+            "#1b4332" if preferred and str(lab) == str(preferred) else "#4c78a8"
+            for lab in labels
+        ]
+        ax.bar(labels, vals, color=colors)
+        title = f"Fig 2 — Live H2 DNA trait histogram ({field})"
+        if preferred:
+            title = f"{title}; prefer={preferred}"
+        ax.set_title(title)
         ax.set_ylabel("count (pooled D runs)")
         ax.tick_params(axis="x", rotation=30)
         path = figures_dir / "fig2_mechanism.png"
@@ -959,8 +975,14 @@ def write_gate4_report(
             lines.extend(["### H2 (Condition D)", ""])
             for name, h2 in report.h2_by_d_run.items():
                 if isinstance(h2, dict):
+                    # Tick 365: gate4 report mirrors paper-pack MECHANISM key
+                    # (preferred_share), not pool-only in_bias_share.
+                    fld = h2.get("field") or "auto"
                     lines.append(
-                        f"- `{name}`: in_bias_share=`{h2.get('in_bias_share')}` "
+                        f"- `{name}`: field=`{fld}` "
+                        f"preferred=`{h2.get('preferred_value')}` "
+                        f"preferred_share=`{h2.get('preferred_share')}` "
+                        f"in_bias_share=`{h2.get('in_bias_share')}` "
                         f"counts=`{h2.get('counts')}`"
                     )
             lines.append("")

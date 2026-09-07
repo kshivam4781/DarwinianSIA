@@ -62,13 +62,17 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
         "h2": {
             "field": "tool_strategy",
             "counts": {"selective": 9, "aggressive": 3},
-            "in_bias_share": 0.75,
+            "in_bias_share": 1.0,
+            "preferred_value": "selective",
+            "preferred_share": 0.75,
         },
         "h2_field": "tool_strategy",
         "h2_memory": {
             "field": "memory",
             "counts": {"short_summary": 8, "none": 4},
             "in_bias_share": 0.1,
+            "preferred_value": "short_summary",
+            "preferred_share": 0.1,
         },
     }
     monkeypatch.setattr("offline_bvd_case_study.summarize_run", lambda _p: fake)
@@ -79,6 +83,7 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
         def bar(self, labels, vals, color=None):  # noqa: ANN001
             captured["labels"] = list(labels)
             captured["vals"] = list(vals)
+            captured["color"] = color
 
         def plot(self, *a, **k):  # noqa: ANN001, ARG002
             return None
@@ -132,9 +137,45 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
     assert captured.get("labels") == ["selective", "aggressive"]
     assert "tool_strategy" in str(captured.get("title"))
     assert "memory" not in str(captured.get("title")).lower()
+    # Tick 365: MECHANISM preferred allele annotated in title / bar colors.
+    assert "prefer=selective" in str(captured.get("title"))
+    assert "share=0.75" in str(captured.get("title"))
+    colors = captured.get("color")
+    assert colors is not None
+    assert list(colors)[0] != list(colors)[1]
 
 
-def test_preferred_share_helper():
+def test_offline_compare_brief_uses_preferred_share_not_in_bias():
+    """Tick 365: D_h2_share is preferred_share (MECHANISM), not pool membership."""
+    # Mimic compare_rows_brief extraction without a full offline pilot.
+    row = {
+        "seed_idx": 0,
+        "B": {"final_best": 0.2, "gens_to_25": 3, "gens_to_30": None, "cost_to_30": {}},
+        "D": {
+            "final_best": 0.3,
+            "gens_to_25": 2,
+            "gens_to_30": 3,
+            "cost_to_30": {"cost": 40.0, "unit": "calls"},
+            "h5": {"spearman_rho": 0.5, "pass": True, "fitness_key": "mean", "delta_horizon": 2},
+            "h2": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.25,
+                "in_bias_share": 1.0,
+            },
+        },
+    }
+    h2 = row["D"].get("h2") or {}
+    brief = {
+        "D_h2_field": h2.get("field"),
+        "D_h2_preferred": h2.get("preferred_value"),
+        "D_h2_share": h2.get("preferred_share"),
+        "D_h2_in_bias_share": h2.get("in_bias_share"),
+    }
+    assert brief["D_h2_share"] == 0.25
+    assert brief["D_h2_in_bias_share"] == 1.0
+    assert brief["D_h2_preferred"] == "selective"
+    assert brief["D_h2_share"] != brief["D_h2_in_bias_share"]
     traits = [{"trait": "stepwise"}, {"trait": "direct"}, {"trait": "stepwise"}, {"trait": "hierarchical"}]
     assert preferred_share(traits, "stepwise") == 0.5
     assert preferred_share([], "stepwise") is None
