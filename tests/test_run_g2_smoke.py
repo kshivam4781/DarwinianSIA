@@ -254,6 +254,41 @@ def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
     assert checks["epistemic_value_jsonl"].ok
     # empty JSON arrays are size>2? "[]\n" is 3 bytes — has_cabs true; bias may fail
     assert "scoped_mutation_bias" in checks
+    # Tick 371: no fitness artifacts → nonzero_fitness fails (blocks G3 burn).
+    assert checks["nonzero_fitness"].ok is False
+
+
+def test_validate_g2_artifacts_nonzero_fitness_gate(tmp_path: Path) -> None:
+    """Tick 371: G2 PASS requires best fitness > floor (default 0)."""
+    run_dir = tmp_path / "run_1852"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.0}), encoding="utf-8"
+    )
+    checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert checks["nonzero_fitness"].ok is False
+
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2}), encoding="utf-8"
+    )
+    checks_ok = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert checks_ok["nonzero_fitness"].ok is True
+    assert "0.2000" in checks_ok["nonzero_fitness"].detail
 
 
 def test_main_fetch_diamond_from_csv_clears_synthetic(

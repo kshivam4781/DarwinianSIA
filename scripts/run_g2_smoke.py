@@ -9,6 +9,8 @@ turnkey and hard-stops unsafe paid runs:
   - existing run directory (never overwrite)
   - optional budget ceiling via SIA_BUDGET_SPENT_USD / SIA_BUDGET_CEILING_USD
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
+  - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
+    so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -363,6 +365,15 @@ def run_preflight(
     return report
 
 
+def _g2_min_best_fitness() -> float:
+    """Tick 371: floor for G2 PASS (default >0). Override via SIA_G2_MIN_BEST_FITNESS."""
+    raw = os.environ.get("SIA_G2_MIN_BEST_FITNESS", "0")
+    try:
+        return float(raw)
+    except ValueError:
+        return 0.0
+
+
 def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     checks: list[CheckResult] = []
     store = run_dir / "belief_store"
@@ -420,6 +431,41 @@ def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     except Exception as exc:  # pragma: no cover
         bias_detail = f"import/load error: {exc}"
     checks.append(CheckResult("scoped_mutation_bias", bias_ok, bias_detail))
+
+    # Tick 371: refuse G2 PASS when best fitness is missing/zero so the live
+    # pipeline cannot auto-advance into paid G3/G4 after a silent 0% eval
+    # (historically common with parse/format failures). Exit code 0 from sia
+    # alone is not enough — G2 must show a working scoring path.
+    from epistemic_results import load_gen_fitness  # noqa: E402
+
+    fitness = load_gen_fitness(run_dir)
+    min_best = _g2_min_best_fitness()
+    if not fitness:
+        checks.append(
+            CheckResult(
+                "nonzero_fitness",
+                False,
+                "no fitness in civilization.json / agent_*/results.json — "
+                "refuse G3 burn on unscored G2",
+            )
+        )
+    else:
+        best = max(float(v.get("best", 0.0) or 0.0) for v in fitness.values())
+        ok = best > min_best
+        checks.append(
+            CheckResult(
+                "nonzero_fitness",
+                ok,
+                (
+                    f"best={best:.4f} > min={min_best:g}"
+                    if ok
+                    else (
+                        f"best={best:.4f} ≤ min={min_best:g} — refuse G3/G4 "
+                        "auto-advance on broken/zero-acc G2 smoke"
+                    )
+                ),
+            )
+        )
     return checks
 
 
