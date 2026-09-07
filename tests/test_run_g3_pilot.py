@@ -496,15 +496,76 @@ def test_score_pilot_wires_compare(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     def fake_h5(run_dir):  # noqa: ANN001
         return {"spearman_rho": 0.5}
 
+    def fake_h2(d_dirs, field=None):  # noqa: ANN001
+        return {
+            d_dirs[0].name: {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.75,
+                "in_bias_share": 1.0,
+            }
+        }
+
     monkeypatch.setattr(mod, "compare_b_vs_d", fake_compare)
     monkeypatch.setattr(mod, "compute_h5", fake_h5)
+    # Tick 368: score_pilot lazily imports score_live_h2 from run_g4_multiseed.
+    import run_g4_multiseed as g4
+
+    monkeypatch.setattr(g4, "score_live_h2", fake_h2)
     b = tmp_path / "run_1201"
     d = tmp_path / "run_1301"
     b.mkdir()
     d.mkdir()
-    cmp_, h5 = score_pilot([b], [d])
+    cmp_, h5, h2 = score_pilot([b], [d])
     assert cmp_["d_wins_gens30"] == 1
     assert h5["run_1301"]["spearman_rho"] == 0.5
+    assert h2["run_1301"]["preferred_share"] == 0.75
+
+
+def test_write_gate3_report_surfaces_h2_and_mean_gap(tmp_path: Path) -> None:
+    """Tick 368: live G3 metrics show mean_final_gap + H2 preferred (G4 parity)."""
+    report = G3PreflightReport(
+        timestamp="2026-09-07T06:10:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        commands=[["sia", "run", "--darwinian"]],
+        comparison={
+            "n_pairs": 1,
+            "d_wins_gens30": 1,
+            "b_wins_gens30": 0,
+            "d_wins_cost30": 1,
+            "b_wins_cost30": 0,
+            "d_wins_final": 1,
+            "b_wins_final": 0,
+            "d_wins_h2": 1,
+            "h2_preferred_pass": False,  # n<5 → aggregate False; per-seed still shown
+            "mean_final_gap": 0.0615,
+            "primary_final_pass": False,
+        },
+        h5_by_d_run={"run_1301": {"spearman_rho": 0.8}},
+        h2_by_d_run={
+            "run_1301": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.75,
+                "in_bias_share": 1.0,
+                "counts": {"selective": 3, "aggressive": 1},
+            }
+        },
+    )
+    out = tmp_path / "gate3_report.md"
+    write_gate3_report(report, out, executed=True)
+    text = out.read_text(encoding="utf-8")
+    assert "mean_final_gap" in text.lower() or "Mean final gap" in text
+    assert "0.0615" in text
+    assert "h2_preferred_pass" in text
+    assert "d_wins_h2=1/1" in text or "H2 preferred ≥0.5: **1/1**" in text
+    assert "preferred_share=`0.75`" in text
+    assert "field=`tool_strategy`" in text
+    payload = json.loads(out.with_suffix(".json").read_text())
+    assert payload["h2_by_d_run"]["run_1301"]["preferred_share"] == 0.75
+    assert payload["comparison"]["mean_final_gap"] == 0.0615
 
 
 def test_main_live_fetch_diamond_refuses_without_hf(

@@ -118,6 +118,8 @@ class G3PreflightReport:
     notes: list[str] = field(default_factory=list)
     comparison: dict[str, Any] | None = None
     h5_by_d_run: dict[str, Any] = field(default_factory=dict)
+    # Tick 368: live H2 preferred-allele payloads (parity with G4 Tick 364–367).
+    h2_by_d_run: dict[str, Any] = field(default_factory=dict)
 
     def add(self, name: str, ok: bool, detail: str) -> None:
         self.checks.append(CheckResult(name=name, ok=ok, detail=detail))
@@ -476,7 +478,18 @@ def resolve_run_dir(run_id: int, cwd: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
-def score_pilot(b_dirs: list[Path], d_dirs: list[Path]) -> tuple[dict[str, Any], dict[str, Any]]:
+def score_pilot(
+    b_dirs: list[Path], d_dirs: list[Path]
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Score PRIMARY compare + Condition D H5/H2 for a live G3 pilot.
+
+    Tick 368: also score live H2 (preferred-allele share) so G3→G4 operators
+    see MECHANISM before spending on 5-seed G4 — previously only H5 + gens/cost
+    appeared in gate3 live metrics (G4 Tick 364–367 honesty was G4-only).
+    """
+    # Import here to avoid a hard import cycle at module load (G4 imports G3 helpers).
+    from run_g4_multiseed import score_live_h2
+
     comparison = compare_b_vs_d(b_dirs, d_dirs)
     h5: dict[str, Any] = {}
     for d_dir in d_dirs:
@@ -484,7 +497,8 @@ def score_pilot(b_dirs: list[Path], d_dirs: list[Path]) -> tuple[dict[str, Any],
             h5[d_dir.name] = compute_h5(d_dir)
         except Exception as exc:  # pragma: no cover
             h5[d_dir.name] = {"error": str(exc)}
-    return comparison, h5
+    h2 = score_live_h2(d_dirs)
+    return comparison, h5, h2
 
 
 def _extract_offline_block(existing: str | None) -> str:
@@ -580,6 +594,14 @@ def write_gate3_report(
 
     if report.comparison is not None:
         cmp_ = report.comparison
+        # Tick 368: surface Tick 360 mean_final_gap + Tick 366/367 H2 preferred
+        # aggregate (not gens/cost/H5 only) so G3 pilot honesty matches G4.
+        mean_gap = cmp_.get("mean_final_gap")
+        mean_gap_s = (
+            f"{float(mean_gap):.4f}"
+            if isinstance(mean_gap, (int, float))
+            else "—"
+        )
         lines.extend(
             [
                 "## Live pilot metrics",
@@ -588,6 +610,11 @@ def write_gate3_report(
                 f"- D gens30 wins: **{cmp_.get('d_wins_gens30', 0)}** / B: **{cmp_.get('b_wins_gens30', 0)}**",
                 f"- D cost30 wins: **{cmp_.get('d_wins_cost30', 0)}** / B: **{cmp_.get('b_wins_cost30', 0)}**",
                 f"- D final wins (>1pp): **{cmp_.get('d_wins_final', 0)}** / B: **{cmp_.get('b_wins_final', 0)}**",
+                f"- Mean final gap (D−B): **{mean_gap_s}** "
+                f"(primary_final_pass={cmp_.get('primary_final_pass')})",
+                f"- H2 preferred ≥0.5: **{cmp_.get('d_wins_h2', '—')}/"
+                f"{cmp_.get('n_pairs', 0)}** "
+                f"(h2_preferred_pass={cmp_.get('h2_preferred_pass')})",
                 "",
                 "### H5 (Condition D)",
                 "",
@@ -597,6 +624,19 @@ def write_gate3_report(
             rho = h5.get("spearman_rho") if isinstance(h5, dict) else None
             lines.append(f"- `{name}`: Spearman ρ = `{rho}`")
         lines.append("")
+        if report.h2_by_d_run:
+            lines.extend(["### H2 (Condition D)", ""])
+            for name, h2 in report.h2_by_d_run.items():
+                if isinstance(h2, dict):
+                    fld = h2.get("field") or "auto"
+                    lines.append(
+                        f"- `{name}`: field=`{fld}` "
+                        f"preferred=`{h2.get('preferred_value')}` "
+                        f"preferred_share=`{h2.get('preferred_share')}` "
+                        f"in_bias_share=`{h2.get('in_bias_share')}` "
+                        f"counts=`{h2.get('counts')}`"
+                    )
+            lines.append("")
         if executed and report.mode == "live":
             lines.append("**Live G3 status:** RUN COMPLETE — inspect metrics before G4")
         lines.append("")
@@ -640,6 +680,7 @@ def write_gate3_report(
         "commands": report.commands,
         "comparison": report.comparison,
         "h5_by_d_run": report.h5_by_d_run,
+        "h2_by_d_run": report.h2_by_d_run,
         "notes": report.notes,
         "executed": executed,
     }
@@ -902,9 +943,10 @@ def main(argv: list[str] | None = None) -> int:
     report.notes.extend(run_notes)
 
     if b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
-        comparison, h5 = score_pilot(b_dirs, d_dirs)
+        comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
         report.comparison = comparison
         report.h5_by_d_run = h5
+        report.h2_by_d_run = h2
     else:
         report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d")
 

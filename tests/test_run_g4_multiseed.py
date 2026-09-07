@@ -975,9 +975,12 @@ def test_apply_paper_pack_prefers_compare_h2_preferred_pass(
     monkeypatch.setattr(
         mod,
         "score_pilot",
-        lambda b, d: (comparison, {k: {"spearman_rho": 0.5} for k in h2_payloads}),
+        lambda b, d: (
+            comparison,
+            {k: {"spearman_rho": 0.5} for k in h2_payloads},
+            h2_payloads,
+        ),
     )
-    monkeypatch.setattr(mod, "score_live_h2", lambda d_dirs, field=None: h2_payloads)
     monkeypatch.setattr(mod, "write_live_bvd_figures", lambda **kw: [])
     monkeypatch.setattr(mod, "refresh_paper_artifacts_live", lambda **kw: True)
     monkeypatch.setattr(mod, "update_icml_ready_from_g4", lambda **kw: "IN_PROGRESS")

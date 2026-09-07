@@ -1084,8 +1084,8 @@ def apply_paper_pack(
     allow_ready: bool = True,
 ) -> bool:
     """Score PRIMARY/H2/H5, refresh paper pack + figures + ICML_READY. Returns paper_refreshed."""
-    comparison, h5 = score_pilot(b_dirs, d_dirs)
-    h2 = score_live_h2(d_dirs)
+    # Tick 368: score_pilot also returns H2 (preferred-allele); avoid double compute_h2.
+    comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
     report.comparison = comparison
     report.h5_by_d_run = h5
     report.h2_by_d_run = h2
