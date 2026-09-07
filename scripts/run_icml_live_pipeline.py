@@ -25,6 +25,10 @@ Hard stops (delegated to gate runners; never violate here either):
     live-executed gate3 sidecar). A resume-skipped G3 with only a preflight /
     null comparison must not auto-burn ~$14 G4, and a completed local G3 must
     not stall G4 because the sidecar was never written after a mid-stack crash.
+  - Tick 374: resume-skipped G4 still rebuilds the paper pack from local B/D
+    (or requires a live-executed gate4 sidecar). A completed G4 whose
+    gate4_report.json stayed mode=preflight (crash after pairs / pack never
+    ran) must not leave ICML_READY stuck IN_PROGRESS forever.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -563,6 +567,122 @@ def load_g3_metrics_for_g4(
         {},
         "Tick 373: no local G3 artifacts and no live-executed gate3 comparison "
         f"(mode={mode or 'missing'!r}, executed={executed}) — refuse G4 auto-advance",
+    )
+
+
+def _load_gate4_sidecar_raw(report_md: Path | None = None) -> dict[str, Any]:
+    """Full gate4 JSON (mode/executed + compare) for Tick 374 resume pack trust."""
+    report_md = report_md or (REPO_ROOT / "docs" / "gate4_report.md")
+    sidecar = report_md.with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def refresh_g4_paper_pack_on_resume(
+    *,
+    g4_seeds: str,
+    g4_b_ids: list[int],
+    g4_d_ids: list[int],
+    report: PipelineReport,
+    paper_artifacts: Path | None = None,
+    ready_path: Path | None = None,
+    figures_dir: Path | None = None,
+    gate4_report_md: Path | None = None,
+    allow_ready: bool = True,
+) -> str:
+    """Tick 374: rebuild paper pack after resume-skip G4 (prefer local re-score).
+
+    Tick 284 resume skips the G4 runner when B/D ``results.json`` exist, but
+    ``gate4_report.json`` is often still ``mode=preflight`` (crash after pairs /
+    paper pack never ran). That leaves ``ICML_READY`` stuck IN_PROGRESS despite
+    PRIMARY-shaped live evidence. Re-score + ``apply_paper_pack`` when local
+    dirs are present. Ledger-only / no-local fallback accepts the sidecar
+    **only** when ``mode=="live"`` (or ``refresh-paper``) and ``executed`` and a
+    non-null comparison exist — never promote READY from a preflight sidecar.
+    """
+    paper_artifacts = paper_artifacts or (REPO_ROOT / "docs" / "paper_artifacts.md")
+    ready_path = ready_path or (REPO_ROOT / "docs" / "ICML_READY.md")
+    figures_dir = figures_dir or (REPO_ROOT / "docs" / "figures")
+    gate4_report_md = gate4_report_md or (REPO_ROOT / "docs" / "gate4_report.md")
+
+    g4_ids = list(g4_b_ids) + list(g4_d_ids)
+    if g4_ids and stage_runs_complete(g4_ids):
+        b_dirs = _resolve_run_dirs(list(g4_b_ids))
+        d_dirs = _resolve_run_dirs(list(g4_d_ids))
+        if len(b_dirs) == len(g4_b_ids) and len(d_dirs) == len(g4_d_ids):
+            try:
+                seeds = g4.parse_int_list(g4_seeds)
+                plans = g4.build_g4_plans(seeds, list(g4_b_ids), list(g4_d_ids))
+            except ValueError as exc:
+                return (
+                    f"Tick 374: G4 resume paper pack refused — bad plans ({exc})"
+                )
+            g4_report = g4.G4PreflightReport(
+                timestamp=_utc_now(),
+                mode="refresh-paper",
+                plans=plans,
+                ready_for_live=False,
+            )
+            g4_report.notes.append(
+                "Tick 374: resume-skipped G4 — re-scoring local B/D into paper pack "
+                f"(allow_ready={allow_ready})"
+            )
+            paper_refreshed = g4.apply_paper_pack(
+                g4_report,
+                b_dirs=b_dirs,
+                d_dirs=d_dirs,
+                paper_artifacts=paper_artifacts,
+                ready_path=ready_path,
+                figures_dir=figures_dir,
+                skip_paper_refresh=False,
+                allow_ready=allow_ready,
+            )
+            g4.write_gate4_report(
+                g4_report,
+                gate4_report_md,
+                executed=True,
+                paper_refreshed=paper_refreshed,
+            )
+            report.icml_ready_status = g4_report.ready_status
+            return (
+                "Tick 374: re-scored G4 from local B/D + refreshed paper pack "
+                f"(primary={g4_report.primary_pass}; h2={g4_report.h2_pass}; "
+                f"h5={g4_report.h5_pass}; paper={paper_refreshed}; "
+                f"ICML_READY={g4_report.ready_status})"
+            )
+        return (
+            "Tick 374: local G4 run IDs marked complete but dirs unresolved — "
+            "paper pack not refreshed (need artifacts or live-executed gate4 sidecar)"
+        )
+
+    data = _load_gate4_sidecar_raw(gate4_report_md)
+    comparison = data.get("comparison")
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    paper_refreshed = bool(data.get("paper_refreshed"))
+    ready_status = data.get("ready_status")
+    if (
+        mode in {"live", "refresh-paper"}
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+        and paper_refreshed
+    ):
+        if isinstance(ready_status, str) and ready_status:
+            report.icml_ready_status = ready_status
+        return (
+            "Tick 374: trusted live-executed gate4 sidecar paper pack "
+            f"(no local G4 dirs; mode={mode}; ICML_READY={ready_status or 'n/a'})"
+        )
+    return (
+        "Tick 374: no local G4 artifacts and no live-executed gate4 paper pack "
+        f"(mode={mode or 'missing'!r}, executed={executed}, "
+        f"paper_refreshed={paper_refreshed}) — ICML_READY not updated from resume"
     )
 
 
@@ -1297,10 +1417,17 @@ def run_live_stack(
                 exit_code=0,
                 ok=True,
                 skipped_reason="resume: G4 B/D run IDs already complete",
-                detail="5-seed B vs D + paper pack (skipped)",
+                detail="5-seed B vs D + paper pack (skipped runner; Tick 374 pack refresh)",
             )
         )
-        report.notes.append("Tick 284: skipped G4 (multiseed runs complete)")
+        report.notes.append("Tick 284: skipped G4 runner (multiseed runs complete)")
+        pack_note = refresh_g4_paper_pack_on_resume(
+            g4_seeds=g4_seeds,
+            g4_b_ids=g4_b_ids,
+            g4_d_ids=g4_d_ids,
+            report=report,
+        )
+        report.notes.append(pack_note)
         report.stopped_after = "G4"
         return 0
 

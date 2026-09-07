@@ -19,6 +19,7 @@ from run_icml_live_pipeline import (  # noqa: E402
     g3_pilot_promising,
     load_g3_metrics_for_g4,
     project_budget,
+    refresh_g4_paper_pack_on_resume,
     run_preflight_stack,
     sync_spent_from_completed_stages,
     write_pipeline_report,
@@ -792,6 +793,166 @@ def test_g3_resume_trusts_live_executed_sidecar_ledger_only(
     assert h2["run_1301"]["preferred_share"] == 0.6
     assert "trusted live-executed gate3 sidecar" in src
     assert g3_pilot_promising(comparison, h5) is True
+
+
+def test_g4_resume_refreshes_paper_pack_when_sidecar_preflight(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 374: resume-complete G4 + preflight sidecar → local re-score + pack."""
+    import run_g4_multiseed as g4
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "paper_refreshed": False,
+                "ready_status": "IN_PROGRESS",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    (docs / "paper_artifacts.md").write_text("# Paper\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (docs / "figures").mkdir()
+
+    b_ids = [1211, 1212, 1213, 1214, 1215]
+    d_ids = [1311, 1312, 1313, 1314, 1315]
+    b_dirs = [(tmp_path / "runs" / f"run_{i}") for i in b_ids]
+    d_dirs = [(tmp_path / "runs" / f"run_{i}") for i in d_ids]
+    for p in b_dirs + d_dirs:
+        p.mkdir(parents=True)
+
+    id_set = set(b_ids + d_ids)
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: set(ids) <= id_set)
+    id_to_dir = {i: d for i, d in zip(b_ids + d_ids, b_dirs + d_dirs)}
+    monkeypatch.setattr(
+        pipe,
+        "_resolve_run_dirs",
+        lambda ids: [id_to_dir[i] for i in ids],
+    )
+
+    calls: dict[str, object] = {}
+
+    def _fake_apply(report, **kwargs):
+        calls["b_dirs"] = kwargs["b_dirs"]
+        calls["d_dirs"] = kwargs["d_dirs"]
+        calls["allow_ready"] = kwargs["allow_ready"]
+        report.primary_pass = True
+        report.h2_pass = True
+        report.h5_pass = True
+        report.ready_status = "READY"
+        report.comparison = {"n_pairs": 5, "primary_gens30_pass": True}
+        return True
+
+    monkeypatch.setattr(g4, "apply_paper_pack", _fake_apply)
+    monkeypatch.setattr(
+        g4,
+        "write_gate4_report",
+        lambda report, out, **kw: calls.setdefault("wrote_report", str(out)),
+    )
+
+    report = PipelineReport(timestamp="2026-09-07T18:05:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=b_ids,
+        g4_d_ids=d_ids,
+        report=report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert "re-scored G4 from local" in note
+    assert calls["b_dirs"] == b_dirs
+    assert calls["d_dirs"] == d_dirs
+    assert calls["allow_ready"] is True
+    assert calls["wrote_report"]
+    assert report.icml_ready_status == "READY"
+
+
+def test_g4_resume_refuses_preflight_sidecar_without_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 374: no local G4 + preflight sidecar → do not update ICML_READY."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "paper_refreshed": False,
+                "ready_status": "IN_PROGRESS",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    report = PipelineReport(timestamp="2026-09-07T18:05:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+        report=report,
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert "no local G4 artifacts" in note
+    assert "ICML_READY not updated" in note
+    assert report.icml_ready_status is None
+
+
+def test_g4_resume_trusts_live_executed_sidecar_ledger_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 374: ledger-only resume may trust a live-executed gate4 paper pack."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "ready_status": "READY",
+                "comparison": {
+                    "n_pairs": 5,
+                    "primary_gens30_pass": True,
+                    "d_wins_gens30": 4,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    report = PipelineReport(timestamp="2026-09-07T18:05:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+        report=report,
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert "trusted live-executed gate4 sidecar" in note
+    assert report.icml_ready_status == "READY"
 
 
 def test_preflight_stack_not_ready_without_keys(

@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T18:05Z — Tick 374 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-e950`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 373's G3 resume re-score, a **resume-skipped G4** still returned immediately without rebuilding the paper pack. When B/D `results.json` exist but `gate4_report.json` stayed `mode=preflight` (crash after pairs / pack never ran), the next cron would skip G4 forever and leave `ICML_READY` stuck IN_PROGRESS despite PRIMARY-shaped live evidence. Highest leverage without paid spend: **G4 resume paper-pack refresh**.
+
+### What this tick did (ONE step)
+**G4 resume paper-pack refresh (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 373 (`f49c`); confirmed secrets absent; boot `e950` vs tip `f49c`
+2. `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D via `apply_paper_pack` when present; ledger-only fallback accepts sidecar only when `mode in {live,refresh-paper}` + `executed` + `paper_refreshed` + non-null comparison
+3. Wired into `run_live_stack` resume-skip G4 path; tests: `test_g4_resume_refreshes_paper_pack_when_sidecar_preflight` / `test_g4_resume_refuses_preflight_sidecar_without_local` / `test_g4_resume_trusts_live_executed_sidecar_ledger_only`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 373) | After (Tick 374) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| G3 resume → G4 metrics | re-score local; live-executed sidecar only | unchanged |
+| G4 resume → paper pack / ICML_READY | skipped runner; **no pack refresh** | **re-score local + pack; live sidecar only** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T16:05Z — Tick 373 (automation cron)
 
 ### Status snapshot

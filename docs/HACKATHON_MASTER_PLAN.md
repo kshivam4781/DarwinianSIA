@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-07 (Section 21 ICML; Tick 373 G3 resume re-score for G4; Tick 372 G2 resume; …)
+**Last updated:** 2026-09-07 (Section 21 ICML; Tick 374 G4 resume paper-pack refresh; Tick 373 G3 resume re-score; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -967,7 +967,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML G2 nonzero-fitness gate (Tick 371) | **DONE** | `validate_g2_artifacts` requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0); blocks 0%/unscored G2 from auto-advancing paid G3/G4 |
 | ICML G2 resume re-validation (Tick 372) | **DONE** | Resume re-runs `validate_g2_artifacts` on local G2; 0%-fitness `results.json` no longer resume-skips into paid G3/G4 |
 | ICML G3 resume re-score for G4 (Tick 373) | **DONE** | `load_g3_metrics_for_g4` re-scores local G3 B/D (or requires live-executed sidecar); preflight/null comparison no longer drives G4 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–373 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML G4 resume paper-pack refresh (Tick 374) | **DONE** | `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D + `apply_paper_pack` (or requires live-executed sidecar); resume-skip no longer leaves ICML_READY stuck |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–374 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2534,4 +2535,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G2 resume post-run re-validation (Tick 372):** After Tick 371, a 0%-fitness G2 still writes `results.json`, so Tick 284 resume would skip G2 and auto-burn ~$19 on G3+G4. `sync_spent_from_completed_stages` now re-validates local G2 via `validate_g2_artifacts` and refuses resume-complete until gates pass. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **G3 resume re-score for G4 gate (Tick 373):** After Tick 372, a resume-skipped G3 still trusted `gate3_report.json`, often still `mode=preflight` with `comparison=null`. That stalls G4 despite a PRIMARY-shaped local pilot, or (if comparison were filled from offline) risks a false ~$14 G4 burn. `load_g3_metrics_for_g4` re-scores from local B/D dirs when present; ledger-only fallback requires live-executed sidecar + non-null comparison. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**G4 resume paper-pack refresh (Tick 374):** After Tick 373, a resume-skipped G4 still returned without rebuilding the paper pack. When B/D `results.json` exist but `gate4_report.json` stayed `mode=preflight` (crash after pairs / pack never ran), the next cron would skip G4 forever and leave `ICML_READY` stuck IN_PROGRESS despite PRIMARY-shaped live evidence. `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D via `apply_paper_pack` when present; ledger-only fallback requires live-executed sidecar with `paper_refreshed` + non-null comparison. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
