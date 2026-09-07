@@ -719,6 +719,14 @@ def refresh_paper_artifacts_live(
     h5_line = f"H5 ρ>0.3 on live D runs: **{h5_n_pass}/{h5_n}**.\n"
     h2 = h2_by_d_run or {}
     h2_ok = h2_skew_pass(h2)
+    # Tick 367: when compare has a 5-seed aggregate, prefer h2_preferred_pass
+    # (same key as offline Tick 366) so Live Table cannot hide loser-dominated
+    # seed counts behind a binary skew_pass.
+    n_pairs = int(comparison.get("n_pairs") or 0)
+    d_wins_h2 = comparison.get("d_wins_h2")
+    h2_pref_pass = comparison.get("h2_preferred_pass")
+    if n_pairs >= 5 and h2_pref_pass is not None:
+        h2_ok = bool(h2_pref_pass)
     h2_bits: list[str] = []
     for name, payload in h2.items():
         if not isinstance(payload, dict):
@@ -734,9 +742,15 @@ def refresh_paper_artifacts_live(
             f"{name}: field={fld} preferred={pref_v or '—'} "
             f"preferred_share={_fmt_num(pref)} in_bias_share={_fmt_num(share)}"
         )
+    h2_agg = ""
+    if d_wins_h2 is not None and n_pairs:
+        h2_agg = (
+            f"d_wins_h2={d_wins_h2}/{n_pairs} "
+            f"h2_preferred_pass={h2_pref_pass}; "
+        )
     h2_line = (
         f"H2 live DNA skew: **{'PASS' if h2_ok else 'FAIL/partial'}** "
-        f"({'; '.join(h2_bits) if h2_bits else 'no H2 payloads'}).\n"
+        f"({h2_agg}{'; '.join(h2_bits) if h2_bits else 'no H2 payloads'}).\n"
     )
     fig_line = ""
     if figures_written:
@@ -745,9 +759,16 @@ def refresh_paper_artifacts_live(
     text = text[:start] + new_block + text[end:]
 
     # Table 2 live H2 / H5 marked rows (optional markers; no-op if absent).
+    # Tick 367: include d_wins_h2 / h2_preferred_pass (offline Tick 366 aggregate).
+    h2_agg_cell = ""
+    if d_wins_h2 is not None and n_pairs:
+        h2_agg_cell = (
+            f"d_wins_h2={d_wins_h2}/{n_pairs} "
+            f"h2_preferred_pass={h2_pref_pass}; "
+        )
     h2_row = (
         f"| H2 trait skew (live API) | "
-        f"{'; '.join(h2_bits) if h2_bits else '—'}; "
+        f"{h2_agg_cell}{'; '.join(h2_bits) if h2_bits else '—'}; "
         f"skew_pass={h2_ok} | {'yes' if h2_ok else 'no'} |"
     )
     rhos = []
@@ -957,7 +978,11 @@ def write_gate4_report(
                 f"(PRIMARY cost30={cmp_.get('primary_cost30_pass')})",
                 f"- D final wins (>1pp): **{cmp_.get('d_wins_final', 0)}** / B: **{cmp_.get('b_wins_final', 0)}**",
                 f"- H5 ρ>0.3: **{h5_n_pass}/{h5_n}** (validity_pass={report.h5_pass})",
-                f"- H2 DNA skew pass: **{'yes' if report.h2_pass else 'no'}**",
+                # Tick 367: surface Tick 366 d_wins_h2 / h2_preferred_pass (not binary only).
+                f"- H2 preferred ≥0.5: **{cmp_.get('d_wins_h2', '—')}/"
+                f"{cmp_.get('n_pairs', 0)}** "
+                f"(h2_preferred_pass={cmp_.get('h2_preferred_pass')}; "
+                f"skew_pass={'yes' if report.h2_pass else 'no'})",
                 f"- PRIMARY aggregate: **{'PASS' if report.primary_pass else 'FAIL'}**",
                 f"- paper_artifacts refreshed: **{'yes' if paper_refreshed else 'no'}**",
                 f"- figures written: **{len(report.figures_written)}**",
@@ -1066,7 +1091,14 @@ def apply_paper_pack(
     report.h2_by_d_run = h2
     report.primary_pass = primary_criteria_pass(comparison)
     report.h5_pass = h5_validity_pass(h5)
-    report.h2_pass = h2_skew_pass(h2)
+    # Tick 367: align MECHANISM with compare aggregate when n≥5 (Tick 366 key).
+    if (
+        int(comparison.get("n_pairs") or 0) >= 5
+        and comparison.get("h2_preferred_pass") is not None
+    ):
+        report.h2_pass = bool(comparison["h2_preferred_pass"])
+    else:
+        report.h2_pass = h2_skew_pass(h2)
 
     paper_refreshed = False
     figures: list[str] = []

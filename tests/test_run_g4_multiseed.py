@@ -453,6 +453,8 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
         "primary_final_pass": True,
         "mean_final_gap": 0.08,
         "d_wins_final": 4,
+        "d_wins_h2": 4,
+        "h2_preferred_pass": True,
         "rows": [
             {
                 "B": {
@@ -519,6 +521,9 @@ def test_refresh_paper_artifacts_live_table(tmp_path: Path) -> None:
     assert "## Table 2 — Mechanism / validity" in text
     assert "H2 trait skew (live API)" in text
     assert "skew_pass=True" in text
+    # Tick 367: live paper surfaces Tick 366 d_wins_h2 / h2_preferred_pass.
+    assert "d_wins_h2=4/5" in text
+    assert "h2_preferred_pass=True" in text
     assert "H5 Spearman ρ (live)" in text
     assert "ρ>0.3 = **5/5**" in text
     rows = render_live_table1_rows(plans[:1], comparison)
@@ -894,6 +899,8 @@ def test_write_gate4_report_h2_surfaces_preferred_share(tmp_path: Path) -> None:
         "primary_cost30_pass": False,
         "d_wins_final": 3,
         "b_wins_final": 0,
+        "d_wins_h2": 4,
+        "h2_preferred_pass": True,
     }
     out = tmp_path / "gate4_report.md"
     write_gate4_report(report, out)
@@ -902,6 +909,91 @@ def test_write_gate4_report_h2_surfaces_preferred_share(tmp_path: Path) -> None:
     assert "preferred=`selective`" in text
     assert "field=`tool_strategy`" in text
     assert "in_bias_share=`1.0`" in text
+    # Tick 367: gate4 metrics show preferred-pass aggregate, not binary only.
+    assert "H2 preferred ≥0.5: **4/5**" in text
+    assert "h2_preferred_pass=True" in text
+
+
+def test_apply_paper_pack_prefers_compare_h2_preferred_pass(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 367: apply_paper_pack MECHANISM uses compare h2_preferred_pass when n≥5."""
+    from run_g4_multiseed import G4PreflightReport, apply_paper_pack
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    paper = docs / "paper_artifacts.md"
+    paper.write_text(
+        "### Live GPQA\n\n"
+        "| Seed | B | D |\n|------|---|---|\n| — | — | — |\n\n"
+        f"{TABLE2_LIVE_H2_MARKER}\n| H2 | — | — |\n{TABLE2_LIVE_H2_END}\n"
+        f"{TABLE2_LIVE_H5_MARKER}\n| H5 | — | — |\n{TABLE2_LIVE_H5_END}\n",
+        encoding="utf-8",
+    )
+    ready = docs / "ICML_READY.md"
+    ready.write_text("**STATUS: IN_PROGRESS**\n\n- [ ] Live API-run H2\n", encoding="utf-8")
+
+    report = G4PreflightReport(
+        timestamp="2026-09-07T04:05:00Z",
+        mode="refresh-paper",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1210 + s, d_run_id=1310 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=True,
+    )
+    # Simulate loser-dominated aggregate (4/5 preferred pass) even if per-run
+    # h2_skew_pass on a thin dict would differ — compare wins when n≥5.
+    comparison = {
+        "n_pairs": 5,
+        "primary_gens30_pass": True,
+        "primary_cost30_pass": False,
+        "primary_gens25_pass": False,
+        "primary_cost25_pass": False,
+        "primary_final_pass": True,
+        "mean_final_gap": 0.06,
+        "d_wins_final": 5,
+        "d_wins_h2": 4,
+        "h2_preferred_pass": True,
+        "rows": [],
+    }
+    h2_payloads = {
+        f"run_{1310 + s}": {
+            "field": "tool_strategy",
+            "preferred_value": "selective",
+            "preferred_share": 0.75 if s != 2 else 0.29,
+            "in_bias_share": 1.0,
+            "counts": {"selective": 3 if s != 2 else 1, "aggressive": 1 if s != 2 else 3},
+            "total": 4,
+            "bias_values": ["selective", "aggressive"],
+        }
+        for s in range(1, 6)
+    }
+
+    import run_g4_multiseed as mod
+
+    monkeypatch.setattr(
+        mod,
+        "score_pilot",
+        lambda b, d: (comparison, {k: {"spearman_rho": 0.5} for k in h2_payloads}),
+    )
+    monkeypatch.setattr(mod, "score_live_h2", lambda d_dirs, field=None: h2_payloads)
+    monkeypatch.setattr(mod, "write_live_bvd_figures", lambda **kw: [])
+    monkeypatch.setattr(mod, "refresh_paper_artifacts_live", lambda **kw: True)
+    monkeypatch.setattr(mod, "update_icml_ready_from_g4", lambda **kw: "IN_PROGRESS")
+
+    apply_paper_pack(
+        report,
+        b_dirs=[tmp_path / f"b{i}" for i in range(5)],
+        d_dirs=[tmp_path / f"d{i}" for i in range(5)],
+        paper_artifacts=paper,
+        ready_path=ready,
+        figures_dir=docs / "figures",
+        allow_ready=False,
+    )
+    assert report.h2_pass is True
+    assert report.comparison["d_wins_h2"] == 4
+    assert report.comparison["h2_preferred_pass"] is True
 
 
 def test_write_live_fig2_annotates_preferred_allele(tmp_path: Path) -> None:
