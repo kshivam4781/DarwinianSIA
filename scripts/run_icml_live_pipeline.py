@@ -18,6 +18,9 @@ Hard stops (delegated to gate runners; never violate here either):
     (Tick 283) and persist to docs/icml_budget_spent.json (Tick 284/285)
   - resume: skip completed G2/G3/G4 run IDs; never overwrite (Tick 284)
   - cross-VM resume: trust committed ledger stages when runs/ absent (Tick 285)
+  - Tick 372: G2 resume re-validates post-run gates (incl. nonzero fitness);
+    a 0%-fitness G2 still has results.json so Tick 284 alone would skip G2
+    and auto-burn G3/G4 — refuse resume-complete until gates pass
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -254,6 +257,25 @@ def bump_spent_reconciled(
     return amount, detail
 
 
+def g2_resume_gates_ok(g2_run_id: int) -> tuple[bool, str]:
+    """Tick 372: re-check G2 post-run gates before resume-skip / G3 advance.
+
+    ``darwinian_run_complete`` is true whenever ``results.json`` has an
+    ``accuracy`` key — including **0.0**. Tick 371 makes a fresh G2 return
+    exit 4 on zero fitness, but the run dir remains; the next cron would
+    otherwise treat G2 as resume-complete and auto-burn ~$19 on G3+G4.
+    """
+    found = g2._run_dir_for(g2_run_id)
+    if found is None:
+        return False, f"run_{g2_run_id} not found for G2 resume re-validation"
+    checks = g2.validate_g2_artifacts(found)
+    failed = [c for c in checks if not c.ok]
+    if failed:
+        detail = "; ".join(f"{c.name}={c.detail}" for c in failed)
+        return False, detail
+    return True, "all G2 post-run gates ok"
+
+
 def sync_spent_from_completed_stages(
     *,
     g2_run_id: int,
@@ -268,6 +290,9 @@ def sync_spent_from_completed_stages(
     Tick 285: if ``runs/`` are gone (fresh cron VM) but
     ``docs/icml_budget_spent.json`` was committed with matching run IDs,
     still mark those stages done and keep ledger spend (do not zero / re-run).
+    Tick 372: local G2 artifacts must also pass ``validate_g2_artifacts`` (nonzero
+    fitness, CABS store, bias) before ``g2_done`` — otherwise refuse
+    resume-skip so G3/G4 cannot auto-advance on a failed smoke.
     """
     from icml_env_checks import reconcile_gate_spend_usd
 
@@ -285,7 +310,18 @@ def sync_spent_from_completed_stages(
     g3_ledger = ledger_stage_complete("G3", g3_ids, path=ledger_path)
     g4_ledger = ledger_stage_complete("G4", g4_ids, path=ledger_path)
 
-    g2_done = g2_local or g2_ledger
+    g2_gates_ok = True
+    g2_gates_detail: str | None = None
+    if g2_local:
+        g2_gates_ok, g2_gates_detail = g2_resume_gates_ok(g2_run_id)
+
+    # Local artifacts that fail Tick 371 post-run gates are never resume-complete
+    # (even if the ledger was stamped before Tick 372).
+    g2_gates_failed = bool(g2_local and not g2_gates_ok)
+    if g2_local:
+        g2_done = g2_gates_ok
+    else:
+        g2_done = bool(g2_ledger)
     g3_done = g3_local or g3_ledger
     g4_done = g4_local or g4_ledger
 
@@ -295,7 +331,22 @@ def sync_spent_from_completed_stages(
     all_ids: list[int] = []
     any_local = False
 
-    if g2_done:
+    if g2_gates_failed:
+        dirs = _resolve_run_dirs([g2_run_id])
+        if dirs:
+            any_local = True
+            amt, det = reconcile_gate_spend_usd(
+                dirs, fallback_estimate=g2_estimate_usd()
+            )
+            total += amt
+            details.append(f"G2 spend (gates failed): {det}")
+        details.append(
+            f"Tick 372: G2 run_{g2_run_id} post-run gates failed "
+            f"({g2_gates_detail}) — refuse resume-complete / G3 advance; "
+            f"pick a new unused --g2-run-id (never overwrite)"
+        )
+        all_ids.append(g2_run_id)
+    elif g2_done:
         dirs = _resolve_run_dirs([g2_run_id])
         if dirs:
             any_local = True
@@ -306,6 +357,8 @@ def sync_spent_from_completed_stages(
             amt, det = g2_estimate_usd(), "ledger-only resume (no local run dir)"
         total += amt
         details.append(f"G2: {det}")
+        if g2_local and g2_gates_detail:
+            details.append(f"Tick 372 G2 resume re-validation: {g2_gates_detail}")
         stages.append("G2")
         all_ids.append(g2_run_id)
     if g3_done:
@@ -368,6 +421,10 @@ def sync_spent_from_completed_stages(
         "spent": _budget_spent(),
         "details": details,
         "ledger_only": bool(stages) and not any_local,
+        # Tick 372
+        "g2_gates_failed": g2_gates_failed,
+        "g2_gates_detail": g2_gates_detail,
+        "g2_local": g2_local,
     }
 
 
@@ -668,6 +725,16 @@ def run_preflight_stack(
         report.notes.append(
             "Tick 284 resume sync: " + "; ".join(resume["details"])
         )
+    if resume.get("g2_gates_failed"):
+        detail = resume.get("g2_gates_detail") or "G2 post-run gates failed"
+        report.blockers.append(
+            f"Tick 372: G2 run_{g2_run_id} exists but failed post-run gates "
+            f"({detail}) — refuse G3/G4 auto-advance; pick a new unused "
+            f"--g2-run-id (never overwrite)"
+        )
+        report.notes.append(
+            f"Tick 372: G2 resume re-validation failed — {detail}"
+        )
     report.notes.append(
         "Tick 296 G3/G4 shape: "
         f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
@@ -798,6 +865,10 @@ def run_preflight_stack(
         )
         ready_flags.append(False)
     report.ready_for_live = all(ready_flags) and bool(report.budget.get("ok"))
+    # Tick 372: failed G2 post-run gates must clear live readiness even when
+    # gate sidecars look green (occupied-ID blockers alone are easy to miss).
+    if resume.get("g2_gates_failed"):
+        report.ready_for_live = False
 
     # Tick 269: tip lineage status (cron often boots from main).
     tip_status = write_icml_tip_status(
@@ -928,6 +999,26 @@ def run_live_stack(
     if resume.get("details"):
         label = "Tick 285 ledger-only resume" if resume.get("ledger_only") else "Tick 284 resume sync"
         report.notes.append(label + ": " + "; ".join(resume["details"]))
+    if resume.get("g2_gates_failed"):
+        detail = resume.get("g2_gates_detail") or "G2 post-run gates failed"
+        report.blockers.append(
+            f"Tick 372: G2 run_{g2_run_id} exists but failed post-run gates "
+            f"({detail}) — refuse G3/G4 auto-advance; pick a new unused "
+            f"--g2-run-id (never overwrite)"
+        )
+        report.add_stage(
+            StageResult(
+                name="G2",
+                attempted=False,
+                ok=False,
+                skipped_reason=(
+                    f"Tick 372: post-run gates failed on existing run_{g2_run_id}"
+                ),
+                detail=str(detail),
+            )
+        )
+        report.stopped_after = "G2"
+        return 4
     report.budget = project_budget(
         g3_pairs=len(g3.parse_int_list(g3_seeds)),
         g4_pairs=5,

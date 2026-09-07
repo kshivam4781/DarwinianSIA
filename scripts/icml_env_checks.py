@@ -2000,11 +2000,12 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **G2 nonzero-fitness post-run gate** — after Tick 370 "
-        f"PRIMARY-only G3→G4, G2 could still PASS on CABS artifacts alone with "
-        f"**0% / missing** fitness (silent parse/eval failure) and the live "
-        f"pipeline would auto-burn ~$19 on G3+G4. `validate_g2_artifacts` now "
-        f"requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0). Tip PR "
+        f"- Tick {tick}: **G2 resume post-run re-validation** — after Tick 371, "
+        f"a 0%-fitness G2 still writes `results.json` (`darwinian_run_complete` "
+        f"true), so the next cron would resume-skip G2 and auto-burn ~$19 on "
+        f"G3+G4. `sync_spent_from_completed_stages` now re-runs "
+        f"`validate_g2_artifacts` on local G2 artifacts and refuses resume-complete "
+        f"until gates pass (pick a new `--g2-run-id`; never overwrite). Tip PR "
         f"GitHub **title and body** stay frozen when using `open_git_pr` MCP "
         f"(does **not** rewrite either on existing PRs — Tick 345–350; prefer "
         f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -2021,10 +2022,10 @@ def suggested_open_git_pr_body(
         f"3. Optional: undraft+merge tip PR #{n} and/or bootstrap PR #338\n"
         f"\n"
         f"## Test plan\n"
+        f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
+        f"test_g2_resume_refuses_zero_fitness_local_artifacts`\n"
         f"- [x] `pytest tests/test_run_g2_smoke.py::"
         f"test_validate_g2_artifacts_nonzero_fitness_gate`\n"
-        f"- [x] `pytest tests/test_run_g2_smoke.py::"
-        f"test_validate_g2_artifacts_reads_belief_store`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

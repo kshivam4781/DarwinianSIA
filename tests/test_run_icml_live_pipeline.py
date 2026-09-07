@@ -15,9 +15,11 @@ sys.path.insert(0, str(REPO / "scripts"))
 from run_icml_live_pipeline import (  # noqa: E402
     bump_spent,
     bump_spent_reconciled,
+    g2_resume_gates_ok,
     g3_pilot_promising,
     project_budget,
     run_preflight_stack,
+    sync_spent_from_completed_stages,
     write_pipeline_report,
     PipelineReport,
 )
@@ -579,6 +581,74 @@ def test_g3_pilot_promising_on_d_win() -> None:
         {"d_wins_cost30": 1},
         {"run_1301": {"spearman_rho": 0.0}},
     ) is True
+
+
+def test_g2_resume_refuses_zero_fitness_local_artifacts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 372: 0%-fitness G2 still has results.json → must not resume-skip."""
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g2, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "stale pre-Tick-372 ledger",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    run_dir = tmp_path / "runs" / "run_1300"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n",
+        encoding="utf-8",
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.0}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(g2, "_run_dir_for", lambda rid: run_dir if rid == 1300 else None)
+    monkeypatch.setattr(
+        pipe, "_resolve_run_dirs", lambda ids: [run_dir] if 1300 in ids else []
+    )
+
+    ok, detail = g2_resume_gates_ok(1300)
+    assert ok is False
+    assert "nonzero_fitness" in detail
+
+    resume = sync_spent_from_completed_stages(
+        g2_run_id=1300,
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+    )
+    assert resume["g2_local"] is True
+    assert resume["g2_gates_failed"] is True
+    assert resume["g2_done"] is False
+    assert any("Tick 372" in d for d in resume["details"])
+
 
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

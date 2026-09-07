@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-07T14:15Z — Tick 372 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-4496`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 371's nonzero-fitness G2 post-run gate, a **0%-fitness G2 still writes `results.json`**, so `darwinian_run_complete` / Tick 284 resume would treat G2 as done on the next cron and auto-burn ~$19 on G3+G4. Highest leverage without paid spend: **G2 resume post-run re-validation**.
+
+### What this tick did (ONE step)
+**G2 resume post-run re-validation (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 371 (`f49c`); confirmed secrets absent; boot `4496` vs tip `f49c`
+2. `g2_resume_gates_ok` + `sync_spent_from_completed_stages` re-runs `validate_g2_artifacts` on local G2; refuses resume-complete / live advance when gates fail (pick new `--g2-run-id`)
+3. Tests: `test_g2_resume_refuses_zero_fitness_local_artifacts`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 371) | After (Tick 372) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| G2 post-run PASS | best fitness > 0 required | unchanged |
+| G2 **resume** after 0%-fitness exit 4 | would skip G2 (`results.json` present) | **re-validate; refuse G3/G4** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T12:20Z — Tick 371 (automation cron)
 
 ### Status snapshot
