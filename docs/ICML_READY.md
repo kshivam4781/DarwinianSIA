@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 376: partial-stage spend reconcile landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 377: direct G3/G4 budget hydrate landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -286,6 +286,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 277 `.env` + local diamond CSV unlock — `load_icml_dotenv` / `resolve_diamond_csv_path`; cron `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV)
 - [x] Tick 278 runner CSV autowire — `autowire_diamond_csv` in G2/G3/G4/pipeline so `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path)
 - [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1900` (Tick 300 live shape; `selective` preferred → gen3 share **0.75**; lift +0.0436; Tick-23 `run_1840` superseded)
+- [x] Tick 376 partial-stage spend reconcile — `sync_spent_from_completed_stages` bills complete-but-partial G3/G4; pipeline remaining-pair `project_budget`; post-G3/G4 absolute re-sync
+- [x] Tick 377 direct G3/G4 budget hydrate — `hydrate_direct_gate_budget_spent` loads ledger + bills unbilled local completes before direct G3/G4 budget check (closes pipeline-only Tick 376 bypass)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`)
 
@@ -418,7 +420,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 300 live-shape `1890–1904`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **4/5** Tick 366; post-steer H2 on `run_1900`); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score); NOT STARTED (blocked on keys; run after G2) |
-| G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume); **live** NOT STARTED (blocked on keys; run after G3) |
+| G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume; **Tick 377** direct budget hydrate); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29/374 pipeline but NOT STARTED |
 
-<!-- Tick 375 note: Gate labels / secrets stack through Tick 375 partial pair resume; live still blocked on NEBIUS+HF -->
+<!-- Tick 377 note: Gate labels / secrets stack through Tick 377 direct G3/G4 budget hydrate; live still blocked on NEBIUS+HF -->

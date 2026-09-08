@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T00:15Z — Tick 377 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-68fc`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 376's pipeline partial-stage spend reconcile, **direct** `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` still read `SIA_BUDGET_SPENT_USD` from env only (often 0). Mid-stack resume after a crash — when the ledger was stale or not yet synced — could green-light remaining pairs over the ~$20 ceiling (pipeline-only Tick 376 bypass). Highest leverage without paid spend: **direct G3/G4 budget hydrate**.
+
+### What this tick did (ONE step)
+**Direct G3/G4 budget hydrate (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 376 (`f49c`); confirmed secrets absent; boot `68fc` vs tip `f49c`
+2. Added `hydrate_direct_gate_budget_spent` (ledger load + bill unbilled local complete runs; no `stages_complete` stamp); wired into G3/G4 `run_preflight` before budget check
+3. Tests: `test_hydrate_direct_gate_bills_unbilled_local` / `test_hydrate_direct_gate_skips_ledger_ids` / `test_g4_preflight_hydrates_budget_from_unbilled_local`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 376) | After (Tick 377) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Pipeline mid-stack partial spend | Tick 376 sync + remaining-pair budget | unchanged |
+| Direct G3/G4 `--live` budget | env-only (often $0) | **ledger + unbilled local completes** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-07T22:04Z — Tick 376 (automation cron)
 
 ### Status snapshot

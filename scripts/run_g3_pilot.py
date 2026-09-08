@@ -18,6 +18,9 @@ Hard stops (never violate):
   - refuses incomplete/corrupt existing run dirs (never overwrite)
   - Tick 375: completed B/D run IDs are resume-skipped (not blockers) so a
     mid-stack crash can finish remaining pairs without picking new IDs
+  - Tick 377: direct ``--live`` hydrates ``SIA_BUDGET_SPENT_USD`` from the
+    committed ledger + unbilled local complete runs before the budget check
+    (closes pipeline-only Tick 376 bypass)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -66,6 +69,7 @@ from icml_env_checks import (  # noqa: E402
     default_g3_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    hydrate_direct_gate_budget_spent,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -369,10 +373,20 @@ def run_preflight(
             else "missing (optional; needed for HF gpqa download)",
         )
 
-    spent = _budget_spent()
     ceiling = _budget_ceiling()
     n_pairs = len(plans)
     resume_ok, blocked_incomplete, pairs_needing = classify_plan_run_occupancy(plans)
+    # Tick 377: direct G3 --live must see ledger + unbilled local completes
+    # (pipeline Tick 376 sync already hydrates before calling this runner).
+    planned_ids = [rid for plan in plans for rid in (plan.b_run_id, plan.d_run_id)]
+    _, hydrate_detail = hydrate_direct_gate_budget_spent(
+        planned_ids,
+        pair_estimate_usd=estimate,
+        resolve_run_dir=_run_dir_for,
+        repo_root=REPO_ROOT,
+    )
+    report.notes.append(hydrate_detail)
+    spent = _budget_spent()
     # Tick 375: project only pairs that still need a live launch.
     billable_pairs = pairs_needing
     projected = spent + estimate * billable_pairs

@@ -30,6 +30,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_sia_on_pythonpath,
     ensure_uv_on_path,
     extract_sia_shape_flags,
+    hydrate_direct_gate_budget_spent,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -3172,3 +3173,94 @@ def test_committed_offline_bvd_rejects_stale_paper_ids(
     joined = " ".join(problems)
     assert "case_study_offline.md" in joined or "paper_artifacts.md" in joined
     assert "Tick 301" in joined
+
+
+def _mk_costed_complete_run(run_dir: Path, *, cost_usd: float = 0.3) -> None:
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "total_cost_usd": cost_usd}),
+        encoding="utf-8",
+    )
+
+
+def test_hydrate_direct_gate_bills_unbilled_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 377: unbilled local completes bump spent and persist to ledger."""
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 only",
+            }
+        ),
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    b = runs / "run_1211"
+    d = runs / "run_1311"
+    _mk_costed_complete_run(b, cost_usd=0.4)
+    _mk_costed_complete_run(d, cost_usd=0.4)
+
+    def _resolve(rid: int):
+        return {1211: b, 1311: d}.get(rid)
+
+    spent, detail = hydrate_direct_gate_budget_spent(
+        [1211, 1212, 1311, 1312],
+        pair_estimate_usd=2.8,
+        resolve_run_dir=_resolve,
+        repo_root=tmp_path,
+    )
+    assert spent > 2.0
+    assert "Tick 377" in detail
+    assert "unbilled" in detail
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(spent)
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1211 in ledger["run_ids"] and 1311 in ledger["run_ids"]
+    assert "G2" in ledger["stages_complete"]
+    assert "G4" not in ledger["stages_complete"]
+
+
+def test_hydrate_direct_gate_skips_ledger_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 377: IDs already in ledger are not double-billed."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 5.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300, 1211, 1311],
+                "detail": "already billed partial G4",
+            }
+        ),
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    b = runs / "run_1211"
+    d = runs / "run_1311"
+    _mk_costed_complete_run(b, cost_usd=0.4)
+    _mk_costed_complete_run(d, cost_usd=0.4)
+
+    def _resolve(rid: int):
+        return {1211: b, 1311: d}.get(rid)
+
+    spent, detail = hydrate_direct_gate_budget_spent(
+        [1211, 1311],
+        pair_estimate_usd=2.8,
+        resolve_run_dir=_resolve,
+        repo_root=tmp_path,
+    )
+    assert spent == pytest.approx(5.5)
+    assert "no unbilled local completes" in detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert ledger["spent_usd"] == pytest.approx(5.5)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -1192,3 +1193,80 @@ def test_g4_preflight_resume_skips_complete_run_ids(
     assert names["run_ids_free"].ok is True
     assert "resume-ok" in names["run_ids_free"].detail
     assert "3 remaining" in names["budget"].detail
+
+
+def test_g4_preflight_hydrates_budget_from_unbilled_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 377: direct G4 preflight bills unbilled local completes into spent."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 only",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 377},
+    )
+
+    for rid in (1211, 1311):
+        agent = tmp_path / "runs" / f"run_{rid}" / "gen_1" / "agent_0"
+        agent.mkdir(parents=True, exist_ok=True)
+        (agent / "results.json").write_text(
+            json.dumps({"accuracy": 0.2, "total_cost_usd": 0.5}),
+            encoding="utf-8",
+        )
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = run_preflight(mode="preflight", plans=plans)
+    names = {c.name: c for c in report.checks}
+    assert names["budget"].ok is True
+    assert any("Tick 377" in n for n in report.notes)
+    assert float(os.environ.get("SIA_BUDGET_SPENT_USD", "0")) > 2.0
+    # 1 of 5 pairs complete → 4 remaining
+    assert "4 remaining" in names["budget"].detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1211 in ledger["run_ids"] and 1311 in ledger["run_ids"]
+    assert "G4" not in ledger["stages_complete"]

@@ -111,7 +111,7 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
@@ -1310,6 +1310,80 @@ def apply_persisted_spent_to_env(
     return env_spent, f"env=${env_spent:.4f} ≥ ledger=${ledger_f:.4f}"
 
 
+def hydrate_direct_gate_budget_spent(
+    planned_run_ids: list[int],
+    *,
+    pair_estimate_usd: float,
+    resolve_run_dir: Callable[[int], Path | None],
+    repo_root: Path | None = None,
+    env_key: str = "SIA_BUDGET_SPENT_USD",
+) -> tuple[float, str]:
+    """Tick 377: direct G3/G4 ``--live`` sees ledger + unbilled local completes.
+
+    Pipeline ``sync_spent_from_completed_stages`` (Tick 376) hydrates spent
+    before calling gate mains. Direct ``run_g3_pilot.py --live`` /
+    ``run_g4_multiseed.py --live`` previously read ``SIA_BUDGET_SPENT_USD`` from
+    env only (often 0), so mid-stack resume after a crash — when the ledger was
+    stale or not yet synced — could green-light remaining pairs over the ~$20
+    ceiling. This helper:
+
+    1. Loads the committed ledger into env (Tick 284).
+    2. Bills any **complete** planned run dirs whose IDs are not yet in the
+       ledger (partial stage; does **not** mark ``stages_complete``).
+    3. Persists the bumped spend so the next cron/direct call does not
+       double-count.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    ledger_path = budget_spent_ledger_path(root)
+    spent_after_ledger, ledger_detail = apply_persisted_spent_to_env(
+        path=ledger_path, env_key=env_key
+    )
+    ledger = load_budget_spent_ledger(ledger_path)
+    ledger_ids = {
+        int(x)
+        for x in (ledger.get("run_ids") or [])
+        if str(x).lstrip("-").isdigit()
+    }
+    unbilled: list[int] = []
+    unbilled_dirs: list[Path] = []
+    for raw_rid in planned_run_ids:
+        rid = int(raw_rid)
+        found = resolve_run_dir(rid)
+        if not darwinian_run_complete(found):
+            continue
+        if rid in ledger_ids:
+            continue
+        unbilled.append(rid)
+        assert found is not None
+        unbilled_dirs.append(found)
+    if not unbilled:
+        return (
+            float(spent_after_ledger),
+            f"Tick 377 hydrate: {ledger_detail}; no unbilled local completes",
+        )
+    n_pairs_equiv = len(unbilled) / 2.0
+    fallback = max(0.0, float(pair_estimate_usd)) * n_pairs_equiv
+    amt, det = reconcile_gate_spend_usd(
+        unbilled_dirs, fallback_estimate=fallback
+    )
+    new_spent = float(spent_after_ledger) + float(amt)
+    os.environ[env_key] = f"{new_spent:.4f}"
+    write_budget_spent_ledger(
+        spent_usd=new_spent,
+        stages_complete=list(ledger.get("stages_complete") or []),
+        run_ids=sorted(ledger_ids | set(unbilled)),
+        detail=f"Tick 377 direct-gate unbilled local: {det}",
+        path=ledger_path,
+    )
+    return (
+        new_spent,
+        (
+            f"Tick 377 hydrate: {ledger_detail}; billed {len(unbilled)} unbilled "
+            f"local run(s) +${amt:.4f} → spent=${new_spent:.4f} ({det})"
+        ),
+    )
+
+
 def ledger_stage_complete(
     stage: str,
     required_run_ids: list[int],
@@ -2000,15 +2074,17 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **partial-stage spend reconcile** — after Tick 375, "
-        f"mid-stack complete G3/G4 pairs were still invisible to "
-        f"`SIA_BUDGET_SPENT_USD` until the whole stage finished, and pipeline "
-        f"`project_budget` still billed full N× pairs. Sync now reconciles "
-        f"complete-but-partial runs; preflight/live stack projects remaining "
-        f"pairs; post-G3/G4 uses absolute re-sync (no double-count). Tip PR "
-        f"GitHub **title and body** stay frozen when using `open_git_pr` MCP "
-        f"(does **not** rewrite either on existing PRs — Tick 345–350; prefer "
-        f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
+        f"- Tick {tick}: **direct G3/G4 budget hydrate** — after Tick 376, "
+        f"pipeline sync billed mid-stack partials, but direct "
+        f"`run_g3_pilot.py --live` / `run_g4_multiseed.py --live` still read "
+        f"`SIA_BUDGET_SPENT_USD` from env only (often 0). Mid-stack resume "
+        f"after a crash could green-light remaining pairs over the ~$20 "
+        f"ceiling. `hydrate_direct_gate_budget_spent` now loads the ledger "
+        f"and bills unbilled local complete runs before the gate budget "
+        f"check (no `stages_complete` stamp). Tip PR GitHub **title and "
+        f"body** stay frozen when using `open_git_pr` MCP (does **not** "
+        f"rewrite either on existing PRs — Tick 345–350; prefer verbatim "
+        f"args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
         f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2022,12 +2098,12 @@ def suggested_open_git_pr_body(
         f"3. Optional: undraft+merge tip PR #{n} and/or bootstrap PR #338\n"
         f"\n"
         f"## Test plan\n"
-        f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
-        f"test_sync_spent_bills_partial_g4_pairs`\n"
-        f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
-        f"test_project_budget_uses_remaining_pairs_after_partial`\n"
-        f"- [x] `pytest tests/test_run_icml_live_pipeline.py::"
-        f"test_remaining_seed_pairs_counts_incomplete`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_hydrate_direct_gate_bills_unbilled_local`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_hydrate_direct_gate_skips_ledger_ids`\n"
+        f"- [x] `pytest tests/test_run_g4_multiseed.py::"
+        f"test_g4_preflight_hydrates_budget_from_unbilled_local`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
