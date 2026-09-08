@@ -640,3 +640,77 @@ def test_g2_preflight_hydrates_budget_from_unbilled_local(
     ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
     assert 1300 in ledger["run_ids"]
     assert "G2" not in ledger["stages_complete"]
+
+
+def test_g2_live_skips_when_ledger_stage_complete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 380: direct --live no-ops when ledger already marks G2 complete."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 380},
+    )
+
+    # No local runs/ — cross-VM resume. Must not call sia.
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 380" in text or "ledger" in text.lower()

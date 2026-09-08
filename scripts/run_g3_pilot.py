@@ -23,6 +23,8 @@ Hard stops (never violate):
     (closes pipeline-only Tick 376 bypass)
   - Tick 379: after successful live (all planned B/D complete + scored),
     persist ledger stage ``G3`` (hydrate alone never stamped stages)
+  - Tick 380: ``--live`` skips paid re-run when committed ledger already marks
+    ``G3`` complete for the planned run IDs (pipeline Tick 285 parity)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -73,6 +75,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
     persist_direct_gate_stage_spend,
+    direct_gate_ledger_skip,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -130,6 +133,8 @@ class G3PreflightReport:
     h5_by_d_run: dict[str, Any] = field(default_factory=dict)
     # Tick 368: live H2 preferred-allele payloads (parity with G4 Tick 364–367).
     h2_by_d_run: dict[str, Any] = field(default_factory=dict)
+    # Tick 380: ledger marks G3 done for planned IDs → skip paid --live re-run.
+    ledger_skip: bool = False
 
     def add(self, name: str, ok: bool, detail: str) -> None:
         self.checks.append(CheckResult(name=name, ok=ok, detail=detail))
@@ -389,6 +394,19 @@ def run_preflight(
         repo_root=REPO_ROOT,
     )
     report.notes.append(hydrate_detail)
+    # Tick 380: full-stage ledger complete → no billable pairs (cross-VM skip).
+    ledger_skip, ledger_skip_detail = direct_gate_ledger_skip(
+        "G3",
+        planned_ids,
+        path=REPO_ROOT / "docs" / "icml_budget_spent.json",
+    )
+    report.ledger_skip = bool(ledger_skip)
+    if ledger_skip:
+        report.notes.append(ledger_skip_detail)
+        pairs_needing = 0
+        if not resume_ok:
+            resume_ok = [f"run_{rid}" for rid in planned_ids]
+        report.add("ledger_stage_complete", True, ledger_skip_detail)
     spent = _budget_spent()
     # Tick 375: project only pairs that still need a live launch.
     billable_pairs = pairs_needing
@@ -397,6 +415,8 @@ def run_preflight(
     resume_note = (
         f"; resume-skip {len(resume_ok)} complete run(s)" if resume_ok else ""
     )
+    if ledger_skip:
+        resume_note += "; Tick 380 ledger-stage skip"
     report.add(
         "budget",
         budget_ok,
@@ -414,13 +434,17 @@ def run_preflight(
         not blocked_incomplete,
         (
             "all planned run IDs unused"
-            if not resume_ok and not blocked_incomplete
+            if not resume_ok and not blocked_incomplete and not ledger_skip
             else (
                 f"resume-ok complete: {', '.join(resume_ok)}"
                 + (
                     f"; BLOCK incomplete: {', '.join(blocked_incomplete)}"
                     if blocked_incomplete
-                    else " — Tick 375 will skip complete runs"
+                    else (
+                        " — Tick 380 ledger skip"
+                        if ledger_skip
+                        else " — Tick 375 will skip complete runs"
+                    )
                 )
             )
         ),
@@ -1002,8 +1026,20 @@ def main(argv: list[str] | None = None) -> int:
         write_gate3_report(report, args.report)
         print(f"G3 preflight written → {args.report}")
         print(f"ready_for_live={report.ready_for_live}")
+        if report.ledger_skip:
+            print("ledger_skip=True (Tick 380 — --live would no-op)")
         for b in report.blockers:
             print(f"  BLOCK: {b}")
+        return 0
+
+    # Tick 380: ledger-complete G3 → exit 0 without sia (even if secrets absent).
+    if report.ledger_skip:
+        report.notes.append(
+            "Tick 380: skipped paid G3 — ledger stages_complete already lists G3 "
+            "for planned run IDs"
+        )
+        write_gate3_report(report, args.report, executed=False)
+        print(f"G3 live skipped (ledger resume) → {args.report}")
         return 0
 
     if not report.ready_for_live:

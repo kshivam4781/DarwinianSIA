@@ -32,6 +32,7 @@ from icml_env_checks import (  # noqa: E402
     extract_sia_shape_flags,
     hydrate_direct_gate_budget_spent,
     persist_direct_gate_stage_spend,
+    direct_gate_ledger_skip,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -3414,3 +3415,49 @@ def test_persist_direct_gate_no_double_bill(
     ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
     assert ledger["spent_usd"] == pytest.approx(2.0)
     assert "G2" in ledger["stages_complete"]
+
+
+def test_direct_gate_ledger_skip_true_when_stage_complete(tmp_path: Path) -> None:
+    """Tick 380: skip when ledger stages_complete + run_ids match planned."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    ledger = docs / "icml_budget_spent.json"
+    ledger.write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 done",
+            }
+        ),
+        encoding="utf-8",
+    )
+    skip, detail = direct_gate_ledger_skip("G2", [1300], path=ledger)
+    assert skip is True
+    assert "Tick 380" in detail
+    assert "skip paid G2" in detail
+
+
+def test_direct_gate_ledger_skip_false_on_id_mismatch(tmp_path: Path) -> None:
+    """Tick 380: do not skip when planned run_id is absent from ledger."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    ledger = docs / "icml_budget_spent.json"
+    ledger.write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 done",
+            }
+        ),
+        encoding="utf-8",
+    )
+    skip, detail = direct_gate_ledger_skip("G2", [1301], path=ledger)
+    assert skip is False
+    assert "does not mark" in detail
+
+    skip_g3, _ = direct_gate_ledger_skip("G3", [1201, 1301], path=ledger)
+    assert skip_g3 is False

@@ -1555,6 +1555,41 @@ def ledger_stage_complete(
     }
     return all(int(rid) in ledger_ids for rid in required_run_ids)
 
+
+def direct_gate_ledger_skip(
+    stage: str,
+    planned_run_ids: list[int],
+    *,
+    path: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 380: whether direct G2/G3/G4 ``--live`` should skip paid re-run.
+
+    Tick 379 stamps ``stages_complete`` after successful direct live, but only
+    the **pipeline** consulted ``ledger_stage_complete`` (Tick 285). Direct
+    ``run_g2_smoke.py --live`` / ``run_g3_pilot.py --live`` /
+    ``run_g4_multiseed.py --live`` still treated missing local ``runs/`` as
+    free IDs and would re-launch a ledger-complete stage on the next cross-VM
+    cron — double-burning the ~$20 ceiling despite the stamp.
+
+    Returns ``(True, detail)`` when the committed ledger marks ``stage`` done
+    for every planned run_id (same predicate as pipeline resume).
+    """
+    stage_name = str(stage or "").strip()
+    planned = [int(x) for x in planned_run_ids]
+    if not stage_name or not planned:
+        return False, "Tick 380: no stage/planned IDs — not a ledger skip"
+    if not ledger_stage_complete(stage_name, planned, path=path):
+        return (
+            False,
+            f"Tick 380: ledger does not mark {stage_name} complete for "
+            f"planned run_ids={planned}",
+        )
+    return (
+        True,
+        f"Tick 380: ledger-only resume — skip paid {stage_name} re-run "
+        f"(stages_complete + run_ids {planned}; local runs/ may be absent)",
+    )
+
 _AUTOMATION_ID = "bf73dff3-8f7a-11f1-a7d1-d6b4613131ce"
 _AUTOMATION_URL = f"https://cursor.com/automations/{_AUTOMATION_ID}"
 _ENV_DASHBOARD_URL = (
@@ -2219,16 +2254,14 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **direct gate post-live ledger stamp** — Tick 377/378 "
-        f"hydrate bills unbilled completes *before* live but never marked "
-        f"`stages_complete`. Pipeline `bump_spent_reconciled` stamps stages; "
-        f"direct `run_g2_smoke.py` / `run_g3_pilot.py` / `run_g4_multiseed.py` "
-        f"`--live` previously left the ledger unstamped after success, so "
-        f"cross-VM cron (`runs/` gitignored) could re-launch a completed "
-        f"direct-gate stage and double-burn the ~$20 ceiling. New helper "
-        f"`persist_direct_gate_stage_spend` bills remaining unbilled completes "
-        f"and stamps G2/G3/G4 only when every planned run_id is complete. "
-        f"Tip PR GitHub **title and body** stay frozen when using "
+        f"- Tick {tick}: **direct gate ledger-stage skip** — Tick 379 stamps "
+        f"`stages_complete` after successful direct G2/G3/G4 `--live`, but only "
+        f"the pipeline consulted `ledger_stage_complete` (Tick 285). Direct "
+        f"runners still treated missing local `runs/` as free IDs and would "
+        f"re-launch a ledger-complete stage on the next cross-VM cron "
+        f"(double-burn despite the stamp). New helper "
+        f"`direct_gate_ledger_skip` + wired skip-before-sia on direct G2/G3/G4 "
+        f"`--live`. Tip PR GitHub **title and body** stay frozen when using "
         f"`open_git_pr` MCP (does **not** rewrite either on existing PRs — "
         f"Tick 345–350; prefer verbatim args from "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -2246,11 +2279,11 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_persist_direct_gate_stamps_stage_and_bills`\n"
+        f"test_direct_gate_ledger_skip_true_when_stage_complete`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_persist_direct_gate_incomplete_does_not_stamp`\n"
-        f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_persist_direct_gate_no_double_bill`\n"
+        f"test_direct_gate_ledger_skip_false_on_id_mismatch`\n"
+        f"- [x] `pytest tests/test_run_g2_smoke.py::"
+        f"test_g2_live_skips_when_ledger_stage_complete`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

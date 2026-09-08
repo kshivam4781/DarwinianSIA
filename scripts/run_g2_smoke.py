@@ -13,6 +13,9 @@ turnkey and hard-stops unsafe paid runs:
     (closes G2 bypass left after Tick 377 G3/G4 hydrate)
   - Tick 379: after successful live + post-run gates, persist ledger stage
     ``G2`` (hydrate alone never stamped ``stages_complete``)
+  - Tick 380: ``--live`` skips paid re-run when committed ledger already marks
+    ``G2`` complete for the planned run_id (pipeline Tick 285; stamp alone
+    was not enough — direct runners still treated missing ``runs/`` as free)
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
@@ -63,6 +66,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
     persist_direct_gate_stage_spend,
+    direct_gate_ledger_skip,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
@@ -97,6 +101,8 @@ class PreflightReport:
     ready_for_dry_run: bool = False
     command: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # Tick 380: ledger marks G2 done for this run_id → skip paid --live re-run.
+    ledger_skip: bool = False
 
     def add(self, name: str, ok: bool, detail: str) -> None:
         self.checks.append(CheckResult(name=name, ok=ok, detail=detail))
@@ -307,13 +313,34 @@ def run_preflight(
     )
 
     existing = _run_dir_for(run_id)
-    report.add(
-        "run_id_free",
-        existing is None,
-        f"run_{run_id} unused"
-        if existing is None
-        else f"exists at {existing} — pick unused integer (never overwrite)",
+    ledger_skip, ledger_skip_detail = direct_gate_ledger_skip(
+        "G2",
+        [int(run_id)],
+        path=REPO_ROOT / "docs" / "icml_budget_spent.json",
     )
+    report.ledger_skip = bool(ledger_skip)
+    if ledger_skip:
+        report.notes.append(ledger_skip_detail)
+        report.add(
+            "ledger_stage_complete",
+            True,
+            ledger_skip_detail,
+        )
+        # Cross-VM: no local dir but ledger owns this ID — treat as not free
+        # for overwrite, yet allow --live to short-circuit as skip (not refuse).
+        report.add(
+            "run_id_free",
+            True,
+            f"run_{run_id} ledger-complete (Tick 380 skip; local dir absent OK)",
+        )
+    else:
+        report.add(
+            "run_id_free",
+            existing is None,
+            f"run_{run_id} unused"
+            if existing is None
+            else f"exists at {existing} — pick unused integer (never overwrite)",
+        )
 
     # SIA per-run venvs: uv OR stdlib venv+ensurepip (import venv alone is vacuous)
     # Tick 265: bootstrap Astral uv when missing so Portal Save is not required
@@ -793,6 +820,8 @@ def main(argv: list[str] | None = None) -> int:
         write_gate2_report(report, args.report)
         print(f"G2 preflight written → {args.report}")
         print(f"ready_for_dry_run={report.ready_for_dry_run} ready_for_live={report.ready_for_live}")
+        if report.ledger_skip:
+            print("ledger_skip=True (Tick 380 — --live would no-op)")
         for b in report.blockers:
             print(f"  BLOCK: {b}")
         # Preflight success means the checker ran; live blockers are expected without keys.
@@ -802,6 +831,15 @@ def main(argv: list[str] | None = None) -> int:
         write_gate2_report(report, args.report)
         print("G2 dry-run refused — preflight failed", file=sys.stderr)
         return 2
+    # Tick 380: ledger-complete G2 → exit 0 without sia (even if secrets absent).
+    if selected == "live" and report.ledger_skip:
+        report.notes.append(
+            "Tick 380: skipped paid G2 — ledger stages_complete already lists G2 "
+            f"for run_{run_id}"
+        )
+        write_gate2_report(report, args.report)
+        print(f"G2 live skipped (ledger resume) → {args.report}")
+        return 0
     if selected == "live" and not report.ready_for_live:
         write_gate2_report(report, args.report)
         print("G2 live refused — preflight failed (keys / real GPQA / budget / run_id)", file=sys.stderr)

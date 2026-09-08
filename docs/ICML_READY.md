@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 379: direct gate post-live ledger stamp landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 380: direct gate ledger-stage skip landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

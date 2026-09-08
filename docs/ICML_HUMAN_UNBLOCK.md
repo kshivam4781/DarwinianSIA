@@ -93,6 +93,10 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 372:** **G2 resume post-run re-validation** — 0%-fitness `results.json` no longer resume-skips G2 into paid G3/G4; re-runs `validate_g2_artifacts` on local artifacts.
 
+**Tick 379:** **direct gate post-live ledger stamp** — after successful direct G2/G3/G4 `--live`, stamp `stages_complete` (hydrate alone never stamped).
+
+**Tick 380:** **direct gate ledger-stage skip** — Tick 379 stamps the ledger, but direct `--live` still re-launched when local `runs/` were absent. Now skips paid re-run when ledger already marks the stage complete (pipeline Tick 285 parity).
+
 **Tick 370:** **G3→G4 PRIMARY-only promising gate** — H5 ρ>0.3 alone no longer auto-spends ~$14 on 5-seed G4; require gens/cost/final wins or mean_final_gap>1pp (`--force-g4` override). H5/H2 remain report-only (Tick 369).
 
 Do **not** re-trigger Portal Save (260+ builds never inherited by cron).  

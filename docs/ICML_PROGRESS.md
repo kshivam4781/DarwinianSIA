@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T06:15Z — Tick 380 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-bea6`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 379's direct gate post-live ledger stamp, direct G2/G3/G4 `--live` still **never skipped** when the committed ledger already marked the stage complete — only the pipeline consulted `ledger_stage_complete` (Tick 285). Cross-VM cron (`runs/` gitignored) would re-launch a ledger-complete direct-gate stage and double-burn the ~$20 ceiling despite the stamp. Highest leverage without paid spend: **direct gate ledger-stage skip**.
+
+### What this tick did (ONE step)
+**Direct gate ledger-stage skip (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 379 (`f49c`); confirmed secrets absent; boot `bea6` vs tip `f49c`
+2. Added `direct_gate_ledger_skip`; wired skip-before-sia into direct G2/G3/G4 `--live` (exit 0; no paid re-run when ledger `stages_complete` + matching `run_ids`)
+3. Tests: `test_direct_gate_ledger_skip_true_when_stage_complete` / `test_direct_gate_ledger_skip_false_on_id_mismatch` / `test_g2_live_skips_when_ledger_stage_complete`; STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 379) | After (Tick 380) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Direct G2/G3/G4 post-live ledger | stamp G2/G3/G4 when complete | unchanged |
+| Direct G2/G3/G4 `--live` when ledger stage done | would re-launch (missing `runs/`) | **skip paid re-run (Tick 380)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-08T04:15Z — Tick 379 (automation cron)
 
 ### Status snapshot
