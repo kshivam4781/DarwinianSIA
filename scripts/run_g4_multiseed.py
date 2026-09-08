@@ -27,6 +27,9 @@ Hard stops (never violate):
     ``G4`` complete for the planned run IDs (pipeline Tick 285 parity)
   - Tick 381: ledger-skip still refreshes paper pack / ICML_READY (pipeline
     Tick 374 parity — Tick 380 early-return left READY stuck after paid G4)
+  - Tick 386: preflight preserves ``prior_live_metrics`` so cron
+    ``--preflight-only`` cannot wipe paid G4 comparison / paper_refreshed
+    evidence (Tick 385 gate3 ``prior_live_metrics`` parity)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1107,6 +1110,49 @@ def write_gate4_report(
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     sidecar = out.with_suffix(".json")
+    # Tick 386: preflight rewrites must not wipe live comparison / paper pack.
+    # Preserve under prior_live_metrics so pipeline resume / ledger-skip trust
+    # still works after cron --preflight-only (Tick 385 gate3 parity).
+    existing = _load_gate4_sidecar_raw(out)
+    prior_live_metrics = None
+    if (
+        executed
+        and report.mode in {"live", "refresh-paper"}
+        and isinstance(report.comparison, dict)
+        and report.comparison
+        and paper_refreshed
+    ):
+        prior_live_metrics = {
+            "comparison": report.comparison,
+            "h5_by_d_run": report.h5_by_d_run or {},
+            "h2_by_d_run": report.h2_by_d_run or {},
+            "executed": True,
+            "paper_refreshed": True,
+            "primary_pass": bool(report.primary_pass),
+            "h2_pass": bool(report.h2_pass),
+            "h5_pass": bool(report.h5_pass),
+            "ready_status": report.ready_status,
+            "figures_written": list(report.figures_written or []),
+        }
+    else:
+        preserved_cmp, preserved_h5, preserved_h2, preserved_meta, _src = (
+            _live_paper_from_gate4_sidecar(existing)
+        )
+        if preserved_cmp is not None:
+            prior_live_metrics = {
+                "comparison": preserved_cmp,
+                "h5_by_d_run": preserved_h5,
+                "h2_by_d_run": preserved_h2,
+                "executed": True,
+                "paper_refreshed": True,
+                "primary_pass": bool(preserved_meta.get("primary_pass")),
+                "h2_pass": bool(preserved_meta.get("h2_pass")),
+                "h5_pass": bool(preserved_meta.get("h5_pass")),
+                "ready_status": preserved_meta.get("ready_status"),
+                "figures_written": list(preserved_meta.get("figures_written") or []),
+            }
+        elif isinstance(existing.get("prior_live_metrics"), dict):
+            prior_live_metrics = existing.get("prior_live_metrics")
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -1127,6 +1173,8 @@ def write_gate4_report(
         "executed": executed,
         "paper_refreshed": paper_refreshed,
     }
+    if prior_live_metrics is not None:
+        payload["prior_live_metrics"] = prior_live_metrics
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
@@ -1140,6 +1188,69 @@ def _load_gate4_sidecar_raw(report_md: Path) -> dict[str, Any]:
     except (json.JSONDecodeError, OSError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _live_paper_from_gate4_sidecar(
+    data: dict,
+) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any], dict[str, Any], str]:
+    """Tick 381/386: extract trustable live G4 paper-pack metrics from sidecar.
+
+    Accepts ``mode in {live, refresh-paper}`` + ``executed`` + nonempty
+    ``comparison`` + ``paper_refreshed``, or Tick 386 ``prior_live_metrics``
+    preserved across preflight rewrites.
+    """
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    comparison = data.get("comparison")
+    paper_refreshed = bool(data.get("paper_refreshed"))
+    if (
+        mode in {"live", "refresh-paper"}
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+        and paper_refreshed
+    ):
+        meta = {
+            "paper_refreshed": True,
+            "primary_pass": bool(data.get("primary_pass")),
+            "h2_pass": bool(data.get("h2_pass")),
+            "h5_pass": bool(data.get("h5_pass")),
+            "ready_status": data.get("ready_status"),
+            "figures_written": data.get("figures_written") or [],
+            "executed": True,
+        }
+        return (
+            comparison,
+            data.get("h5_by_d_run") or {},
+            data.get("h2_by_d_run") or {},
+            meta,
+            "live",
+        )
+    prior = data.get("prior_live_metrics")
+    if isinstance(prior, dict):
+        prior_cmp = prior.get("comparison")
+        if (
+            isinstance(prior_cmp, dict)
+            and prior_cmp
+            and bool(prior.get("paper_refreshed"))
+        ):
+            meta = {
+                "paper_refreshed": True,
+                "primary_pass": bool(prior.get("primary_pass")),
+                "h2_pass": bool(prior.get("h2_pass")),
+                "h5_pass": bool(prior.get("h5_pass")),
+                "ready_status": prior.get("ready_status"),
+                "figures_written": prior.get("figures_written") or [],
+                "executed": True,
+            }
+            return (
+                prior_cmp,
+                prior.get("h5_by_d_run") or {},
+                prior.get("h2_by_d_run") or {},
+                meta,
+                "prior_live_metrics",
+            )
+    return None, {}, {}, {}, ""
 
 
 def refresh_paper_pack_on_ledger_skip(
@@ -1161,7 +1272,8 @@ def refresh_paper_pack_on_ledger_skip(
 
     Prefer local complete B/D dirs → ``apply_paper_pack``. Else trust a
     live-executed / refresh-paper sidecar with non-null comparison +
-    ``paper_refreshed`` (never promote READY from a preflight sidecar).
+    ``paper_refreshed`` (or Tick 386 ``prior_live_metrics`` preserved across
+    preflight; never promote READY from a bare preflight sidecar).
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1200,36 +1312,38 @@ def refresh_paper_pack_on_ledger_skip(
         )
 
     data = _load_gate4_sidecar_raw(gate4_report_md)
-    comparison = data.get("comparison")
-    mode = str(data.get("mode") or "")
-    executed = bool(data.get("executed"))
-    paper_refreshed = bool(data.get("paper_refreshed"))
-    ready_status = data.get("ready_status")
-    if (
-        mode in {"live", "refresh-paper"}
-        and executed
-        and isinstance(comparison, dict)
-        and comparison
-        and paper_refreshed
-    ):
+    comparison, h5, h2, meta, source = _live_paper_from_gate4_sidecar(data)
+    if comparison is not None:
         report.comparison = comparison
-        report.primary_pass = bool(data.get("primary_pass"))
-        report.h2_pass = bool(data.get("h2_pass"))
-        report.h5_pass = bool(data.get("h5_pass"))
-        if isinstance(data.get("h5_by_d_run"), dict):
-            report.h5_by_d_run = data["h5_by_d_run"]
-        if isinstance(data.get("h2_by_d_run"), dict):
-            report.h2_by_d_run = data["h2_by_d_run"]
+        report.primary_pass = bool(meta.get("primary_pass"))
+        report.h2_pass = bool(meta.get("h2_pass"))
+        report.h5_pass = bool(meta.get("h5_pass"))
+        report.h5_by_d_run = h5
+        report.h2_by_d_run = h2
+        figs = meta.get("figures_written")
+        if isinstance(figs, list):
+            report.figures_written = figs
+        ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
             report.ready_status = ready_status
-        note = (
-            "Tick 381: trusted live-executed gate4 sidecar paper pack "
-            f"(no/partial local G4 dirs; mode={mode}; "
-            f"ICML_READY={ready_status or 'n/a'})"
-        )
+        if source == "prior_live_metrics":
+            note = (
+                "Tick 386: trusted gate4 prior_live_metrics after ledger-skip "
+                f"(no/partial local G4 dirs; ICML_READY={ready_status or 'n/a'})"
+            )
+        else:
+            mode = str(data.get("mode") or "")
+            note = (
+                "Tick 381: trusted live-executed gate4 sidecar paper pack "
+                f"(no/partial local G4 dirs; mode={mode}; "
+                f"ICML_READY={ready_status or 'n/a'})"
+            )
         report.notes.append(note)
         return True, note
 
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    paper_refreshed = bool(data.get("paper_refreshed"))
     note = (
         "Tick 381: ledger-skip but no local G4 artifacts and no live-executed "
         f"gate4 paper pack (mode={mode or 'missing'!r}, executed={executed}, "

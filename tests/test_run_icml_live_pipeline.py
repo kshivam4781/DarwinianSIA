@@ -1135,6 +1135,56 @@ def test_g4_resume_trusts_live_executed_sidecar_ledger_only(
     assert report.icml_ready_status == "READY"
 
 
+def test_refresh_g4_paper_pack_on_resume_trusts_prior_live_metrics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 386: prior_live_metrics survives preflight wipe for G4 resume trust."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "paper_refreshed": False,
+                "comparison": None,
+                "prior_live_metrics": {
+                    "comparison": {
+                        "n_pairs": 5,
+                        "primary_gens30_pass": True,
+                        "d_wins_gens30": 4,
+                    },
+                    "h5_by_d_run": {},
+                    "h2_by_d_run": {},
+                    "executed": True,
+                    "paper_refreshed": True,
+                    "primary_pass": True,
+                    "h2_pass": True,
+                    "h5_pass": True,
+                    "ready_status": "READY",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    report = PipelineReport(timestamp="2026-09-08T18:12:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+        report=report,
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert "prior_live_metrics" in note
+    assert report.icml_ready_status == "READY"
+
+
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

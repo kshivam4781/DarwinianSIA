@@ -1443,6 +1443,140 @@ def test_refresh_paper_pack_on_ledger_skip_refuses_preflight_sidecar(
     assert report.ready_status == "IN_PROGRESS"
 
 
+def test_write_gate4_preflight_preserves_prior_live_metrics(tmp_path: Path) -> None:
+    """Tick 386: preflight rewrite keeps prior_live_metrics for G4 resume trust."""
+    import run_g4_multiseed as mod
+    from run_g4_multiseed import G4PreflightReport
+
+    report_md = tmp_path / "gate4_report.md"
+    sidecar = report_md.with_suffix(".json")
+    live_cmp = {
+        "n_pairs": 5,
+        "d_wins_gens30": 4,
+        "primary_gens30_pass": True,
+        "mean_final_gap": 0.05,
+        "primary_final_pass": True,
+    }
+    sidecar.write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "comparison": live_cmp,
+                "h5_by_d_run": {"run_1311": {"spearman_rho": 0.7}},
+                "h2_by_d_run": {"run_1311": {"preferred_share": 0.8}},
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "figures_written": ["docs/figures/fig1_learning_curves.png"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    report_md.write_text("# Gate 4\n", encoding="utf-8")
+    report = G4PreflightReport(
+        timestamp="2026-09-08T18:10:00Z",
+        mode="preflight",
+        plans=build_g4_plans(
+            [1, 2, 3, 4, 5],
+            [1211, 1212, 1213, 1214, 1215],
+            [1311, 1312, 1313, 1314, 1315],
+        ),
+        ready_for_live=False,
+        blockers=["nebius_key"],
+        checks=[],
+        commands=[],
+        notes=[],
+    )
+    write_gate4_report(report, report_md, executed=False, paper_refreshed=False)
+    data = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert data["mode"] == "preflight"
+    assert data["comparison"] is None
+    assert data["executed"] is False
+    assert data["paper_refreshed"] is False
+    assert data["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 4
+    assert data["prior_live_metrics"]["paper_refreshed"] is True
+    assert data["prior_live_metrics"]["ready_status"] == "READY"
+    cmp_, h5, h2, meta, source = mod._live_paper_from_gate4_sidecar(data)
+    assert source == "prior_live_metrics"
+    assert cmp_ is not None and cmp_["d_wins_gens30"] == 4
+    assert h5["run_1311"]["spearman_rho"] == 0.7
+    assert h2["run_1311"]["preferred_share"] == 0.8
+    assert meta["paper_refreshed"] is True
+    assert meta["ready_status"] == "READY"
+
+
+def test_refresh_paper_pack_on_ledger_skip_trusts_prior_live_metrics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 386: ledger-skip trusts prior_live_metrics after preflight wipe."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "paper_refreshed": False,
+                "prior_live_metrics": {
+                    "comparison": {
+                        "n_pairs": 5,
+                        "d_wins_gens30": 4,
+                        "primary_gens30_pass": True,
+                    },
+                    "h5_by_d_run": {"run_1311": {"spearman_rho": 0.65}},
+                    "h2_by_d_run": {"run_1311": {"preferred_share": 0.7}},
+                    "executed": True,
+                    "paper_refreshed": True,
+                    "primary_pass": True,
+                    "h2_pass": True,
+                    "h5_pass": True,
+                    "ready_status": "READY",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-08T18:11:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    paper_ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert paper_ok is True
+    assert "prior_live_metrics" in note
+    assert report.comparison is not None
+    assert report.comparison["d_wins_gens30"] == 4
+    assert report.ready_status == "READY"
+    assert report.h5_by_d_run["run_1311"]["spearman_rho"] == 0.65
+
+
 def test_g4_live_ledger_skip_refreshes_paper_pack(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

@@ -26,9 +26,10 @@ Hard stops (delegated to gate runners; never violate here either):
     null comparison must not auto-burn ~$14 G4, and a completed local G3 must
     not stall G4 because the sidecar was never written after a mid-stack crash.
   - Tick 374: resume-skipped G4 still rebuilds the paper pack from local B/D
-    (or requires a live-executed gate4 sidecar). A completed G4 whose
-    gate4_report.json stayed mode=preflight (crash after pairs / pack never
-    ran) must not leave ICML_READY stuck IN_PROGRESS forever.
+    (or requires a live-executed gate4 sidecar, or Tick 386
+    ``prior_live_metrics`` preserved across cron preflight). A completed G4
+    whose gate4_report.json stayed mode=preflight (crash after pairs / pack
+    never ran / cron wipe) must not leave ICML_READY stuck IN_PROGRESS forever.
   - Tick 375: mid-stack G3/G4 crashes that leave *some* B/D pairs complete no
     longer brick the next cron on run_ids_free occupied — completed runs are
     resume-skipped; only incomplete dirs block; budget projects remaining pairs.
@@ -46,6 +47,10 @@ Hard stops (delegated to gate runners; never violate here either):
     ``prior_live_metrics`` preserved across cron preflight (parity with Tick
     384 gate2 ``prior_live_post``) so a wiped ``mode=preflight`` gate3 sidecar
     cannot brick G4 after paid G3 on a cross-VM / ledger-only resume.
+  - Tick 386: ``refresh_g4_paper_pack_on_resume`` / direct G4 ledger-skip also
+    trust Tick 386 ``prior_live_metrics`` on gate4 (parity with Tick 385
+    gate3) so cron ``--preflight-only`` cannot wipe paid G4 paper-pack
+    evidence needed for ``ICML_READY``.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -726,7 +731,9 @@ def refresh_g4_paper_pack_on_resume(
     PRIMARY-shaped live evidence. Re-score + ``apply_paper_pack`` when local
     dirs are present. Ledger-only / no-local fallback accepts the sidecar
     **only** when ``mode=="live"`` (or ``refresh-paper``) and ``executed`` and a
-    non-null comparison exist — never promote READY from a preflight sidecar.
+    non-null comparison + ``paper_refreshed`` exist — or Tick 386
+    ``prior_live_metrics`` preserved across preflight — never promote READY
+    from a bare preflight sidecar.
     """
     paper_artifacts = paper_artifacts or (REPO_ROOT / "docs" / "paper_artifacts.md")
     ready_path = ready_path or (REPO_ROOT / "docs" / "ICML_READY.md")
@@ -784,24 +791,24 @@ def refresh_g4_paper_pack_on_resume(
         )
 
     data = _load_gate4_sidecar_raw(gate4_report_md)
-    comparison = data.get("comparison")
-    mode = str(data.get("mode") or "")
-    executed = bool(data.get("executed"))
-    paper_refreshed = bool(data.get("paper_refreshed"))
-    ready_status = data.get("ready_status")
-    if (
-        mode in {"live", "refresh-paper"}
-        and executed
-        and isinstance(comparison, dict)
-        and comparison
-        and paper_refreshed
-    ):
+    comparison, _h5, _h2, meta, source = g4._live_paper_from_gate4_sidecar(data)
+    if comparison is not None:
+        ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
             report.icml_ready_status = ready_status
+        if source == "prior_live_metrics":
+            return (
+                "Tick 386: trusted gate4 prior_live_metrics paper pack "
+                f"(no local G4 dirs; ICML_READY={ready_status or 'n/a'})"
+            )
+        mode = str(data.get("mode") or "")
         return (
             "Tick 374: trusted live-executed gate4 sidecar paper pack "
             f"(no local G4 dirs; mode={mode}; ICML_READY={ready_status or 'n/a'})"
         )
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    paper_refreshed = bool(data.get("paper_refreshed"))
     return (
         "Tick 374: no local G4 artifacts and no live-executed gate4 paper pack "
         f"(mode={mode or 'missing'!r}, executed={executed}, "

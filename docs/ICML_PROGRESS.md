@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T18:20Z — Tick 386 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-61dd`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 385's gate3 `prior_live_metrics` preserve, cron `--preflight-only` still wiped live gate4 `comparison` / `paper_refreshed` (`mode=preflight`, `executed=False`), so pipeline `refresh_g4_paper_pack_on_resume` / direct G4 ledger-skip could not trust paid G4 paper-pack evidence on cross-VM resume. Highest leverage without paid spend: **gate4 prior_live_metrics preserve** (completes G2/G3/G4 prior_live triad).
+
+### What this tick did (ONE step)
+**Gate4 prior_live_metrics preserve (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 385 (`f49c`); confirmed secrets absent; boot `61dd` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `_live_paper_from_gate4_sidecar` + `prior_live_metrics` preserve in `write_gate4_report`; wired into `refresh_paper_pack_on_ledger_skip` + pipeline `refresh_g4_paper_pack_on_resume`
+3. Tests: `test_write_gate4_preflight_preserves_prior_live_metrics` / `test_refresh_paper_pack_on_ledger_skip_trusts_prior_live_metrics` / `test_refresh_g4_paper_pack_on_resume_trusts_prior_live_metrics` (+ regression trusts_sidecar / refuses_preflight) — **5/5**; STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 385) | After (Tick 386) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Gate4 preflight after live | wiped comparison/paper_refreshed (mode=preflight) | **preserves `prior_live_metrics`** |
+| Pipeline G4 resume / ledger-skip after wipe | refuse (no live mode) | **trust prior_live_metrics (Tick 386)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-08T16:10Z — Tick 385 (automation cron)
 
 ### Status snapshot

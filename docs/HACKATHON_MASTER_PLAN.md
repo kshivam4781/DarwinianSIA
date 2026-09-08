@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-08 (Section 21 ICML; Tick 385 prior_live_metrics; Tick 384 pipeline G2→G3 post-gate + prior_live_post; Tick 383 direct G2 ledger-skip post refresh; …)
+**Last updated:** 2026-09-08 (Section 21 ICML; Tick 386 gate4 prior_live_metrics; Tick 385 prior_live_metrics; Tick 384 pipeline G2→G3 post-gate + prior_live_post; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -978,7 +978,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML direct G2 ledger-skip post-validation refresh (Tick 383) | **DONE** | `refresh_g2_post_on_ledger_skip` re-validates local G2 or trusts live-executed gate2 sidecar after Tick 380 wrote gate2 without `post=` (closes nonzero-fitness clobber; completes G2/G3/G4 ledger-skip refresh triad) |
 | ICML pipeline G2→G3 post-gate + prior_live_post (Tick 384) | **DONE** | `load_g2_post_for_g3` before paid G3; direct ledger-skip exit 4 without proven post; preflight preserves `prior_live_post` (closes pipeline-only Tick 383 bypass / preflight wipe) |
 | ICML pipeline G3→G4 prior_live_metrics (Tick 385) | **DONE** | `write_gate3_report` preserves `prior_live_metrics`; `_live_metrics_from_gate3_sidecar` + `load_g3_metrics_for_g4` / ledger-skip trust after cron preflight wipe (Tick 384 gate2 parity) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–385 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML gate4 prior_live_metrics (Tick 386) | **DONE** | `write_gate4_report` preserves `prior_live_metrics`; `_live_paper_from_gate4_sidecar` + resume / ledger-skip trust after cron preflight wipe (Tick 385 gate3 parity; completes G2/G3/G4 prior_live triad) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–386 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2567,3 +2568,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Direct G2 ledger-skip post-validation refresh (Tick 383):** After Tick 382, direct G2 `--live` ledger-skip still wrote gate2 **without `post=`**, wiping live-executed nonzero-fitness / belief_store evidence from the sidecar. `refresh_g2_post_on_ledger_skip` re-validates local G2 via `validate_g2_artifacts` or trusts a live-executed gate2 sidecar (never invent post from a preflight sidecar). Completes the G2/G3/G4 ledger-skip refresh triad. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Pipeline G2→G3 post-gate + prior_live_post (Tick 384):** After Tick 383, pipeline resume-skip still advanced to paid G3 when the ledger marked G2 complete without re-checking gate2 post, and cron `--preflight-only` wiped live `post=` from the sidecar. `load_g2_post_for_g3` requires local `validate_g2_artifacts` or live/`prior_live_post` sidecar evidence before G3; direct G2 ledger-skip returns exit 4 without proven post; `write_gate2_report` preserves `prior_live_post` across preflight. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Pipeline G3→G4 prior_live_metrics (Tick 385):** After Tick 384, cron `--preflight-only` still wiped live gate3 `comparison`/H2/H5 (`mode=preflight`, `executed=False`), so `load_g3_metrics_for_g4` / direct G3 ledger-skip could not trust paid G3 evidence cross-VM. `write_gate3_report` preserves `prior_live_metrics`; `_live_metrics_from_gate3_sidecar` + `load_g3_metrics_for_g4` / `refresh_g3_metrics_on_ledger_skip` trust it (Tick 384 gate2 `prior_live_post` parity). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Gate4 prior_live_metrics (Tick 386):** After Tick 385, cron `--preflight-only` still wiped live gate4 `comparison` / `paper_refreshed` (`mode=preflight`, `executed=False`), so `refresh_g4_paper_pack_on_resume` / direct G4 ledger-skip could not trust paid G4 paper-pack evidence cross-VM. `write_gate4_report` preserves `prior_live_metrics`; `_live_paper_from_gate4_sidecar` + resume / `refresh_paper_pack_on_ledger_skip` trust it (Tick 385 gate3 parity; completes G2/G3/G4 prior_live triad). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
