@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-08 (Section 21 ICML; Tick 382 direct G3 ledger-skip pilot-metrics refresh; Tick 381 direct G4 ledger-skip paper-pack refresh; Tick 380 direct gate ledger-stage skip; …)
+**Last updated:** 2026-09-08 (Section 21 ICML; Tick 383 direct G2 ledger-skip post-validation refresh; Tick 382 direct G3 ledger-skip pilot-metrics refresh; Tick 381 direct G4 ledger-skip paper-pack refresh; Tick 380 direct gate ledger-stage skip; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -975,7 +975,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML direct gate ledger-stage skip (Tick 380) | **DONE** | `direct_gate_ledger_skip` + wired skip-before-sia on direct G2/G3/G4 `--live` when ledger already marks stage complete (pipeline Tick 285 parity; stamp alone was not enough) |
 | ICML direct G4 ledger-skip paper-pack refresh (Tick 381) | **DONE** | `refresh_paper_pack_on_ledger_skip` re-scores local B/D or trusts live-executed gate4 sidecar after Tick 380 early-return (pipeline Tick 374 parity; closes READY stuck after paid G4) |
 | ICML direct G3 ledger-skip pilot-metrics refresh (Tick 382) | **DONE** | `refresh_g3_metrics_on_ledger_skip` re-scores local B/D or trusts live-executed gate3 sidecar after Tick 380 wrote empty `executed=False` (pipeline Tick 373 parity; closes G3 sidecar clobber / G4 advance false-refuse) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–382 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML direct G2 ledger-skip post-validation refresh (Tick 383) | **DONE** | `refresh_g2_post_on_ledger_skip` re-validates local G2 or trusts live-executed gate2 sidecar after Tick 380 wrote gate2 without `post=` (closes nonzero-fitness clobber; completes G2/G3/G4 ledger-skip refresh triad) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–383 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2560,3 +2561,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Direct G4 ledger-skip paper-pack refresh (Tick 381):** After Tick 380, direct G4 `--live` early-returned on ledger-complete without `apply_paper_pack` / sidecar trust (pipeline Tick 374 already refreshed on resume). Cross-VM / same-VM ledger skip could leave `ICML_READY` stuck IN_PROGRESS after paid G4 evidence existed. `refresh_paper_pack_on_ledger_skip` re-scores local B/D or trusts a live-executed gate4 sidecar (never promote READY from a preflight sidecar). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Direct G3 ledger-skip pilot-metrics refresh (Tick 382):** After Tick 381, direct G3 `--live` ledger-skip still wrote `executed=False` with null comparison — clobbering any live-executed gate3 sidecar that pipeline Tick 373 needs for G4 advance when local `runs/` are absent. `refresh_g3_metrics_on_ledger_skip` re-scores local B/D via `score_pilot` or trusts a live-executed gate3 sidecar (never invent metrics from a preflight sidecar). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Direct G2 ledger-skip post-validation refresh (Tick 383):** After Tick 382, direct G2 `--live` ledger-skip still wrote gate2 **without `post=`**, wiping live-executed nonzero-fitness / belief_store evidence from the sidecar. `refresh_g2_post_on_ledger_skip` re-validates local G2 via `validate_g2_artifacts` or trusts a live-executed gate2 sidecar (never invent post from a preflight sidecar). Completes the G2/G3/G4 ledger-skip refresh triad. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

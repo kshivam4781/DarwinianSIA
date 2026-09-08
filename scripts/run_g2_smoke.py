@@ -16,6 +16,9 @@ turnkey and hard-stops unsafe paid runs:
   - Tick 380: ``--live`` skips paid re-run when committed ledger already marks
     ``G2`` complete for the planned run_id (pipeline Tick 285; stamp alone
     was not enough — direct runners still treated missing ``runs/`` as free)
+  - Tick 383: ledger-skip still re-validates / trusts G2 post-checks (local
+    ``validate_g2_artifacts`` or live-executed gate2 sidecar) so Tick 380 cannot
+    clobber nonzero-fitness evidence needed for honest G2→G3 advance
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
@@ -61,6 +64,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    darwinian_run_complete,
     default_g2_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
@@ -515,6 +519,78 @@ def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     return checks
 
 
+def _load_gate2_sidecar_raw(gate2_report_md: Path) -> dict:
+    """Load machine-readable gate2 sidecar next to the markdown report."""
+    sidecar = Path(gate2_report_md).with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def refresh_g2_post_on_ledger_skip(
+    report: PreflightReport,
+    *,
+    gate2_report_md: Path,
+) -> tuple[list[CheckResult] | None, str]:
+    """Tick 383: rebuild / trust G2 post-checks after direct ledger-skip.
+
+    Tick 380 early-returned on ``ledger_skip`` and called ``write_gate2_report``
+    without ``post=``, wiping live-executed post-validation (belief_store /
+    nonzero_fitness) from the gate2 sidecar. Prefer local complete G2 →
+    ``validate_g2_artifacts``. Else trust a live-mode sidecar with nonempty
+    ``post`` (never invent post-checks from a preflight sidecar).
+    """
+    run_dir = _run_dir_for(int(report.run_id))
+    if run_dir is not None and darwinian_run_complete(run_dir):
+        post = validate_g2_artifacts(run_dir)
+        note = (
+            "Tick 383: re-validated local G2 after ledger-skip "
+            f"(run_{report.run_id}; post_ok={all(c.ok for c in post)})"
+        )
+        report.notes.append(note)
+        return post, note
+
+    data = _load_gate2_sidecar_raw(gate2_report_md)
+    mode = str(data.get("mode") or "")
+    post_raw = data.get("post")
+    if mode == "live" and isinstance(post_raw, list) and post_raw:
+        post: list[CheckResult] = []
+        for item in post_raw:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "")
+            if not name:
+                continue
+            post.append(
+                CheckResult(
+                    name=name,
+                    ok=bool(item.get("ok")),
+                    detail=str(item.get("detail") or ""),
+                )
+            )
+        if post:
+            note = (
+                "Tick 383: trusted live-executed gate2 sidecar post-checks "
+                f"(no/incomplete local run_{report.run_id}; "
+                f"post_ok={all(c.ok for c in post)})"
+            )
+            report.notes.append(note)
+            return post, note
+
+    note = (
+        "Tick 383: ledger-skip but no local G2 artifacts and no live-executed "
+        f"gate2 post (mode={mode or 'missing'!r}, "
+        f"post_n={len(post_raw) if isinstance(post_raw, list) else 0}) — "
+        "post-checks not updated"
+    )
+    report.notes.append(note)
+    return None, note
+
+
 def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResult] | None = None) -> None:
     lines = [
         "# Gate 2 report — GPQA smoke (Condition D)",
@@ -832,13 +908,22 @@ def main(argv: list[str] | None = None) -> int:
         print("G2 dry-run refused — preflight failed", file=sys.stderr)
         return 2
     # Tick 380: ledger-complete G2 → exit 0 without sia (even if secrets absent).
+    # Tick 383: still re-validate / trust post-checks (G3 Tick 382 / G4 Tick 381
+    # parity) so ledger-skip cannot wipe nonzero-fitness evidence.
     if selected == "live" and report.ledger_skip:
         report.notes.append(
             "Tick 380: skipped paid G2 — ledger stages_complete already lists G2 "
             f"for run_{run_id}"
         )
-        write_gate2_report(report, args.report)
+        post, post_note = refresh_g2_post_on_ledger_skip(
+            report, gate2_report_md=args.report
+        )
+        report.notes.append(post_note)
+        write_gate2_report(report, args.report, post=post)
         print(f"G2 live skipped (ledger resume) → {args.report}")
+        print(post_note)
+        post_ok = bool(post) and all(c.ok for c in post)
+        print(f"g2_post_ok={post_ok} post_n={len(post or [])}")
         return 0
     if selected == "live" and not report.ready_for_live:
         write_gate2_report(report, args.report)

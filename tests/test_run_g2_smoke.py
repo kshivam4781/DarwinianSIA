@@ -714,3 +714,226 @@ def test_g2_live_skips_when_ledger_stage_complete(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "Tick 380" in text or "ledger" in text.lower()
+
+
+def test_refresh_g2_post_on_ledger_skip_local_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: ledger-skip re-validates local G2 into post-checks."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+
+    run_dir = tmp_path / "runs" / "run_1300"
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text('{"accuracy": 0.2}', encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    fake_post = [
+        mod.CheckResult("belief_store", True, "ok"),
+        mod.CheckResult("nonzero_fitness", True, "best=0.2000 > min=0"),
+    ]
+
+    def _fake_validate(path: Path):  # noqa: ANN001
+        assert path == run_dir
+        return fake_post
+
+    monkeypatch.setattr(mod, "validate_g2_artifacts", _fake_validate)
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is not None
+    assert all(c.ok for c in post)
+    assert "re-validated local G2" in note
+    assert any("re-validated local G2" in n for n in report.notes)
+
+
+def test_refresh_g2_post_on_ledger_skip_trusts_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: no local run → trust live-executed gate2 sidecar post."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "run_id": 1300,
+                "post": [
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                    {
+                        "name": "nonzero_fitness",
+                        "ok": True,
+                        "detail": "best=0.2000 > min=0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is not None
+    assert len(post) == 2
+    assert all(c.ok for c in post)
+    assert "trusted live-executed gate2 sidecar" in note
+
+
+def test_refresh_g2_post_on_ledger_skip_refuses_preflight_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: preflight sidecar must not invent G2 post on ledger-skip."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "run_id": 1300,
+                "post": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is None
+    assert "post-checks not updated" in note
+
+
+def test_g2_live_ledger_skip_refreshes_post(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: direct --live ledger-skip calls post refresh (no sia)."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "run_id": 1300,
+                "post": [
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                    {
+                        "name": "nonzero_fitness",
+                        "ok": True,
+                        "detail": "best=0.2500 > min=0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 383},
+    )
+
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 383" in text
+    assert "nonzero_fitness" in text
+    sidecar = json.loads(report_path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert sidecar["post"]
+    assert any(c["name"] == "nonzero_fitness" and c["ok"] for c in sidecar["post"])
