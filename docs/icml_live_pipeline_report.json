@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-06T22:04:24Z",
+  "timestamp": "2026-09-08T02:01:17Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -62,6 +62,8 @@
     "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"
   ],
   "g3_promising": null,
+  "g3_comparison": null,
+  "g3_h2_by_d_run": {},
   "stopped_after": null,
   "icml_ready_status": "IN_PROGRESS"
 }

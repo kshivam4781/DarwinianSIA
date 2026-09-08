@@ -8,6 +8,9 @@ turnkey and hard-stops unsafe paid runs:
   - synthetic smoke GPQA answers for --live (refuse paid eval on fake labels)
   - existing run directory (never overwrite)
   - optional budget ceiling via SIA_BUDGET_SPENT_USD / SIA_BUDGET_CEILING_USD
+  - Tick 378: direct ``--live`` hydrates ``SIA_BUDGET_SPENT_USD`` from the
+    committed ledger + unbilled local complete runs before the budget check
+    (closes G2 bypass left after Tick 377 G3/G4 hydrate)
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
@@ -53,8 +56,10 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    default_g2_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
+    hydrate_direct_gate_budget_spent,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
@@ -277,8 +282,19 @@ def run_preflight(
             else "missing (optional; needed for HF gpqa download)",
         )
 
-    spent = _budget_spent()
     ceiling = _budget_ceiling()
+    # Tick 378: direct G2 --live must see ledger + unbilled local completes
+    # (pipeline Tick 376 sync already hydrates before calling this runner;
+    # Tick 377 wired the same helper into G3/G4 only).
+    g2_est = float(default_g2_estimate_usd())
+    _, hydrate_detail = hydrate_direct_gate_budget_spent(
+        [int(run_id)],
+        run_estimate_usd=g2_est,
+        resolve_run_dir=_run_dir_for,
+        repo_root=REPO_ROOT,
+    )
+    report.notes.append(hydrate_detail)
+    spent = _budget_spent()
     budget_ok = spent < ceiling
     report.add(
         "budget",

@@ -3264,3 +3264,43 @@ def test_hydrate_direct_gate_skips_ledger_ids(
     assert "no unbilled local completes" in detail
     ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
     assert ledger["spent_usd"] == pytest.approx(5.5)
+
+
+def test_hydrate_direct_gate_run_estimate_usd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 378: single-run G2 fallback uses run_estimate_usd (not /2 pair)."""
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.0,
+                "stages_complete": [],
+                "run_ids": [],
+                "detail": "empty",
+            }
+        ),
+        encoding="utf-8",
+    )
+    run_dir = tmp_path / "runs" / "run_1300"
+    # No total_cost_usd → fallback estimate path
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.1}),
+        encoding="utf-8",
+    )
+
+    spent, detail = hydrate_direct_gate_budget_spent(
+        [1300],
+        run_estimate_usd=1.5,
+        resolve_run_dir=lambda rid: run_dir if rid == 1300 else None,
+        repo_root=tmp_path,
+    )
+    assert spent == pytest.approx(2.5)  # 1.0 ledger + 1.5 run estimate
+    assert "Tick 377/378" in detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1300 in ledger["run_ids"]
+    assert "G2" not in ledger["stages_complete"]

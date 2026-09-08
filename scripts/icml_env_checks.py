@@ -1313,25 +1313,31 @@ def apply_persisted_spent_to_env(
 def hydrate_direct_gate_budget_spent(
     planned_run_ids: list[int],
     *,
-    pair_estimate_usd: float,
+    pair_estimate_usd: float | None = None,
+    run_estimate_usd: float | None = None,
     resolve_run_dir: Callable[[int], Path | None],
     repo_root: Path | None = None,
     env_key: str = "SIA_BUDGET_SPENT_USD",
 ) -> tuple[float, str]:
-    """Tick 377: direct G3/G4 ``--live`` sees ledger + unbilled local completes.
+    """Tick 377/378: direct G2/G3/G4 ``--live`` sees ledger + unbilled locals.
 
     Pipeline ``sync_spent_from_completed_stages`` (Tick 376) hydrates spent
-    before calling gate mains. Direct ``run_g3_pilot.py --live`` /
-    ``run_g4_multiseed.py --live`` previously read ``SIA_BUDGET_SPENT_USD`` from
-    env only (often 0), so mid-stack resume after a crash — when the ledger was
-    stale or not yet synced — could green-light remaining pairs over the ~$20
-    ceiling. This helper:
+    before calling gate mains. Direct ``run_g2_smoke.py --live`` (Tick 378),
+    ``run_g3_pilot.py --live``, and ``run_g4_multiseed.py --live`` previously
+    read ``SIA_BUDGET_SPENT_USD`` from env only (often 0), so mid-stack resume
+    after a crash — when the ledger was stale or not yet synced — could
+    green-light remaining work over the ~$20 ceiling. This helper:
 
     1. Loads the committed ledger into env (Tick 284).
     2. Bills any **complete** planned run dirs whose IDs are not yet in the
        ledger (partial stage; does **not** mark ``stages_complete``).
     3. Persists the bumped spend so the next cron/direct call does not
        double-count.
+
+    Pass ``pair_estimate_usd`` for B+D pair gates (G3/G4; fallback bills
+    ``len(unbilled)/2`` pairs) or ``run_estimate_usd`` for single-run G2
+    (fallback bills ``len(unbilled)`` runs). Exactly one estimate is required
+    when unbilled locals exist; ledger-only hydrate needs neither.
     """
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT
     ledger_path = budget_spent_ledger_path(root)
@@ -1361,8 +1367,16 @@ def hydrate_direct_gate_budget_spent(
             float(spent_after_ledger),
             f"Tick 377 hydrate: {ledger_detail}; no unbilled local completes",
         )
-    n_pairs_equiv = len(unbilled) / 2.0
-    fallback = max(0.0, float(pair_estimate_usd)) * n_pairs_equiv
+    if run_estimate_usd is not None:
+        fallback = max(0.0, float(run_estimate_usd)) * len(unbilled)
+    elif pair_estimate_usd is not None:
+        n_pairs_equiv = len(unbilled) / 2.0
+        fallback = max(0.0, float(pair_estimate_usd)) * n_pairs_equiv
+    else:
+        raise TypeError(
+            "hydrate_direct_gate_budget_spent requires pair_estimate_usd "
+            "or run_estimate_usd when unbilled local completes exist"
+        )
     amt, det = reconcile_gate_spend_usd(
         unbilled_dirs, fallback_estimate=fallback
     )
@@ -1372,13 +1386,13 @@ def hydrate_direct_gate_budget_spent(
         spent_usd=new_spent,
         stages_complete=list(ledger.get("stages_complete") or []),
         run_ids=sorted(ledger_ids | set(unbilled)),
-        detail=f"Tick 377 direct-gate unbilled local: {det}",
+        detail=f"Tick 377/378 direct-gate unbilled local: {det}",
         path=ledger_path,
     )
     return (
         new_spent,
         (
-            f"Tick 377 hydrate: {ledger_detail}; billed {len(unbilled)} unbilled "
+            f"Tick 377/378 hydrate: {ledger_detail}; billed {len(unbilled)} unbilled "
             f"local run(s) +${amt:.4f} → spent=${new_spent:.4f} ({det})"
         ),
     )
@@ -2074,17 +2088,16 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **direct G3/G4 budget hydrate** — after Tick 376, "
-        f"pipeline sync billed mid-stack partials, but direct "
-        f"`run_g3_pilot.py --live` / `run_g4_multiseed.py --live` still read "
-        f"`SIA_BUDGET_SPENT_USD` from env only (often 0). Mid-stack resume "
-        f"after a crash could green-light remaining pairs over the ~$20 "
-        f"ceiling. `hydrate_direct_gate_budget_spent` now loads the ledger "
-        f"and bills unbilled local complete runs before the gate budget "
-        f"check (no `stages_complete` stamp). Tip PR GitHub **title and "
-        f"body** stay frozen when using `open_git_pr` MCP (does **not** "
-        f"rewrite either on existing PRs — Tick 345–350; prefer verbatim "
-        f"args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
+        f"- Tick {tick}: **direct G2 budget hydrate** — Tick 377 wired "
+        f"`hydrate_direct_gate_budget_spent` into G3/G4, but direct "
+        f"`run_g2_smoke.py --live` still read `SIA_BUDGET_SPENT_USD` from env "
+        f"only (often 0). After prior G3/G4 spend in the ledger, G2 could "
+        f"green-light over the ~$20 ceiling. G2 preflight now hydrates via "
+        f"`run_estimate_usd` (single-run fallback; G3/G4 keep "
+        f"`pair_estimate_usd`). Tip PR GitHub **title and body** stay frozen "
+        f"when using `open_git_pr` MCP (does **not** rewrite either on "
+        f"existing PRs — Tick 345–350; prefer verbatim args from "
+        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
         f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2099,11 +2112,11 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_hydrate_direct_gate_bills_unbilled_local`\n"
-        f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_hydrate_direct_gate_skips_ledger_ids`\n"
-        f"- [x] `pytest tests/test_run_g4_multiseed.py::"
-        f"test_g4_preflight_hydrates_budget_from_unbilled_local`\n"
+        f"test_hydrate_direct_gate_run_estimate_usd`\n"
+        f"- [x] `pytest tests/test_run_g2_smoke.py::"
+        f"test_g2_preflight_hydrates_budget_from_ledger`\n"
+        f"- [x] `pytest tests/test_run_g2_smoke.py::"
+        f"test_g2_preflight_hydrates_budget_from_unbilled_local`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
