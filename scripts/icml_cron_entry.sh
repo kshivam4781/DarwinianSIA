@@ -237,8 +237,28 @@ PY
     echo "Working tree dirty — skip tip --apply; commit/stash first or recover manually" >&2
     echo "Dirty paths:" >&2
     git status --porcelain | head -20 >&2
+    # Tick 387: still reinject stashed prior_live_* when tip apply is blocked.
+    if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+      python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import reinject_prior_live_stash
+ok, detail = reinject_prior_live_stash()
+print(f"prior_live_reinject: ok={ok} {detail}")
+PY
+    fi
   else
     recover_tip
+    # Tick 387: reinject prior_live_* after tip hard-reset (stash survives).
+    if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+      python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import reinject_prior_live_stash
+ok, detail = reinject_prior_live_stash()
+print(f"prior_live_reinject: ok={ok} {detail}")
+PY
+    fi
     # Re-enter this script from tip tree when we were piped from git show.
     if [[ -f scripts/icml_cron_entry.sh ]] && [[ "${ICML_CRON_REEXEC:-0}" != "1" ]]; then
       export ICML_CRON_REEXEC=1
@@ -257,8 +277,12 @@ from icml_env_checks import (
     write_icml_secrets_status,
     write_icml_tip_status,
     ensure_budget_spent_ledger_initialized,
+    reinject_prior_live_stash,
 )
 root = Path(".").resolve()
+# Tick 387: reinject even when tip recover was a no-op (stash from prior discard).
+ok_pl, detail_pl = reinject_prior_live_stash(root)
+print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
 tip = write_icml_tip_status(root / "docs" / "icml_tip_status.json", fetch=False)
 sec = write_icml_secrets_status(root / "docs" / "icml_secrets_status.json")
 ledger_path, ledger_created = ensure_budget_spent_ledger_initialized(root)

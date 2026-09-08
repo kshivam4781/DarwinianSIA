@@ -197,6 +197,18 @@ git reset --hard "$best_ref"
 echo "Recovered tip: HEAD now at ${best_ref}"
 git log -1 --oneline
 
+# Tick 387: reinject prior_live_* after hard-reset (stash survives; discard
+# before --apply persisted docs/icml_prior_live_stash.json).
+if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+  python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import reinject_prior_live_stash
+ok, detail = reinject_prior_live_stash()
+print(f"prior_live_reinject: ok={ok} {detail}")
+PY
+fi
+
 # Tick 339: tip PR anti-churn checkout after --apply.
 # Tick 338 only auto-checkouts inside icml_cron_entry.sh. Chicken-egg
 # `git show <tip>:…/icml_boot_recover.sh | bash -s -- --apply` still left

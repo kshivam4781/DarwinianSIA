@@ -2165,6 +2165,138 @@ def test_discard_ephemeral_icml_dirt_clears_reports_only(
     assert "dirty again" in (docs / "gate2_report.md").read_text(encoding="utf-8")
 
 
+def test_discard_ephemeral_preserves_prior_live_via_stash(
+    tmp_path: Path,
+) -> None:
+    """Tick 387: discard stashes prior_live_metrics; reinject after restore."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+        discard_ephemeral_icml_dirt,
+        reinject_prior_live_stash,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    clean_g4 = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(clean_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "gate4_report.md").write_text("# gate4\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    dirty_g4 = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+        "prior_live_metrics": {
+            "comparison": {"d_wins_gens30": 4, "n_pairs": 5},
+            "h5_by_d_run": {"run_1311": {"spearman_rho": 0.8}},
+            "h2_by_d_run": {"run_1311": {"preferred_share": 0.7}},
+            "executed": True,
+            "paper_refreshed": True,
+            "primary_pass": True,
+            "h2_pass": True,
+            "h5_pass": True,
+            "ready_status": "READY",
+            "figures_written": [],
+        },
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(dirty_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok is True
+    assert "prior_live stashed" in detail
+    assert "gate4_report.json" in detail
+    # Restored committed preflight has no prior_live yet.
+    restored = json.loads((docs / "gate4_report.json").read_text(encoding="utf-8"))
+    assert restored.get("prior_live_metrics") is None
+    stash_path = repo / ICML_PRIOR_LIVE_STASH_RELPATH
+    assert stash_path.is_file()
+    stash = json.loads(stash_path.read_text(encoding="utf-8"))
+    assert stash["gates"]["docs/gate4_report.json"]["prior_live_metrics"][
+        "comparison"
+    ]["d_wins_gens30"] == 4
+
+    # Simulate tip --apply wiping working tree to committed preflight again,
+    # then reinject from durable stash.
+    (docs / "gate4_report.json").write_text(
+        json.dumps(clean_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    ok2, detail2 = reinject_prior_live_stash(repo)
+    assert ok2 is True
+    assert "reinjected" in detail2
+    after = json.loads((docs / "gate4_report.json").read_text(encoding="utf-8"))
+    assert after["prior_live_metrics"]["ready_status"] == "READY"
+    assert after["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 4
+
+
+def test_stash_prior_live_from_live_executed_gate3() -> None:
+    """Tick 387: live-executed gate3 top-level comparison becomes prior_live."""
+    from icml_env_checks import _stash_prior_live_from_gate_json
+
+    blob = _stash_prior_live_from_gate_json(
+        {
+            "mode": "live",
+            "executed": True,
+            "comparison": {"d_wins_gens30": 1, "n_pairs": 1},
+            "h5_by_d_run": {"run_1301": {"spearman_rho": 0.6}},
+            "h2_by_d_run": {},
+        }
+    )
+    assert blob is not None
+    assert blob["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 1
+    assert blob["prior_live_metrics"]["executed"] is True
+
+
+def test_stash_prior_live_from_live_gate2_post() -> None:
+    """Tick 387: live gate2 post becomes prior_live_post."""
+    from icml_env_checks import _stash_prior_live_from_gate_json
+
+    blob = _stash_prior_live_from_gate_json(
+        {
+            "mode": "live",
+            "post": [
+                {"name": "nonzero_fitness", "ok": True, "detail": "0.2"},
+                {"name": "belief_store", "ok": True, "detail": "yes"},
+            ],
+        }
+    )
+    assert blob is not None
+    assert len(blob["prior_live_post"]) == 2
+    assert blob["prior_live_post"][0]["name"] == "nonzero_fitness"
+
+
 def test_resolve_icml_target_agent_profile_defaults(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

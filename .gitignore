@@ -26,3 +26,7 @@ docs/icml_cloud_boot_branch.txt
 # committed (tip HEAD had Tick-357 `…-48b0`; discard_ephemeral restore re-poisoned
 # fresh boots) and must survive tip --apply (gitignored + not in EPHEMERAL).
 docs/icml_open_git_pr_call.json
+# Tick 387: prior_live_* stash survives discard_ephemeral + tip --apply hard
+# reset so paid G2/G3/G4 sidecar evidence is reinjected after tip recover
+# (same class as Tick 356/359 durable gitignored survivors).
+docs/icml_prior_live_stash.json

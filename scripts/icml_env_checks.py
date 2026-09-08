@@ -1067,6 +1067,9 @@ def budget_spent_ledger_path(repo_root: Path | None = None) -> Path:
 # Per-VM greenfield boot branch for open_git_pr warn (Tick 354 persist;
 # Tick 356: gitignored — survive discard / tip --apply; never commit).
 ICML_CLOUD_BOOT_BRANCH_RELPATH = "docs/icml_cloud_boot_branch.txt"
+# Tick 387: gitignored prior_live stash — survive discard + tip --apply;
+# reinjected into gate2/3/4 JSON after tip recover (never commit).
+ICML_PRIOR_LIVE_STASH_RELPATH = "docs/icml_prior_live_stash.json"
 
 # Preflight / status writers only — safe to discard before tip --apply (Tick 286).
 # Tick 356: do NOT list ICML_CLOUD_BOOT_BRANCH_RELPATH here. Tick 354–355 made
@@ -1100,6 +1103,199 @@ def is_ephemeral_icml_path(rel_path: str) -> bool:
     """True when ``rel_path`` is a preflight/status artifact (Tick 286)."""
     norm = rel_path.replace("\\", "/").lstrip("./")
     return norm in EPHEMERAL_ICML_RELPATHS
+
+
+def _stash_prior_live_from_gate_json(data: dict) -> dict[str, Any] | None:
+    """Tick 387: extract preservable live evidence from a gate sidecar JSON.
+
+    Returns a small dict with either ``prior_live_post`` (gate2) or
+    ``prior_live_metrics`` (gate3/gate4), or None when nothing trustable exists.
+    Converts a live-executed top-level payload into the prior_live shape so
+    ``discard_ephemeral_icml_dirt`` can persist it across ``git restore`` /
+    tip ``--apply`` hard reset via ``docs/icml_prior_live_stash.json``.
+    """
+    if not isinstance(data, dict):
+        return None
+
+    # Gate2 shape: post / prior_live_post list of check dicts.
+    prior_post = data.get("prior_live_post")
+    if isinstance(prior_post, list) and prior_post:
+        return {"prior_live_post": prior_post}
+    post = data.get("post")
+    mode = str(data.get("mode") or "")
+    if (
+        mode == "live"
+        and isinstance(post, list)
+        and post
+        and all(isinstance(c, dict) for c in post)
+    ):
+        return {"prior_live_post": post}
+
+    # Gate3/Gate4 shape: prior_live_metrics or live-executed comparison.
+    prior_metrics = data.get("prior_live_metrics")
+    if isinstance(prior_metrics, dict):
+        prior_cmp = prior_metrics.get("comparison")
+        if isinstance(prior_cmp, dict) and prior_cmp:
+            # Gate4 also requires paper_refreshed when present on the blob.
+            if "paper_refreshed" in prior_metrics and not bool(
+                prior_metrics.get("paper_refreshed")
+            ):
+                pass  # fall through to top-level live check
+            else:
+                return {"prior_live_metrics": prior_metrics}
+
+    comparison = data.get("comparison")
+    executed = bool(data.get("executed"))
+    if (
+        mode in {"live", "refresh-paper"}
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+    ):
+        metrics: dict[str, Any] = {
+            "comparison": comparison,
+            "h5_by_d_run": data.get("h5_by_d_run") or {},
+            "h2_by_d_run": data.get("h2_by_d_run") or {},
+            "executed": True,
+        }
+        # Gate4 paper-pack fields (optional on gate3).
+        if "paper_refreshed" in data:
+            if not bool(data.get("paper_refreshed")):
+                return None
+            metrics["paper_refreshed"] = True
+            metrics["primary_pass"] = bool(data.get("primary_pass"))
+            metrics["h2_pass"] = bool(data.get("h2_pass"))
+            metrics["h5_pass"] = bool(data.get("h5_pass"))
+            metrics["ready_status"] = data.get("ready_status")
+            metrics["figures_written"] = list(data.get("figures_written") or [])
+        return {"prior_live_metrics": metrics}
+    return None
+
+
+def _reinject_prior_live_into_gate_json(
+    path: Path, stashed: dict[str, Any]
+) -> bool:
+    """Merge stashed prior_live_* into a gate JSON sidecar (Tick 387)."""
+    if not path.is_file() or not stashed:
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    changed = False
+    if "prior_live_post" in stashed and not data.get("prior_live_post"):
+        data["prior_live_post"] = stashed["prior_live_post"]
+        changed = True
+    if "prior_live_metrics" in stashed and not data.get("prior_live_metrics"):
+        data["prior_live_metrics"] = stashed["prior_live_metrics"]
+        changed = True
+    if not changed:
+        return False
+    try:
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        return False
+    return True
+
+
+_GATE_JSON_STASH_KEYS = (
+    "docs/gate2_report.json",
+    "docs/gate3_report.json",
+    "docs/gate4_report.json",
+)
+
+
+def prior_live_stash_path(repo_root: Path | None = None) -> Path:
+    """Tick 387: gitignored durable path for prior_live_* across tip --apply."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    return root / ICML_PRIOR_LIVE_STASH_RELPATH
+
+
+def persist_prior_live_stash_from_working_tree(
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Scan dirty/existing gate JSON sidecars and write the durable stash file.
+
+    Merges with any existing stash so a later preflight-only dirt discard does
+    not drop previously captured live evidence.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_path = prior_live_stash_path(root)
+    merged: dict[str, Any] = {}
+    if stash_path.is_file():
+        try:
+            existing = json.loads(stash_path.read_text(encoding="utf-8"))
+            if isinstance(existing, dict) and isinstance(existing.get("gates"), dict):
+                merged = dict(existing["gates"])
+        except (json.JSONDecodeError, OSError):
+            merged = {}
+    captured: list[str] = []
+    for rel in _GATE_JSON_STASH_KEYS:
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        blob = _stash_prior_live_from_gate_json(data if isinstance(data, dict) else {})
+        if blob is None:
+            continue
+        merged[rel] = blob
+        captured.append(rel)
+    if not merged:
+        return {"ok": True, "captured": [], "path": str(stash_path), "gates": {}}
+    payload = {
+        "tick": 387,
+        "gates": merged,
+    }
+    try:
+        stash_path.parent.mkdir(parents=True, exist_ok=True)
+        stash_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "error": str(exc), "captured": captured, "path": str(stash_path)}
+    return {
+        "ok": True,
+        "captured": captured,
+        "path": str(stash_path),
+        "gates": merged,
+    }
+
+
+def reinject_prior_live_stash(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Reinject stashed prior_live_* into gate2/3/4 JSON after tip --apply.
+
+    Tick 387: ``discard_ephemeral_icml_dirt`` + ``git reset --hard`` would
+    otherwise wipe Tick 384–386 ``prior_live_*`` evidence. Stash file is
+    gitignored (survives hard reset); reinject restores trustable sidecars.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_path = prior_live_stash_path(root)
+    if not stash_path.is_file():
+        return True, "no prior_live stash"
+    try:
+        payload = json.loads(stash_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return False, f"prior_live stash unreadable: {exc}"
+    gates = payload.get("gates") if isinstance(payload, dict) else None
+    if not isinstance(gates, dict) or not gates:
+        return True, "prior_live stash empty"
+    reinjected: list[str] = []
+    for rel, blob in gates.items():
+        if rel not in _GATE_JSON_STASH_KEYS:
+            continue
+        if not isinstance(blob, dict):
+            continue
+        path = root / rel
+        if _reinject_prior_live_into_gate_json(path, blob):
+            reinjected.append(rel)
+    if not reinjected:
+        return True, "prior_live stash present but nothing reinjected (sidecars missing or already had prior_live)"
+    return True, f"reinjected prior_live into: {reinjected}"
 
 
 def porcelain_dirty_paths(repo_root: Path | None = None) -> list[str]:
@@ -1140,6 +1336,12 @@ def discard_ephemeral_icml_dirt(
     recovered mid-cron. Restoring *only* ``EPHEMERAL_ICML_RELPATHS`` keeps
     real code edits as a hard stop.
 
+    Tick 387: before restoring gate2/3/4 JSON, persist trustable
+    ``prior_live_post`` / ``prior_live_metrics`` into gitignored
+    ``docs/icml_prior_live_stash.json`` so tip ``--apply`` hard reset cannot
+    wipe Tick 384–386 paid evidence. Call ``reinject_prior_live_stash`` after
+    tip recover (cron / boot_recover).
+
     Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
     the tree is clean after this call (or was already clean).
     """
@@ -1147,6 +1349,10 @@ def discard_ephemeral_icml_dirt(
 
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     dirty = porcelain_dirty_paths(root)
+    # Tick 387: durable prior_live stash is gitignored in the real repo; also
+    # exclude it explicitly so tip --apply is not blocked when .gitignore lags.
+    stash_rel = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
+    dirty = [p for p in dirty if p.replace("\\", "/") != stash_rel]
     if not dirty:
         return True, "working tree clean"
 
@@ -1158,6 +1364,12 @@ def discard_ephemeral_icml_dirt(
         return False, f"non-ephemeral dirty paths block tip apply: {other[:8]}"
     if not ephemeral:
         return True, "working tree clean"
+
+    # Tick 387: capture prior_live_* before git restore wipes dirty gate JSON.
+    stash_info = persist_prior_live_stash_from_working_tree(root)
+    stash_note = ""
+    if stash_info.get("captured"):
+        stash_note = f"; prior_live stashed={stash_info.get('captured')}"
 
     restored: list[str] = []
     for rel in ephemeral:
@@ -1193,17 +1405,22 @@ def discard_ephemeral_icml_dirt(
         except OSError as exc:
             return False, f"failed discarding {rel}: {exc}"
 
-    remaining = porcelain_dirty_paths(root)
+    remaining = [
+        p
+        for p in porcelain_dirty_paths(root)
+        if p.replace("\\", "/") != stash_rel
+    ]
     if remaining:
         non_ephem = [p for p in remaining if not is_ephemeral_icml_path(p)]
         if non_ephem:
             return (
                 False,
-                f"discarded {restored}; still dirty non-ephemeral: {non_ephem[:8]}",
+                f"discarded {restored}; still dirty non-ephemeral: {non_ephem[:8]}"
+                f"{stash_note}",
             )
         # Only ephemeral remain (restore failed?) — try once more is useless
-        return False, f"discarded {restored}; ephemeral still dirty: {remaining[:8]}"
-    return True, f"discarded ephemeral dirt: {restored}"
+        return False, f"discarded {restored}; ephemeral still dirty: {remaining[:8]}{stash_note}"
+    return True, f"discarded ephemeral dirt: {restored}{stash_note}"
 
 
 def ensure_budget_spent_ledger_initialized(
