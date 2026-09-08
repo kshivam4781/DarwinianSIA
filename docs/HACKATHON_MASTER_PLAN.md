@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-08 (Section 21 ICML; Tick 378 direct G2 budget hydrate; Tick 377 direct G3/G4 budget hydrate; Tick 376 partial-stage spend reconcile; …)
+**Last updated:** 2026-09-08 (Section 21 ICML; Tick 379 direct gate post-live ledger stamp; Tick 378 direct G2 budget hydrate; Tick 377 direct G3/G4 budget hydrate; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -971,7 +971,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML partial-stage spend reconcile (Tick 376) | **DONE** | Sync bills complete-but-partial G3/G4; pipeline `project_budget` remaining pairs; post-G3/G4 absolute re-sync |
 | ICML direct G3/G4 budget hydrate (Tick 377) | **DONE** | `hydrate_direct_gate_budget_spent` loads ledger + bills unbilled local completes before direct G3/G4 budget check (closes pipeline-only Tick 376 bypass) |
 | ICML direct G2 budget hydrate (Tick 378) | **DONE** | G2 preflight hydrates via `run_estimate_usd` (closes G2 env-only spent bypass left after Tick 377 G3/G4-only wire) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–378 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML direct gate post-live ledger stamp (Tick 379) | **DONE** | `persist_direct_gate_stage_spend` stamps G2/G3/G4 after successful direct `--live` (closes cross-VM re-burn when hydrate never marked `stages_complete`) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–379 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2548,3 +2549,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Direct G3/G4 budget hydrate (Tick 377):** After Tick 376, pipeline sync billed mid-stack partials, but direct `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` still read `SIA_BUDGET_SPENT_USD` from env only (often 0). Mid-stack resume after a crash could green-light remaining pairs over the ~$20 ceiling. `hydrate_direct_gate_budget_spent` loads the ledger and bills unbilled local complete runs before the gate budget check (does not stamp `stages_complete`). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Direct G2 budget hydrate (Tick 378):** After Tick 377, direct `run_g2_smoke.py --live` still read `SIA_BUDGET_SPENT_USD` from env only. With prior G3/G4 spend in the ledger, G2 could green-light over the ~$20 ceiling. G2 preflight now calls the same hydrate helper with `run_estimate_usd` (single-run fallback; G3/G4 keep `pair_estimate_usd`). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Direct gate post-live ledger stamp (Tick 379):** After Tick 378, direct G2/G3/G4 `--live` still never stamped `stages_complete` post-success (hydrate bills without stage; only pipeline `bump_spent_reconciled` stamped). Cross-VM cron (`runs/` gitignored) could re-launch a completed direct-gate stage and double-burn the ~$20 ceiling. `persist_direct_gate_stage_spend` bills remaining unbilled completes and stamps G2/G3/G4 only when every planned run_id is complete. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

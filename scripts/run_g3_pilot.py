@@ -21,6 +21,8 @@ Hard stops (never violate):
   - Tick 377: direct ``--live`` hydrates ``SIA_BUDGET_SPENT_USD`` from the
     committed ledger + unbilled local complete runs before the budget check
     (closes pipeline-only Tick 376 bypass)
+  - Tick 379: after successful live (all planned B/D complete + scored),
+    persist ledger stage ``G3`` (hydrate alone never stamped stages)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -70,6 +72,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
+    persist_direct_gate_stage_spend,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -1027,6 +1030,20 @@ def main(argv: list[str] | None = None) -> int:
         report.h2_by_d_run = h2
     else:
         report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d")
+
+    # Tick 379: stamp ledger G3 after direct live when every planned run is
+    # complete (partials bill via persist but stay unstamped).
+    planned_ids = [p.b_run_id for p in report.plans] + [
+        p.d_run_id for p in report.plans
+    ]
+    _, persist_detail = persist_direct_gate_stage_spend(
+        "G3",
+        planned_ids,
+        pair_estimate_usd=float(DEFAULT_PAIR_ESTIMATE_USD),
+        resolve_run_dir=_run_dir_for,
+        repo_root=REPO_ROOT,
+    )
+    report.notes.append(persist_detail)
 
     write_gate3_report(report, args.report, executed=True)
     print(f"G3 report → {args.report}")

@@ -11,6 +11,8 @@ turnkey and hard-stops unsafe paid runs:
   - Tick 378: direct ``--live`` hydrates ``SIA_BUDGET_SPENT_USD`` from the
     committed ledger + unbilled local complete runs before the budget check
     (closes G2 bypass left after Tick 377 G3/G4 hydrate)
+  - Tick 379: after successful live + post-run gates, persist ledger stage
+    ``G2`` (hydrate alone never stamped ``stages_complete``)
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
@@ -60,6 +62,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
+    persist_direct_gate_stage_spend,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
@@ -829,9 +832,22 @@ def main(argv: list[str] | None = None) -> int:
         post.append(CheckResult("run_dir", True, str(run_dir)))
         post.extend(validate_g2_artifacts(run_dir))
 
+    g2_ok = all(c.ok for c in post)
+    # Tick 379: direct live success must stamp ledger G2 so cross-VM cron
+    # (runs/ gitignored) does not re-burn a completed smoke.
+    if selected == "live" and g2_ok:
+        _, persist_detail = persist_direct_gate_stage_spend(
+            "G2",
+            [int(run_id)],
+            run_estimate_usd=float(default_g2_estimate_usd()),
+            resolve_run_dir=_run_dir_for,
+            repo_root=REPO_ROOT,
+        )
+        report.notes.append(persist_detail)
+
     write_gate2_report(report, args.report, post=post)
     print(f"G2 report → {args.report}")
-    return 0 if all(c.ok for c in post) else 4
+    return 0 if g2_ok else 4
 
 
 if __name__ == "__main__":

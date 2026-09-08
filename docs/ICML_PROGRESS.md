@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T04:15Z — Tick 379 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-36fc`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 378's direct G2 budget hydrate, direct G2/G3/G4 `--live` still **never stamped** `stages_complete` post-success (hydrate bills without stage; only pipeline `bump_spent_reconciled` stamped). Cross-VM cron (`runs/` gitignored) could re-launch a completed direct-gate stage and double-burn the ~$20 ceiling. Highest leverage without paid spend: **direct gate post-live ledger stamp**.
+
+### What this tick did (ONE step)
+**Direct gate post-live ledger stamp (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 378 (`f49c`); confirmed secrets absent; boot `36fc` vs tip `f49c`
+2. Added `persist_direct_gate_stage_spend` (bill remaining unbilled completes; stamp G2/G3/G4 only when every planned run_id is complete); wired into direct G2/G3/G4 live success paths
+3. Tests: `test_persist_direct_gate_stamps_stage_and_bills` / `test_persist_direct_gate_incomplete_does_not_stamp` / `test_persist_direct_gate_no_double_bill`; STATUS remains IN_PROGRESS; secrets re-requested
+
+### Metrics delta
+| Metric | Before (Tick 378) | After (Tick 379) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Direct G2/G3/G4 preflight budget | ledger + unbilled local completes | unchanged |
+| Direct G2/G3/G4 post-live ledger | hydrate-only (no `stages_complete`) | **stamp G2/G3/G4 when all planned IDs complete** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
+
 ## 2026-09-08T02:15Z — Tick 378 (automation cron)
 
 ### Status snapshot

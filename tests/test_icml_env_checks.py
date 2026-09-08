@@ -31,6 +31,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_uv_on_path,
     extract_sia_shape_flags,
     hydrate_direct_gate_budget_spent,
+    persist_direct_gate_stage_spend,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
@@ -3304,3 +3305,112 @@ def test_hydrate_direct_gate_run_estimate_usd(
     ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
     assert 1300 in ledger["run_ids"]
     assert "G2" not in ledger["stages_complete"]
+
+
+def test_persist_direct_gate_stamps_stage_and_bills(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 379: complete planned runs bill + stamp stages_complete."""
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 0.5,
+                "stages_complete": [],
+                "run_ids": [],
+                "detail": "empty",
+            }
+        ),
+        encoding="utf-8",
+    )
+    run_dir = tmp_path / "runs" / "run_1300"
+    _mk_costed_complete_run(run_dir, cost_usd=0.2)
+
+    spent, detail = persist_direct_gate_stage_spend(
+        "G2",
+        [1300],
+        run_estimate_usd=1.5,
+        resolve_run_dir=lambda rid: run_dir if rid == 1300 else None,
+        repo_root=tmp_path,
+    )
+    assert spent > 0.5
+    assert "Tick 379" in detail
+    assert "stamped=True" in detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1300 in ledger["run_ids"]
+    assert "G2" in ledger["stages_complete"]
+    assert float(os.environ["SIA_BUDGET_SPENT_USD"]) == pytest.approx(spent)
+
+
+def test_persist_direct_gate_incomplete_does_not_stamp(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 379: partial completes bill but do not stamp the stage."""
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.0,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "G2 done",
+            }
+        ),
+        encoding="utf-8",
+    )
+    b = tmp_path / "runs" / "run_1201"
+    _mk_costed_complete_run(b, cost_usd=0.3)
+    # D run missing → incomplete G3
+
+    spent, detail = persist_direct_gate_stage_spend(
+        "G3",
+        [1201, 1301],
+        pair_estimate_usd=3.0,
+        resolve_run_dir=lambda rid: b if rid == 1201 else None,
+        repo_root=tmp_path,
+    )
+    assert spent > 1.0
+    assert "stamped=True" not in detail or "stamped=False" in detail
+    # Helper returns early with incomplete message when no stamp and after bill
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1201 in ledger["run_ids"]
+    assert "G3" not in ledger["stages_complete"]
+
+
+def test_persist_direct_gate_no_double_bill(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 379: already-ledgered IDs are not re-billed; stage can still stamp."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": [],
+                "run_ids": [1300],
+                "detail": "hydrate billed G2 without stage stamp",
+            }
+        ),
+        encoding="utf-8",
+    )
+    run_dir = tmp_path / "runs" / "run_1300"
+    _mk_costed_complete_run(run_dir, cost_usd=0.9)
+
+    spent, detail = persist_direct_gate_stage_spend(
+        "G2",
+        [1300],
+        run_estimate_usd=1.5,
+        resolve_run_dir=lambda rid: run_dir if rid == 1300 else None,
+        repo_root=tmp_path,
+    )
+    assert spent == pytest.approx(2.0)
+    assert "stamped=True" in detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert ledger["spent_usd"] == pytest.approx(2.0)
+    assert "G2" in ledger["stages_complete"]

@@ -1398,6 +1398,137 @@ def hydrate_direct_gate_budget_spent(
     )
 
 
+def persist_direct_gate_stage_spend(
+    stage: str,
+    planned_run_ids: list[int],
+    *,
+    pair_estimate_usd: float | None = None,
+    run_estimate_usd: float | None = None,
+    resolve_run_dir: Callable[[int], Path | None],
+    repo_root: Path | None = None,
+    env_key: str = "SIA_BUDGET_SPENT_USD",
+) -> tuple[float, str]:
+    """Tick 379: after successful direct G2/G3/G4 live, stamp ledger stage.
+
+    Tick 377/378 hydrate bills unbilled completes *before* live but does **not**
+    mark ``stages_complete``. Pipeline ``bump_spent_reconciled`` stamps stages
+    after each gate — but direct ``run_g2_smoke.py --live`` / ``run_g3_pilot.py
+    --live`` / ``run_g4_multiseed.py --live`` previously never wrote the ledger
+    post-success. Cross-VM cron (``runs/`` gitignored) would then re-launch a
+    completed direct-gate stage and double-burn the ~$20 ceiling.
+
+    This helper:
+
+    1. Loads the committed ledger into env.
+    2. Bills any still-unbilled **complete** planned run dirs (no double-count).
+    3. Stamps ``stage`` into ``stages_complete`` only when **every** planned
+       run_id is locally complete (partial stages stay unstamped).
+    4. Persists so the next cron/direct call resumes without re-spend.
+
+    Pass ``pair_estimate_usd`` for B+D pair gates (G3/G4) or ``run_estimate_usd``
+    for single-run G2. Exactly one estimate is required when unbilled locals
+    exist; stage-stamp-only (all IDs already in ledger) needs neither.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    stage_name = str(stage or "").strip()
+    if not stage_name:
+        raise ValueError("persist_direct_gate_stage_spend requires a non-empty stage")
+    planned = [int(x) for x in planned_run_ids]
+    if not planned:
+        raise ValueError("persist_direct_gate_stage_spend requires planned_run_ids")
+
+    ledger_path = budget_spent_ledger_path(root)
+    spent_after_ledger, ledger_detail = apply_persisted_spent_to_env(
+        path=ledger_path, env_key=env_key
+    )
+    ledger = load_budget_spent_ledger(ledger_path)
+    ledger_ids = {
+        int(x)
+        for x in (ledger.get("run_ids") or [])
+        if str(x).lstrip("-").isdigit()
+    }
+    prev_stages = {str(s) for s in (ledger.get("stages_complete") or []) if s}
+
+    complete_ids: list[int] = []
+    complete_dirs: list[Path] = []
+    unbilled: list[int] = []
+    unbilled_dirs: list[Path] = []
+    for rid in planned:
+        found = resolve_run_dir(rid)
+        if not darwinian_run_complete(found):
+            continue
+        complete_ids.append(rid)
+        assert found is not None
+        complete_dirs.append(found)
+        if rid not in ledger_ids:
+            unbilled.append(rid)
+            unbilled_dirs.append(found)
+
+    all_complete = len(complete_ids) == len(planned)
+    amt = 0.0
+    det = "no new unbilled completes"
+    if unbilled:
+        if run_estimate_usd is not None:
+            fallback = max(0.0, float(run_estimate_usd)) * len(unbilled)
+        elif pair_estimate_usd is not None:
+            n_pairs_equiv = len(unbilled) / 2.0
+            fallback = max(0.0, float(pair_estimate_usd)) * n_pairs_equiv
+        else:
+            raise TypeError(
+                "persist_direct_gate_stage_spend requires pair_estimate_usd "
+                "or run_estimate_usd when unbilled local completes exist"
+            )
+        amt, det = reconcile_gate_spend_usd(
+            unbilled_dirs, fallback_estimate=fallback
+        )
+
+    new_spent = float(spent_after_ledger) + float(amt)
+    os.environ[env_key] = f"{new_spent:.4f}"
+
+    stages_to_write: list[str] = list(ledger.get("stages_complete") or [])
+    stamped = False
+    if all_complete and stage_name not in prev_stages:
+        stages_to_write = list(stages_to_write) + [stage_name]
+        stamped = True
+    elif all_complete and stage_name in prev_stages and not unbilled:
+        return (
+            new_spent,
+            (
+                f"Tick 379 persist: {ledger_detail}; stage {stage_name} already "
+                f"stamped; no unbilled locals"
+            ),
+        )
+
+    if not unbilled and not stamped:
+        missing = [rid for rid in planned if rid not in complete_ids]
+        return (
+            float(spent_after_ledger),
+            (
+                f"Tick 379 persist: {ledger_detail}; incomplete stage {stage_name} "
+                f"(missing run_ids={missing}); not stamped"
+            ),
+        )
+
+    write_budget_spent_ledger(
+        spent_usd=new_spent,
+        stages_complete=stages_to_write,
+        run_ids=sorted(ledger_ids | set(complete_ids)),
+        detail=(
+            f"Tick 379 direct-gate persist {stage_name}: "
+            f"billed={len(unbilled)} stamped={stamped}; {det}"
+        ),
+        path=ledger_path,
+    )
+    return (
+        new_spent,
+        (
+            f"Tick 379 persist: {ledger_detail}; stage={stage_name} "
+            f"stamped={stamped}; billed {len(unbilled)} unbilled local run(s) "
+            f"+${amt:.4f} → spent=${new_spent:.4f} ({det})"
+        ),
+    )
+
+
 def ledger_stage_complete(
     stage: str,
     required_run_ids: list[int],
@@ -2088,15 +2219,18 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **direct G2 budget hydrate** — Tick 377 wired "
-        f"`hydrate_direct_gate_budget_spent` into G3/G4, but direct "
-        f"`run_g2_smoke.py --live` still read `SIA_BUDGET_SPENT_USD` from env "
-        f"only (often 0). After prior G3/G4 spend in the ledger, G2 could "
-        f"green-light over the ~$20 ceiling. G2 preflight now hydrates via "
-        f"`run_estimate_usd` (single-run fallback; G3/G4 keep "
-        f"`pair_estimate_usd`). Tip PR GitHub **title and body** stay frozen "
-        f"when using `open_git_pr` MCP (does **not** rewrite either on "
-        f"existing PRs — Tick 345–350; prefer verbatim args from "
+        f"- Tick {tick}: **direct gate post-live ledger stamp** — Tick 377/378 "
+        f"hydrate bills unbilled completes *before* live but never marked "
+        f"`stages_complete`. Pipeline `bump_spent_reconciled` stamps stages; "
+        f"direct `run_g2_smoke.py` / `run_g3_pilot.py` / `run_g4_multiseed.py` "
+        f"`--live` previously left the ledger unstamped after success, so "
+        f"cross-VM cron (`runs/` gitignored) could re-launch a completed "
+        f"direct-gate stage and double-burn the ~$20 ceiling. New helper "
+        f"`persist_direct_gate_stage_spend` bills remaining unbilled completes "
+        f"and stamps G2/G3/G4 only when every planned run_id is complete. "
+        f"Tip PR GitHub **title and body** stay frozen when using "
+        f"`open_git_pr` MCP (does **not** rewrite either on existing PRs — "
+        f"Tick 345–350; prefer verbatim args from "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
         f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
@@ -2112,11 +2246,11 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_hydrate_direct_gate_run_estimate_usd`\n"
-        f"- [x] `pytest tests/test_run_g2_smoke.py::"
-        f"test_g2_preflight_hydrates_budget_from_ledger`\n"
-        f"- [x] `pytest tests/test_run_g2_smoke.py::"
-        f"test_g2_preflight_hydrates_budget_from_unbilled_local`\n"
+        f"test_persist_direct_gate_stamps_stage_and_bills`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_persist_direct_gate_incomplete_does_not_stamp`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_persist_direct_gate_no_double_bill`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
