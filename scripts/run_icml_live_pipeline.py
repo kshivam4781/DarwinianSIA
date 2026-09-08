@@ -38,6 +38,10 @@ Hard stops (delegated to gate runners; never violate here either):
     pairs when the stage was incomplete. Now sync reconciles spend for
     complete-but-partial G3/G4 runs, and preflight/live stack projects
     remaining pairs only.
+  - Tick 384: after G2 resume-skip (ledger-only or after ``g2.main``), require
+    ``load_g2_post_for_g3`` (local ``validate_g2_artifacts`` or live-executed /
+    ``prior_live_post`` gate2 sidecar) before paid G3 — closes pipeline-only
+    bypass of Tick 383 when ledger says G2 done but post evidence was wiped.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -568,6 +572,56 @@ def _load_gate3_sidecar_raw(report_md: Path) -> dict[str, Any]:
     except (json.JSONDecodeError, OSError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+
+def load_g2_post_for_g3(
+    *,
+    g2_run_id: int,
+    report_md: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 384: authoritative G2→G3 post-gates (prefer local validate).
+
+    Resume can skip the G2 runner when the ledger marks G2 complete, but
+    ``gate2_report.json`` is often still ``mode=preflight`` with empty ``post``
+    (cron preflight after live / Tick 380 clobber). Trusting the ledger alone
+    would auto-burn G3/G4 on a failed or never-validated smoke. Prefer local
+    ``validate_g2_artifacts``. Ledger-only / no-local fallback accepts the sidecar
+    only when live post evidence exists (``mode=="live"`` + ``post``, or Tick
+    384 ``prior_live_post`` preserved across preflight) and all checks pass.
+    """
+    report_md = report_md or (REPO_ROOT / "docs" / "gate2_report.md")
+    found = g2._run_dir_for(g2_run_id)
+    if found is not None and darwinian_run_complete(found):
+        checks = g2.validate_g2_artifacts(found)
+        failed = [c for c in checks if not c.ok]
+        if failed:
+            detail = "; ".join(f"{c.name}={c.detail}" for c in failed)
+            return False, (
+                f"Tick 384: local G2 run_{g2_run_id} post-gates failed ({detail})"
+            )
+        return True, (
+            f"Tick 384: local G2 run_{g2_run_id} post-gates ok"
+        )
+
+    data = g2._load_gate2_sidecar_raw(report_md)
+    post, source = g2._live_post_from_gate2_sidecar(data)
+    if post and all(c.ok for c in post):
+        return True, (
+            f"Tick 384: trusted gate2 sidecar post (source={source}; "
+            f"no/incomplete local run_{g2_run_id})"
+        )
+    if post:
+        failed = [c for c in post if not c.ok]
+        detail = "; ".join(f"{c.name}={c.detail}" for c in failed)
+        return False, (
+            f"Tick 384: gate2 sidecar post failed (source={source}; {detail})"
+        )
+    mode = str(data.get("mode") or "")
+    return False, (
+        "Tick 384: no local G2 artifacts and no live-executed gate2 post "
+        f"(mode={mode or 'missing'!r}) — refuse G3 auto-advance"
+    )
 
 
 def load_g3_metrics_for_g4(
@@ -1382,6 +1436,19 @@ def run_live_stack(
         report.notes.append(
             f"G2 spend reconcile: {g2_spend_detail} (bumped ${g2_amt:.4f})"
         )
+    # Tick 384: G2→G3 requires proven post-checks even on resume-skip /
+    # ledger-only (Tick 372 covers local-only; Tick 383 covers direct runner).
+    g2_post_ok, g2_post_note = load_g2_post_for_g3(
+        g2_run_id=g2_run_id,
+        report_md=REPO_ROOT / "docs" / "gate2_report.md",
+    )
+    report.notes.append(g2_post_note)
+    if not g2_post_ok:
+        report.blockers.append(
+            f"Tick 384: refuse G3 — {g2_post_note}"
+        )
+        report.stopped_after = "G2"
+        return 4
     if stop_after == "g2":
         report.stopped_after = "G2"
         report.notes.append("stop-after=g2")

@@ -937,3 +937,108 @@ def test_g2_live_ledger_skip_refreshes_post(
     sidecar = json.loads(report_path.with_suffix(".json").read_text(encoding="utf-8"))
     assert sidecar["post"]
     assert any(c["name"] == "nonzero_fitness" and c["ok"] for c in sidecar["post"])
+
+
+def test_write_gate2_preflight_preserves_prior_live_post(tmp_path: Path) -> None:
+    """Tick 384: preflight rewrite keeps prior_live_post for pipeline trust."""
+    import run_g2_smoke as mod
+
+    report_md = tmp_path / "gate2_report.md"
+    sidecar = report_md.with_suffix(".json")
+    live_post = [
+        {"name": "belief_store", "ok": True, "detail": "present"},
+        {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2 > min=0"},
+    ]
+    sidecar.write_text(
+        json.dumps({"mode": "live", "run_id": 1300, "post": live_post}),
+        encoding="utf-8",
+    )
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T14:00:00Z",
+        mode="preflight",
+        run_id=1300,
+        ready_for_live=False,
+        ready_for_dry_run=True,
+        blockers=["nebius_key"],
+        checks=[],
+        command=["sia", "run"],
+        notes=[],
+    )
+    mod.write_gate2_report(report, report_md, post=None)
+    data = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert data["mode"] == "preflight"
+    assert data["post"] == []
+    assert data["prior_live_post"]
+    assert any(c["name"] == "nonzero_fitness" and c["ok"] for c in data["prior_live_post"])
+    # Trust path still finds the preserved post.
+    post, source = mod._live_post_from_gate2_sidecar(data)
+    assert source == "prior_live_post"
+    assert post and all(c.ok for c in post)
+
+
+def test_g2_live_ledger_skip_refuses_without_post(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 384: ledger-skip without trustable post → exit 4 (no false-green)."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Preflight-only sidecar — no live post / prior_live_post.
+    (docs / "gate2_report.json").write_text(
+        json.dumps({"mode": "preflight", "run_id": 1300, "post": []}),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 384},
+    )
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("sia must not run")),
+    )
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 4

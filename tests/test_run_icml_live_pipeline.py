@@ -16,6 +16,7 @@ from run_icml_live_pipeline import (  # noqa: E402
     bump_spent,
     bump_spent_reconciled,
     g2_resume_gates_ok,
+    load_g2_post_for_g3,
     g3_pilot_promising,
     load_g3_metrics_for_g4,
     project_budget,
@@ -320,6 +321,12 @@ def test_live_skips_completed_g2(
     monkeypatch.setattr(pipe.g2, "main", g2_boom)
     monkeypatch.setattr(pipe.g3, "main", g3_ok)
     monkeypatch.setattr(pipe, "_fetch_diamond", lambda **_k: ["fetched"])
+    # Tick 372/384: this fixture is accuracy-only; stub post-gates so the
+    # resume-skip path under test is ledger/complete-run skip (not artifact depth).
+    monkeypatch.setattr(pipe, "g2_resume_gates_ok", lambda _rid: (True, "stub ok"))
+    monkeypatch.setattr(
+        pipe, "load_g2_post_for_g3", lambda **_k: (True, "Tick 384: stub ok")
+    )
     # Make G3 look promising without real sidecar.
     monkeypatch.setattr(
         pipe,
@@ -396,6 +403,29 @@ def test_live_skips_g2_from_committed_ledger_without_run_dirs(
         run_ids=[1300],
         path=docs / "icml_budget_spent.json",
     )
+    # Tick 384: ledger-only G2→G3 requires trustable gate2 post evidence.
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "run_id": 1300,
+                "post": [],
+                "prior_live_post": [
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                    {"name": "epistemic_value_jsonl", "ok": True, "detail": "present"},
+                    {"name": "cabs_json", "ok": True, "detail": "ok"},
+                    {"name": "scoped_mutation_bias", "ok": True, "detail": "ok"},
+                    {
+                        "name": "nonzero_fitness",
+                        "ok": True,
+                        "detail": "best=0.2000 > min=0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
     monkeypatch.setattr(pipe.g2, "_run_dir_for", lambda _rid: None)
     monkeypatch.setattr(pipe.g3, "_run_dir_for", lambda _rid: None)
     monkeypatch.setattr(pipe.g4, "_run_dir_for", lambda _rid: None)
@@ -438,11 +468,12 @@ def test_live_skips_g2_from_committed_ledger_without_run_dirs(
     assert float(os.environ["SIA_BUDGET_SPENT_USD"]) >= 0.85
     text = (docs / "pipe.md").read_text(encoding="utf-8")
     assert "ledger" in text.lower() or "skipped G2" in text or "already complete" in text
+    assert "Tick 384" in text or "prior_live_post" in text or "post-gates ok" in text or "trusted gate2" in text
     ledger = json.loads((docs / "icml_budget_spent.json").read_text())
-    # G2 spend preserved from ledger; G3 bump may add estimate after live G3.
+    # G2 spend preserved from ledger; stubbed G3 creates no local runs so
+    # stages_complete may remain G2-only (Tick 376 sync needs artifacts).
     assert ledger["spent_usd"] >= 0.85
     assert "G2" in ledger["stages_complete"]
-    assert "G3" in ledger["stages_complete"]
 
 
 def test_reconcile_gate_spend_prefers_actual_usd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1583,3 +1614,118 @@ def test_preflight_stack_blocks_stale_offline_bvd(
     assert report.ready_for_live is False
     assert any(b.startswith("offline_bvd:") for b in report.blockers)
     assert any("Tick 300" in n and "refuse live" in n for n in report.notes)
+
+
+def test_load_g2_post_for_g3_trusts_prior_live_post(tmp_path: Path) -> None:
+    """Tick 384: prior_live_post survives preflight mode for G2→G3 trust."""
+    import run_icml_live_pipeline as pipe
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "run_id": 1300,
+                "post": [],
+                "prior_live_post": [
+                    {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2"},
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Patch REPO_ROOT via report_md arg; no local run dirs.
+    import run_g2_smoke as g2
+
+    g2_orig = g2._run_dir_for
+    try:
+        g2._run_dir_for = lambda _rid: None  # type: ignore
+        ok, note = load_g2_post_for_g3(
+            g2_run_id=1300, report_md=docs / "gate2_report.md"
+        )
+    finally:
+        g2._run_dir_for = g2_orig  # type: ignore
+    assert ok is True
+    assert "prior_live_post" in note
+
+
+def test_load_g2_post_for_g3_refuses_preflight_without_prior(tmp_path: Path) -> None:
+    """Tick 384: bare preflight sidecar must not unlock G3."""
+    import run_g2_smoke as g2
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps({"mode": "preflight", "run_id": 1300, "post": []}),
+        encoding="utf-8",
+    )
+    orig = g2._run_dir_for
+    try:
+        g2._run_dir_for = lambda _rid: None  # type: ignore
+        ok, note = load_g2_post_for_g3(
+            g2_run_id=1300, report_md=docs / "gate2_report.md"
+        )
+    finally:
+        g2._run_dir_for = orig  # type: ignore
+    assert ok is False
+    assert "refuse G3" in note
+
+
+def test_live_stack_refuses_g3_without_g2_post(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 384: ledger G2 complete + no post → exit 4 before G3 spend."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+
+    import run_icml_live_pipeline as pipe
+    from icml_env_checks import write_budget_spent_ledger
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-09-08 — Tick 384 (test)\n", encoding="utf-8"
+    )
+    _seed_recipe_lock_docs(docs)
+    write_budget_spent_ledger(
+        spent_usd=0.85,
+        stages_complete=["G2"],
+        detail="prior tick G2",
+        run_ids=[1300],
+        path=docs / "icml_budget_spent.json",
+    )
+    (docs / "gate2_report.json").write_text(
+        json.dumps({"mode": "preflight", "run_id": 1300, "post": []}),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
+    monkeypatch.setattr(pipe.g2, "_run_dir_for", lambda _rid: None)
+    monkeypatch.setattr(pipe.g3, "_run_dir_for", lambda _rid: None)
+    monkeypatch.setattr(pipe.g4, "_run_dir_for", lambda _rid: None)
+
+    called: list[str] = []
+    monkeypatch.setattr(pipe.g2, "main", lambda *_a, **_k: called.append("g2") or 0)
+    monkeypatch.setattr(pipe.g3, "main", lambda *_a, **_k: called.append("g3") or 0)
+    monkeypatch.setattr(pipe, "_fetch_diamond", lambda **_k: ["fetched"])
+
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--stop-after",
+            "g3",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 4
+    assert "g2" not in called
+    assert "g3" not in called
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "Tick 384" in text or "refuse G3" in text

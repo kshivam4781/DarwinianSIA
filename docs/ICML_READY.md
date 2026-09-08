@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 383: direct G2 ledger-skip post-validation refresh landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 384: pipeline G2→G3 post-gate + prior_live_post preserve landed; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -294,6 +294,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 381 direct G4 ledger-skip paper-pack refresh — `refresh_paper_pack_on_ledger_skip` re-scores local B/D or trusts live-executed gate4 sidecar after Tick 380 early-return (pipeline Tick 374 parity; closes READY stuck after paid G4)
 - [x] Tick 382 direct G3 ledger-skip pilot-metrics refresh — `refresh_g3_metrics_on_ledger_skip` re-scores local B/D or trusts live-executed gate3 sidecar after Tick 380 wrote empty `executed=False` (pipeline Tick 373 parity; closes G3 sidecar clobber / G4 advance false-refuse)
 - [x] Tick 383 direct G2 ledger-skip post-validation refresh — `refresh_g2_post_on_ledger_skip` re-validates local G2 or trusts live-executed gate2 sidecar after Tick 380 wrote gate2 without `post=` (closes nonzero-fitness / belief_store clobber; completes G2/G3/G4 ledger-skip refresh triad)
+- [x] Tick 384 pipeline G2→G3 post-gate + prior_live_post preserve — `load_g2_post_for_g3` before paid G3; direct ledger-skip exit 4 without post; preflight preserves `prior_live_post` (closes pipeline-only Tick 383 bypass / preflight wipe)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`)
 
@@ -424,9 +425,9 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 |------|--------|
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
-| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume + **Tick 383** ledger-skip post refresh); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
+| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume + **Tick 383** ledger-skip post refresh + **Tick 384** pipeline G2→G3 post-gate); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
 | G3 pilot B vs D | Offline synthetic pilot preserved (Tick 300 live-shape `1890–1904`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **4/5** Tick 366; post-steer H2 on `run_1900`); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score + **Tick 382** ledger-skip metrics refresh); NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume; **Tick 377** direct budget hydrate; **Tick 380** ledger-stage skip; **Tick 381** ledger-skip paper-pack refresh); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5); live pack automatable via Tick 28/29/374/381 pipeline but NOT STARTED |
 
-<!-- Tick 383 note: Gate labels / secrets stack through Tick 383 direct G2 ledger-skip post-validation refresh; live still blocked on NEBIUS+HF -->
+<!-- Tick 384 note: Gate labels / secrets stack through Tick 384 pipeline G2→G3 post-gate + prior_live_post; live still blocked on NEBIUS+HF -->

@@ -19,6 +19,9 @@ turnkey and hard-stops unsafe paid runs:
   - Tick 383: ledger-skip still re-validates / trusts G2 post-checks (local
     ``validate_g2_artifacts`` or live-executed gate2 sidecar) so Tick 380 cannot
     clobber nonzero-fitness evidence needed for honest G2→G3 advance
+  - Tick 384: ledger-skip returns exit 4 when post-checks cannot be proven;
+    preflight preserves ``prior_live_post`` so cron preflight cannot wipe
+    live evidence the pipeline needs for G2→G3
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
@@ -531,6 +534,51 @@ def _load_gate2_sidecar_raw(gate2_report_md: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _post_checks_from_raw(post_raw) -> list[CheckResult]:
+    """Parse gate2 sidecar ``post`` / ``prior_live_post`` list into CheckResults."""
+    post: list[CheckResult] = []
+    if not isinstance(post_raw, list):
+        return post
+    for item in post_raw:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "")
+        if not name:
+            continue
+        post.append(
+            CheckResult(
+                name=name,
+                ok=bool(item.get("ok")),
+                detail=str(item.get("detail") or ""),
+            )
+        )
+    return post
+
+
+def _live_post_from_gate2_sidecar(data: dict) -> tuple[list[CheckResult], str]:
+    """Tick 383/384: extract trustable live post from gate2 sidecar.
+
+    Accepts ``mode=="live"`` + nonempty ``post``, or Tick 384
+    ``prior_live_post`` preserved across preflight rewrites.
+    """
+    mode = str(data.get("mode") or "")
+    post_raw = data.get("post")
+    if mode == "live" and isinstance(post_raw, list) and post_raw:
+        post = _post_checks_from_raw(post_raw)
+        if post:
+            return post, "live"
+    prior = data.get("prior_live_post")
+    if isinstance(prior, list) and prior:
+        post = _post_checks_from_raw(prior)
+        if post:
+            return post, "prior_live_post"
+    if isinstance(prior, dict):
+        post = _post_checks_from_raw(prior.get("post"))
+        if post:
+            return post, "prior_live_post"
+    return [], ""
+
+
 def refresh_g2_post_on_ledger_skip(
     report: PreflightReport,
     *,
@@ -542,7 +590,8 @@ def refresh_g2_post_on_ledger_skip(
     without ``post=``, wiping live-executed post-validation (belief_store /
     nonzero_fitness) from the gate2 sidecar. Prefer local complete G2 →
     ``validate_g2_artifacts``. Else trust a live-mode sidecar with nonempty
-    ``post`` (never invent post-checks from a preflight sidecar).
+    ``post`` (or Tick 384 ``prior_live_post`` preserved across preflight;
+    never invent post-checks from a bare preflight sidecar).
     """
     run_dir = _run_dir_for(int(report.run_id))
     if run_dir is not None and darwinian_run_complete(run_dir):
@@ -556,31 +605,17 @@ def refresh_g2_post_on_ledger_skip(
 
     data = _load_gate2_sidecar_raw(gate2_report_md)
     mode = str(data.get("mode") or "")
-    post_raw = data.get("post")
-    if mode == "live" and isinstance(post_raw, list) and post_raw:
-        post: list[CheckResult] = []
-        for item in post_raw:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "")
-            if not name:
-                continue
-            post.append(
-                CheckResult(
-                    name=name,
-                    ok=bool(item.get("ok")),
-                    detail=str(item.get("detail") or ""),
-                )
-            )
-        if post:
-            note = (
-                "Tick 383: trusted live-executed gate2 sidecar post-checks "
-                f"(no/incomplete local run_{report.run_id}; "
-                f"post_ok={all(c.ok for c in post)})"
-            )
-            report.notes.append(note)
-            return post, note
+    post, source = _live_post_from_gate2_sidecar(data)
+    if post:
+        note = (
+            "Tick 383: trusted live-executed gate2 sidecar post-checks "
+            f"(source={source}; no/incomplete local run_{report.run_id}; "
+            f"post_ok={all(c.ok for c in post)})"
+        )
+        report.notes.append(note)
+        return post, note
 
+    post_raw = data.get("post")
     note = (
         "Tick 383: ledger-skip but no local G2 artifacts and no live-executed "
         f"gate2 post (mode={mode or 'missing'!r}, "
@@ -683,6 +718,22 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
 
     # Machine-readable sidecar for automation ticks
     sidecar = out.with_suffix(".json")
+    # Tick 384: preflight rewrites must not wipe live post evidence. Preserve
+    # prior live post under prior_live_post so pipeline G2→G3 / ledger-skip
+    # trust still works after cron --preflight-only.
+    existing = _load_gate2_sidecar_raw(out)
+    prior_live_post = None
+    if post is not None:
+        # Fresh post from live/dry-run — also keep as prior for later preflights.
+        prior_live_post = [asdict(c) for c in post]
+    else:
+        preserved, _src = _live_post_from_gate2_sidecar(existing)
+        if preserved:
+            prior_live_post = [asdict(c) for c in preserved]
+        elif isinstance(existing.get("prior_live_post"), list):
+            prior_live_post = existing.get("prior_live_post")
+        elif isinstance(existing.get("prior_live_post"), dict):
+            prior_live_post = existing.get("prior_live_post")
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -694,6 +745,8 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         "command": report.command,
         "post": [asdict(c) for c in (post or [])],
     }
+    if prior_live_post is not None:
+        payload["prior_live_post"] = prior_live_post
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
@@ -924,6 +977,14 @@ def main(argv: list[str] | None = None) -> int:
         print(post_note)
         post_ok = bool(post) and all(c.ok for c in post)
         print(f"g2_post_ok={post_ok} post_n={len(post or [])}")
+        # Tick 384: do not false-green into G3 when ledger-skip cannot prove
+        # nonzero-fitness / belief_store post-checks (pipeline calls g2.main).
+        if not post_ok:
+            print(
+                "G2 ledger-skip refused G3 advance — missing/failed post-checks",
+                file=sys.stderr,
+            )
+            return 4
         return 0
     if selected == "live" and not report.ready_for_live:
         write_gate2_report(report, args.report)
