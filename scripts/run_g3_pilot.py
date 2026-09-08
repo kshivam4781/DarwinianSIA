@@ -25,6 +25,9 @@ Hard stops (never violate):
     persist ledger stage ``G3`` (hydrate alone never stamped stages)
   - Tick 380: ``--live`` skips paid re-run when committed ledger already marks
     ``G3`` complete for the planned run IDs (pipeline Tick 285 parity)
+  - Tick 382: ledger-skip still re-scores / trusts G3 pilot metrics (pipeline
+    Tick 373 parity — Tick 380 wrote ``executed=False`` null comparison and
+    could clobber a live-executed gate3 sidecar needed for G4 advance)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -587,6 +590,86 @@ def score_pilot(
     return comparison, h5, h2
 
 
+def _load_gate3_sidecar_raw(report_md: Path) -> dict[str, Any]:
+    """Full gate3 JSON (mode/executed + compare) for Tick 382 ledger-skip trust."""
+    sidecar = report_md.with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def refresh_g3_metrics_on_ledger_skip(
+    report: G3PreflightReport,
+    *,
+    gate3_report_md: Path,
+) -> tuple[bool, str]:
+    """Tick 382: rebuild / trust G3 pilot metrics after direct ledger-skip.
+
+    Tick 380 early-returned on ``ledger_skip`` and wrote ``executed=False`` with
+    ``comparison=null``, which could clobber a live-executed gate3 sidecar that
+    pipeline Tick 373 needs for G4 advance. Prefer local complete B/D dirs →
+    ``score_pilot``. Else trust a live-executed sidecar with non-null comparison
+    (never invent metrics from a preflight sidecar).
+    """
+    b_ids = [p.b_run_id for p in report.plans]
+    d_ids = [p.d_run_id for p in report.plans]
+    b_dirs: list[Path] = []
+    d_dirs: list[Path] = []
+    for rid in b_ids:
+        found = _run_dir_for(rid)
+        if found is not None and darwinian_run_complete(found):
+            b_dirs.append(found)
+    for rid in d_ids:
+        found = _run_dir_for(rid)
+        if found is not None and darwinian_run_complete(found):
+            d_dirs.append(found)
+
+    if len(b_dirs) == len(b_ids) and len(d_dirs) == len(d_ids) and b_ids:
+        comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
+        report.comparison = comparison
+        report.h5_by_d_run = h5 or {}
+        report.h2_by_d_run = h2 or {}
+        n_pairs = comparison.get("n_pairs") if isinstance(comparison, dict) else None
+        note = (
+            "Tick 382: re-scored G3 from local B/D after ledger-skip "
+            f"(n_pairs={n_pairs})"
+        )
+        report.notes.append(note)
+        return True, note
+
+    data = _load_gate3_sidecar_raw(gate3_report_md)
+    comparison = data.get("comparison")
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    if (
+        mode == "live"
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+    ):
+        report.comparison = comparison
+        report.h5_by_d_run = data.get("h5_by_d_run") or {}
+        report.h2_by_d_run = data.get("h2_by_d_run") or {}
+        note = (
+            "Tick 382: trusted live-executed gate3 sidecar "
+            f"(no/partial local G3 dirs; mode={mode})"
+        )
+        report.notes.append(note)
+        return True, note
+
+    note = (
+        "Tick 382: ledger-skip but no local G3 artifacts and no live-executed "
+        f"gate3 comparison (mode={mode or 'missing'!r}, executed={executed}) — "
+        "metrics not updated"
+    )
+    report.notes.append(note)
+    return False, note
+
+
 def _extract_offline_block(existing: str | None) -> str:
     """Preserve prior offline pilot narrative when refreshing the live section."""
     if not existing:
@@ -1033,13 +1116,22 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Tick 380: ledger-complete G3 → exit 0 without sia (even if secrets absent).
+    # Tick 382: still re-score / trust pilot metrics (pipeline Tick 373 parity).
     if report.ledger_skip:
         report.notes.append(
             "Tick 380: skipped paid G3 — ledger stages_complete already lists G3 "
             "for planned run IDs"
         )
-        write_gate3_report(report, args.report, executed=False)
+        metrics_ok, metrics_note = refresh_g3_metrics_on_ledger_skip(
+            report, gate3_report_md=args.report
+        )
+        report.notes.append(metrics_note)
+        write_gate3_report(
+            report, args.report, executed=bool(report.comparison)
+        )
         print(f"G3 live skipped (ledger resume) → {args.report}")
+        print(metrics_note)
+        print(f"g3_metrics_ok={metrics_ok} comparison={report.comparison is not None}")
         return 0
 
     if not report.ready_for_live:

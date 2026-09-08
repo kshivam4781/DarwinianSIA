@@ -763,3 +763,258 @@ def test_run_sequential_live_resume_skips_complete(
     assert calls == ["B:1202", "D:1302"]
     assert len(b_dirs) == 2 and len(d_dirs) == 2
     assert any("resume-skip" in n for n in notes)
+
+
+def test_refresh_g3_metrics_on_ledger_skip_local_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 382: ledger-skip re-scores local B/D into gate3 metrics."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+
+    _write_complete_run(tmp_path / "runs" / "run_1201")
+    _write_complete_run(tmp_path / "runs" / "run_1301")
+
+    report = G3PreflightReport(
+        timestamp="2026-09-08T10:05:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    calls: dict[str, object] = {}
+
+    def _fake_score(b_dirs, d_dirs):  # noqa: ANN001
+        calls["b_dirs"] = [str(p) for p in b_dirs]
+        calls["d_dirs"] = [str(p) for p in d_dirs]
+        return (
+            {
+                "n_pairs": 1,
+                "d_wins_gens30": 1,
+                "mean_final_gap": 0.05,
+                "primary_final_pass": True,
+            },
+            {"run_1301": {"spearman_rho": 0.8}},
+            {"run_1301": {"preferred_share": 0.75, "field": "tool_strategy"}},
+        )
+
+    monkeypatch.setattr(mod, "score_pilot", _fake_score)
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is True
+    assert "re-scored G3 from local" in note
+    assert len(calls["b_dirs"]) == 1  # type: ignore[arg-type]
+    assert len(calls["d_dirs"]) == 1  # type: ignore[arg-type]
+    assert report.comparison is not None
+    assert report.comparison["d_wins_gens30"] == 1
+    assert report.h5_by_d_run["run_1301"]["spearman_rho"] == 0.8
+
+
+def test_refresh_g3_metrics_on_ledger_skip_trusts_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 382: no local dirs → trust live-executed gate3 sidecar."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": {
+                    "n_pairs": 1,
+                    "d_wins_gens30": 1,
+                    "mean_final_gap": 0.04,
+                    "primary_final_pass": True,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.6}},
+                "h2_by_d_run": {"run_1301": {"preferred_share": 0.7}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+
+    report = G3PreflightReport(
+        timestamp="2026-09-08T10:05:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is True
+    assert "trusted live-executed gate3 sidecar" in note
+    assert report.comparison is not None
+    assert report.comparison["d_wins_gens30"] == 1
+    assert report.h5_by_d_run["run_1301"]["spearman_rho"] == 0.6
+
+
+def test_refresh_g3_metrics_on_ledger_skip_refuses_preflight_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 382: preflight sidecar must not invent G3 metrics on ledger-skip."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+
+    report = G3PreflightReport(
+        timestamp="2026-09-08T10:05:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is False
+    assert "metrics not updated" in note
+    assert report.comparison is None
+
+
+def test_g3_live_ledger_skip_refreshes_metrics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 382: direct --live ledger-skip calls metrics refresh (no sia)."""
+    import run_g3_pilot as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 4.0,
+                "stages_complete": ["G2", "G3"],
+                "run_ids": [1300, 1201, 1301],
+                "detail": "g2+g3",
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Pre-existing live sidecar that Tick 380 would have clobbered.
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": {
+                    "n_pairs": 1,
+                    "d_wins_gens30": 1,
+                    "mean_final_gap": 0.06,
+                    "primary_final_pass": True,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.9}},
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "# Gate 3 report — Pilot B vs D\n\n"
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        "## Offline synthetic pilot (not a live G3 substitute)\n\n"
+        "stub\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 382},
+    )
+
+    sia_calls: list[list[str]] = []
+
+    def _fake_run(cmd, cwd=None, env=None):  # noqa: ANN001
+        sia_calls.append(list(cmd))
+
+        class P:
+            returncode = 0
+
+        return P()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+
+    rc = mod.main(
+        [
+            "--live",
+            "--seeds",
+            "1",
+            "--b-run-ids",
+            "1201",
+            "--d-run-ids",
+            "1301",
+            "--report",
+            str(docs / "gate3_report.md"),
+            "--cwd",
+            str(tmp_path / "SIA"),
+            "--allow-stale-tip",
+        ]
+    )
+    assert rc == 0
+    assert sia_calls == []
+    sidecar = json.loads((docs / "gate3_report.json").read_text(encoding="utf-8"))
+    assert sidecar["executed"] is True
+    assert sidecar["comparison"]["d_wins_gens30"] == 1
+    text = (docs / "gate3_report.md").read_text(encoding="utf-8")
+    assert "Tick 382" in text or "ledger" in text.lower()
+    assert "Live pilot metrics" in text

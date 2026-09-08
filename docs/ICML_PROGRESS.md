@@ -1,5 +1,38 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T10:15Z — Tick 382 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-7519`; recovered tip `f49c`
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. After Tick 381's direct G4 ledger-skip paper-pack refresh, direct G3 `--live` ledger-skip still wrote `executed=False` with null comparison — clobbering any live-executed gate3 sidecar that pipeline Tick 373 needs for G4 advance when local `runs/` are absent. Highest leverage without paid spend: **direct G3 ledger-skip pilot-metrics refresh**.
+
+### What this tick did (ONE step)
+**Direct G3 ledger-skip pilot-metrics refresh (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 381 (`f49c`); confirmed secrets absent; boot `7519` vs tip `f49c`
+2. Added `refresh_g3_metrics_on_ledger_skip` (local B/D re-score via `score_pilot`, else trust live-executed gate3 sidecar; never invent metrics from preflight sidecar); wired into direct G3 `--live` ledger-skip path
+3. Tests: `test_refresh_g3_metrics_on_ledger_skip_local_dirs` / `test_refresh_g3_metrics_on_ledger_skip_trusts_sidecar` / `test_refresh_g3_metrics_on_ledger_skip_refuses_preflight_sidecar` / `test_g3_live_ledger_skip_refreshes_metrics` (4/4); STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 381) | After (Tick 382) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Direct G3 `--live` when ledger stage done | skip + write empty `executed=False` (sidecar clobber risk) | **skip + metrics refresh / sidecar trust (Tick 382)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-08T08:15Z — Tick 381 (automation cron)
 
 ### Status snapshot
