@@ -25,6 +25,8 @@ Hard stops (never violate):
     persist ledger stage ``G4`` (hydrate alone never stamped stages)
   - Tick 380: ``--live`` skips paid re-run when committed ledger already marks
     ``G4`` complete for the planned run IDs (pipeline Tick 285 parity)
+  - Tick 381: ledger-skip still refreshes paper pack / ICML_READY (pipeline
+    Tick 374 parity — Tick 380 early-return left READY stuck after paid G4)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -70,6 +72,7 @@ from icml_env_checks import (  # noqa: E402
     collect_icml_secrets_status,
     committed_g3g4_recipes_match_live_shape,
     committed_offline_bvd_matches_live_shape,
+    darwinian_run_complete,
     default_g4_pair_estimate_usd,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
@@ -1127,6 +1130,115 @@ def write_gate4_report(
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _load_gate4_sidecar_raw(report_md: Path) -> dict[str, Any]:
+    """Load gate4 JSON sidecar next to the markdown report (Tick 381)."""
+    sidecar = report_md.with_suffix(".json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def refresh_paper_pack_on_ledger_skip(
+    report: G4PreflightReport,
+    *,
+    paper_artifacts: Path,
+    ready_path: Path,
+    figures_dir: Path,
+    gate4_report_md: Path,
+    skip_paper_refresh: bool = False,
+    allow_ready: bool = True,
+) -> tuple[bool, str]:
+    """Tick 381: rebuild / trust paper pack after direct G4 ledger-skip.
+
+    Tick 380 early-returned on ``ledger_skip`` without calling ``apply_paper_pack``.
+    Pipeline resume already refreshes via Tick 374; direct ``run_g4_multiseed.py
+    --live`` did not — so a cross-VM (or same-VM) ledger skip could leave
+    ``ICML_READY`` stuck IN_PROGRESS after paid G4 evidence existed.
+
+    Prefer local complete B/D dirs → ``apply_paper_pack``. Else trust a
+    live-executed / refresh-paper sidecar with non-null comparison +
+    ``paper_refreshed`` (never promote READY from a preflight sidecar).
+    """
+    b_ids = [p.b_run_id for p in report.plans]
+    d_ids = [p.d_run_id for p in report.plans]
+    b_dirs: list[Path] = []
+    d_dirs: list[Path] = []
+    for rid in b_ids:
+        found = _run_dir_for(rid)
+        if found is not None and darwinian_run_complete(found):
+            b_dirs.append(found)
+    for rid in d_ids:
+        found = _run_dir_for(rid)
+        if found is not None and darwinian_run_complete(found):
+            d_dirs.append(found)
+
+    if len(b_dirs) == len(b_ids) and len(d_dirs) == len(d_ids) and b_ids:
+        report.notes.append(
+            "Tick 381: ledger-skip — re-scoring local B/D into paper pack "
+            f"(allow_ready={allow_ready})"
+        )
+        paper_refreshed = apply_paper_pack(
+            report,
+            b_dirs=b_dirs,
+            d_dirs=d_dirs,
+            paper_artifacts=paper_artifacts,
+            ready_path=ready_path,
+            figures_dir=figures_dir,
+            skip_paper_refresh=skip_paper_refresh,
+            allow_ready=allow_ready,
+        )
+        return (
+            paper_refreshed,
+            "Tick 381: re-scored G4 from local B/D + refreshed paper pack "
+            f"(primary={report.primary_pass}; h2={report.h2_pass}; "
+            f"h5={report.h5_pass}; paper={paper_refreshed}; "
+            f"ICML_READY={report.ready_status})",
+        )
+
+    data = _load_gate4_sidecar_raw(gate4_report_md)
+    comparison = data.get("comparison")
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    paper_refreshed = bool(data.get("paper_refreshed"))
+    ready_status = data.get("ready_status")
+    if (
+        mode in {"live", "refresh-paper"}
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+        and paper_refreshed
+    ):
+        report.comparison = comparison
+        report.primary_pass = bool(data.get("primary_pass"))
+        report.h2_pass = bool(data.get("h2_pass"))
+        report.h5_pass = bool(data.get("h5_pass"))
+        if isinstance(data.get("h5_by_d_run"), dict):
+            report.h5_by_d_run = data["h5_by_d_run"]
+        if isinstance(data.get("h2_by_d_run"), dict):
+            report.h2_by_d_run = data["h2_by_d_run"]
+        if isinstance(ready_status, str) and ready_status:
+            report.ready_status = ready_status
+        note = (
+            "Tick 381: trusted live-executed gate4 sidecar paper pack "
+            f"(no/partial local G4 dirs; mode={mode}; "
+            f"ICML_READY={ready_status or 'n/a'})"
+        )
+        report.notes.append(note)
+        return True, note
+
+    note = (
+        "Tick 381: ledger-skip but no local G4 artifacts and no live-executed "
+        f"gate4 paper pack (mode={mode or 'missing'!r}, executed={executed}, "
+        f"paper_refreshed={paper_refreshed}) — ICML_READY not updated"
+    )
+    report.notes.append(note)
+    return False, note
+
+
 def apply_paper_pack(
     report: G4PreflightReport,
     *,
@@ -1488,13 +1600,34 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Tick 380: ledger-complete G4 → exit 0 without sia (even if secrets absent).
+    # Tick 381: still refresh paper pack / ICML_READY (pipeline Tick 374 parity).
     if report.ledger_skip:
         report.notes.append(
             "Tick 380: skipped paid G4 — ledger stages_complete already lists G4 "
             "for planned run IDs"
         )
-        write_gate4_report(report, args.report)
+        paper_refreshed, pack_note = refresh_paper_pack_on_ledger_skip(
+            report,
+            paper_artifacts=args.paper_artifacts,
+            ready_path=args.icml_ready,
+            figures_dir=args.figures_dir,
+            gate4_report_md=args.report,
+            skip_paper_refresh=args.skip_paper_refresh,
+            allow_ready=allow_ready_flag,
+        )
+        report.notes.append(pack_note)
+        write_gate4_report(
+            report,
+            args.report,
+            executed=bool(report.comparison),
+            paper_refreshed=paper_refreshed,
+        )
         print(f"G4 live skipped (ledger resume) → {args.report}")
+        print(pack_note)
+        print(
+            f"primary_pass={report.primary_pass} h2_pass={report.h2_pass} "
+            f"h5_pass={report.h5_pass} STATUS={report.ready_status}"
+        )
         return 0
 
     if not report.ready_for_live:

@@ -1,5 +1,5 @@
 ## Summary
-- Tick 380: **direct gate ledger-stage skip** — Tick 379 stamps `stages_complete` after successful direct G2/G3/G4 `--live`, but only the pipeline consulted `ledger_stage_complete` (Tick 285). Direct runners still treated missing local `runs/` as free IDs and would re-launch a ledger-complete stage on the next cross-VM cron (double-burn despite the stamp). New helper `direct_gate_ledger_skip` + wired skip-before-sia on direct G2/G3/G4 `--live`. Tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345–350; prefer verbatim args from `docs/icml_open_git_pr_call.json`). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
+- Tick 381: **direct G4 ledger-skip paper-pack refresh** — Tick 380 skips paid direct G4 `--live` when the ledger marks G4 complete, but early-returned without `apply_paper_pack` / sidecar trust (pipeline Tick 374 already refreshed on resume). Cross-VM or same-VM ledger skip could leave `ICML_READY` stuck IN_PROGRESS after paid G4 evidence existed. New helper `refresh_paper_pack_on_ledger_skip` re-scores local B/D or trusts a live-executed gate4 sidecar. Tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs — Tick 345–350; prefer verbatim args from `docs/icml_open_git_pr_call.json`). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title … --body-file docs/icml_tip_pr_body.md`).
 - **PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) so cron can run live G2→G3→G4.
 - Offline PRIMARY/H5 unchanged (`1890–1904`); H2 preferred **4/5**; STATUS remains IN_PROGRESS (not READY).
 
@@ -9,7 +9,7 @@
 3. Optional: undraft+merge tip PR #337 and/or bootstrap PR #338
 
 ## Test plan
-- [x] `pytest tests/test_icml_env_checks.py::test_direct_gate_ledger_skip_true_when_stage_complete`
-- [x] `pytest tests/test_icml_env_checks.py::test_direct_gate_ledger_skip_false_on_id_mismatch`
-- [x] `pytest tests/test_run_g2_smoke.py::test_g2_live_skips_when_ledger_stage_complete`
+- [x] `pytest tests/test_run_g4_multiseed.py::test_refresh_paper_pack_on_ledger_skip_local_dirs`
+- [x] `pytest tests/test_run_g4_multiseed.py::test_refresh_paper_pack_on_ledger_skip_trusts_sidecar`
+- [x] `pytest tests/test_run_g4_multiseed.py::test_g4_live_ledger_skip_refreshes_paper_pack`
 - [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass

@@ -1270,3 +1270,287 @@ def test_g4_preflight_hydrates_budget_from_unbilled_local(
     ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
     assert 1211 in ledger["run_ids"] and 1311 in ledger["run_ids"]
     assert "G4" not in ledger["stages_complete"]
+
+
+def test_refresh_paper_pack_on_ledger_skip_local_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 381: ledger-skip re-scores local B/D into paper pack."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "paper_artifacts.md").write_text("# Paper\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("STATUS: IN_PROGRESS\n", encoding="utf-8")
+    (docs / "figures").mkdir()
+
+    b_ids = [1211, 1212, 1213, 1214, 1215]
+    d_ids = [1311, 1312, 1313, 1314, 1315]
+    for rid in b_ids + d_ids:
+        _write_complete_run(tmp_path / "runs" / f"run_{rid}")
+
+    plans = build_g4_plans([1, 2, 3, 4, 5], b_ids, d_ids)
+    report = G4PreflightReport(
+        timestamp="2026-09-08T08:05:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    calls: dict[str, object] = {}
+
+    def _fake_apply(rep, *, b_dirs, d_dirs, allow_ready=True, **_kw):
+        calls["b_dirs"] = [str(p) for p in b_dirs]
+        calls["d_dirs"] = [str(p) for p in d_dirs]
+        calls["allow_ready"] = allow_ready
+        rep.comparison = {"n_pairs": 5, "primary_gens30_pass": True}
+        rep.primary_pass = True
+        rep.h2_pass = True
+        rep.h5_pass = True
+        rep.ready_status = "READY"
+        return True
+
+    monkeypatch.setattr(mod, "apply_paper_pack", _fake_apply)
+    paper_ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert paper_ok is True
+    assert "re-scored G4 from local" in note
+    assert len(calls["b_dirs"]) == 5  # type: ignore[arg-type]
+    assert len(calls["d_dirs"]) == 5  # type: ignore[arg-type]
+    assert calls["allow_ready"] is True
+    assert report.ready_status == "READY"
+
+
+def test_refresh_paper_pack_on_ledger_skip_trusts_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 381: no local dirs → trust live-executed gate4 paper pack sidecar."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": {"n_pairs": 5, "primary_gens30_pass": True},
+                "paper_refreshed": True,
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-08T08:05:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    paper_ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert paper_ok is True
+    assert "trusted live-executed" in note
+    assert report.ready_status == "READY"
+    assert report.comparison is not None
+
+
+def test_refresh_paper_pack_on_ledger_skip_refuses_preflight_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 381: preflight sidecar must not promote READY on ledger-skip."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "paper_refreshed": False,
+                "ready_status": "IN_PROGRESS",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-08T08:05:00Z",
+        mode="live",
+        plans=plans,
+        ledger_skip=True,
+    )
+    paper_ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert paper_ok is False
+    assert "ICML_READY not updated" in note
+    assert report.ready_status == "IN_PROGRESS"
+
+
+def test_g4_live_ledger_skip_refreshes_paper_pack(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 381: direct --live ledger-skip calls paper-pack refresh (no sia)."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    planned = list(range(1211, 1216)) + list(range(1311, 1316))
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 19.0,
+                "stages_complete": ["G2", "G3", "G4"],
+                "run_ids": [1300, 1201, 1301] + planned,
+                "detail": "full stack",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# Paper\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("STATUS: IN_PROGRESS\n", encoding="utf-8")
+    (docs / "figures").mkdir()
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 381},
+    )
+
+    refreshed: list[str] = []
+
+    def _fake_refresh(report, **_kw):
+        refreshed.append("yes")
+        report.comparison = {"n_pairs": 5}
+        report.primary_pass = True
+        report.h2_pass = True
+        report.h5_pass = True
+        report.ready_status = "IN_PROGRESS"
+        return True, "Tick 381: fake pack refresh"
+
+    monkeypatch.setattr(mod, "refresh_paper_pack_on_ledger_skip", _fake_refresh)
+
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(g3.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate4_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--seeds",
+            "1,2,3,4,5",
+            "--b-run-ids",
+            "1211,1212,1213,1214,1215",
+            "--d-run-ids",
+            "1311,1312,1313,1314,1315",
+            "--report",
+            str(report_path),
+            "--paper-artifacts",
+            str(docs / "paper_artifacts.md"),
+            "--icml-ready",
+            str(docs / "ICML_READY.md"),
+            "--figures-dir",
+            str(docs / "figures"),
+            "--cwd",
+            str(tmp_path),
+            "--allow-stale-tip",
+        ]
+    )
+    assert rc == 0
+    assert called == []
+    assert refreshed == ["yes"]
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 381" in text or "ledger" in text.lower()
