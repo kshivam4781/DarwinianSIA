@@ -12,6 +12,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/icml_recover_tip.py --fetch      # refresh remote refs first
   python3 scripts/icml_recover_tip.py --apply      # git reset --hard to tip
                                                # (+ Tick 339 tip PR anti-churn checkout)
+                                               # (+ Tick 388 prior_live stash/reinject)
 """
 
 from __future__ import annotations
@@ -26,7 +27,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
-    collect_icml_tip_status,
+    discard_ephemeral_icml_dirt,
+    reinject_prior_live_stash,
     write_icml_tip_status,
 )
 
@@ -42,18 +44,48 @@ def _git(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def apply_tip(tip_ref: str) -> int:
-    """Hard-reset current branch to ``tip_ref``. Returns process exit code."""
-    status = _git(["status", "--porcelain"])
+    """Hard-reset current branch to ``tip_ref``. Returns process exit code.
+
+    Tick 388: mirror ``icml_boot_recover.sh --apply`` / cron tip recover —
+    discard ephemeral dirt (Tick 387 stashes ``prior_live_*`` first), then
+    reinject after ``git reset --hard``. Tick 387 only wired stash into cron +
+    ``icml_boot_recover.sh``; agents using ``icml_recover_tip.py --apply`` still
+    refused dirty trees without stashing and never reinjected after hard-reset.
+    """
+    # Tick 388 / Tick 286 parity: discard preflight ephemerals (stash prior_live).
+    ok_discard, discard_detail = discard_ephemeral_icml_dirt(REPO_ROOT)
+    print(f"ephemeral_discard: ok={ok_discard} {discard_detail}")
+
+    status = _git(["status", "--porcelain", "-uall"])
     if status.returncode != 0:
         print(f"git status failed: {status.stderr.strip()}", file=sys.stderr)
         return 2
-    dirty = (status.stdout or "").strip()
+    # Tick 388: gitignored prior_live stash must not block --apply (same class
+    # of bug as Tick 356/359 boot/call JSON). Filter even if .gitignore lags.
+    from icml_env_checks import ICML_PRIOR_LIVE_STASH_RELPATH
+
+    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
+    dirty_lines: list[str] = []
+    for line in (status.stdout or "").splitlines():
+        if len(line) < 4:
+            continue
+        rest = line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        rest = rest.strip().strip('"').replace("\\", "/")
+        if rest == stash_norm:
+            continue
+        dirty_lines.append(line)
+    dirty = "\n".join(dirty_lines).strip()
     if dirty:
         print(
             "Working tree dirty — refuse --apply (commit/stash first):\n"
             f"{dirty[:500]}",
             file=sys.stderr,
         )
+        # Still reinject any stash captured before the refuse (parity with cron).
+        ok_pl, detail_pl = reinject_prior_live_stash(REPO_ROOT)
+        print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
         return 3
 
     reset = _git(["reset", "--hard", tip_ref])
@@ -68,6 +100,12 @@ def apply_tip(tip_ref: str) -> int:
     head = _git(["log", "-1", "--oneline"])
     if head.returncode == 0:
         print(head.stdout.strip())
+
+    # Tick 388: reinject prior_live_* after hard-reset (stash survives; Tick 387
+    # path was cron/boot_recover only — recover_tip --apply was the hole).
+    ok_pl, detail_pl = reinject_prior_live_stash(REPO_ROOT)
+    print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
+
     # Tick 339: tip PR anti-churn checkout after --apply (mirrors boot_recover).
     # Tick 338 only wired this into icml_cron_entry.sh; recover --apply alone
     # still left greenfield branch names → new tip PR churn.

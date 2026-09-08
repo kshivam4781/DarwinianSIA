@@ -81,6 +81,10 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 359:** **call-JSON gitignore + discard survive** — tip HEAD still *committed* `docs/icml_open_git_pr_call.json` with a prior-tick boot (`…-48b0`). `discard_ephemeral_icml_dirt` then `git restore`'d that stale boot onto fresh VMs after tip `--apply` (same class of bug as Tick 356 for the boot file). Call JSON is now gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; cron `already_on` tip also refreshes call JSON.
 
+**Tick 387:** **discard/tip-apply prior_live stash** — `discard_ephemeral_icml_dirt` persists trustable `prior_live_*` to gitignored `docs/icml_prior_live_stash.json`; cron + `icml_boot_recover.sh` reinject after tip `--apply` hard-reset (closes wipe of Tick 384–386 evidence).
+
+**Tick 388:** **`icml_recover_tip.py --apply` prior_live stash** — Tick 387 only wired cron/boot_recover; agent chicken-egg `icml_recover_tip.py --apply` still refused dirty trees without stashing and never reinjected after hard-reset. Now discard+stash+reinject (Tick 387 parity); filter stash path from dirty porcelain even if `.gitignore` lags.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.

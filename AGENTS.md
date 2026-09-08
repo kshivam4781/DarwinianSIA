@@ -46,6 +46,8 @@ Automation ticks often boot a **fresh branch from `main`** without `docs/ICML_*`
 **Tick 358:** after tip checkout, refresh `docs/icml_open_git_pr_call.json` so `cloud_boot_branch` matches the just-persisted boot (Tick 357 left stale prior-tick call JSON when agents skipped full cron status rewrite).
 **Tick 359:** `docs/icml_open_git_pr_call.json` is **gitignored** and **excluded from** `EPHEMERAL_ICML_RELPATHS` — tip HEAD previously committed a prior-tick `cloud_boot_branch` (e.g. `…-48b0`); `discard_ephemeral` `git restore` re-poisoned fresh boots. Cron `already_on` tip also refreshes call JSON.
 
+**Tick 387–388:** prior_live stash across tip `--apply` — Tick 387: cron/`icml_boot_recover.sh`; Tick 388: also `icml_recover_tip.py --apply` (discard+stash+reinject). Do not hard-reset tip without going through these paths after live gates.
+
 **Live secrets (Tick 289+):** `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`). `ANTHROPIC_API_KEY` is **optional** under default Nebius pydantic-ai meta. See `docs/ICML_HUMAN_UNBLOCK.md`. Load local `.env` with `source scripts/load_env.sh` (Linux/cloud) or `. .\scripts\load_env.ps1` (Windows).
 
 1. If `docs/ICML_READY.md` says **STATUS: READY** → stop (already complete).

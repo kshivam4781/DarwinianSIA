@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-08T22:15Z — Tick 388 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-3c61`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Tick 387 wired prior_live stash+reinject into cron + `icml_boot_recover.sh`, but **`icml_recover_tip.py --apply`** (agent chicken-egg / mid-tick recover) still refused dirty trees without stashing and never reinjected after `git reset --hard` — so paid sidecar trust was still wipeable on that path. Highest leverage without paid spend: **recover_tip prior_live stash parity**.
+
+### What this tick did (ONE step)
+**`icml_recover_tip.py --apply` prior_live stash (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 387 (`f49c`); confirmed secrets absent; boot `3c61` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `apply_tip` now calls `discard_ephemeral_icml_dirt` (stashes prior_live_*) before dirty check, filters gitignored stash from dirty porcelain, and `reinject_prior_live_stash` after hard-reset (Tick 387 cron/boot_recover parity); refreshed `suggested_open_git_pr_body` Tick text
+3. Tests: `test_recover_tip_apply_wires_prior_live_stash` / `test_recover_tip_apply_source_mentions_prior_live` (+ Tick 387 stash regression) — **3/3**; STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 387) | After (Tick 388) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Tip recover paths with prior_live stash | cron + boot_recover only | **+ `icml_recover_tip.py --apply`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-08T20:06Z — Tick 387 (automation cron)
 
 ### Status snapshot

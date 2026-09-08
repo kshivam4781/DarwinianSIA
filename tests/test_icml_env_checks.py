@@ -2297,6 +2297,108 @@ def test_stash_prior_live_from_live_gate2_post() -> None:
     assert blob["prior_live_post"][0]["name"] == "nonzero_fitness"
 
 
+def test_recover_tip_apply_source_mentions_prior_live() -> None:
+    """Tick 388: recover_tip.py --apply must wire discard + reinject (Tick 387 hole)."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    recover = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
+    assert "discard_ephemeral_icml_dirt" in recover
+    assert "reinject_prior_live_stash" in recover
+    assert "Tick 388" in recover
+    assert "prior_live_reinject" in recover
+    # Must not only refuse dirty — must discard ephemerals first (stash path).
+    assert "ephemeral_discard" in recover
+
+
+def test_recover_tip_apply_wires_prior_live_stash(tmp_path: Path, monkeypatch) -> None:
+    """Tick 388: apply_tip discards+stashes prior_live then reinjects after hard-reset."""
+    import json
+    import subprocess
+    import sys
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    scripts = repo / "scripts"
+    scripts.mkdir()
+    # Minimal checkout script so apply_tip anti-churn path is a no-op success.
+    (scripts / "icml_checkout_tip_pr_branch.sh").write_text(
+        "#!/usr/bin/env bash\nexit 0\n", encoding="utf-8"
+    )
+    clean_g4 = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(clean_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "gate4_report.md").write_text("# gate4\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    tip_sha = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo, text=True
+    ).strip()
+
+    dirty_g4 = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+        "prior_live_metrics": {
+            "comparison": {"d_wins_gens30": 4, "n_pairs": 5},
+            "executed": True,
+            "paper_refreshed": True,
+            "primary_pass": True,
+            "h2_pass": True,
+            "h5_pass": True,
+            "ready_status": "READY",
+        },
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(dirty_g4, indent=2) + "\n", encoding="utf-8"
+    )
+
+    # Import recover_tip with REPO_ROOT redirected to the temp repo.
+    sys.path.insert(0, str(repo / "scripts"))
+    # Ensure scripts/icml_env_checks is importable from the real tree.
+    real_scripts = Path(__file__).resolve().parents[1] / "scripts"
+    sys.path.insert(0, str(real_scripts))
+    import icml_recover_tip as recover_mod
+
+    monkeypatch.setattr(recover_mod, "REPO_ROOT", repo)
+
+    rc = recover_mod.apply_tip(tip_sha)
+    assert rc == 0
+
+    after = json.loads((docs / "gate4_report.json").read_text(encoding="utf-8"))
+    # Hard-reset restored clean committed JSON, then reinject restored prior_live.
+    assert after.get("prior_live_metrics") is not None
+    assert after["prior_live_metrics"]["ready_status"] == "READY"
+    assert after["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 4
+
+
 def test_resolve_icml_target_agent_profile_defaults(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2724,6 +2826,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "boot_recover" in unblock.lower() or "recover" in unblock.lower()
     assert "ICML tip recover --apply anti-churn checkout (Tick 339)" in master
     assert "Tick 339" in env_checks
+    # Tick 388: recover_tip --apply also stashes/reinjects prior_live (Tick 387 hole).
+    assert "discard_ephemeral_icml_dirt" in recover_tip
+    assert "reinject_prior_live_stash" in recover_tip
+    assert "Tick 388" in recover_tip
+    assert "Tick 388" in unblock
+    assert "ICML recover_tip prior_live stash (Tick 388)" in master
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks
