@@ -28,6 +28,10 @@ Hard stops (never violate):
   - Tick 382: ledger-skip still re-scores / trusts G3 pilot metrics (pipeline
     Tick 373 parity — Tick 380 wrote ``executed=False`` null comparison and
     could clobber a live-executed gate3 sidecar needed for G4 advance)
+  - Tick 385: preflight preserves ``prior_live_metrics`` so cron
+    ``--preflight-only`` cannot wipe live comparison/H2/H5 that pipeline
+    ``load_g3_metrics_for_g4`` / ledger-skip trust after G3 (Tick 384 G2
+    ``prior_live_post`` parity)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -602,6 +606,42 @@ def _load_gate3_sidecar_raw(report_md: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _live_metrics_from_gate3_sidecar(
+    data: dict,
+) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any], str]:
+    """Tick 382/385: extract trustable live G3 metrics from gate3 sidecar.
+
+    Accepts ``mode=="live"`` + ``executed`` + nonempty ``comparison``, or Tick
+    385 ``prior_live_metrics`` preserved across preflight rewrites.
+    """
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
+    comparison = data.get("comparison")
+    if (
+        mode == "live"
+        and executed
+        and isinstance(comparison, dict)
+        and comparison
+    ):
+        return (
+            comparison,
+            data.get("h5_by_d_run") or {},
+            data.get("h2_by_d_run") or {},
+            "live",
+        )
+    prior = data.get("prior_live_metrics")
+    if isinstance(prior, dict):
+        prior_cmp = prior.get("comparison")
+        if isinstance(prior_cmp, dict) and prior_cmp:
+            return (
+                prior_cmp,
+                prior.get("h5_by_d_run") or {},
+                prior.get("h2_by_d_run") or {},
+                "prior_live_metrics",
+            )
+    return None, {}, {}, ""
+
+
 def refresh_g3_metrics_on_ledger_skip(
     report: G3PreflightReport,
     *,
@@ -613,7 +653,8 @@ def refresh_g3_metrics_on_ledger_skip(
     ``comparison=null``, which could clobber a live-executed gate3 sidecar that
     pipeline Tick 373 needs for G4 advance. Prefer local complete B/D dirs →
     ``score_pilot``. Else trust a live-executed sidecar with non-null comparison
-    (never invent metrics from a preflight sidecar).
+    (or Tick 385 ``prior_live_metrics`` preserved across preflight; never invent
+    metrics from a bare preflight sidecar).
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -642,25 +683,26 @@ def refresh_g3_metrics_on_ledger_skip(
         return True, note
 
     data = _load_gate3_sidecar_raw(gate3_report_md)
-    comparison = data.get("comparison")
-    mode = str(data.get("mode") or "")
-    executed = bool(data.get("executed"))
-    if (
-        mode == "live"
-        and executed
-        and isinstance(comparison, dict)
-        and comparison
-    ):
+    comparison, h5, h2, source = _live_metrics_from_gate3_sidecar(data)
+    if comparison is not None:
         report.comparison = comparison
-        report.h5_by_d_run = data.get("h5_by_d_run") or {}
-        report.h2_by_d_run = data.get("h2_by_d_run") or {}
-        note = (
-            "Tick 382: trusted live-executed gate3 sidecar "
-            f"(no/partial local G3 dirs; mode={mode})"
-        )
+        report.h5_by_d_run = h5
+        report.h2_by_d_run = h2
+        if source == "prior_live_metrics":
+            note = (
+                "Tick 385: trusted gate3 prior_live_metrics after ledger-skip "
+                "(no/partial local G3 dirs)"
+            )
+        else:
+            note = (
+                "Tick 382: trusted live-executed gate3 sidecar "
+                f"(no/partial local G3 dirs; mode={str(data.get('mode') or '')})"
+            )
         report.notes.append(note)
         return True, note
 
+    mode = str(data.get("mode") or "")
+    executed = bool(data.get("executed"))
     note = (
         "Tick 382: ledger-skip but no local G3 artifacts and no live-executed "
         f"gate3 comparison (mode={mode or 'missing'!r}, executed={executed}) — "
@@ -839,6 +881,36 @@ def write_gate3_report(
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     sidecar = out.with_suffix(".json")
+    # Tick 385: preflight rewrites must not wipe live comparison/H2/H5.
+    # Preserve under prior_live_metrics so pipeline G3→G4 / ledger-skip trust
+    # still works after cron --preflight-only (Tick 384 prior_live_post parity).
+    existing = _load_gate3_sidecar_raw(out)
+    prior_live_metrics = None
+    if (
+        executed
+        and report.mode == "live"
+        and isinstance(report.comparison, dict)
+        and report.comparison
+    ):
+        prior_live_metrics = {
+            "comparison": report.comparison,
+            "h5_by_d_run": report.h5_by_d_run or {},
+            "h2_by_d_run": report.h2_by_d_run or {},
+            "executed": True,
+        }
+    else:
+        preserved_cmp, preserved_h5, preserved_h2, _src = (
+            _live_metrics_from_gate3_sidecar(existing)
+        )
+        if preserved_cmp is not None:
+            prior_live_metrics = {
+                "comparison": preserved_cmp,
+                "h5_by_d_run": preserved_h5,
+                "h2_by_d_run": preserved_h2,
+                "executed": True,
+            }
+        elif isinstance(existing.get("prior_live_metrics"), dict):
+            prior_live_metrics = existing.get("prior_live_metrics")
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -853,6 +925,8 @@ def write_gate3_report(
         "notes": report.notes,
         "executed": executed,
     }
+    if prior_live_metrics is not None:
+        payload["prior_live_metrics"] = prior_live_metrics
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 

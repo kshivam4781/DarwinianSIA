@@ -1729,3 +1729,52 @@ def test_live_stack_refuses_g3_without_g2_post(
     assert "g3" not in called
     text = (docs / "pipe.md").read_text(encoding="utf-8")
     assert "Tick 384" in text or "refuse G3" in text
+
+
+def test_load_g3_metrics_for_g4_trusts_prior_live_metrics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 385: prior_live_metrics survives preflight mode for G3→G4 trust."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    live_cmp = {
+        "n_pairs": 1,
+        "d_wins_gens30": 1,
+        "d_wins_cost30": 1,
+        "mean_final_gap": 0.04,
+        "mean_final_b": 0.22,
+        "mean_final_d": 0.26,
+        "primary_final_pass": True,
+    }
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "prior_live_metrics": {
+                    "comparison": live_cmp,
+                    "h5_by_d_run": {"run_1301": {"spearman_rho": 0.55}},
+                    "h2_by_d_run": {"run_1301": {"preferred_share": 0.6}},
+                    "executed": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    comparison, h5, h2, src = load_g3_metrics_for_g4(
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        report_md=docs / "gate3_report.md",
+    )
+    assert comparison == live_cmp
+    assert h5["run_1301"]["spearman_rho"] == 0.55
+    assert h2["run_1301"]["preferred_share"] == 0.6
+    assert "prior_live_metrics" in src
+    assert g3_pilot_promising(comparison, h5) is True

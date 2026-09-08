@@ -42,6 +42,10 @@ Hard stops (delegated to gate runners; never violate here either):
     ``load_g2_post_for_g3`` (local ``validate_g2_artifacts`` or live-executed /
     ``prior_live_post`` gate2 sidecar) before paid G3 — closes pipeline-only
     bypass of Tick 383 when ledger says G2 done but post evidence was wiped.
+  - Tick 385: ``load_g3_metrics_for_g4`` also trusts Tick 385
+    ``prior_live_metrics`` preserved across cron preflight (parity with Tick
+    384 gate2 ``prior_live_post``) so a wiped ``mode=preflight`` gate3 sidecar
+    cannot brick G4 after paid G3 on a cross-VM / ledger-only resume.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -630,17 +634,18 @@ def load_g3_metrics_for_g4(
     g3_d_ids: list[int],
     report_md: Path | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any], str]:
-    """Tick 373: authoritative G3→G4 metrics (prefer local re-score).
+    """Tick 373/385: authoritative G3→G4 metrics (prefer local re-score).
 
     Resume can skip the G3 runner when B/D ``results.json`` exist, but the
     committed ``gate3_report.json`` is often still ``mode=preflight`` with
-    ``comparison=null`` (crash after runs / fresh VM with only run dirs).
-    Trusting that sidecar would either:
+    ``comparison=null`` (crash after runs / fresh VM with only run dirs /
+    cron preflight after live). Trusting that sidecar would either:
       - auto-refuse G4 forever despite a PRIMARY-shaped local pilot, or
       - (if comparison were ever filled from offline) risk a false G4 burn.
     Re-score from local dirs when present. Ledger-only / no-local fallback
-    accepts the sidecar **only** when ``mode=="live"`` and ``executed`` and a
-    non-null comparison exist.
+    accepts the sidecar when live post evidence exists (``mode=="live"`` +
+    ``executed`` + comparison, or Tick 385 ``prior_live_metrics`` preserved
+    across preflight).
     """
     report_md = report_md or (REPO_ROOT / "docs" / "gate3_report.md")
     g3_ids = list(g3_b_ids) + list(g3_d_ids)
@@ -664,21 +669,21 @@ def load_g3_metrics_for_g4(
         )
 
     data = _load_gate3_sidecar_raw(report_md)
-    comparison = data.get("comparison")
+    comparison, h5, h2, source = g3._live_metrics_from_gate3_sidecar(data)
+    if comparison is not None:
+        if source == "prior_live_metrics":
+            note = (
+                "Tick 385: trusted gate3 prior_live_metrics "
+                "(no local G3 dirs; preflight-preserved)"
+            )
+        else:
+            note = (
+                "Tick 373: trusted live-executed gate3 sidecar "
+                "(no local G3 dirs)"
+            )
+        return comparison, h5, h2, note
     mode = str(data.get("mode") or "")
     executed = bool(data.get("executed"))
-    if (
-        mode == "live"
-        and executed
-        and isinstance(comparison, dict)
-        and comparison
-    ):
-        return (
-            comparison,
-            data.get("h5_by_d_run") or {},
-            data.get("h2_by_d_run") or {},
-            "Tick 373: trusted live-executed gate3 sidecar (no local G3 dirs)",
-        )
     return (
         None,
         {},

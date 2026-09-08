@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-08 (Section 21 ICML; Tick 384 pipeline G2→G3 post-gate + prior_live_post; Tick 383 direct G2 ledger-skip post refresh; …)
+**Last updated:** 2026-09-08 (Section 21 ICML; Tick 385 prior_live_metrics; Tick 384 pipeline G2→G3 post-gate + prior_live_post; Tick 383 direct G2 ledger-skip post refresh; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -977,7 +977,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML direct G3 ledger-skip pilot-metrics refresh (Tick 382) | **DONE** | `refresh_g3_metrics_on_ledger_skip` re-scores local B/D or trusts live-executed gate3 sidecar after Tick 380 wrote empty `executed=False` (pipeline Tick 373 parity; closes G3 sidecar clobber / G4 advance false-refuse) |
 | ICML direct G2 ledger-skip post-validation refresh (Tick 383) | **DONE** | `refresh_g2_post_on_ledger_skip` re-validates local G2 or trusts live-executed gate2 sidecar after Tick 380 wrote gate2 without `post=` (closes nonzero-fitness clobber; completes G2/G3/G4 ledger-skip refresh triad) |
 | ICML pipeline G2→G3 post-gate + prior_live_post (Tick 384) | **DONE** | `load_g2_post_for_g3` before paid G3; direct ledger-skip exit 4 without proven post; preflight preserves `prior_live_post` (closes pipeline-only Tick 383 bypass / preflight wipe) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–384 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML pipeline G3→G4 prior_live_metrics (Tick 385) | **DONE** | `write_gate3_report` preserves `prior_live_metrics`; `_live_metrics_from_gate3_sidecar` + `load_g3_metrics_for_g4` / ledger-skip trust after cron preflight wipe (Tick 384 gate2 parity) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–385 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |

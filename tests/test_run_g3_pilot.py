@@ -1018,3 +1018,103 @@ def test_g3_live_ledger_skip_refreshes_metrics(
     text = (docs / "gate3_report.md").read_text(encoding="utf-8")
     assert "Tick 382" in text or "ledger" in text.lower()
     assert "Live pilot metrics" in text
+
+
+def test_write_gate3_preflight_preserves_prior_live_metrics(tmp_path: Path) -> None:
+    """Tick 385: preflight rewrite keeps prior_live_metrics for G3→G4 trust."""
+    import run_g3_pilot as mod
+
+    report_md = tmp_path / "gate3_report.md"
+    sidecar = report_md.with_suffix(".json")
+    live_cmp = {
+        "n_pairs": 1,
+        "d_wins_gens30": 1,
+        "mean_final_gap": 0.04,
+        "primary_final_pass": True,
+    }
+    sidecar.write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": live_cmp,
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.7}},
+                "h2_by_d_run": {"run_1301": {"preferred_share": 0.8}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    report_md.write_text("# Gate 3\n", encoding="utf-8")
+    report = G3PreflightReport(
+        timestamp="2026-09-08T16:10:00Z",
+        mode="preflight",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=False,
+        blockers=["nebius_key"],
+        checks=[],
+        commands=[],
+        notes=[],
+    )
+    mod.write_gate3_report(report, report_md, executed=False)
+    data = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert data["mode"] == "preflight"
+    assert data["comparison"] is None
+    assert data["executed"] is False
+    assert data["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 1
+    assert data["prior_live_metrics"]["h5_by_d_run"]["run_1301"]["spearman_rho"] == 0.7
+    cmp_, h5, h2, source = mod._live_metrics_from_gate3_sidecar(data)
+    assert source == "prior_live_metrics"
+    assert cmp_ is not None and cmp_["d_wins_gens30"] == 1
+    assert h5["run_1301"]["spearman_rho"] == 0.7
+    assert h2["run_1301"]["preferred_share"] == 0.8
+
+
+def test_refresh_g3_metrics_on_ledger_skip_trusts_prior_live_metrics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 385: ledger-skip trusts prior_live_metrics after preflight wipe."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "comparison": None,
+                "prior_live_metrics": {
+                    "comparison": {
+                        "n_pairs": 1,
+                        "d_wins_gens30": 1,
+                        "mean_final_gap": 0.05,
+                        "primary_final_pass": True,
+                    },
+                    "h5_by_d_run": {"run_1301": {"spearman_rho": 0.65}},
+                    "h2_by_d_run": {"run_1301": {"preferred_share": 0.7}},
+                    "executed": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    report = G3PreflightReport(
+        timestamp="2026-09-08T16:11:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is True
+    assert "prior_live_metrics" in note
+    assert report.comparison is not None
+    assert report.comparison["d_wins_gens30"] == 1
+    assert report.h5_by_d_run["run_1301"]["spearman_rho"] == 0.65
