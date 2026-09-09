@@ -185,6 +185,11 @@ PY
 fi
 # Tick 389: stash + committed evidence may remain as ?? / M after persist;
 # they must not block tip --apply (reinject rewrites evidence after hard-reset).
+# Tick 391: tip tree uses tip_apply_blocking_dirty_paths (gitignore-lag set).
+# Tick 392: chicken-egg greenfield has no scripts/icml_env_checks.py yet — Tick 391
+# Python filter never ran, so porcelain ?? boot file still refused --apply.
+# Inline the same IGNORE set (no tip-module import) so
+# `git show tip:…/icml_boot_recover.sh | bash -s -- --apply` can land tip.
 if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
   blocking="$(python3 - <<'PY'
 import sys
@@ -194,6 +199,33 @@ print("\n".join(tip_apply_blocking_dirty_paths()))
 PY
 )"
   dirty="$blocking"
+elif command -v python3 >/dev/null 2>&1; then
+  # Tick 392: mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS without tip checkout.
+  dirty="$(python3 - <<'PY'
+import subprocess
+IGNORE = {
+    "docs/icml_cloud_boot_branch.txt",
+    "docs/icml_open_git_pr_call.json",
+    "docs/icml_prior_live_stash.json",
+}
+out = subprocess.run(
+    ["git", "status", "--porcelain"],
+    capture_output=True,
+    text=True,
+    check=False,
+)
+for line in (out.stdout or "").splitlines():
+    if len(line) < 4:
+        continue
+    path = line[3:]
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    path = path.strip().strip('"').replace("\\", "/").lstrip("./")
+    if path in IGNORE:
+        continue
+    print(line)
+PY
+)"
 fi
 if [[ -n "$dirty" ]]; then
   echo "Working tree dirty — refuse --apply (commit/stash first):" >&2

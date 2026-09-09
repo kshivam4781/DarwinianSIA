@@ -2629,6 +2629,94 @@ def test_tip_apply_ignores_gitignore_lag_boot_and_call(tmp_path: Path) -> None:
     assert norms == []
 
 
+def test_boot_recover_chicken_egg_filters_boot_without_env_checks(
+    tmp_path: Path,
+) -> None:
+    """Tick 392: without tip module, porcelain boot file must not block --apply."""
+    import subprocess
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    # Greenfield: no .gitignore, no scripts/icml_env_checks.py.
+    (docs / "placeholder.md").write_text("ok\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    (docs / "icml_cloud_boot_branch.txt").write_text(
+        "cursor/icml-epistemic-results-6152\n", encoding="utf-8"
+    )
+    (docs / "icml_open_git_pr_call.json").write_text("{}\n", encoding="utf-8")
+    (docs / "real_dirt.py").write_text("x=1\n", encoding="utf-8")
+    porcelain = subprocess.check_output(
+        ["git", "status", "--porcelain"], cwd=str(repo), text=True
+    )
+    assert "icml_cloud_boot_branch.txt" in porcelain
+    assert "real_dirt.py" in porcelain
+
+    # Mirror the Tick 392 inline filter from icml_boot_recover.sh (no tip module).
+    filtered = subprocess.check_output(
+        [
+            "python3",
+            "-c",
+            """
+import subprocess
+IGNORE = {
+    "docs/icml_cloud_boot_branch.txt",
+    "docs/icml_open_git_pr_call.json",
+    "docs/icml_prior_live_stash.json",
+}
+out = subprocess.run(
+    ["git", "status", "--porcelain"],
+    capture_output=True,
+    text=True,
+    check=False,
+)
+for line in (out.stdout or "").splitlines():
+    if len(line) < 4:
+        continue
+    path = line[3:]
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    path = path.strip().strip('"').replace("\\\\", "/").lstrip("./")
+    if path in IGNORE:
+        continue
+    print(line)
+""",
+        ],
+        cwd=str(repo),
+        text=True,
+    )
+    assert "icml_cloud_boot_branch.txt" not in filtered
+    assert "icml_open_git_pr_call.json" not in filtered
+    assert "real_dirt.py" in filtered
+
+    boot = (REPO / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
+    cron = (REPO / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "Tick 392" in boot
+    assert "Tick 392" in cron
+    assert "docs/icml_cloud_boot_branch.txt" in boot
+    assert "mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS" in boot
+    assert "mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS" in cron
+
+
 def test_discard_ephemeral_gitignore_lag_boot_ok(tmp_path: Path) -> None:
     """Tick 391: discard clears ephemerals even when boot file is unignored dirt."""
     import subprocess
@@ -3243,6 +3331,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "tip_apply_blocking_dirty_paths" in recover_tip
     assert "ICML tip-apply gitignore-lag durables (Tick 391)" in master
     assert "Tick 391" in unblock
+    # Tick 392: chicken-egg boot_recover/cron filter without tip module.
+    assert "Tick 392" in boot_recover
+    assert "Tick 392" in cron_entry
+    assert "mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS" in boot_recover
+    assert "mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS" in cron_entry
+    assert "ICML chicken-egg tip-apply without tip module (Tick 392)" in master
+    assert "Tick 392" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

@@ -234,6 +234,9 @@ PY
     fi
   fi
   # Tick 389: ignore stash + committed evidence dirt for tip --apply gate.
+  # Tick 391/392: also ignore gitignore-lag durables (boot/call/stash). When
+  # scripts/icml_env_checks.py is absent (chicken-egg main/greenfield), inline
+  # the same IGNORE set — otherwise porcelain ?? boot file skips tip --apply.
   blocking=""
   if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
     blocking="$(python3 - <<'PY'
@@ -241,6 +244,33 @@ import sys
 sys.path.insert(0, "scripts")
 from icml_env_checks import tip_apply_blocking_dirty_paths
 print("\n".join(tip_apply_blocking_dirty_paths()))
+PY
+)"
+  elif command -v python3 >/dev/null 2>&1; then
+    # Tick 392: mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS without tip module.
+    blocking="$(python3 - <<'PY'
+import subprocess
+IGNORE = {
+    "docs/icml_cloud_boot_branch.txt",
+    "docs/icml_open_git_pr_call.json",
+    "docs/icml_prior_live_stash.json",
+}
+out = subprocess.run(
+    ["git", "status", "--porcelain"],
+    capture_output=True,
+    text=True,
+    check=False,
+)
+for line in (out.stdout or "").splitlines():
+    if len(line) < 4:
+        continue
+    path = line[3:]
+    if " -> " in path:
+        path = path.split(" -> ", 1)[1]
+    path = path.strip().strip('"').replace("\\", "/").lstrip("./")
+    if path in IGNORE:
+        continue
+    print(line)
 PY
 )"
   else
