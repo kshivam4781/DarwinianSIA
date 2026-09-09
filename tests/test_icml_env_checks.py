@@ -594,14 +594,43 @@ def test_suggested_open_git_pr_body_secrets_first_generic() -> None:
     assert "NEBIUS_API_KEY" in body
     # Must NOT claim Tick 393 *is* the Tick 392 chicken-egg fix.
     assert "chicken-egg tip-apply without tip module" not in body
-    # Durable recover note may still mention Tick 392 as completed stack.
-    assert "Tick 392" in body
+    # Tick 394: durable recover note must not freeze a single tip-apply Tick.
+    assert "through Tick 392" not in body
     assert "ICML_PROGRESS.md" in body
     ready = suggested_open_git_pr_body(
         local_tick=393, fetch_diamond_ok=True, tip_pr_number=337
     )
     assert "Secrets OK" in ready or "secrets present" in ready.lower()
     assert "icml_cron_entry.sh" in ready
+
+
+def test_detect_gpqa_is_synthetic_and_secrets_auto_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 394: secrets status auto-detects synthetic smoke without an explicit flag."""
+    from icml_env_checks import detect_gpqa_is_synthetic, write_icml_secrets_status
+    from prepare_gpqa_smoke_data import prepare_task_tree
+
+    # Empty repo → None
+    assert detect_gpqa_is_synthetic(tmp_path) is None
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    prepare_task_tree(task, n=3)
+    assert detect_gpqa_is_synthetic(tmp_path) is True
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
+    out = tmp_path / "docs" / "icml_secrets_status.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    status = write_icml_secrets_status(out, repo_root=tmp_path)
+    assert status["gpqa_is_synthetic"] is True
+    assert any("synthetic" in b.lower() for b in status["blockers"])
 
 
 def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
@@ -3368,6 +3397,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "test_suggested_open_git_pr_body_secrets_first_generic" in env_checks
     assert "ICML secrets-first generic tip PR body (Tick 393)" in master
     assert "Tick 393" in unblock
+    # Tick 394: secrets status auto-detects synthetic GPQA without pipeline flag.
+    assert "def detect_gpqa_is_synthetic" in env_checks
+    assert "Tick 394" in env_checks
+    assert "test_detect_gpqa_is_synthetic_and_secrets_auto_probe" in env_checks
+    assert "ICML secrets-status auto-detect synthetic GPQA (Tick 394)" in master
+    assert "Tick 394" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

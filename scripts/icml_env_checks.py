@@ -2677,11 +2677,12 @@ def suggested_open_git_pr_body(
         f"## Summary\n"
         f"- {tick_lead}\n"
         f"- {primary}\n"
-        f"- Tip recover / chicken-egg stack through Tick 392; tip PR anti-churn "
-        f"on this PR (`cursor/icml-epistemic-results-f49c`). Tip PR GitHub "
-        f"**title and body** stay frozen when using `open_git_pr` MCP (does "
-        f"**not** rewrite either on existing PRs — Tick 345–350; prefer "
-        f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
+        f"- Tip recover / chicken-egg + prior_live stack (see "
+        f"`docs/ICML_PROGRESS.md`); tip PR anti-churn on this PR "
+        f"(`cursor/icml-epistemic-results-f49c`). Tip PR GitHub **title and "
+        f"body** stay frozen when using `open_git_pr` MCP (does **not** "
+        f"rewrite either on existing PRs — Tick 345–350; prefer verbatim "
+        f"args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
         f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`). See `docs/ICML_PROGRESS.md` "
         f"for Tick {tick} detail.\n"
@@ -2695,6 +2696,8 @@ def suggested_open_git_pr_body(
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_suggested_open_git_pr_body_secrets_first_generic`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_detect_gpqa_is_synthetic_and_secrets_auto_probe`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -3593,19 +3596,73 @@ def collect_icml_secrets_status() -> dict:
     }
 
 
+def detect_gpqa_is_synthetic(repo_root: Path | None = None) -> bool | None:
+    """Tick 394: probe SIA / sia-upstream GPQA trees for synthetic smoke fixtures.
+
+    Cron ``write_icml_secrets_status()`` historically left ``gpqa_is_synthetic``
+    null unless the live pipeline passed an explicit flag derived from gate
+    blockers. That meant early cron status (and Tip-393 committed secrets JSON)
+    omitted the diamond-needed synthetic blocker even when ``SIA/…/gpqa`` was
+    clearly smoke.
+
+    Returns:
+      True  — at least one known task tree looks like the smoke fixture
+      False — at least one task layout exists and none look synthetic
+      None  — no GPQA task layout found under default roots
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    # Lazy import: prepare_gpqa_smoke_data imports this module at load time.
+    try:
+        from prepare_gpqa_smoke_data import (  # type: ignore
+            DEFAULT_ROOTS,
+            is_synthetic_smoke,
+        )
+    except ImportError:  # pragma: no cover - scripts/ not on path
+        scripts_dir = str(root / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        from prepare_gpqa_smoke_data import (  # type: ignore
+            DEFAULT_ROOTS,
+            is_synthetic_smoke,
+        )
+
+    found_layout = False
+    any_synthetic = False
+    for name in DEFAULT_ROOTS:
+        task_dir = root / name / "sia" / "tasks" / "gpqa"
+        if not (task_dir / "data").is_dir():
+            continue
+        found_layout = True
+        if is_synthetic_smoke(task_dir):
+            any_synthetic = True
+    if not found_layout:
+        return None
+    return bool(any_synthetic)
+
+
 def write_icml_secrets_status(
     path: Path | None = None,
     *,
     gpqa_is_synthetic: bool | None = None,
+    repo_root: Path | None = None,
 ) -> dict:
-    """Write ``docs/icml_secrets_status.json`` (presence-only; no secret values)."""
+    """Write ``docs/icml_secrets_status.json`` (presence-only; no secret values).
+
+    Tick 394: when ``gpqa_is_synthetic`` is omitted, auto-detect via
+    ``detect_gpqa_is_synthetic`` so cron status (which does not pass the flag)
+    still surfaces the synthetic-diamond blocker.
+    """
     status = collect_icml_secrets_status()
-    if gpqa_is_synthetic is True:
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    resolved = gpqa_is_synthetic
+    if resolved is None:
+        resolved = detect_gpqa_is_synthetic(root)
+    if resolved is True:
         status["blockers"] = list(status["blockers"]) + [
             "gpqa still synthetic — need --fetch-diamond or real diamond CSV"
         ]
         status["gpqa_is_synthetic"] = True
-    elif gpqa_is_synthetic is False:
+    elif resolved is False:
         status["gpqa_is_synthetic"] = False
     else:
         status["gpqa_is_synthetic"] = None

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-09 (Section 21 ICML; Tick 393 secrets-first generic tip PR body; Tick 392 chicken-egg tip-apply without tip module; Tick 391 tip-apply gitignore-lag durables; …)
+**Last updated:** 2026-09-09 (Section 21 ICML; Tick 394 secrets-status auto-detect synthetic GPQA; Tick 393 secrets-first generic tip PR body; Tick 392 chicken-egg tip-apply without tip module; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -986,6 +986,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip-apply gitignore-lag durables (Tick 391) | **DONE** | Boot file + open_git_pr call JSON + prior_live stash ignored when `.gitignore` lags (chicken-egg greenfield); evidence still blocks (Tick 390) |
 | ICML chicken-egg tip-apply without tip module (Tick 392) | **DONE** | `icml_boot_recover.sh` / `icml_cron_entry.sh` inline IGNORE when `scripts/icml_env_checks.py` absent (closes Tick 391 hole on piped `--apply`) |
 | ICML secrets-first generic tip PR body (Tick 393) | **DONE** | `suggested_open_git_pr_body` no longer hardcodes Tick 392 chicken-egg changelog into every future Tick N body; secrets-first + durable tip anti-churn notes |
+| ICML secrets-status auto-detect synthetic GPQA (Tick 394) | **DONE** | `detect_gpqa_is_synthetic` + `write_icml_secrets_status` auto-probe so cron (no pipeline flag) still surfaces synthetic-diamond blocker; tip PR body drops frozen "through Tick 392" |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–393 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2593,3 +2594,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Chicken-egg tip-apply without tip module (Tick 392):** Tick 391's Python filter only runs when `scripts/icml_env_checks.py` is already present. Piped `git show tip:…/icml_boot_recover.sh | bash -s -- --apply` on greenfield/main still refused on `?? docs/icml_cloud_boot_branch.txt`. `icml_boot_recover.sh` + `icml_cron_entry.sh` now inline the same IGNORE set when the tip module is absent. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Secrets-first generic tip PR body (Tick 393):** Tick 392 froze the chicken-egg tip-apply changelog into `suggested_open_git_pr_body` for every future `Tick {N}` bullet — `gh pr edit --body-file` / open_git_pr description then lied about what the current tick did. Body is now secrets-first + durable tip anti-churn notes; per-tick detail stays in `docs/ICML_PROGRESS.md`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Secrets-status auto-detect synthetic GPQA (Tick 394):** Cron `write_icml_secrets_status()` left `gpqa_is_synthetic=null` unless the live pipeline passed an explicit flag from gate blockers — Tip-393 committed secrets JSON omitted the synthetic-diamond blocker even with smoke on disk. `detect_gpqa_is_synthetic` probes SIA/sia-upstream; `write_icml_secrets_status` auto-probes when the flag is omitted. Tip PR body also drops frozen "through Tick 392". Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

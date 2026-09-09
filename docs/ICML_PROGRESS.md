@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-09T10:05Z — Tick 394 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-957b`; recovered tip `f49c` (Tick 392 chicken-egg inline IGNORE verified)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Cron `write_icml_secrets_status()` left `gpqa_is_synthetic=null` unless the live pipeline passed an explicit flag from gate blockers — Tip-393 committed secrets JSON omitted the synthetic-diamond blocker even with smoke on disk under `SIA/`. Highest leverage without paid spend: **auto-detect synthetic GPQA in secrets status**.
+
+### What this tick did (ONE step)
+**Secrets-status auto-detect synthetic GPQA (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 393 (`f49c`); confirmed secrets absent; boot `957b` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `detect_gpqa_is_synthetic` + `write_icml_secrets_status` auto-probe when flag omitted (cron path); tip PR body drops frozen "through Tick 392"
+3. Tests: `test_detect_gpqa_is_synthetic_and_secrets_auto_probe` + source lock Tick 394 — STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 393) | After (Tick 394) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Cron secrets `gpqa_is_synthetic` (smoke on disk) | null (no pipeline flag) | **True (auto-probe)** |
+| Tip PR body "through Tick 392" freeze | present | **removed** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-09T08:05Z — Tick 393 (automation cron)
 
 ### Status snapshot
