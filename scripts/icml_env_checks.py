@@ -1413,20 +1413,21 @@ def reinject_prior_live_stash(
 def tip_apply_blocking_dirty_paths(
     repo_root: Path | None = None,
 ) -> list[str]:
-    """Dirty paths that should block tip ``--apply`` (Tick 389).
+    """Dirty paths that should block tip ``--apply`` (Tick 389/390).
 
-    Excludes gitignored prior_live stash and committed prior_live evidence
-    (may be newly written during persist; reinject rewrites evidence after
-    hard-reset). Same filter as ``discard_ephemeral_icml_dirt`` / recover_tip.
+    Excludes gitignored prior_live stash only (same as ``discard_ephemeral`` /
+    recover_tip). Tick 390: do **not** exclude committed
+    ``docs/icml_prior_live_evidence.json`` — dirty evidence with live gates must
+    be committed before tip ``--apply`` (true budget-ledger parity). Tick 389
+    filtered evidence so hard-reset could proceed and rely on same-VM stash
+    reinject; that left uncommitted evidence wipeable across fresh boots.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
-    ignore = {stash_norm, evidence_norm}
     return [
         p
         for p in porcelain_dirty_paths(root)
-        if p.replace("\\", "/") not in ignore
+        if p.replace("\\", "/") != stash_norm
     ]
 
 
@@ -1478,6 +1479,12 @@ def discard_ephemeral_icml_dirt(
     ``docs/icml_prior_live_evidence.json`` (budget-ledger parity) so fresh
     cloud boots can reinject when the gitignored stash is absent.
 
+    Tick 390: dirty committed evidence **blocks** tip ``--apply`` (same as
+    dirty ``docs/icml_budget_spent.json``). Tick 389 excluded evidence from
+    the dirty filter so hard-reset could wipe uncommitted gates and rely on
+    same-VM stash reinject — that is not cross-VM safe. Only the gitignored
+    stash stays filtered.
+
     Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
     the tree is clean after this call (or was already clean).
     """
@@ -1487,16 +1494,10 @@ def discard_ephemeral_icml_dirt(
     dirty = porcelain_dirty_paths(root)
     # Tick 387: durable prior_live stash is gitignored in the real repo; also
     # exclude it explicitly so tip --apply is not blocked when .gitignore lags.
-    # Tick 389: committed evidence may be newly written/untracked during
-    # persist — do not treat it as a tip-apply blocker (agents commit it with
-    # the tip after live; reinject rewrites it after hard-reset).
+    # Tick 390: do NOT exclude committed evidence — dirty evidence is a real
+    # tip-apply blocker (budget-ledger parity; commit before --apply).
     stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
-    dirty = [
-        p
-        for p in dirty
-        if p.replace("\\", "/") not in {stash_norm, evidence_norm}
-    ]
+    dirty = [p for p in dirty if p.replace("\\", "/") != stash_norm]
     if not dirty:
         return True, "working tree clean"
 
@@ -2615,17 +2616,15 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **committed prior_live evidence (cross-VM)** — Tick 387–388 "
-        f"gitignored `docs/icml_prior_live_stash.json` survives same-VM tip "
-        f"`--apply`, but fresh cloud boots have no stash → paid G2/G3/G4 "
-        f"`prior_live_*` trust dies even when the budget ledger says stages "
-        f"complete. Now `persist_prior_live_stash_from_working_tree` also writes "
-        f"committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); "
-        f"`reinject_prior_live_stash` falls back to evidence when stash is "
-        f"absent. Tip PR GitHub **title and body** stay frozen when using "
-        f"`open_git_pr` MCP (does **not** rewrite either on existing PRs — "
-        f"Tick 345–350; prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
+        f"- Tick {tick}: **tip-apply blocks dirty prior_live evidence** — Tick 389 "
+        f"wrote committed `docs/icml_prior_live_evidence.json` (cross-VM) but "
+        f"excluded it from tip `--apply` dirty filters so hard-reset could wipe "
+        f"uncommitted gates and rely on same-VM stash reinject. Tick 390 stops "
+        f"that filter (stash-only ignore) — dirty evidence blocks `--apply` like "
+        f"`docs/icml_budget_spent.json` (true ledger parity). Tip PR GitHub "
+        f"**title and body** stay frozen when using `open_git_pr` MCP (does "
+        f"**not** rewrite either on existing PRs — Tick 345–350; prefer "
+        f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
         f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
         f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
         f"- {primary}\n"
@@ -2640,9 +2639,9 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_persist_prior_live_writes_committed_evidence`\n"
+        f"test_tip_apply_blocks_dirty_prior_live_evidence`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_reinject_prior_live_falls_back_to_committed_evidence`\n"
+        f"test_discard_ephemeral_blocks_dirty_prior_live_evidence`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

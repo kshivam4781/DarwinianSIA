@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-09T02:15Z — Tick 390 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-8b3a`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Tick 389 committed `docs/icml_prior_live_evidence.json` for cross-VM reinject, but excluded that file from tip `--apply` dirty filters so hard-reset could wipe uncommitted gates and rely on same-VM stash — **not** true budget-ledger parity (dirty ledger already blocks `--apply`). Highest leverage without paid spend: **tip-apply blocks dirty prior_live evidence**.
+
+### What this tick did (ONE step)
+**Tip-apply blocks dirty prior_live evidence (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 389 (`f49c`); confirmed secrets absent; boot `8b3a` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `tip_apply_blocking_dirty_paths` / `discard_ephemeral_icml_dirt` / `icml_recover_tip.py --apply` now ignore **stash only** (dirty evidence blocks `--apply` like `icml_budget_spent.json`); refreshed `suggested_open_git_pr_body` Tick text
+3. Tests: `test_tip_apply_blocks_dirty_prior_live_evidence` / `test_discard_ephemeral_blocks_dirty_prior_live_evidence` / `test_recover_tip_apply_source_does_not_filter_evidence` (+ Tick 389 regression) — STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 389) | After (Tick 390) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Dirty prior_live evidence vs tip `--apply` | filtered (wipe + stash reinject) | **blocks `--apply` (ledger parity)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390 enforces).
+
+---
 ## 2026-09-09T00:15Z — Tick 389 (automation cron)
 
 ### Status snapshot

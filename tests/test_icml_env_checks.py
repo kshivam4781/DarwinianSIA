@@ -2407,6 +2407,171 @@ def test_ensure_prior_live_evidence_initialized(tmp_path: Path) -> None:
     assert path2 == path
 
 
+def test_tip_apply_blocks_dirty_prior_live_evidence(tmp_path: Path) -> None:
+    """Tick 390: dirty committed evidence is a tip-apply blocker (ledger parity)."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    evidence = repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH
+    evidence.write_text(
+        json.dumps(
+            {
+                "updated_at": "2026-09-09T00:00:00Z",
+                "tick": 389,
+                "tick_note": "empty",
+                "gates": {},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", ICML_PRIOR_LIVE_EVIDENCE_RELPATH],
+        cwd=str(repo),
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "empty evidence"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    evidence.write_text(
+        json.dumps(
+            {
+                "updated_at": "2026-09-09T02:00:00Z",
+                "tick": 390,
+                "tick_note": "live gates",
+                "gates": {
+                    "docs/gate4_report.json": {
+                        "prior_live_metrics": {
+                            "comparison": {"d_wins_gens30": 4},
+                            "executed": True,
+                        }
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    blocking = tip_apply_blocking_dirty_paths(repo)
+    assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH in [
+        p.replace("\\", "/") for p in blocking
+    ]
+
+
+def test_discard_ephemeral_blocks_dirty_prior_live_evidence(
+    tmp_path: Path,
+) -> None:
+    """Tick 390: discard_ephemeral treats dirty evidence as non-ephemeral block."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        discard_ephemeral_icml_dirt,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    evidence = repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH
+    evidence.write_text(
+        json.dumps({"tick": 389, "gates": {}, "tick_note": "empty"}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.json").write_text(
+        json.dumps({"mode": "preflight"}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", ICML_PRIOR_LIVE_EVIDENCE_RELPATH, "docs/gate4_report.json"],
+        cwd=str(repo),
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "baseline"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    (docs / "gate4_report.json").write_text(
+        json.dumps({"mode": "preflight", "n": 1}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    evidence.write_text(
+        json.dumps(
+            {
+                "tick": 390,
+                "gates": {
+                    "docs/gate3_report.json": {
+                        "prior_live_metrics": {"executed": True, "comparison": {}}
+                    }
+                },
+                "tick_note": "live",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok is False
+    assert "non-ephemeral dirty" in detail
+    assert "icml_prior_live_evidence.json" in detail
+
+
+def test_recover_tip_apply_source_does_not_filter_evidence() -> None:
+    """Tick 390: recover_tip --apply dirty filter is stash-only (not evidence)."""
+    from pathlib import Path
+
+    recover = (
+        Path(__file__).resolve().parents[1] / "scripts" / "icml_recover_tip.py"
+    ).read_text(encoding="utf-8")
+    assert "ICML_PRIOR_LIVE_STASH_RELPATH" in recover
+    assert "Tick 390" in recover
+    assert "evidence_norm" not in recover
+    assert "rest == stash_norm" in recover
+
+
 def test_recover_tip_apply_source_mentions_prior_live() -> None:
     """Tick 388: recover_tip.py --apply must wire discard + reinject (Tick 387 hole)."""
     from pathlib import Path
@@ -2963,6 +3128,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     ]
     evidence = root / "docs" / "icml_prior_live_evidence.json"
     assert evidence.is_file()
+    # Tick 390: dirty committed evidence blocks tip --apply (true ledger parity).
+    assert "Tick 390" in env_checks
+    assert "true budget-ledger parity" in env_checks or "budget-ledger parity" in env_checks
+    assert "Tick 390" in recover_tip
+    assert "evidence_norm" not in recover_tip
+    assert "ICML tip-apply blocks dirty prior_live evidence (Tick 390)" in master
+    assert "Tick 390" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

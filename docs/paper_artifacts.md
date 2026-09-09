@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–389** live stack hardening (… **Tick 387–388 prior_live stash**; **Tick 389 committed prior_live evidence**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–390** live stack hardening (… **Tick 389 committed prior_live evidence**; **Tick 390 tip-apply blocks dirty prior_live evidence**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 

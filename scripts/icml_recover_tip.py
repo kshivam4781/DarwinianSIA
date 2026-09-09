@@ -13,6 +13,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/icml_recover_tip.py --apply      # git reset --hard to tip
                                                # (+ Tick 339 tip PR anti-churn checkout)
                                                # (+ Tick 388 prior_live stash/reinject)
+                                               # (+ Tick 390 dirty evidence blocks --apply)
 """
 
 from __future__ import annotations
@@ -62,15 +63,12 @@ def apply_tip(tip_ref: str) -> int:
         return 2
     # Tick 388: gitignored prior_live stash must not block --apply (same class
     # of bug as Tick 356/359 boot/call JSON). Filter even if .gitignore lags.
-    # Tick 389: committed evidence may be newly written during persist — filter
-    # it too (reinject rewrites evidence after hard-reset).
-    from icml_env_checks import (
-        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
-        ICML_PRIOR_LIVE_STASH_RELPATH,
-    )
+    # Tick 390: do NOT filter committed prior_live evidence — dirty evidence
+    # blocks --apply (budget-ledger parity; Tick 389 filter left uncommitted
+    # gates wipeable across fresh boots).
+    from icml_env_checks import ICML_PRIOR_LIVE_STASH_RELPATH
 
     stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
     dirty_lines: list[str] = []
     for line in (status.stdout or "").splitlines():
         if len(line) < 4:
@@ -79,7 +77,7 @@ def apply_tip(tip_ref: str) -> int:
         if " -> " in rest:
             rest = rest.split(" -> ", 1)[1]
         rest = rest.strip().strip('"').replace("\\", "/")
-        if rest in {stash_norm, evidence_norm}:
+        if rest == stash_norm:
             continue
         dirty_lines.append(line)
     dirty = "\n".join(dirty_lines).strip()

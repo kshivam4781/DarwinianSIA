@@ -87,6 +87,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 389:** **committed prior_live evidence (cross-VM)** — Tick 387–388 gitignored stash survives same-VM tip `--apply`, but fresh cloud boots have no stash → paid `prior_live_*` trust dies even when the budget ledger says stages complete. `persist_prior_live_stash_from_working_tree` also writes committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); `reinject_prior_live_stash` falls back to evidence when stash is absent. Commit the evidence file with the tip after live.
 
+**Tick 390:** **tip-apply blocks dirty prior_live evidence** — Tick 389 excluded committed evidence from tip `--apply` dirty filters so hard-reset could wipe uncommitted gates and rely on same-VM stash reinject (not cross-VM safe). Dirty `docs/icml_prior_live_evidence.json` now blocks `--apply` like `docs/icml_budget_spent.json` (true ledger parity); only the gitignored stash stays filtered.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.
