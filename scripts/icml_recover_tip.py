@@ -57,34 +57,21 @@ def apply_tip(tip_ref: str) -> int:
     ok_discard, discard_detail = discard_ephemeral_icml_dirt(REPO_ROOT)
     print(f"ephemeral_discard: ok={ok_discard} {discard_detail}")
 
-    status = _git(["status", "--porcelain", "-uall"])
-    if status.returncode != 0:
-        print(f"git status failed: {status.stderr.strip()}", file=sys.stderr)
-        return 2
     # Tick 388: gitignored prior_live stash must not block --apply (same class
     # of bug as Tick 356/359 boot/call JSON). Filter even if .gitignore lags.
     # Tick 390: do NOT filter committed prior_live evidence — dirty evidence
     # blocks --apply (budget-ledger parity; Tick 389 filter left uncommitted
     # gates wipeable across fresh boots).
-    from icml_env_checks import ICML_PRIOR_LIVE_STASH_RELPATH
+    # Tick 391: also ignore boot file + open_git_pr call JSON (chicken-egg
+    # greenfield without tip .gitignore — cron persists boot before recover).
+    # Shared filter with cron / boot_recover via tip_apply_blocking_dirty_paths.
+    from icml_env_checks import tip_apply_blocking_dirty_paths
 
-    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    dirty_lines: list[str] = []
-    for line in (status.stdout or "").splitlines():
-        if len(line) < 4:
-            continue
-        rest = line[3:]
-        if " -> " in rest:
-            rest = rest.split(" -> ", 1)[1]
-        rest = rest.strip().strip('"').replace("\\", "/")
-        if rest == stash_norm:
-            continue
-        dirty_lines.append(line)
-    dirty = "\n".join(dirty_lines).strip()
-    if dirty:
+    blocking = tip_apply_blocking_dirty_paths(REPO_ROOT)
+    if blocking:
         print(
             "Working tree dirty — refuse --apply (commit/stash first):\n"
-            f"{dirty[:500]}",
+            + "\n".join(blocking[:20]),
             file=sys.stderr,
         )
         # Still reinject any stash captured before the refuse (parity with cron).

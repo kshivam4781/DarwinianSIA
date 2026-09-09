@@ -2560,16 +2560,116 @@ def test_discard_ephemeral_blocks_dirty_prior_live_evidence(
 
 
 def test_recover_tip_apply_source_does_not_filter_evidence() -> None:
-    """Tick 390: recover_tip --apply dirty filter is stash-only (not evidence)."""
+    """Tick 390/391: recover_tip --apply uses shared tip_apply filter (not evidence)."""
     from pathlib import Path
 
     recover = (
         Path(__file__).resolve().parents[1] / "scripts" / "icml_recover_tip.py"
     ).read_text(encoding="utf-8")
-    assert "ICML_PRIOR_LIVE_STASH_RELPATH" in recover
+    assert "tip_apply_blocking_dirty_paths" in recover
     assert "Tick 390" in recover
+    assert "Tick 391" in recover
     assert "evidence_norm" not in recover
-    assert "rest == stash_norm" in recover
+    # Must not hard-code stash-only filter anymore (Tick 391 shared ignore set).
+    assert "rest == stash_norm" not in recover
+
+
+def test_tip_apply_ignores_gitignore_lag_boot_and_call(tmp_path: Path) -> None:
+    """Tick 391: boot/call dirt must not block tip --apply when .gitignore lags."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        TIP_APPLY_GITIGNORE_LAG_RELPATHS,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    # Intentionally NO .gitignore — chicken-egg greenfield / main boot.
+    (docs / "placeholder.md").write_text("ok\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    (docs / "icml_cloud_boot_branch.txt").write_text(
+        "cursor/icml-epistemic-results-dd06\n", encoding="utf-8"
+    )
+    (docs / "icml_open_git_pr_call.json").write_text(
+        json.dumps({"branch": "cursor/icml-epistemic-results-f49c"}) + "\n",
+        encoding="utf-8",
+    )
+    assert ICML_CLOUD_BOOT_BRANCH_RELPATH in TIP_APPLY_GITIGNORE_LAG_RELPATHS
+    assert ICML_OPEN_GIT_PR_CALL_RELPATH in TIP_APPLY_GITIGNORE_LAG_RELPATHS
+    assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH not in TIP_APPLY_GITIGNORE_LAG_RELPATHS
+    blocking = tip_apply_blocking_dirty_paths(repo)
+    norms = [p.replace("\\", "/") for p in blocking]
+    assert ICML_CLOUD_BOOT_BRANCH_RELPATH not in norms
+    assert ICML_OPEN_GIT_PR_CALL_RELPATH not in norms
+    assert norms == []
+
+
+def test_discard_ephemeral_gitignore_lag_boot_ok(tmp_path: Path) -> None:
+    """Tick 391: discard clears ephemerals even when boot file is unignored dirt."""
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        discard_ephemeral_icml_dirt,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    subprocess.run(["git", "init"], cwd=str(repo), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    # No .gitignore — boot file would otherwise be non-ephemeral dirty.
+    (docs / "gate2_report.md").write_text("clean\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=str(repo), check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=str(repo),
+        check=True,
+        capture_output=True,
+    )
+    (docs / "gate2_report.md").write_text("dirty\n", encoding="utf-8")
+    boot_path = repo / ICML_CLOUD_BOOT_BRANCH_RELPATH
+    boot_path.write_text("cursor/icml-epistemic-results-dd06\n", encoding="utf-8")
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok, detail
+    assert boot_path.is_file(), "Tick 391: boot file must survive discard"
+    assert (docs / "gate2_report.md").read_text(encoding="utf-8") == "clean\n"
 
 
 def test_recover_tip_apply_source_mentions_prior_live() -> None:
@@ -3135,6 +3235,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "evidence_norm" not in recover_tip
     assert "ICML tip-apply blocks dirty prior_live evidence (Tick 390)" in master
     assert "Tick 390" in unblock
+    # Tick 391: tip-apply ignores gitignore-lag durables (boot/call/stash).
+    assert "TIP_APPLY_GITIGNORE_LAG_RELPATHS" in env_checks
+    assert "is_tip_apply_ignored_dirty" in env_checks
+    assert "Tick 391" in env_checks
+    assert "Tick 391" in recover_tip
+    assert "tip_apply_blocking_dirty_paths" in recover_tip
+    assert "ICML tip-apply gitignore-lag durables (Tick 391)" in master
+    assert "Tick 391" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

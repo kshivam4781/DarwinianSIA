@@ -1074,6 +1074,29 @@ ICML_PRIOR_LIVE_STASH_RELPATH = "docs/icml_prior_live_stash.json"
 # resume. Gitignored stash dies on fresh boots; this file is NOT gitignored and
 # NOT ephemeral so tip commits carry prior_live_* when agents push after live.
 ICML_PRIOR_LIVE_EVIDENCE_RELPATH = "docs/icml_prior_live_evidence.json"
+# Tick 350/359: minimal MCP args file — gitignored (never commit; survive tip
+# --apply). Declared early so tip-apply ignore sets can reference it.
+ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
+
+# Tick 391: durable gitignored paths that must not block tip --apply when
+# chicken-egg boots lack tip ``.gitignore`` (porcelain shows them as ``??``).
+# Cron persists the boot file *before* tip recover; without this filter,
+# greenfield/main boots refuse ``--apply`` and never land tip files.
+# Tick 390: do NOT include committed prior_live evidence here.
+TIP_APPLY_GITIGNORE_LAG_RELPATHS: frozenset[str] = frozenset(
+    {
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+        ICML_OPEN_GIT_PR_CALL_RELPATH,
+    }
+)
+
+
+def is_tip_apply_ignored_dirty(rel_path: str) -> bool:
+    """True when ``rel_path`` is gitignore-lag durable dirt (Tick 391)."""
+    norm = rel_path.replace("\\", "/").lstrip("./")
+    return norm in TIP_APPLY_GITIGNORE_LAG_RELPATHS
+
 
 # Preflight / status writers only — safe to discard before tip --apply (Tick 286).
 # Tick 356: do NOT list ICML_CLOUD_BOOT_BRANCH_RELPATH here. Tick 354–355 made
@@ -1085,6 +1108,8 @@ ICML_PRIOR_LIVE_EVIDENCE_RELPATH = "docs/icml_prior_live_evidence.json"
 # committed call JSON with a prior-tick cloud_boot_branch (e.g. …-48b0);
 # discard_ephemeral ``git restore`` re-poisoned fresh boots after tip --apply
 # (same class of bug as Tick 356 for the boot file). Gitignore + exclude.
+# Tick 391: also filter boot/call/stash from tip-apply dirty checks when
+# ``.gitignore`` lags (chicken-egg greenfield) — see TIP_APPLY_GITIGNORE_LAG.
 EPHEMERAL_ICML_RELPATHS: frozenset[str] = frozenset(
     {
         "docs/gate2_report.md",
@@ -1413,21 +1438,22 @@ def reinject_prior_live_stash(
 def tip_apply_blocking_dirty_paths(
     repo_root: Path | None = None,
 ) -> list[str]:
-    """Dirty paths that should block tip ``--apply`` (Tick 389/390).
+    """Dirty paths that should block tip ``--apply`` (Tick 389–391).
 
-    Excludes gitignored prior_live stash only (same as ``discard_ephemeral`` /
-    recover_tip). Tick 390: do **not** exclude committed
+    Excludes ``TIP_APPLY_GITIGNORE_LAG_RELPATHS`` (boot file, open_git_pr call
+    JSON, prior_live stash) so chicken-egg greenfield boots without tip
+    ``.gitignore`` can still ``--apply`` after cron persists the boot file
+    (Tick 391). Tick 390: do **not** exclude committed
     ``docs/icml_prior_live_evidence.json`` — dirty evidence with live gates must
     be committed before tip ``--apply`` (true budget-ledger parity). Tick 389
     filtered evidence so hard-reset could proceed and rely on same-VM stash
     reinject; that left uncommitted evidence wipeable across fresh boots.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
     return [
         p
         for p in porcelain_dirty_paths(root)
-        if p.replace("\\", "/") != stash_norm
+        if not is_tip_apply_ignored_dirty(p)
     ]
 
 
@@ -1482,8 +1508,13 @@ def discard_ephemeral_icml_dirt(
     Tick 390: dirty committed evidence **blocks** tip ``--apply`` (same as
     dirty ``docs/icml_budget_spent.json``). Tick 389 excluded evidence from
     the dirty filter so hard-reset could wipe uncommitted gates and rely on
-    same-VM stash reinject — that is not cross-VM safe. Only the gitignored
-    stash stays filtered.
+    same-VM stash reinject — that is not cross-VM safe.
+
+    Tick 391: also ignore boot file + open_git_pr call JSON (with stash) when
+    ``.gitignore`` lags on chicken-egg greenfield boots — cron writes the boot
+    file before tip recover; porcelain ``??`` must not refuse ``--apply``.
+    Fixes Tick 390 ``evidence_norm`` NameError in the post-discard remaining
+    check (undefined after Tick 390 removed the evidence filter).
 
     Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
     the tree is clean after this call (or was already clean).
@@ -1492,12 +1523,11 @@ def discard_ephemeral_icml_dirt(
 
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     dirty = porcelain_dirty_paths(root)
-    # Tick 387: durable prior_live stash is gitignored in the real repo; also
-    # exclude it explicitly so tip --apply is not blocked when .gitignore lags.
+    # Tick 387/391: durable gitignored paths — exclude explicitly so tip
+    # --apply is not blocked when .gitignore lags (chicken-egg greenfield).
     # Tick 390: do NOT exclude committed evidence — dirty evidence is a real
     # tip-apply blocker (budget-ledger parity; commit before --apply).
-    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    dirty = [p for p in dirty if p.replace("\\", "/") != stash_norm]
+    dirty = [p for p in dirty if not is_tip_apply_ignored_dirty(p)]
     if not dirty:
         return True, "working tree clean"
 
@@ -1553,7 +1583,7 @@ def discard_ephemeral_icml_dirt(
     remaining = [
         p
         for p in porcelain_dirty_paths(root)
-        if p.replace("\\", "/") not in {stash_norm, evidence_norm}
+        if not is_tip_apply_ignored_dirty(p)
     ]
     if remaining:
         non_ephem = [p for p in remaining if not is_ephemeral_icml_path(p)]
@@ -2369,7 +2399,7 @@ def _tip_pr_merge_commands(pr: dict | None) -> list[str]:
 ICML_TIP_PR_BODY_RELPATH = "docs/icml_tip_pr_body.md"
 # Tick 350: minimal MCP args file (branch/title/description only) — agents load
 # this instead of hunting fields inside the large open_git_pr hint JSON.
-ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
+# Constant declared with other path constants above (Tick 391 tip-apply ignore).
 
 _REFLOG_CHECKOUT_RE = re.compile(r"checkout: moving from (\S+) to (\S+)")
 
@@ -2616,12 +2646,14 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **tip-apply blocks dirty prior_live evidence** — Tick 389 "
-        f"wrote committed `docs/icml_prior_live_evidence.json` (cross-VM) but "
-        f"excluded it from tip `--apply` dirty filters so hard-reset could wipe "
-        f"uncommitted gates and rely on same-VM stash reinject. Tick 390 stops "
-        f"that filter (stash-only ignore) — dirty evidence blocks `--apply` like "
-        f"`docs/icml_budget_spent.json` (true ledger parity). Tip PR GitHub "
+        f"- Tick {tick}: **tip-apply ignores gitignore-lag durables** — cron "
+        f"persists `docs/icml_cloud_boot_branch.txt` *before* tip recover; on "
+        f"greenfield/main boots without tip `.gitignore`, porcelain shows the "
+        f"boot file (and call JSON / prior_live stash) as dirty and refused "
+        f"`--apply` (Tick 390 chicken-egg hole). Tick 391 filters "
+        f"`TIP_APPLY_GITIGNORE_LAG_RELPATHS` in `tip_apply_blocking_dirty_paths` "
+        f"/ `discard_ephemeral_icml_dirt` / `icml_recover_tip.py --apply` "
+        f"(evidence still blocks — Tick 390 ledger parity). Tip PR GitHub "
         f"**title and body** stay frozen when using `open_git_pr` MCP (does "
         f"**not** rewrite either on existing PRs — Tick 345–350; prefer "
         f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -2639,9 +2671,11 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_tip_apply_blocks_dirty_prior_live_evidence`\n"
+        f"test_tip_apply_ignores_gitignore_lag_boot_and_call`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_discard_ephemeral_blocks_dirty_prior_live_evidence`\n"
+        f"test_discard_ephemeral_gitignore_lag_boot_ok`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_tip_apply_blocks_dirty_prior_live_evidence` (Tick 390)\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

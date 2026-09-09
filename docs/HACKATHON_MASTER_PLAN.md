@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-09 (Section 21 ICML; Tick 390 tip-apply blocks dirty prior_live evidence; Tick 389 committed prior_live evidence; Tick 388 recover_tip prior_live stash; …)
+**Last updated:** 2026-09-09 (Section 21 ICML; Tick 391 tip-apply gitignore-lag durables; Tick 390 tip-apply blocks dirty prior_live evidence; Tick 389 committed prior_live evidence; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -983,7 +983,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML recover_tip prior_live stash (Tick 388) | **DONE** | `icml_recover_tip.py --apply` discard+stash+reinject (closes Tick 387 hole on agent chicken-egg / mid-tick recover path) |
 | ICML committed prior_live evidence (Tick 389) | **DONE** | Committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); reinject falls back when gitignored stash absent on fresh boots |
 | ICML tip-apply blocks dirty prior_live evidence (Tick 390) | **DONE** | Dirty `docs/icml_prior_live_evidence.json` blocks tip `--apply` like budget ledger (stash-only ignore); closes Tick 389 wipe-before-commit hole |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–390 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML tip-apply gitignore-lag durables (Tick 391) | **DONE** | Boot file + open_git_pr call JSON + prior_live stash ignored when `.gitignore` lags (chicken-egg greenfield); evidence still blocks (Tick 390) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–391 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2584,3 +2585,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Committed prior_live evidence (Tick 389):** Tick 387–388 gitignored stash survives same-VM tip `--apply`, but fresh cloud boots have no stash → paid `prior_live_*` trust dies even when the budget ledger says stages complete. `persist_prior_live_stash_from_working_tree` also writes committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); `reinject_prior_live_stash` falls back to evidence when stash is absent; G2/G3/G4 writers + cron `ensure_prior_live_evidence_initialized` wired. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Tip-apply blocks dirty prior_live evidence (Tick 390):** Tick 389 excluded committed evidence from tip `--apply` dirty filters so hard-reset could wipe uncommitted gates and rely on same-VM stash reinject — not cross-VM safe. Dirty `docs/icml_prior_live_evidence.json` now blocks `--apply` like `docs/icml_budget_spent.json` (true ledger parity); only the gitignored stash stays filtered in `tip_apply_blocking_dirty_paths` / `discard_ephemeral_icml_dirt` / `icml_recover_tip.py --apply`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Tip-apply gitignore-lag durables (Tick 391):** Cron persists `docs/icml_cloud_boot_branch.txt` *before* tip recover; on greenfield/main boots without tip `.gitignore`, porcelain shows the boot file (and call JSON / prior_live stash) as dirty and refused `--apply` (Tick 390 chicken-egg hole). `TIP_APPLY_GITIGNORE_LAG_RELPATHS` + `is_tip_apply_ignored_dirty` filter those paths in `tip_apply_blocking_dirty_paths` / `discard_ephemeral_icml_dirt` / `icml_recover_tip.py --apply` (shared helper); also fixes Tick 390 undefined `evidence_norm` in post-discard remaining check. Evidence still blocks (Tick 390 ledger parity). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

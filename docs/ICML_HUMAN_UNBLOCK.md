@@ -89,6 +89,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 390:** **tip-apply blocks dirty prior_live evidence** — Tick 389 excluded committed evidence from tip `--apply` dirty filters so hard-reset could wipe uncommitted gates and rely on same-VM stash reinject (not cross-VM safe). Dirty `docs/icml_prior_live_evidence.json` now blocks `--apply` like `docs/icml_budget_spent.json` (true ledger parity); only the gitignored stash stays filtered.
 
+**Tick 391:** **tip-apply gitignore-lag durables** — cron persists `docs/icml_cloud_boot_branch.txt` *before* tip recover; on greenfield/main boots without tip `.gitignore`, porcelain shows the boot file (and call JSON / prior_live stash) as dirty and refused `--apply`. `TIP_APPLY_GITIGNORE_LAG_RELPATHS` filters those paths (evidence still blocks — Tick 390). Also fixes Tick 390 undefined `evidence_norm` in post-discard remaining check.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.
