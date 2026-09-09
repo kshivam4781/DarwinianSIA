@@ -633,6 +633,20 @@ def test_detect_gpqa_is_synthetic_and_secrets_auto_probe(
     assert any("synthetic" in b.lower() for b in status["blockers"])
 
 
+def test_cron_refreshes_secrets_after_preflight() -> None:
+    """Tick 395: cron rewrites secrets after preflight (smoke may appear mid-run)."""
+    root = Path(__file__).resolve().parents[1]
+    cron = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "refresh_secrets_after_preflight" in cron
+    assert "Tick 395" in cron
+    # Blocked paths: preflight → refresh → human_next (not human_next first).
+    assert "run_preflight\n    refresh_secrets_after_preflight\n    print_human_next" in cron
+    env_checks = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 395" in env_checks
+    assert "refresh_secrets_after_preflight" in env_checks
+    assert "test_cron_refreshes_secrets_after_preflight" in env_checks
+
+
 def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     """Tick 344–347: secrets-first title + body-file + tip_pr_title_stale + gh edit."""
     from icml_env_checks import (
@@ -3403,6 +3417,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "test_detect_gpqa_is_synthetic_and_secrets_auto_probe" in env_checks
     assert "ICML secrets-status auto-detect synthetic GPQA (Tick 394)" in master
     assert "Tick 394" in unblock
+    # Tick 395: cron refreshes secrets after preflight (smoke appears mid-run).
+    cron_entry395 = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    assert "refresh_secrets_after_preflight" in cron_entry395
+    assert "Tick 395" in cron_entry395
+    assert "Tick 395" in env_checks
+    assert "test_cron_refreshes_secrets_after_preflight" in env_checks
+    assert "ICML cron secrets refresh after preflight (Tick 395)" in master
+    assert "Tick 395" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

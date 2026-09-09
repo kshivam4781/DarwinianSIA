@@ -2698,6 +2698,8 @@ def suggested_open_git_pr_body(
         f"test_suggested_open_git_pr_body_secrets_first_generic`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
         f"test_detect_gpqa_is_synthetic_and_secrets_auto_probe`\n"
+        f"- [x] `pytest tests/test_icml_env_checks.py::"
+        f"test_cron_refreshes_secrets_after_preflight`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 
@@ -3651,6 +3653,11 @@ def write_icml_secrets_status(
     Tick 394: when ``gpqa_is_synthetic`` is omitted, auto-detect via
     ``detect_gpqa_is_synthetic`` so cron status (which does not pass the flag)
     still surfaces the synthetic-diamond blocker.
+
+    Tick 395: cron must call this **again after preflight** — G2
+    ``ensure_smoke_layout`` materializes ``data/`` only during preflight, so the
+    early cron write still sees ``None`` on greenfield boots. See
+    ``refresh_secrets_after_preflight`` in ``scripts/icml_cron_entry.sh``.
     """
     status = collect_icml_secrets_status()
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT

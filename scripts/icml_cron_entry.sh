@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–357).
+# ICML Thesis 1 — single cron entry (Tick 271–278 / 329 / 338 / 340 / 353–357 / 395).
 # Script: scripts/icml_cron_entry.sh
 #
 # Cron often boots from main without ICML tip docs. This entry:
@@ -25,8 +25,9 @@
 #   3. If tip OK + fetch_diamond_ok (API keys + HF **or** local diamond CSV)
 #      → live G2→G3→G4 (--fetch-diamond [, --diamond-csv])
 #   4. Else → preflight only WITH --fetch-diamond (Tick 276) and optional
-#      --diamond-csv (Tick 277); print *full* human_next (Tick 329 dual
-#      unblock: merge tip→main + secrets); exit 0 (not READY)
+#      --diamond-csv (Tick 277); **then** Tick 395 refresh secrets (smoke may
+#      appear during G2 ensure_smoke_layout) + print *full* human_next (Tick 329
+#      dual unblock: merge tip→main + secrets); exit 0 (not READY)
 #
 # Tick 273: do NOT launch --fetch-diamond live on anthropic+nebius alone —
 # missing HF_TOKEN would fail diamond materialization after tip recover.
@@ -544,6 +545,27 @@ run_preflight() {
   fi
 }
 
+# Tick 395: G2 preflight ``ensure_smoke_layout`` materializes synthetic smoke
+# *after* the early secrets write (Tick 394 auto-detect then saw no ``data/``
+# → ``gpqa_is_synthetic=null``). Refresh so durable secrets JSON + human_next
+# surface the synthetic-diamond blocker once smoke is on disk.
+refresh_secrets_after_preflight() {
+  if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+    python3 - <<'PY' || true
+from pathlib import Path
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import write_icml_secrets_status
+sec = write_icml_secrets_status(Path("docs") / "icml_secrets_status.json")
+synth = sec.get("gpqa_is_synthetic")
+print(
+    f"secrets_refresh_after_preflight: gpqa_is_synthetic={synth} "
+    f"fetch_diamond_ok={sec.get('fetch_diamond_ok')}"
+)
+PY
+  fi
+}
+
 run_live() {
   echo "=== Live G2→G3→G4 (--fetch-diamond) ==="
   if [[ ! -f scripts/run_icml_live_pipeline.py ]]; then
@@ -581,23 +603,27 @@ PY
 
 case "$MODE" in
   preflight)
-    # Tick 329: surface dual unblock even on --preflight-only (no paid spend).
-    print_human_next
+    # Tick 329 + 395: preflight first (may materialize smoke), refresh secrets,
+    # then print full human_next (synthetic blocker visible when smoke on disk).
     run_preflight
+    refresh_secrets_after_preflight
+    print_human_next
     exit 0
     ;;
   live)
     if [[ "$TIP_OK" -ne 1 ]]; then
       echo "Refusing --live: tip not OK (see docs/icml_tip_status.json)" >&2
-      print_human_next
       run_preflight
+      refresh_secrets_after_preflight
+      print_human_next
       exit 3
     fi
     if [[ "$CRON_LIVE_OK" -ne 1 ]]; then
       echo "Refusing --live: need API keys + (HF_TOKEN or local diamond CSV) for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
       echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK} diamond_csv=${DIAMOND_CSV:-none}" >&2
-      print_human_next
       run_preflight
+      refresh_secrets_after_preflight
+      print_human_next
       exit 4
     fi
     run_live
@@ -609,9 +635,10 @@ case "$MODE" in
       exit $?
     fi
     echo "Auto: blockers remain (tip_ok=${TIP_OK} secrets_ok=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK}) — preflight only"
-    # Tick 292/329: Anthropic-optional human_next from secrets status (full list).
-    print_human_next
+    # Tick 292/329/395: Anthropic-optional human_next after preflight refresh.
     run_preflight
+    refresh_secrets_after_preflight
+    print_human_next
     exit 0
     ;;
 esac

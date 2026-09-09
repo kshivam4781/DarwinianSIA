@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 394: secrets-status auto-detect synthetic GPQA (cron no longer leaves gpqa_is_synthetic null); live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 395: cron refreshes secrets after preflight so `gpqa_is_synthetic` is not left null on greenfield boots; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
