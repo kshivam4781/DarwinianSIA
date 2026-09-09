@@ -4457,6 +4457,10 @@ def committed_offline_bvd_matches_live_shape(
     (when present) and ``scripts/present_hackathon.py`` to cite current offline
     B/D ranges — Tick 319/320 surfaces still pointed at superseded Tick-300
     ``1890–1904`` / ``run_1900`` after Tick 397 ID lock.
+
+    Tick 400: also require operator-facing ``ICML_HUMAN_UNBLOCK.md`` (when
+    present) to cite current offline B/D ranges — dual-unblock intro still
+    froze Tick-300 ``1890–1904`` after Tick 397–399 ID locks.
     """
     root = repo_root or _REPO_ROOT
     expected = icml_g3g4_live_shape(profile)
@@ -4695,6 +4699,34 @@ def committed_offline_bvd_matches_live_shape(
                 problems.append(
                     "scripts/present_hackathon.py: hardcoded superseded "
                     "1890-1904 evidence IDs (Tick 399)"
+                )
+
+        # Tick 400: operator-facing human-unblock dual-unblock intro.
+        unblock = root / "docs" / "ICML_HUMAN_UNBLOCK.md"
+        if unblock.is_file():
+            unblock_text = unblock.read_text(encoding="utf-8")
+            # Prefer the dual-unblock section (operators read this first).
+            dual_idx = unblock_text.find("## Dual human unblock")
+            dual_block = (
+                unblock_text[dual_idx : dual_idx + 900]
+                if dual_idx != -1
+                else unblock_text[:900]
+            )
+            if not _text_cites_any(dual_block, b_variants) or not _text_cites_any(
+                dual_block, d_variants
+            ):
+                problems.append(
+                    "docs/ICML_HUMAN_UNBLOCK.md dual-unblock: missing current "
+                    f"offline B/D ranges {b_variants[0]} / {d_variants[0]} "
+                    "(Tick 400)"
+                )
+            # Dual-unblock intro historically used a single combined span
+            # (Tick-300 ``1890–1904``). Reject that superseded combined cite
+            # in the dual-unblock lead-in only (changelog may still name it).
+            if re.search(r"`?1890[-–]1904`?", dual_block):
+                problems.append(
+                    "docs/ICML_HUMAN_UNBLOCK.md dual-unblock: superseded "
+                    "Tick-300 combined ID span 1890-1904 (Tick 400)"
                 )
 
     return (len(problems) == 0, problems)

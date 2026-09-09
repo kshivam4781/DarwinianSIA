@@ -3158,6 +3158,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "1940–1944" in presentation or "1940-1944" in presentation
     assert "ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319)" in master
     assert "ICML judge-surface offline ID lock (Tick 399)" in master
+    # Tick 400: operator-facing human-unblock must not freeze Tick-300 IDs.
+    unblock = (root / "docs" / "ICML_HUMAN_UNBLOCK.md").read_text(encoding="utf-8")
+    dual_idx = unblock.find("## Dual human unblock")
+    dual = unblock[dual_idx : dual_idx + 900] if dual_idx != -1 else unblock[:900]
+    assert "1930–1934" in dual or "1930-1934" in dual
+    assert "1940–1944" in dual or "1940-1944" in dual
+    assert "`1890–1904`" not in dual and "`1890-1904`" not in dual
+    assert "ICML human-unblock offline ID lock (Tick 400)" in master
     # Tick 320: judge one-command demos must be ICML-honest (no false READY).
     finish = (root / "scripts" / "finish_hackathon.py").read_text(encoding="utf-8")
     present = (root / "scripts" / "present_hackathon.py").read_text(encoding="utf-8")
@@ -4052,10 +4060,10 @@ def test_committed_offline_bvd_rejects_stale_paper_ids(
     assert "Tick 301" in joined
 
 
-def test_committed_offline_bvd_rejects_stale_judge_surfaces(
+def test_committed_offline_bvd_rejects_stale_human_unblock(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 399: shape-ok pack still fails if SUBMISSION/PRESENTATION cite old IDs."""
+    """Tick 400: shape-ok pack still fails if ICML_HUMAN_UNBLOCK cites old IDs."""
     monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
     monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
     for key in (
@@ -4077,6 +4085,103 @@ def test_committed_offline_bvd_rejects_stale_judge_surfaces(
     f2 = figs / "fig2_mechanism.png"
     f1.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 1200)
     f2.write_bytes(b"\x89PNG\r\n\x1a\n" + b"1" * 1200)
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": shape,
+                "b_run_ids": [1930, 1931, 1932, 1933, 1934],
+                "d_run_ids": [1940, 1941, 1942, 1943, 1944],
+                "figures": [
+                    "docs/figures/fig1_learning_curves.png",
+                    "docs/figures/fig2_mechanism.png",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        f"| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
+        f"| B | 11 | {shape['population_size']} | {shape['elite_count']} | "
+        f"{shape['max_gen']} | {shape['eval_subset']} | `1930–1934` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    (docs / "case_study_offline.md").write_text(
+        "**Run:** `runs/run_1940`\n", encoding="utf-8"
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "Offline pilot `1930–1934` / `1940–1944`\n\n"
+        "## Case study (offline)\n\n"
+        "Lift (`run_1940`).\n"
+        "fig1_learning_curves.png fig2_mechanism.png\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text(
+        "### 1. PRIMARY\n- Evidence: offline `1930–1934` vs `1940–1944`\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- Evidence: offline D `1940–1944` → ρ>0.3 on 5/5\n",
+        encoding="utf-8",
+    )
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "| Offline B vs D case-study pilot | **DONE** | "
+        "Latest Tick 397 `1930–1934` / `1940–1944` |\n",
+        encoding="utf-8",
+    )
+    # Current Tick-399 judge surfaces (so only HUMAN_UNBLOCK fails).
+    (docs / "SUBMISSION.md").write_text(
+        "Offline B vs D `1930–1934` / `1940–1944`\n`run_1940`\n",
+        encoding="utf-8",
+    )
+    (docs / "PRESENTATION.md").write_text(
+        "Offline Bvd IDs `1930–1934` / `1940–1944`.\n",
+        encoding="utf-8",
+    )
+    (scripts / "present_hackathon.py").write_text(
+        "import json\n"
+        "from pathlib import Path\n"
+        "def _offline_evidence_ids_blurb():\n"
+        "    return 'from offline_bvd_summary'\n",
+        encoding="utf-8",
+    )
+    # Stale Tick-300 dual-unblock intro (paper/judge pack above is current).
+    (docs / "ICML_HUMAN_UNBLOCK.md").write_text(
+        "# ICML\n\n"
+        "## Dual human unblock (Tick 327–342 — read first)\n\n"
+        "Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline\n"
+        "`1890–1904`, G2 dry-run green).\n",
+        encoding="utf-8",
+    )
+    ok, problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
+    assert ok is False
+    joined = " ".join(problems)
+    assert "Tick 400" in joined
+    assert "ICML_HUMAN_UNBLOCK.md" in joined
+
+
+def test_committed_offline_bvd_rejects_stale_judge_surfaces(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 399: shape-ok pack still fails if SUBMISSION/PRESENTATION cite old IDs."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    figs = docs / "figures"
+    figs.mkdir()
+    (figs / "fig1_learning_curves.png").write_bytes(b"x" * 1500)
+    (figs / "fig2_mechanism.png").write_bytes(b"y" * 1500)
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
     (docs / "offline_bvd_summary.json").write_text(
         json.dumps(
             {

@@ -8,7 +8,7 @@ only if you intentionally want Claude meta (then Anthropic becomes required agai
 ## Dual human unblock (Tick 327–342 — read first)
 
 Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
-`1890–1904`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
+`1930–1934` / `1940–1944`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
 
 | # | Action | Why |
 |---|--------|-----|
@@ -98,6 +98,10 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 **Tick 394:** **secrets-status auto-detect synthetic GPQA** — cron `write_icml_secrets_status()` left `gpqa_is_synthetic=null` unless the live pipeline passed an explicit flag; Tip-393 committed secrets JSON omitted the synthetic-diamond blocker with smoke on disk. `detect_gpqa_is_synthetic` + auto-probe in `write_icml_secrets_status`; tip PR body drops frozen "through Tick 392".
 
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
+
+**Tick 400:** **human-unblock offline ID lock** — dual-unblock intro no longer freezes superseded Tick-300 `1890–1904`; cites current offline B/D `1930–1934` / `1940–1944`. `committed_offline_bvd_matches_live_shape` extended. Live still needs NEBIUS + HF/CSV.
+
+**Tick 399:** **judge-surface offline ID lock** — SUBMISSION/PRESENTATION/present_hackathon cite `1930–1944` / `run_1940`; restore summary Fig paths. Live still needs NEBIUS + HF/CSV.
 
 **Tick 398:** **case-study post-adoption H2** — `extract_case_study` reports the same last-2-gen window as aggregate H2 (`post_adoption_preferred_share`); `run_1940` post-adoption **0.875** / lift **+0.0607**; paper limitations no longer claim MECHANISM 4/5. Live still needs NEBIUS + HF/CSV.
 

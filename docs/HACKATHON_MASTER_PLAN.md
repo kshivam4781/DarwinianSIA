@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-09 (Section 21 ICML; Tick 399 judge-surface ID lock; Tick 398 case-study post-adoption H2; Tick 397 post-adoption H2; …)
+**Last updated:** 2026-09-09 (Section 21 ICML; Tick 400 human-unblock ID lock; Tick 399 judge-surface ID lock; Tick 398 case-study post-adoption H2; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -851,6 +851,7 @@ Computed in `cabs/belief_engine.py`:
 | Offline B vs D case-study pilot | **DONE** | Latest Tick **397–398** post-adoption H2 `1930–1934` / `1940–1944` (pop4×eval5×max_gen6); case study `docs/case_study_offline.md` (`run_1940`; gen3 **0.75** + post-adoption **0.875**); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **5/5** (floor gen≥3 + tail=2); mean gap ~6.15pp; Tick-396 `1910–1924` superseded |
 | ICML case-study post-adoption H2 (Tick 398) | **DONE** | `extract_case_study` emits `post_adoption_*` matching Tick 397 H2 window; case selection prefers post-adoption ≥0.5; paper limitations no longer claim MECHANISM 4/5 |
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | SUBMISSION/PRESENTATION/present_hackathon cite `1930–1944` / `run_1940`; restore `offline_bvd_summary.json` figures list; lock extended |
+| ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -917,6 +918,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML README Kimi command surfaces (Tick 318) | **DONE** | README leads with cron + `kimi-nebius-*` GPQA; chess/Qwen demoted; LawBench checklist removed (hard-stop note); lock test |
 | ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319) | **DONE** | Judge docs (linked from README) lead with ICML cron/Kimi + offline PRIMARY evidence + LawBench hard-stop; lock test |
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | SUBMISSION/PRESENTATION/present_hackathon track current offline Bvd IDs; empty `figures: []` restored; `committed_offline_bvd_matches_live_shape` extended |
+| ICML human-unblock offline ID lock (Tick 400) | **DONE** | Dual-unblock intro tracks current offline B/D IDs; lock rejects Tick-300 `1890–1904` span |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -995,6 +997,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-adoption H2 tail (Tick 397) | **DONE** | Default H2 last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share; offline re-pilot `1930–1944`; H2 preferred **5/5** (seed 22=0.75) |
 | ICML case-study post-adoption H2 (Tick 398) | **DONE** | Case study reports same post-adoption window as aggregate H2; `run_1940` post-adoption share **0.875**; stale paper limitations fixed |
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | Judge docs + present demo cite `1930–1944` / `run_1940`; restore summary figures; paper-ID lock extended |
+| ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944`; paper-ID lock extended |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–399 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2614,3 +2617,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Case-study post-adoption H2 (Tick 398):** Aggregate H2 used the Tick 397 post-adoption window, but `extract_case_study` still reported only first-steered (gen3) share — and paper limitations still claimed MECHANISM **4/5**. Case study now emits `post_adoption_*` fields (same floor+tail as `compute_h2`), selection prefers post-adoption ≥0.5, and limitations/abstract/gate3 cite `run_1940` post-adoption share **0.875** / lift **+0.0607**. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Judge-surface offline ID lock (Tick 399):** Tick 397–398 locked paper/gate3/READY to `1930–1944`, but judge-facing `docs/SUBMISSION.md` / `docs/PRESENTATION.md` / `present_hackathon.py` talking points still cited superseded Tick-300 `1890–1904` / `run_1900`, and `offline_bvd_summary.json` had empty `figures: []` (Tick 302 false-fail). Judge surfaces now cite current IDs + H2 preferred **5/5** / post-adoption; present demo loads IDs from the summary; paper-ID lock extended. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Human-unblock offline ID lock (Tick 400):** After Tick 399, operator-facing `docs/ICML_HUMAN_UNBLOCK.md` dual-unblock intro still froze Tick-300 `1890–1904` as the “PRIMARY-shaped offline” cite. Dual-unblock now cites `1930–1934` / `1940–1944`; `committed_offline_bvd_matches_live_shape` rejects the superseded combined span in that section. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
