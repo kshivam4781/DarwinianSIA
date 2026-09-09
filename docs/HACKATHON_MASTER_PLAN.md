@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-08 (Section 21 ICML; Tick 388 recover_tip prior_live stash; Tick 387 prior_live stash across discard/tip-apply; Tick 386 gate4 prior_live_metrics; …)
+**Last updated:** 2026-09-09 (Section 21 ICML; Tick 389 committed prior_live evidence; Tick 388 recover_tip prior_live stash; Tick 387 prior_live stash across discard/tip-apply; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -981,7 +981,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML gate4 prior_live_metrics (Tick 386) | **DONE** | `write_gate4_report` preserves `prior_live_metrics`; `_live_paper_from_gate4_sidecar` + resume / ledger-skip trust after cron preflight wipe (Tick 385 gate3 parity; completes G2/G3/G4 prior_live triad) |
 | ICML discard/tip-apply prior_live stash (Tick 387) | **DONE** | `discard_ephemeral_icml_dirt` persists prior_live_* to gitignored `docs/icml_prior_live_stash.json`; cron/boot_recover reinject after tip `--apply` (closes discard+hard-reset wipe of Tick 384–386 evidence) |
 | ICML recover_tip prior_live stash (Tick 388) | **DONE** | `icml_recover_tip.py --apply` discard+stash+reinject (closes Tick 387 hole on agent chicken-egg / mid-tick recover path) |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–388 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML committed prior_live evidence (Tick 389) | **DONE** | Committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); reinject falls back when gitignored stash absent on fresh boots |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–389 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1900` gen3 share 0.75); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 300 **5/5** ρ>0.3 (`1900–1904`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2574,3 +2575,9 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Pipeline G3→G4 prior_live_metrics (Tick 385):** After Tick 384, cron `--preflight-only` still wiped live gate3 `comparison`/H2/H5 (`mode=preflight`, `executed=False`), so `load_g3_metrics_for_g4` / direct G3 ledger-skip could not trust paid G3 evidence cross-VM. `write_gate3_report` preserves `prior_live_metrics`; `_live_metrics_from_gate3_sidecar` + `load_g3_metrics_for_g4` / `refresh_g3_metrics_on_ledger_skip` trust it (Tick 384 gate2 `prior_live_post` parity). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Gate4 prior_live_metrics (Tick 386):** After Tick 385, cron `--preflight-only` still wiped live gate4 `comparison` / `paper_refreshed` (`mode=preflight`, `executed=False`), so `refresh_g4_paper_pack_on_resume` / direct G4 ledger-skip could not trust paid G4 paper-pack evidence cross-VM. `write_gate4_report` preserves `prior_live_metrics`; `_live_paper_from_gate4_sidecar` + resume / `refresh_paper_pack_on_ledger_skip` trust it (Tick 385 gate3 parity; completes G2/G3/G4 prior_live triad). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Discard/tip-apply prior_live stash (Tick 387):** `discard_ephemeral_icml_dirt` persists trustable `prior_live_*` to gitignored `docs/icml_prior_live_stash.json`; cron + `icml_boot_recover.sh` reinject after tip `--apply`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Recover_tip prior_live stash (Tick 388):** `icml_recover_tip.py --apply` discard+stash+reinject (closes Tick 387 hole on agent chicken-egg / mid-tick recover). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Committed prior_live evidence (Tick 389):** Tick 387–388 gitignored stash survives same-VM tip `--apply`, but fresh cloud boots have no stash → paid `prior_live_*` trust dies even when the budget ledger says stages complete. `persist_prior_live_stash_from_working_tree` also writes committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); `reinject_prior_live_stash` falls back to evidence when stash is absent; G2/G3/G4 writers + cron `ensure_prior_live_evidence_initialized` wired. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

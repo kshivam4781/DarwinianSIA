@@ -85,6 +85,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 388:** **`icml_recover_tip.py --apply` prior_live stash** — Tick 387 only wired cron/boot_recover; agent chicken-egg `icml_recover_tip.py --apply` still refused dirty trees without stashing and never reinjected after hard-reset. Now discard+stash+reinject (Tick 387 parity); filter stash path from dirty porcelain even if `.gitignore` lags.
 
+**Tick 389:** **committed prior_live evidence (cross-VM)** — Tick 387–388 gitignored stash survives same-VM tip `--apply`, but fresh cloud boots have no stash → paid `prior_live_*` trust dies even when the budget ledger says stages complete. `persist_prior_live_stash_from_working_tree` also writes committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); `reinject_prior_live_stash` falls back to evidence when stash is absent. Commit the evidence file with the tip after live.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.

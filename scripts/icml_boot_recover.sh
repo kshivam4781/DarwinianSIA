@@ -183,6 +183,18 @@ PY
     fi
   fi
 fi
+# Tick 389: stash + committed evidence may remain as ?? / M after persist;
+# they must not block tip --apply (reinject rewrites evidence after hard-reset).
+if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+  blocking="$(python3 - <<'PY'
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import tip_apply_blocking_dirty_paths
+print("\n".join(tip_apply_blocking_dirty_paths()))
+PY
+)"
+  dirty="$blocking"
+fi
 if [[ -n "$dirty" ]]; then
   echo "Working tree dirty — refuse --apply (commit/stash first):" >&2
   echo "$dirty" | head -20 >&2

@@ -73,6 +73,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
     persist_direct_gate_stage_spend,
+    persist_prior_live_stash_from_working_tree,
     direct_gate_ledger_skip,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
@@ -748,6 +749,9 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
     if prior_live_post is not None:
         payload["prior_live_post"] = prior_live_post
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    # Tick 389: mirror prior_live into committed evidence (cross-VM) + stash.
+    if prior_live_post is not None:
+        persist_prior_live_stash_from_working_tree(REPO_ROOT)
 
 
 def main(argv: list[str] | None = None) -> int:

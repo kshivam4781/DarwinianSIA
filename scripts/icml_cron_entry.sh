@@ -233,10 +233,23 @@ raise SystemExit(0 if ok else 1)
 PY
     fi
   fi
-  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
+  # Tick 389: ignore stash + committed evidence dirt for tip --apply gate.
+  blocking=""
+  if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+    blocking="$(python3 - <<'PY'
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import tip_apply_blocking_dirty_paths
+print("\n".join(tip_apply_blocking_dirty_paths()))
+PY
+)"
+  else
+    blocking="$(git status --porcelain 2>/dev/null || true)"
+  fi
+  if [[ -n "$blocking" ]]; then
     echo "Working tree dirty — skip tip --apply; commit/stash first or recover manually" >&2
     echo "Dirty paths:" >&2
-    git status --porcelain | head -20 >&2
+    echo "$blocking" | head -20 >&2
     # Tick 387: still reinject stashed prior_live_* when tip apply is blocked.
     if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
       python3 - <<'PY' || true
@@ -277,15 +290,19 @@ from icml_env_checks import (
     write_icml_secrets_status,
     write_icml_tip_status,
     ensure_budget_spent_ledger_initialized,
+    ensure_prior_live_evidence_initialized,
     reinject_prior_live_stash,
 )
 root = Path(".").resolve()
 # Tick 387: reinject even when tip recover was a no-op (stash from prior discard).
+# Tick 389: falls back to committed evidence when stash absent (fresh boots).
 ok_pl, detail_pl = reinject_prior_live_stash(root)
 print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
 tip = write_icml_tip_status(root / "docs" / "icml_tip_status.json", fetch=False)
 sec = write_icml_secrets_status(root / "docs" / "icml_secrets_status.json")
 ledger_path, ledger_created = ensure_budget_spent_ledger_initialized(root)
+_ev_path, _ev_created = ensure_prior_live_evidence_initialized(root)
+print(f"prior_live_evidence={_ev_path} created={_ev_created}")
 print(f"tip_ok_for_live={tip.get('tip_ok_for_live')} local_tick={tip.get('local_tick')}")
 print(
     "secrets_ok_for_paid_sia="

@@ -82,6 +82,7 @@ from icml_env_checks import (  # noqa: E402
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
     persist_direct_gate_stage_spend,
+    persist_prior_live_stash_from_working_tree,
     direct_gate_ledger_skip,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
@@ -928,6 +929,9 @@ def write_gate3_report(
     if prior_live_metrics is not None:
         payload["prior_live_metrics"] = prior_live_metrics
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    # Tick 389: mirror prior_live into committed evidence (cross-VM) + stash.
+    if prior_live_metrics is not None:
+        persist_prior_live_stash_from_working_tree(REPO_ROOT)
 
 
 def run_sequential_live(

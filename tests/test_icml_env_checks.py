@@ -2297,6 +2297,116 @@ def test_stash_prior_live_from_live_gate2_post() -> None:
     assert blob["prior_live_post"][0]["name"] == "nonzero_fitness"
 
 
+def test_persist_prior_live_writes_committed_evidence(tmp_path: Path) -> None:
+    """Tick 389: persist writes both gitignored stash and committed evidence."""
+    import json
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+        persist_prior_live_stash_from_working_tree,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "executed": False,
+                "prior_live_metrics": {
+                    "comparison": {"d_wins_gens30": 4, "n_pairs": 5},
+                    "executed": True,
+                    "paper_refreshed": True,
+                    "ready_status": "READY",
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    info = persist_prior_live_stash_from_working_tree(repo)
+    assert info["ok"] is True
+    assert "docs/gate4_report.json" in info["captured"]
+    stash = json.loads((repo / ICML_PRIOR_LIVE_STASH_RELPATH).read_text(encoding="utf-8"))
+    evidence = json.loads(
+        (repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH).read_text(encoding="utf-8")
+    )
+    assert stash["gates"]["docs/gate4_report.json"]["prior_live_metrics"][
+        "ready_status"
+    ] == "READY"
+    assert evidence["gates"]["docs/gate4_report.json"]["prior_live_metrics"][
+        "comparison"
+    ]["d_wins_gens30"] == 4
+    assert evidence["tick"] == 389
+
+
+def test_reinject_prior_live_falls_back_to_committed_evidence(
+    tmp_path: Path,
+) -> None:
+    """Tick 389: reinject uses committed evidence when stash is absent (fresh boot)."""
+    import json
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+        reinject_prior_live_stash,
+    )
+
+    repo = tmp_path / "repo"
+    docs = repo / "docs"
+    docs.mkdir(parents=True)
+    clean = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(clean, indent=2) + "\n", encoding="utf-8"
+    )
+    evidence = {
+        "tick": 389,
+        "tick_note": "cross-VM",
+        "gates": {
+            "docs/gate4_report.json": {
+                "prior_live_metrics": {
+                    "comparison": {"d_wins_gens30": 3, "n_pairs": 5},
+                    "executed": True,
+                    "paper_refreshed": True,
+                    "ready_status": "IN_PROGRESS",
+                }
+            }
+        },
+    }
+    (repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH).write_text(
+        json.dumps(evidence, indent=2) + "\n", encoding="utf-8"
+    )
+    assert not (repo / ICML_PRIOR_LIVE_STASH_RELPATH).is_file()
+    ok, detail = reinject_prior_live_stash(repo)
+    assert ok is True
+    assert "evidence" in detail
+    assert "reinjected" in detail
+    after = json.loads((docs / "gate4_report.json").read_text(encoding="utf-8"))
+    assert after["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 3
+
+
+def test_ensure_prior_live_evidence_initialized(tmp_path: Path) -> None:
+    """Tick 389: empty evidence file created once (budget-ledger parity)."""
+    from icml_env_checks import ensure_prior_live_evidence_initialized
+
+    path, created = ensure_prior_live_evidence_initialized(tmp_path)
+    assert created is True
+    assert path.is_file()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["gates"] == {}
+    path2, created2 = ensure_prior_live_evidence_initialized(tmp_path)
+    assert created2 is False
+    assert path2 == path
+
+
 def test_recover_tip_apply_source_mentions_prior_live() -> None:
     """Tick 388: recover_tip.py --apply must wire discard + reinject (Tick 387 hole)."""
     from pathlib import Path
@@ -2832,6 +2942,27 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 388" in recover_tip
     assert "Tick 388" in unblock
     assert "ICML recover_tip prior_live stash (Tick 388)" in master
+    # Tick 389: committed prior_live evidence for cross-VM (budget-ledger parity).
+    assert "ICML_PRIOR_LIVE_EVIDENCE_RELPATH" in env_checks
+    assert "ensure_prior_live_evidence_initialized" in env_checks
+    assert "prior_live_evidence_path" in env_checks
+    assert "icml_prior_live_evidence.json" in env_checks
+    assert "Tick 389" in env_checks
+    assert "Tick 389" in unblock
+    assert "ICML committed prior_live evidence (Tick 389)" in master
+    assert "ensure_prior_live_evidence_initialized" in cron_entry
+    assert "tip_apply_blocking_dirty_paths" in env_checks
+    assert "tip_apply_blocking_dirty_paths" in cron_entry
+    assert "tip_apply_blocking_dirty_paths" in boot_recover
+    gitignore = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "icml_prior_live_stash.json" in gitignore
+    assert "icml_prior_live_evidence.json" not in [
+        ln.strip()
+        for ln in gitignore.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
+    evidence = root / "docs" / "icml_prior_live_evidence.json"
+    assert evidence.is_file()
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

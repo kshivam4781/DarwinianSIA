@@ -1070,6 +1070,10 @@ ICML_CLOUD_BOOT_BRANCH_RELPATH = "docs/icml_cloud_boot_branch.txt"
 # Tick 387: gitignored prior_live stash — survive discard + tip --apply;
 # reinjected into gate2/3/4 JSON after tip recover (never commit).
 ICML_PRIOR_LIVE_STASH_RELPATH = "docs/icml_prior_live_stash.json"
+# Tick 389: committed prior_live evidence — budget-ledger parity for cross-VM
+# resume. Gitignored stash dies on fresh boots; this file is NOT gitignored and
+# NOT ephemeral so tip commits carry prior_live_* when agents push after live.
+ICML_PRIOR_LIVE_EVIDENCE_RELPATH = "docs/icml_prior_live_evidence.json"
 
 # Preflight / status writers only — safe to discard before tip --apply (Tick 286).
 # Tick 356: do NOT list ICML_CLOUD_BOOT_BRANCH_RELPATH here. Tick 354–355 made
@@ -1213,24 +1217,80 @@ def prior_live_stash_path(repo_root: Path | None = None) -> Path:
     return root / ICML_PRIOR_LIVE_STASH_RELPATH
 
 
+def prior_live_evidence_path(repo_root: Path | None = None) -> Path:
+    """Tick 389: committed prior_live_* evidence (cross-VM; budget-ledger parity)."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    return root / ICML_PRIOR_LIVE_EVIDENCE_RELPATH
+
+
+def _load_prior_live_gates_payload(path: Path) -> dict[str, Any]:
+    """Load ``gates`` map from a stash/evidence JSON payload (empty on failure)."""
+    if not path.is_file():
+        return {}
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if isinstance(existing, dict) and isinstance(existing.get("gates"), dict):
+        return dict(existing["gates"])
+    return {}
+
+
+def _write_prior_live_gates_payload(
+    path: Path, *, tick: int, gates: dict[str, Any], tick_note: str
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tick": tick,
+        "tick_note": tick_note,
+        "gates": gates,
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def ensure_prior_live_evidence_initialized(
+    repo_root: Path | None = None,
+) -> tuple[Path, bool]:
+    """Create empty committed evidence file when missing (Tick 389). Never overwrites."""
+    p = prior_live_evidence_path(repo_root)
+    if p.is_file():
+        return p, False
+    _write_prior_live_gates_payload(
+        p,
+        tick=389,
+        gates={},
+        tick_note=(
+            "Tick 389: committed prior_live evidence (budget-ledger parity). "
+            "Gitignored stash dies on fresh boots; commit this file after live "
+            "so cross-VM reinject can restore gate2/3/4 prior_live_* when runs/ "
+            "are absent. Empty gates until first live capture."
+        ),
+    )
+    return p, True
+
+
 def persist_prior_live_stash_from_working_tree(
     repo_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Scan dirty/existing gate JSON sidecars and write the durable stash file.
+    """Scan gate JSON sidecars and write gitignored stash + committed evidence.
 
-    Merges with any existing stash so a later preflight-only dirt discard does
-    not drop previously captured live evidence.
+    Merges with any existing stash/evidence so a later preflight-only dirt
+    discard does not drop previously captured live evidence.
+
+    Tick 389: also writes ``docs/icml_prior_live_evidence.json`` (NOT gitignored)
+    so tip commits carry prior_live_* across fresh cloud boots — gitignored
+    stash alone only survived same-VM tip ``--apply``.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     stash_path = prior_live_stash_path(root)
+    evidence_path = prior_live_evidence_path(root)
     merged: dict[str, Any] = {}
-    if stash_path.is_file():
-        try:
-            existing = json.loads(stash_path.read_text(encoding="utf-8"))
-            if isinstance(existing, dict) and isinstance(existing.get("gates"), dict):
-                merged = dict(existing["gates"])
-        except (json.JSONDecodeError, OSError):
-            merged = {}
+    # Prefer union of stash + committed evidence so neither wipe loses gates.
+    for src in (stash_path, evidence_path):
+        for rel, blob in _load_prior_live_gates_payload(src).items():
+            if isinstance(blob, dict):
+                merged[rel] = blob
     captured: list[str] = []
     for rel in _GATE_JSON_STASH_KEYS:
         path = root / rel
@@ -1246,44 +1306,48 @@ def persist_prior_live_stash_from_working_tree(
         merged[rel] = blob
         captured.append(rel)
     if not merged:
-        return {"ok": True, "captured": [], "path": str(stash_path), "gates": {}}
-    payload = {
-        "tick": 387,
-        "gates": merged,
-    }
+        return {
+            "ok": True,
+            "captured": [],
+            "path": str(stash_path),
+            "evidence_path": str(evidence_path),
+            "gates": {},
+        }
+    note_387 = (
+        "Tick 387: gitignored prior_live stash across discard + tip --apply"
+    )
+    note_389 = (
+        "Tick 389: committed prior_live evidence (budget-ledger parity) — "
+        "cross-VM reinject when gitignored stash is absent on fresh boots; "
+        "commit this file with the tip after live G2/G3/G4"
+    )
     try:
-        stash_path.parent.mkdir(parents=True, exist_ok=True)
-        stash_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        _write_prior_live_gates_payload(
+            stash_path, tick=387, gates=merged, tick_note=note_387
+        )
+        _write_prior_live_gates_payload(
+            evidence_path, tick=389, gates=merged, tick_note=note_389
+        )
     except OSError as exc:
-        return {"ok": False, "error": str(exc), "captured": captured, "path": str(stash_path)}
+        return {
+            "ok": False,
+            "error": str(exc),
+            "captured": captured,
+            "path": str(stash_path),
+            "evidence_path": str(evidence_path),
+        }
     return {
         "ok": True,
         "captured": captured,
         "path": str(stash_path),
+        "evidence_path": str(evidence_path),
         "gates": merged,
     }
 
 
-def reinject_prior_live_stash(
-    repo_root: Path | None = None,
-) -> tuple[bool, str]:
-    """Reinject stashed prior_live_* into gate2/3/4 JSON after tip --apply.
-
-    Tick 387: ``discard_ephemeral_icml_dirt`` + ``git reset --hard`` would
-    otherwise wipe Tick 384–386 ``prior_live_*`` evidence. Stash file is
-    gitignored (survives hard reset); reinject restores trustable sidecars.
-    """
-    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    stash_path = prior_live_stash_path(root)
-    if not stash_path.is_file():
-        return True, "no prior_live stash"
-    try:
-        payload = json.loads(stash_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        return False, f"prior_live stash unreadable: {exc}"
-    gates = payload.get("gates") if isinstance(payload, dict) else None
-    if not isinstance(gates, dict) or not gates:
-        return True, "prior_live stash empty"
+def _reinject_prior_live_gates(
+    root: Path, gates: dict[str, Any]
+) -> list[str]:
     reinjected: list[str] = []
     for rel, blob in gates.items():
         if rel not in _GATE_JSON_STASH_KEYS:
@@ -1293,9 +1357,77 @@ def reinject_prior_live_stash(
         path = root / rel
         if _reinject_prior_live_into_gate_json(path, blob):
             reinjected.append(rel)
+    return reinjected
+
+
+def reinject_prior_live_stash(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Reinject prior_live_* into gate2/3/4 JSON after tip --apply.
+
+    Tick 387: ``discard_ephemeral_icml_dirt`` + ``git reset --hard`` would
+    otherwise wipe Tick 384–386 ``prior_live_*`` evidence. Stash file is
+    gitignored (survives hard reset on the same VM).
+
+    Tick 389: when the gitignored stash is missing (fresh cloud boot), fall
+    back to committed ``docs/icml_prior_live_evidence.json`` — same role as
+    ``docs/icml_budget_spent.json`` for spend/stages.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_path = prior_live_stash_path(root)
+    evidence_path = prior_live_evidence_path(root)
+    source = "stash"
+    gates = _load_prior_live_gates_payload(stash_path)
+    if not gates:
+        source = "evidence"
+        gates = _load_prior_live_gates_payload(evidence_path)
+    if not gates:
+        if not stash_path.is_file() and not evidence_path.is_file():
+            return True, "no prior_live stash or evidence"
+        return True, "prior_live stash/evidence empty"
+    reinjected = _reinject_prior_live_gates(root, gates)
+    # Tick 389: hard-reset restores an older committed evidence file; rewrite
+    # from the gates we just trusted so cross-VM tip --apply cannot empty it.
+    try:
+        _write_prior_live_gates_payload(
+            evidence_path,
+            tick=389,
+            gates=gates,
+            tick_note=(
+                "Tick 389: committed prior_live evidence (budget-ledger parity) — "
+                "rewritten on reinject so tip --apply hard-reset cannot wipe "
+                "fresher gates carried by the gitignored stash"
+            ),
+        )
+    except OSError:
+        pass
     if not reinjected:
-        return True, "prior_live stash present but nothing reinjected (sidecars missing or already had prior_live)"
-    return True, f"reinjected prior_live into: {reinjected}"
+        return (
+            True,
+            f"prior_live {source} present but nothing reinjected "
+            "(sidecars missing or already had prior_live); evidence refreshed",
+        )
+    return True, f"reinjected prior_live from {source} into: {reinjected}"
+
+
+def tip_apply_blocking_dirty_paths(
+    repo_root: Path | None = None,
+) -> list[str]:
+    """Dirty paths that should block tip ``--apply`` (Tick 389).
+
+    Excludes gitignored prior_live stash and committed prior_live evidence
+    (may be newly written during persist; reinject rewrites evidence after
+    hard-reset). Same filter as ``discard_ephemeral_icml_dirt`` / recover_tip.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
+    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
+    ignore = {stash_norm, evidence_norm}
+    return [
+        p
+        for p in porcelain_dirty_paths(root)
+        if p.replace("\\", "/") not in ignore
+    ]
 
 
 def porcelain_dirty_paths(repo_root: Path | None = None) -> list[str]:
@@ -1342,6 +1474,10 @@ def discard_ephemeral_icml_dirt(
     wipe Tick 384–386 paid evidence. Call ``reinject_prior_live_stash`` after
     tip recover (cron / boot_recover).
 
+    Tick 389: the same persist also writes committed
+    ``docs/icml_prior_live_evidence.json`` (budget-ledger parity) so fresh
+    cloud boots can reinject when the gitignored stash is absent.
+
     Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
     the tree is clean after this call (or was already clean).
     """
@@ -1351,8 +1487,16 @@ def discard_ephemeral_icml_dirt(
     dirty = porcelain_dirty_paths(root)
     # Tick 387: durable prior_live stash is gitignored in the real repo; also
     # exclude it explicitly so tip --apply is not blocked when .gitignore lags.
-    stash_rel = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
-    dirty = [p for p in dirty if p.replace("\\", "/") != stash_rel]
+    # Tick 389: committed evidence may be newly written/untracked during
+    # persist — do not treat it as a tip-apply blocker (agents commit it with
+    # the tip after live; reinject rewrites it after hard-reset).
+    stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
+    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
+    dirty = [
+        p
+        for p in dirty
+        if p.replace("\\", "/") not in {stash_norm, evidence_norm}
+    ]
     if not dirty:
         return True, "working tree clean"
 
@@ -1408,7 +1552,7 @@ def discard_ephemeral_icml_dirt(
     remaining = [
         p
         for p in porcelain_dirty_paths(root)
-        if p.replace("\\", "/") != stash_rel
+        if p.replace("\\", "/") not in {stash_norm, evidence_norm}
     ]
     if remaining:
         non_ephem = [p for p in remaining if not is_ephemeral_icml_path(p)]
@@ -2471,13 +2615,14 @@ def suggested_open_git_pr_body(
         )
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **`icml_recover_tip.py --apply` prior_live stash** — "
-        f"Tick 387 wired stash+reinject into cron + `icml_boot_recover.sh`, but "
-        f"`icml_recover_tip.py --apply` still refused dirty trees without "
-        f"stashing and never reinjected after `git reset --hard` (agent "
-        f"chicken-egg / mid-tick recover path). Now discard ephemerals "
-        f"(stash prior_live_*) then reinject after hard-reset — Tick 387 "
-        f"parity. Tip PR GitHub **title and body** stay frozen when using "
+        f"- Tick {tick}: **committed prior_live evidence (cross-VM)** — Tick 387–388 "
+        f"gitignored `docs/icml_prior_live_stash.json` survives same-VM tip "
+        f"`--apply`, but fresh cloud boots have no stash → paid G2/G3/G4 "
+        f"`prior_live_*` trust dies even when the budget ledger says stages "
+        f"complete. Now `persist_prior_live_stash_from_working_tree` also writes "
+        f"committed `docs/icml_prior_live_evidence.json` (budget-ledger parity); "
+        f"`reinject_prior_live_stash` falls back to evidence when stash is "
+        f"absent. Tip PR GitHub **title and body** stay frozen when using "
         f"`open_git_pr` MCP (does **not** rewrite either on existing PRs — "
         f"Tick 345–350; prefer verbatim args from "
         f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -2495,9 +2640,9 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_recover_tip_apply_wires_prior_live_stash`\n"
+        f"test_persist_prior_live_writes_committed_evidence`\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_recover_tip_apply_source_mentions_prior_live`\n"
+        f"test_reinject_prior_live_falls_back_to_committed_evidence`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

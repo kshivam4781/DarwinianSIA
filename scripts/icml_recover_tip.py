@@ -62,9 +62,15 @@ def apply_tip(tip_ref: str) -> int:
         return 2
     # Tick 388: gitignored prior_live stash must not block --apply (same class
     # of bug as Tick 356/359 boot/call JSON). Filter even if .gitignore lags.
-    from icml_env_checks import ICML_PRIOR_LIVE_STASH_RELPATH
+    # Tick 389: committed evidence may be newly written during persist — filter
+    # it too (reinject rewrites evidence after hard-reset).
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+    )
 
     stash_norm = ICML_PRIOR_LIVE_STASH_RELPATH.replace("\\", "/")
+    evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
     dirty_lines: list[str] = []
     for line in (status.stdout or "").splitlines():
         if len(line) < 4:
@@ -73,7 +79,7 @@ def apply_tip(tip_ref: str) -> int:
         if " -> " in rest:
             rest = rest.split(" -> ", 1)[1]
         rest = rest.strip().strip('"').replace("\\", "/")
-        if rest == stash_norm:
+        if rest in {stash_norm, evidence_norm}:
             continue
         dirty_lines.append(line)
     dirty = "\n".join(dirty_lines).strip()
