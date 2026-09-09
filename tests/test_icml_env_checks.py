@@ -3139,6 +3139,7 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "sia run --task lawbench --max_gen 5 --run_id baseline" not in readme
     assert "ICML README Kimi command surfaces (Tick 318)" in master
     # Tick 319: judge-facing SUBMISSION + PRESENTATION must lead ICML (README still links them).
+    # Tick 399: evidence IDs must track current offline_bvd_summary (not Tick-300 1890–1904).
     submission = (root / "docs" / "SUBMISSION.md").read_text(encoding="utf-8")
     presentation = (root / "docs" / "PRESENTATION.md").read_text(encoding="utf-8")
     assert "ICML Thesis 1" in submission
@@ -3146,12 +3147,17 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "kimi-nebius-pydantic-meta" in submission
     assert "kimi-nebius-target" in submission
     assert "Do **not** run full LawBench without explicit human approval" in submission
-    assert "1890–1894" in submission or "1890-1894" in submission or "`1890–1894`" in submission
+    assert "1930–1934" in submission or "1930-1934" in submission
+    assert "1940–1944" in submission or "1940-1944" in submission
+    assert "run_1940" in submission
     assert "Future: web search, committee debate, Darwinian evolution in our sibling repo." not in presentation
     assert "ICML Thesis 1" in presentation
     assert "bash scripts/icml_cron_entry.sh" in presentation
     assert "Do not** run full LawBench" in presentation or "Do **not** run full LawBench" in presentation
+    assert "1930–1934" in presentation or "1930-1934" in presentation
+    assert "1940–1944" in presentation or "1940-1944" in presentation
     assert "ICML SUBMISSION + PRESENTATION judge surfaces (Tick 319)" in master
+    assert "ICML judge-surface offline ID lock (Tick 399)" in master
     # Tick 320: judge one-command demos must be ICML-honest (no false READY).
     finish = (root / "scripts" / "finish_hackathon.py").read_text(encoding="utf-8")
     present = (root / "scripts" / "present_hackathon.py").read_text(encoding="utf-8")
@@ -3164,7 +3170,9 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML Thesis 1" in present or "ICML THESIS 1" in present
     assert "icml_cron_entry.sh" in present
     assert "LawBench" in present
-    assert "1890" in present
+    assert "offline_bvd_summary" in present
+    assert "_offline_evidence_ids_blurb" in present
+    assert "IDs 1890-1904" not in present and "IDs 1890–1904" not in present
     assert "ICML finish/present judge demos (Tick 320)" in master
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish
@@ -4042,6 +4050,94 @@ def test_committed_offline_bvd_rejects_stale_paper_ids(
     joined = " ".join(problems)
     assert "case_study_offline.md" in joined or "paper_artifacts.md" in joined
     assert "Tick 301" in joined
+
+
+def test_committed_offline_bvd_rejects_stale_judge_surfaces(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 399: shape-ok pack still fails if SUBMISSION/PRESENTATION cite old IDs."""
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    figs = docs / "figures"
+    figs.mkdir()
+    f1 = figs / "fig1_learning_curves.png"
+    f2 = figs / "fig2_mechanism.png"
+    f1.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 1200)
+    f2.write_bytes(b"\x89PNG\r\n\x1a\n" + b"1" * 1200)
+    (docs / "offline_bvd_summary.json").write_text(
+        json.dumps(
+            {
+                "shape": shape,
+                "b_run_ids": [1930, 1931, 1932, 1933, 1934],
+                "d_run_ids": [1940, 1941, 1942, 1943, 1944],
+                "figures": [
+                    "docs/figures/fig1_learning_curves.png",
+                    "docs/figures/fig2_mechanism.png",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text(
+        "<!-- OFFLINE_G3_PILOT_START -->\n"
+        f"| Cond | Seeds | Pop | Elite | max_gen | eval_subset | Run IDs |\n"
+        f"| B | 11 | {shape['population_size']} | {shape['elite_count']} | "
+        f"{shape['max_gen']} | {shape['eval_subset']} | `1930–1934` |\n"
+        "<!-- OFFLINE_G3_PILOT_END -->\n",
+        encoding="utf-8",
+    )
+    (docs / "case_study_offline.md").write_text(
+        "**Run:** `runs/run_1940`\n", encoding="utf-8"
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "Offline pilot `1930–1934` / `1940–1944`\n\n"
+        "## Case study (offline)\n\n"
+        "Lift (`run_1940`).\n"
+        "fig1_learning_curves.png fig2_mechanism.png\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text(
+        "### 1. PRIMARY\n- Evidence: offline `1930–1934` vs `1940–1944`\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- Evidence: offline D `1940–1944` → ρ>0.3 on 5/5\n",
+        encoding="utf-8",
+    )
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "| Offline B vs D case-study pilot | **DONE** | "
+        "Latest Tick 397 `1930–1934` / `1940–1944` |\n",
+        encoding="utf-8",
+    )
+    # Stale Tick-300 judge surfaces (paper pack above is current).
+    (docs / "SUBMISSION.md").write_text(
+        "Offline B vs D `1890–1894` / `1900–1904`\n`run_1900`\n",
+        encoding="utf-8",
+    )
+    (docs / "PRESENTATION.md").write_text(
+        "Offline Bvd IDs `1890–1904`.\n",
+        encoding="utf-8",
+    )
+    (scripts / "present_hackathon.py").write_text(
+        'print("EVIDENCE: IDs 1890-1904")\n',
+        encoding="utf-8",
+    )
+    ok, problems = committed_offline_bvd_matches_live_shape(repo_root=tmp_path)
+    assert ok is False
+    joined = " ".join(problems)
+    assert "Tick 399" in joined
+    assert "SUBMISSION.md" in joined or "PRESENTATION.md" in joined
 
 
 def _mk_costed_complete_run(run_dir: Path, *, cost_usd: float = 0.3) -> None:

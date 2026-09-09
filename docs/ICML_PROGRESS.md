@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-09T20:04Z — Tick 399 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-b59a`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 397–398 locked paper/gate3/READY to `1930–1944`, but judge-facing SUBMISSION/PRESENTATION/present_hackathon still cited superseded Tick-300 `1890–1904` / `run_1900`, and `offline_bvd_summary.json` had empty `figures: []` (Tick 302 lock false-fail). Highest leverage without paid spend: **judge-surface offline ID lock + restore figures**.
+
+### What this tick did (ONE step)
+**Judge-surface offline ID lock (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 398 (`f49c`); confirmed secrets absent; boot `b59a` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Sync `docs/SUBMISSION.md` / `docs/PRESENTATION.md` / `present_hackathon.py` to `1930–1944` / `run_1940` + H2 preferred **5/5** + post-adoption; present talking points load IDs from `offline_bvd_summary.json`; restore summary `figures` list; extend `committed_offline_bvd_matches_live_shape` + tests
+3. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 398) | After (Tick 399) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Judge surfaces cite current IDs | stale `1890–1904` / `run_1900` | **`1930–1944` / `run_1940`** |
+| `offline_bvd_summary.json` figures | `[]` (Tick 302 fail) | Fig 1–2 paths restored |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-09T18:15Z — Tick 398 (automation cron)
 
 ### Status snapshot

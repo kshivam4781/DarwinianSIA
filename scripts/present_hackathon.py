@@ -61,7 +61,8 @@ def _print_icml_blurb() -> None:
                 f"  Offline B vs D IDs {data.get('b_run_ids')} / {data.get('d_run_ids')}: "
                 f"gens30 D {cmp_.get('d_wins_gens30')}/5, "
                 f"cost30 D {cmp_.get('d_wins_cost30')}/5, "
-                f"final D {cmp_.get('d_wins_final')}/5 "
+                f"final D {cmp_.get('d_wins_final')}/5, "
+                f"H2 preferred D {cmp_.get('d_wins_h2')}/5 "
                 "(synthetic — not live GPQA)."
             )
         except (json.JSONDecodeError, OSError) as exc:
@@ -208,9 +209,34 @@ def _real_runs_summary() -> None:
     )
 
 
+def _offline_evidence_ids_blurb() -> str:
+    """Tick 399: pitch IDs track ``docs/offline_bvd_summary.json`` (no stale hardcodes)."""
+    summary = ROOT / "docs" / "offline_bvd_summary.json"
+    if not summary.is_file():
+        return "see docs/offline_bvd_summary.json"
+    try:
+        data = json.loads(summary.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return "see docs/offline_bvd_summary.json"
+    b_ids = data.get("b_run_ids") or []
+    d_ids = data.get("d_run_ids") or []
+    cmp_ = data.get("compare") or {}
+    case = data.get("case_study") or {}
+    post = case.get("post_adoption_preferred_share")
+    post_bit = (
+        f"; case post-adoption share {post}" if post is not None else ""
+    )
+    return (
+        f"IDs {b_ids} / {d_ids}: D wins gens30 {cmp_.get('d_wins_gens30')}/5, "
+        f"cost30 {cmp_.get('d_wins_cost30')}/5, final {cmp_.get('d_wins_final')}/5, "
+        f"H5 5/5, H2 preferred {cmp_.get('d_wins_h2')}/5{post_bit}"
+    )
+
+
 def _talking_points() -> None:
     _banner("2-MINUTE PITCH (read aloud)")
-    print("""
+    evidence = _offline_evidence_ids_blurb()
+    print(f"""
   1. PROBLEM: Self-improving AI fixes failures but never questions its assumptions.
 
   2. INSIGHT: Science advances via belief -> contradiction -> investigation.
@@ -221,8 +247,8 @@ def _talking_points() -> None:
   4. DEMO: Gen 1-2 say memory helps. Gen 3 says memory hurts on easy cases.
      CABS does NOT just pick a fix - it asks WHEN does memory help vs hurt?
 
-  5. EVIDENCE: Offline B vs D at live Nebius shape (IDs 1890-1904): D wins gens30 4/5,
-     cost30 4/5, final 5/5, H5 rho>0.3. Live GPQA still needs NEBIUS + HF/CSV.
+  5. EVIDENCE: Offline B vs D at live Nebius shape ({evidence}).
+     Live GPQA still needs NEBIUS + HF/CSV.
 
   6. HARD STOP: Do not run full LawBench without explicit human approval.
 """)

@@ -56,8 +56,8 @@ Belief → Contradiction → Research question → Biased mutation / scoped feed
 
 | Artifact | What it proves |
 |----------|----------------|
-| Offline B vs D `1890–1894` / `1900–1904` | PRIMARY-shaped at live Nebius shape (pop4×eval5×max_gen6): gens30 **4/5**, cost30 **4/5**, final **5/5**, mean gap ~**6.15pp**, H5 **5/5** — **not** live GPQA |
-| `docs/case_study_offline.md` (`run_1900`) | H2: contradiction → preferred DNA share 0.25→0.5→0.75 → fitness lift |
+| Offline B vs D `1930–1934` / `1940–1944` | PRIMARY-shaped at live Nebius shape (pop4×eval5×max_gen6): gens30 **4/5**, cost30 **4/5**, final **5/5**, mean gap ~**6.15pp**, H5 **5/5**, H2 preferred **5/5** — **not** live GPQA |
+| `docs/case_study_offline.md` (`run_1940`) | H2: contradiction → preferred DNA 0.25→0.5→0.75 (gen3) → post-adoption **0.875** (gens5–6) → fitness lift **+0.0607** |
 | `docs/paper_artifacts.md` | Figs 1–2, Tables 1–2, abstract, limitations, run IDs |
 | `docs/figures/fig1_learning_curves.png` | Offline learning curves B vs D |
 | `docs/figures/fig2_mechanism.png` | Offline mechanism / H2 support |

@@ -48,10 +48,10 @@ Run `python3 scripts/present_hackathon.py` and scroll to:
 4. INJECTED PROMPT — show this goes into Meta/Feedback next gen
 
 **ICML claim (20 sec)**  
-"Condition D is epistemic-full: `--cabs --cabs-inline`. Offline at the live Nebius shape, D beats B on gens-to-30% **4/5**, cost-to-30% **4/5**, final accuracy **5/5** (~6pp gap), with H5 ρ>0.3 on **5/5**. Live GPQA is the publishable bar — gated behind secrets and a $20 cron pipeline."
+"Condition D is epistemic-full: `--cabs --cabs-inline`. Offline at the live Nebius shape (`1930–1934` vs `1940–1944`), D beats B on gens-to-30% **4/5**, cost-to-30% **4/5**, final accuracy **5/5** (~6pp gap), with H5 ρ>0.3 on **5/5** and H2 preferred **5/5**. Live GPQA is the publishable bar — gated behind secrets and a $20 cron pipeline."
 
 **Close (10 sec)**  
-"Mechanism: contradiction → preferred DNA → population skew → fitness lift. Evidence pack: `docs/paper_artifacts.md`. Status: `docs/ICML_READY.md`."
+"Mechanism: contradiction → preferred DNA → post-adoption skew (e.g. `run_1940` share **0.875**) → fitness lift. Evidence pack: `docs/paper_artifacts.md`. Status: `docs/ICML_READY.md`."
 
 ---
 
@@ -61,7 +61,7 @@ Run `python3 scripts/present_hackathon.py` and scroll to:
 |----------|--------|
 | How is this different from SIA? | SIA fixes failures. CABS tracks *beliefs* and *contradictions* and steers *what to mutate/investigate*. |
 | Did accuracy improve? | Offline PRIMARY-shaped yes (D vs B). Publishable claim needs live multi-seed GPQA (G4). |
-| Can I reproduce offline? | `python3 scripts/present_hackathon.py` — no API. Offline Bvd: `docs/offline_bvd_summary.json` IDs `1890–1904`. |
+| Can I reproduce offline? | `python3 scripts/present_hackathon.py` — no API. Offline Bvd: `docs/offline_bvd_summary.json` IDs `1930–1934` / `1940–1944`. |
 | What's the live command? | `bash scripts/icml_cron_entry.sh` with Nebius + HF/CSV. |
 | LawBench? | Hard-stop — not without explicit human approval. |
 | What's next? | Unblock secrets → live G2→G3→G4 → fill Live Tables → STATUS READY. |

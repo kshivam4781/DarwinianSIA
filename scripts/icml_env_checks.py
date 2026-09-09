@@ -4452,6 +4452,11 @@ def committed_offline_bvd_matches_live_shape(
 
     Tick 302: require ``figures`` to list existing Fig 1–2 PNGs (Tick 300 left
     ``figures: []`` when matplotlib was absent, so paper could cite stale PNGs).
+
+    Tick 399: also require judge-facing ``SUBMISSION.md`` / ``PRESENTATION.md``
+    (when present) and ``scripts/present_hackathon.py`` to cite current offline
+    B/D ranges — Tick 319/320 surfaces still pointed at superseded Tick-300
+    ``1890–1904`` / ``run_1900`` after Tick 397 ID lock.
     """
     root = repo_root or _REPO_ROOT
     expected = icml_g3g4_live_shape(profile)
@@ -4645,5 +4650,51 @@ def committed_offline_bvd_matches_live_shape(
                         f"pilot row missing current IDs {b_variants[0]} / "
                         f"{d_variants[0]} (Tick 301)"
                     )
+
+        # Tick 399: judge-facing SUBMISSION / PRESENTATION / present demo.
+        submission = root / "docs" / "SUBMISSION.md"
+        if submission.is_file():
+            sub_text = submission.read_text(encoding="utf-8")
+            if not _text_cites_any(sub_text, b_variants) or not _text_cites_any(
+                sub_text, d_variants
+            ):
+                problems.append(
+                    "docs/SUBMISSION.md: missing current offline B/D ranges "
+                    f"{b_variants[0]} / {d_variants[0]} (Tick 399)"
+                )
+            if case_run not in sub_text:
+                problems.append(
+                    f"docs/SUBMISSION.md: missing current case study {case_run} "
+                    "(Tick 399)"
+                )
+        presentation = root / "docs" / "PRESENTATION.md"
+        if presentation.is_file():
+            pres_text = presentation.read_text(encoding="utf-8")
+            if not _text_cites_any(pres_text, b_variants) or not _text_cites_any(
+                pres_text, d_variants
+            ):
+                problems.append(
+                    "docs/PRESENTATION.md: missing current offline B/D ranges "
+                    f"{b_variants[0]} / {d_variants[0]} (Tick 399)"
+                )
+        present_py = root / "scripts" / "present_hackathon.py"
+        if present_py.is_file():
+            present_text = present_py.read_text(encoding="utf-8")
+            if "offline_bvd_summary" not in present_text:
+                problems.append(
+                    "scripts/present_hackathon.py: must read "
+                    "docs/offline_bvd_summary.json for evidence IDs (Tick 399)"
+                )
+            if "_offline_evidence_ids_blurb" not in present_text:
+                problems.append(
+                    "scripts/present_hackathon.py: talking points must use "
+                    "_offline_evidence_ids_blurb (Tick 399; no hardcoded IDs)"
+                )
+            # Guard against reintroducing superseded Tick-300 hardcodes.
+            if re.search(r"IDs\s+1890[-–]1904", present_text):
+                problems.append(
+                    "scripts/present_hackathon.py: hardcoded superseded "
+                    "1890-1904 evidence IDs (Tick 399)"
+                )
 
     return (len(problems) == 0, problems)
