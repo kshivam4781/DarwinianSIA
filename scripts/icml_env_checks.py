@@ -2633,9 +2633,13 @@ def suggested_open_git_pr_body(
     then lied about what the current tick did. Per-tick detail belongs in
     ``docs/ICML_PROGRESS.md``; this helper only carries the durable PRIMARY ask
     + tip anti-churn / MCP metadata notes.
+
+    Tick 396: cite current offline B/D ID ranges from
+    ``docs/offline_bvd_summary.json`` (not frozen ``1890–1904``).
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
+    offline_ids = _offline_bvd_id_range_blurb()
     if fetch_diamond_ok is False:
         primary = (
             f"**PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local "
@@ -2644,8 +2648,9 @@ def suggested_open_git_pr_body(
         tick_lead = (
             f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on NEBIUS + "
             f"(HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at "
-            f"`1890–1904` (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, "
-            f"H2 preferred **4/5**). STATUS remains IN_PROGRESS (not READY)."
+            f"{offline_ids} (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, "
+            f"H2 preferred **4/5**; steered-window gen≥3). STATUS remains "
+            f"IN_PROGRESS (not READY)."
         )
     elif fetch_diamond_ok is True:
         primary = (
@@ -2654,7 +2659,7 @@ def suggested_open_git_pr_body(
         )
         tick_lead = (
             f"Tick {tick}: secrets present — run `bash scripts/icml_cron_entry.sh` "
-            f"for live G2→G3→G4. Offline PRIMARY/H5 green at `1890–1904`. "
+            f"for live G2→G3→G4. Offline PRIMARY/H5 green at {offline_ids}. "
             f"STATUS stays IN_PROGRESS until live criteria pass."
         )
     else:
@@ -2664,7 +2669,7 @@ def suggested_open_git_pr_body(
         )
         tick_lead = (
             f"Tick {tick}: check secrets status / human unblock. Offline "
-            f"PRIMARY/H5 green at `1890–1904`. STATUS remains IN_PROGRESS "
+            f"PRIMARY/H5 green at {offline_ids}. STATUS remains IN_PROGRESS "
             f"(not READY)."
         )
     # Tick 393: keep this body *secrets-first and tick-generic*. Do **not**
@@ -4359,6 +4364,27 @@ def committed_g3g4_recipes_match_live_shape(
 # --- Tick 300: committed offline Bvd summary ↔ live-shape lock ---------------------
 # Tick 23 artifacts used eval_subset=3 while live G3/G4 is eval5 (same pop4×max_gen6).
 # Paper/gate offline tables must advertise the shape we will spend $20 on.
+
+
+def _offline_bvd_id_range_blurb(*, repo_root: Path | None = None) -> str:
+    """Backticked B/D offline ID ranges from ``docs/offline_bvd_summary.json``.
+
+    Tick 396: tip PR body must not freeze superseded ``1890–1904`` after a
+    re-pilot bumps ``b_run_ids`` / ``d_run_ids``.
+    """
+    root = repo_root or _REPO_ROOT
+    path = root / "docs" / "offline_bvd_summary.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        b_ids = [int(x) for x in (payload.get("b_run_ids") or [])]
+        d_ids = [int(x) for x in (payload.get("d_run_ids") or [])]
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        b_ids, d_ids = [], []
+    b_vars = _offline_id_range_strings(b_ids)
+    d_vars = _offline_id_range_strings(d_ids)
+    b = next((v for v in b_vars if v.startswith("`")), "`1910–1914`")
+    d = next((v for v in d_vars if v.startswith("`")), "`1920–1924`")
+    return f"{b} / {d}"
 
 
 def _offline_id_range_strings(ids: Sequence[int]) -> list[str]:
