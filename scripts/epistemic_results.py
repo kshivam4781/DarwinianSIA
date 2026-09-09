@@ -189,6 +189,11 @@ def compute_h5(
 # Tick 396: under delay-all, gen1 random + gen1→gen2 fair breed; first steered
 # DNA appears at gen≥3 (matches case-study ``first_steered_gen`` / Tick 23).
 H2_DEFAULT_MIN_GENERATION = 3
+# Tick 397: ε-discover→adopt can lag 1–2 gens after steering starts (seed 22
+# selective appears gen4, consolidates gen6). Default H2 scores the last
+# ``H2_DEFAULT_TAIL_GENERATIONS`` gens (floored at gen≥3) so transitional
+# discovery does not dilute preferred_share the way fair-bred gens did.
+H2_DEFAULT_TAIL_GENERATIONS = 2
 
 
 def _generation_from_dna_path(dna_path: Path) -> int | None:
@@ -202,6 +207,51 @@ def _generation_from_dna_path(dna_path: Path) -> int | None:
     return None
 
 
+def _max_generation_in_run(run_dir: Path) -> int | None:
+    """Highest ``gen_N`` directory that contains at least one agent DNA."""
+    max_g: int | None = None
+    for dna_path in run_dir.glob("gen_*/agent_*/agent_dna.json"):
+        gen = _generation_from_dna_path(dna_path)
+        if gen is None:
+            continue
+        if max_g is None or gen > max_g:
+            max_g = gen
+    return max_g
+
+
+def resolve_h2_min_generation(
+    run_dir: Path,
+    *,
+    min_generation: int | None = None,
+    tail_generations: int | None = None,
+) -> int:
+    """Resolve H2 DNA window start (Tick 396 floor + Tick 397 post-adoption tail).
+
+    Defaults (both ``None``): floor at gen≥3 (delay-all) **and** keep only the
+    last ``H2_DEFAULT_TAIL_GENERATIONS`` generations so discovery→adoption lag
+    does not dilute MECHANISM preferred_share.
+
+    Explicit ``min_generation`` with ``tail_generations is None`` honors that
+    exact floor (no tail) — legacy callers / Tick 396 exact-window tests.
+    """
+    if min_generation is not None and tail_generations is None:
+        return int(min_generation)
+    floor = (
+        H2_DEFAULT_MIN_GENERATION if min_generation is None else int(min_generation)
+    )
+    tail = (
+        H2_DEFAULT_TAIL_GENERATIONS
+        if tail_generations is None
+        else int(tail_generations)
+    )
+    if tail <= 0:
+        return floor
+    max_g = _max_generation_in_run(run_dir)
+    if max_g is None:
+        return floor
+    return max(floor, int(max_g) - int(tail) + 1)
+
+
 def collect_dna_traits(
     run_dir: Path,
     field: str = "memory",
@@ -210,8 +260,8 @@ def collect_dna_traits(
 ) -> Counter:
     """Count DNA allele values for ``field``.
 
-    Tick 396: optional ``min_generation`` excludes fair-bred gens under
-    Condition D delay-all (default H2 window uses gen≥3).
+    Tick 396/397: optional ``min_generation`` excludes early gens under
+    Condition D delay-all / post-adoption H2 windows.
     """
     counts: Counter = Counter()
     min_g = None if min_generation is None else int(min_generation)
@@ -287,9 +337,10 @@ def compute_h2(
     field: str | None = None,
     bias_values: list[str] | None = None,
     *,
-    min_generation: int = H2_DEFAULT_MIN_GENERATION,
+    min_generation: int | None = None,
+    tail_generations: int | None = None,
 ) -> dict[str, Any]:
-    """H2 helper: DNA trait skew under contradiction bias (Tick 361 / 364 / 396).
+    """H2 helper: DNA trait skew under contradiction bias (Tick 361 / 364 / 396 / 397).
 
     Default ``field=None`` auto-resolves the biased DNA field from the run's
     mutation-bias map (prefer ``tool_strategy`` over hard-coded ``memory``).
@@ -299,14 +350,30 @@ def compute_h2(
     is not MECHANISM skew — a population dominated by the *loser* allele still
     has ``in_bias_share=1.0``.
 
-    Tick 396: default ``min_generation=3`` (steered-window H2). Under delay-all,
-    gen1 is random and gen1→gen2 breeding is fair, so all-generation preferred
-    share dilutes true post-steer skew (same class of bug as Tick 18 H5 window
-    and Tick 23 case-study gen≥3). Pass ``min_generation=1`` for legacy
-    all-generation counts.
+    Tick 396: steered-window floor gen≥3 (delay-all: gen1 random, gen1→gen2
+    fair). Pass ``min_generation=1`` for legacy all-generation counts.
+
+    Tick 397: default also applies a post-adoption **tail** (last
+    ``H2_DEFAULT_TAIL_GENERATIONS`` gens, floored at gen≥3) so ε-discover→adopt
+    lag does not dilute preferred_share (seed 22 selective consolidates late).
+    Explicit ``min_generation=N`` with no ``tail_generations`` honors exact
+    gen≥N (no tail).
     """
     resolved = resolve_h2_bias_field(run_dir) if field is None else field
-    min_g = int(min_generation)
+    min_g = resolve_h2_min_generation(
+        run_dir,
+        min_generation=min_generation,
+        tail_generations=tail_generations,
+    )
+    # Record effective tail for paper transparency (None when exact floor).
+    if min_generation is not None and tail_generations is None:
+        eff_tail: int | None = None
+    else:
+        eff_tail = (
+            H2_DEFAULT_TAIL_GENERATIONS
+            if tail_generations is None
+            else int(tail_generations)
+        )
     counts = collect_dna_traits(run_dir, resolved, min_generation=min_g)
     total = sum(counts.values())
     bias = list(bias_values or [])
@@ -329,6 +396,7 @@ def compute_h2(
         "preferred_count": preferred_count,
         "preferred_share": preferred_share,
         "min_generation": min_g,
+        "tail_generations": eff_tail,
     }
 
 

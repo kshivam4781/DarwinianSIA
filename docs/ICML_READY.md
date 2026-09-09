@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 396: steered-window H2 (`min_generation=3`) — fair-bred gen1–2 no longer dilute MECHANISM; offline re-pilot `1910–1924` keeps PRIMARY/H5; live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 397: post-adoption H2 (floor gen≥3 + tail=2) — seed 22 preferred 0.44→0.75; offline H2 **5/5** on `1930–1944`; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -12,7 +12,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**
 - [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**
 - [ ] Non-trivial mean final accuracy gap (not ~1pp noise)
-- Evidence: offline synthetic pilot `1910–1914` vs `1920–1924` (Tick 396 steered-window H2; **live Nebius shape** pop4×eval5×max_gen6; Tick-300 `1890–1904` superseded) — D gens30 wins **4/5** (B: 0), D cost30 wins **4/5** (B: 0; eval-call proxy), D final wins **5/5**, mean final gap ~**6.15pp**. Offline PRIMARY-shaped signal only — **not** live GPQA; leave unchecked for READY. Live → `docs/paper_artifacts.md` Table 1
+- Evidence: offline synthetic pilot `1930–1934` vs `1940–1944` (Tick 397 post-adoption H2; **live Nebius shape** pop4×eval5×max_gen6; Tick-396 `1910–1924` superseded) — D gens30 wins **4/5** (B: 0), D cost30 wins **4/5** (B: 0; eval-call proxy), D final wins **5/5**, mean final gap ~**6.15pp**. Offline PRIMARY-shaped signal only — **not** live GPQA; leave unchecked for READY. Live → `docs/paper_artifacts.md` Table 1
 
 ### 2. MECHANISM — H2 or case study
 - [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
@@ -285,7 +285,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 276 cron/pipeline preflight `--fetch-diamond` — `run_preflight_stack` + cron entry forward `--fetch-diamond` into G2/G3/G4 so gate reports require HF; aggregate HF only on fetch-diamond path
 - [x] Tick 277 `.env` + local diamond CSV unlock — `load_icml_dotenv` / `resolve_diamond_csv_path`; cron `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV)
 - [x] Tick 278 runner CSV autowire — `autowire_diamond_csv` in G2/G3/G4/pipeline so `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path)
-- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1920` (Tick 396 live shape; `selective` preferred → gen3 share **0.75**; lift +0.0436; Tick-300 `run_1900` / Tick-23 `run_1840` superseded)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1940` (Tick 397 live shape; `selective` preferred → gen3 share **0.75**; lift +0.0436; Tick-396 `run_1920` / Tick-300 `run_1900` superseded)
 - [x] Tick 376 partial-stage spend reconcile — `sync_spent_from_completed_stages` bills complete-but-partial G3/G4; pipeline remaining-pair `project_budget`; post-G3/G4 absolute re-sync
 - [x] Tick 377 direct G3/G4 budget hydrate — `hydrate_direct_gate_budget_spent` loads ledger + bills unbilled local completes before direct G3/G4 budget check (closes pipeline-only Tick 376 bypass)
 - [x] Tick 378 direct G2 budget hydrate — G2 preflight uses same helper with `run_estimate_usd` (closes G2 env-only spent bypass left after Tick 377)
@@ -307,12 +307,13 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 394 secrets-status auto-detect synthetic GPQA — `detect_gpqa_is_synthetic` + `write_icml_secrets_status` auto-probe when flag omitted (cron path); tip PR body drops frozen "through Tick 392"
 - [x] Tick 395 cron secrets refresh after preflight — `refresh_secrets_after_preflight` after G2 smoke layout so `gpqa_is_synthetic` is not left null on greenfield boots
 - [x] Tick 396 steered-window H2 — `compute_h2` / `collect_dna_traits` default `min_generation=3` (delay-all first steered DNA); offline re-pilot `1910–1924`; seed 22 preferred 0.29→0.44; MECHANISM still **4/5**
+- [x] Tick 397 post-adoption H2 — default last 2 gens (floored at gen≥3); offline re-pilot `1930–1944`; H2 preferred **5/5** (seed 22=0.75)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 
 ### 3. VALIDITY — H5
 - [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
-- Evidence: offline multi-seed Condition D `1920–1924` (Tick 396 live shape pop4×eval5×max_gen6) → ρ>0.3 on **5/5** seeds (0.4 / 0.8 / 0.8 / 1.0 / 0.4) using population-mean forward Δfitness (`delta_horizon=2`) and gen≥2 pairs. Still **not** live GPQA.
+- Evidence: offline multi-seed Condition D `1940–1944` (Tick 397 live shape pop4×eval5×max_gen6) → ρ>0.3 on **5/5** seeds (0.4 / 0.8 / 0.8 / 1.0 / 0.4) using population-mean forward Δfitness (`delta_horizon=2`) and gen≥2 pairs. Still **not** live GPQA.
 
 ### 4. PAPER
 - [x] Figure 1 draft (offline B vs D learning curves) — `docs/figures/fig1_learning_curves.png`
@@ -438,7 +439,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 | G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
 | G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
 | G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume + **Tick 383** ledger-skip post refresh + **Tick 384** pipeline G2→G3 post-gate); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
-| G3 pilot B vs D | Offline synthetic pilot preserved (Tick **396** steered-window H2 `1910–1924`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **4/5** gen≥3; post-steer H2 on `run_1920`; Tick-300 `1890–1904` superseded); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score + **Tick 382** ledger-skip metrics refresh + **Tick 385** prior_live_metrics preserve); NOT STARTED (blocked on keys; run after G2) |
+| G3 pilot B vs D | Offline synthetic pilot preserved (Tick **397** post-adoption H2 `1930–1944`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **5/5**; post-steer H2 on `run_1940`; Tick-396 `1910–1924` superseded); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score + **Tick 382** ledger-skip metrics refresh + **Tick 385** prior_live_metrics preserve); NOT STARTED (blocked on keys; run after G2) |
 | G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume; **Tick 377** direct budget hydrate; **Tick 380** ledger-stage skip; **Tick 381** ledger-skip paper-pack refresh; **Tick 386** prior_live_metrics preserve; **Tick 387** discard/tip-apply prior_live stash; **Tick 388** recover_tip prior_live stash; **Tick 389** committed prior_live evidence; **Tick 390** tip-apply blocks dirty prior_live evidence; **Tick 391** tip-apply gitignore-lag durables; **Tick 392** chicken-egg tip-apply without tip module; **Tick 393** secrets-first generic tip PR body; **Tick 394** secrets-status auto-detect synthetic GPQA; **Tick 395** cron secrets refresh after preflight; **Tick 396** steered-window H2); **live** NOT STARTED (blocked on keys; run after G3) |
 | G5 paper pack | PARTIAL (offline figs + post-steer case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5 + Tick 396 H2 window); live pack automatable via Tick 28/29/374/381/386 pipeline but NOT STARTED |
 

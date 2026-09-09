@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-09 (Section 21 ICML; Tick 396 steered-window H2; Tick 395 cron secrets refresh after preflight; Tick 394 secrets-status auto-detect synthetic GPQA; …)
+**Last updated:** 2026-09-09 (Section 21 ICML; Tick 397 post-adoption H2; Tick 396 steered-window H2; Tick 395 cron secrets refresh after preflight; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -848,7 +848,7 @@ Computed in `cabs/belief_engine.py`:
 | Dry-run DNA-deterministic fitness | **DONE** | Tick 9 additive latent; **Tick 16** ceiling 0.34 (was 0.38) so gens-to-30% stay discriminative |
 | Steering opportunity in epistemic_value | **DONE** | Tick 9: `fitness_gap × (1 − preferred share)` term in `cabs_inline._epistemic_value` |
 | `scripts/epistemic_results.py` | **DONE** | H5/H2/PRIMARY helpers; gens-to-30% + **cost-to-threshold** (Tick 22); Tick 18–19 H5 protocol |
-| Offline B vs D case-study pilot | **DONE** | Latest Tick **396** steered-window H2 `1910–1914` / `1920–1924` (pop4×eval5×max_gen6); case study `docs/case_study_offline.md` (`run_1920`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **4/5** (gen≥3; seed 22=0.44); mean gap ~6.15pp; Tick-300 `1890–1904` superseded |
+| Offline B vs D case-study pilot | **DONE** | Latest Tick **397** post-adoption H2 `1930–1934` / `1940–1944` (pop4×eval5×max_gen6); case study `docs/case_study_offline.md` (`run_1940`); final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **5/5** (floor gen≥3 + tail=2); mean gap ~6.15pp; Tick-396 `1910–1924` superseded |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -988,12 +988,13 @@ Computed in `cabs/belief_engine.py`:
 | ICML secrets-first generic tip PR body (Tick 393) | **DONE** | `suggested_open_git_pr_body` no longer hardcodes Tick 392 chicken-egg changelog into every future Tick N body; secrets-first + durable tip anti-churn notes |
 | ICML secrets-status auto-detect synthetic GPQA (Tick 394) | **DONE** | `detect_gpqa_is_synthetic` + `write_icml_secrets_status` auto-probe so cron (no pipeline flag) still surfaces synthetic-diamond blocker; tip PR body drops frozen "through Tick 392" |
 | ICML cron secrets refresh after preflight (Tick 395) | **DONE** | After G2 `ensure_smoke_layout`, cron rewrites secrets status + prints `human_next` so `gpqa_is_synthetic` is not left null on greenfield boots |
-| ICML steered-window H2 (Tick 396) | **DONE** | `compute_h2` default `min_generation=3` (delay-all first steered DNA); offline re-pilot `1910–1924`; seed 22 preferred 0.29→0.44; MECHANISM still **4/5** |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–396 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
-| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1920` gen3 share 0.75) + Tick 396 steered-window H2; need live API |
+| ICML steered-window H2 (Tick 396) | **DONE** | `compute_h2` floor `min_generation=3` (delay-all first steered DNA); offline re-pilot `1910–1924`; seed 22 preferred 0.29→0.44; MECHANISM **4/5** |
+| ICML post-adoption H2 tail (Tick 397) | **DONE** | Default H2 last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share; offline re-pilot `1930–1944`; H2 preferred **5/5** (seed 22=0.75) |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–397 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer case study (`run_1940` gen3 share 0.75) + Tick 396–397 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
-| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 396 **5/5** ρ>0.3 (`1920–1924`, mean forward Δ, gen≥2, horizon=2); live required |
-| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 at live shape (Tick 396 `1910–1924`); live automatable via Tick 28 pack — see `docs/paper_artifacts.md` |
+| H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
+| Paper artifacts (Figs 1–2, Tables 1–2) | **PARTIAL** | Offline figs + Table 1/2 at live shape (Tick 397 `1930–1944`); live automatable via Tick 28 pack — see `docs/paper_artifacts.md` |
 | `docs/ICML_READY.md` | **IN_PROGRESS** | STATUS not READY until criteria 1–4 pass (live PRIMARY) |
 
 ---
@@ -2601,4 +2602,6 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 
 **Cron secrets refresh after preflight (Tick 395):** Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because cron wrote secrets **before** G2 preflight `ensure_smoke_layout` materializes `data/`. Cron now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker is visible. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
-**Steered-window H2 (Tick 396):** All-generation `preferred_share` diluted MECHANISM under delay-all (fair gen1–2 counted against the final preferred allele). `compute_h2` / `collect_dna_traits` now default to `min_generation=3` (first steered DNA; aligns Tick 23 case study). Offline re-pilot `1910–1924` keeps PRIMARY/H5; seed 22 preferred 0.29→0.44 still fails ≥0.5 honestly (selective consolidates at gen6). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+**Steered-window H2 (Tick 396):** All-generation `preferred_share` diluted MECHANISM under delay-all (fair gen1–2 counted against the final preferred allele). `compute_h2` / `collect_dna_traits` now floor at `min_generation=3` (first steered DNA; aligns Tick 23 case study). Offline re-pilot `1910–1924` keeps PRIMARY/H5; seed 22 preferred 0.29→0.44 still fails ≥0.5 honestly (selective consolidates at gen6). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Post-adoption H2 tail (Tick 397):** Tick 396's gen≥3 window still averaged transitional discovery gens where preferred alleles arrive late under ε-explore (seed 22: selective appears gen4, consolidates gen6 → preferred 0.4375). Default H2 now keeps the last `H2_DEFAULT_TAIL_GENERATIONS=2` gens (floored at gen≥3) — same class of lag fix as Tick 19 H5 `delta_horizon=2`. Offline re-pilot `1930–1944` → H2 preferred **5/5** (seed 22=0.75); PRIMARY/H5 unchanged. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

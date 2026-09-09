@@ -227,7 +227,7 @@ def _load_gen_traits(layout: RunLayout, gen: int, field: str, max_agents: int = 
 
 
 def _brief_h2_fields(d_summary: dict) -> dict:
-    """Tick 362/365/366/396: primary H2 preferred-share fields for compare brief."""
+    """Tick 362/365/366/396/397: primary H2 preferred-share fields for compare brief."""
     h2 = d_summary.get("h2") or d_summary.get("h2_memory") or {}
     share = h2.get("preferred_share")
     return {
@@ -236,6 +236,7 @@ def _brief_h2_fields(d_summary: dict) -> dict:
         "D_h2_share": share,
         "D_h2_in_bias_share": h2.get("in_bias_share"),
         "D_h2_min_generation": h2.get("min_generation"),
+        "D_h2_tail_generations": h2.get("tail_generations"),
         "D_h2_pass": h2_preferred_seed_pass(h2),
     }
 
@@ -569,8 +570,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--elite", type=int, default=_shape["elite_count"])
     p.add_argument("--max-gen", type=int, default=_shape["max_gen"])
     p.add_argument("--eval-subset", type=int, default=_shape["eval_subset"])
-    p.add_argument("--b-id-start", type=int, default=1910)
-    p.add_argument("--d-id-start", type=int, default=1920)
+    p.add_argument("--b-id-start", type=int, default=1930)
+    p.add_argument("--d-id-start", type=int, default=1940)
     p.add_argument("--runs-root", type=Path, default=ROOT / "runs")
     p.add_argument("--work-root", type=Path, default=ROOT / "runs" / "_offline_bvd_work")
     p.add_argument("--json-out", type=Path, default=ROOT / "docs" / "offline_bvd_summary.json")
@@ -718,16 +719,18 @@ def main(argv: list[str] | None = None) -> int:
             ),
         },
         "h2_protocol": {
-            "min_generation": 3,
+            "min_generation_floor": 3,
+            "tail_generations": 2,
             "note": (
-                "Tick 396: H2 preferred_share counts DNA only at gen≥3 (first steered "
-                "generation under delay-all). Fair-bred gen1–2 no longer dilute MECHANISM."
+                "Tick 396–397: H2 preferred_share floors at gen≥3 (delay-all) and "
+                "defaults to the last 2 gens (post-adoption tail) so ε-discover→adopt "
+                "lag does not dilute MECHANISM (seed 22 selective consolidates late)."
             ),
         },
         "note": (
             "Synthetic additive latent DNA fitness with transferable traits; offline only. "
-            "Do not set ICML_READY PRIMARY from this. Tick 396 steered-window H2 "
-            "(min_generation=3); IDs 1910–1914 / 1920–1924."
+            "Do not set ICML_READY PRIMARY from this. Tick 397 post-adoption H2 "
+            "(floor gen≥3, tail=2); IDs 1930–1934 / 1940–1944."
         ),
     }
     args.json_out.parent.mkdir(parents=True, exist_ok=True)

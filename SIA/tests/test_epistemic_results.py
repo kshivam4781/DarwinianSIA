@@ -445,6 +445,7 @@ def test_resolve_h2_bias_field_prefers_tool_strategy(tmp_path: Path, monkeypatch
     h2_default = compute_h2(run)
     assert h2_default["field"] == "tool_strategy"
     assert h2_default["preferred_share"] == pytest.approx(1.0)
+    # Single-gen fixture → floor 3 + tail still resolves to gen≥3.
     assert h2_default["min_generation"] == 3
 
 
@@ -481,10 +482,59 @@ def test_compute_h2_steered_window_excludes_fair_bred_gens(tmp_path: Path, monke
     # Legacy all-generation window dilutes preferred share with fair gens.
     legacy = compute_h2(run, min_generation=1)
     assert legacy["preferred_share"] == pytest.approx(12 / 24)  # 0.5 boundary
-    # Default steered window is strictly stronger (excludes fair dilution).
-    steered = compute_h2(run)
+    # Exact floor gen≥3 (no tail) matches Tick 396 window.
+    steered = compute_h2(run, min_generation=3)
     assert steered["min_generation"] == 3
+    assert steered["tail_generations"] is None
     assert steered["total"] == 16  # gens 3–6 × 4 agents
     assert steered["preferred_share"] == pytest.approx(12 / 16)  # 0.75
     assert steered["preferred_share"] > legacy["preferred_share"]
     assert steered["preferred_share"] >= 0.5
+
+
+def test_compute_h2_post_adoption_tail_excludes_discovery_lag(
+    tmp_path: Path, monkeypatch
+):
+    """Tick 397: late ε-discover→adopt must not dilute preferred_share (seed 22)."""
+    from epistemic_results import (
+        H2_DEFAULT_TAIL_GENERATIONS,
+        compute_h2,
+        resolve_h2_min_generation,
+    )
+
+    assert H2_DEFAULT_TAIL_GENERATIONS == 2
+    run = tmp_path / "run_h2_tail"
+    # Seed-22-like trajectory: preferred absent until mid-run, then consolidates.
+    traj = {
+        1: ("aggressive",) * 4,
+        2: ("minimal",) * 4,
+        3: ("minimal",) * 4,
+        4: ("minimal", "minimal", "minimal", "selective"),
+        5: ("selective", "selective", "minimal", "aggressive"),
+        6: ("selective",) * 4,
+    }
+    for gen, traits in traj.items():
+        for agent, trait in enumerate(traits):
+            agent_dir = run / f"gen_{gen}" / f"agent_{agent}"
+            agent_dir.mkdir(parents=True)
+            (agent_dir / "agent_dna.json").write_text(
+                json.dumps({"tool_strategy": trait}),
+                encoding="utf-8",
+            )
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {
+            "tool_strategy": ["selective", "minimal", "aggressive"]
+        },
+    )
+    floor_only = compute_h2(run, min_generation=3)
+    assert floor_only["preferred_share"] == pytest.approx(7 / 16)  # 0.4375 fail
+    assert floor_only["preferred_share"] < 0.5
+    assert resolve_h2_min_generation(run) == 5  # max_gen=6, tail=2
+    post = compute_h2(run)
+    assert post["min_generation"] == 5
+    assert post["tail_generations"] == 2
+    assert post["total"] == 8  # gens 5–6 × 4
+    assert post["preferred_share"] == pytest.approx(6 / 8)  # 0.75
+    assert post["preferred_share"] >= 0.5
+    assert post["preferred_share"] > floor_only["preferred_share"]

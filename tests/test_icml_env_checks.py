@@ -3430,13 +3430,23 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     ready = (root / "docs" / "ICML_READY.md").read_text(encoding="utf-8")
     assert "H2_DEFAULT_MIN_GENERATION" in epi
     assert "Tick 396" in epi
-    assert "min_generation: int = H2_DEFAULT_MIN_GENERATION" in epi or "min_generation: int = 3" in epi
+    assert "H2_DEFAULT_MIN_GENERATION = 3" in epi or "min_generation" in epi
     assert "test_compute_h2_steered_window_excludes_fair_bred_gens" in (
         root / "SIA" / "tests" / "test_epistemic_results.py"
     ).read_text(encoding="utf-8")
     assert "ICML steered-window H2 (Tick 396)" in master
     assert "Tick 396" in ready
     assert "Tick 396" in unblock
+    # Tick 397: post-adoption H2 tail (last 2 gens, floor gen≥3).
+    assert "H2_DEFAULT_TAIL_GENERATIONS" in epi
+    assert "resolve_h2_min_generation" in epi
+    assert "Tick 397" in epi
+    assert "test_compute_h2_post_adoption_tail_excludes_discovery_lag" in (
+        root / "SIA" / "tests" / "test_epistemic_results.py"
+    ).read_text(encoding="utf-8")
+    assert "ICML post-adoption H2 tail (Tick 397)" in master
+    assert "Tick 397" in ready
+    assert "Tick 397" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

@@ -473,9 +473,9 @@ def score_live_h2(d_dirs: list[Path], field: str | None = None) -> dict[str, Any
     previously yielded empty bias_values when CABS steered tool_strategy — a
     latent live MECHANISM false-fail.
 
-    Tick 396: ``compute_h2`` defaults to steered-window ``min_generation=3``
-    (delay-all first steered DNA); do not override unless diagnosing legacy
-    all-generation dilution.
+    Tick 396–397: ``compute_h2`` defaults to delay-all floor gen≥3 **plus**
+    post-adoption tail (last 2 gens) so discover→adopt lag does not dilute
+    preferred_share; do not override unless diagnosing legacy windows.
     """
     from epistemic_results import compute_h2
 

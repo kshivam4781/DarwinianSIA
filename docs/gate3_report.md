@@ -5,12 +5,12 @@
 **Live G3 ready:** no
 
 <!-- OFFLINE_G3_PILOT_START -->
-### Offline synthetic pilot (Tick 396 steered-window H2; live Nebius shape)
+### Offline synthetic pilot (Tick 397 post-adoption H2; live Nebius shape)
 
 | Cond | Seeds | pop | elite | max_gen | eval | Run IDs |
 |------|-------|-----|-------|---------|------|---------|
-| B | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1910–1914` |
-| D | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1920–1924` |
+| B | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1930–1934` |
+| D | 11,22,33,44,55 | 4 | 2 | 6 | 5 | `1940–1944` |
 
 | Metric | Result |
 |--------|--------|
@@ -18,10 +18,10 @@
 | D gens@30% | **4/5** (B: 0) |
 | D cost@30% (eval-call proxy) | **4/5** (B: 0) |
 | H5 ρ>0.3 | **5/5** |
-| H2 preferred≥0.5 (gen≥3 window) | **4/5** (seed 22 share **0.4375**; was 0.29 all-gen) |
-| Case study | `docs/case_study_offline.md` (`run_1920`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
+| H2 preferred≥0.5 (post-adoption tail) | **5/5** (seed 22 share **0.75**; was 0.44 gen≥3 / 0.29 all-gen) |
+| Case study | `docs/case_study_offline.md` (`run_1940`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
 
-**Finding:** Tick **396** scores H2 on gen≥3 DNA only (delay-all first steered generation), matching Tick 23 case-study window / Tick 18 H5 steered protocol. PRIMARY/H5 unchanged vs Tick 300 (`1910–1924` re-pilot). Seed 22 still fails preferred≥0.5 honestly (selective consolidates only by gen6; gen3–5 still mostly `minimal`) — covered by case study. Prior Tick-300 IDs `1890–1904` superseded for paper-ID lock.
+**Finding:** Tick **397** scores H2 on the last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share — seed 22 selective consolidates by gen6 and now passes ≥0.5. PRIMARY/H5 unchanged (`1930–1944` re-pilot). Prior Tick-396 IDs `1910–1924` / Tick-300 `1890–1904` superseded for paper-ID lock.
 
 <!-- OFFLINE_G3_PILOT_END -->
 

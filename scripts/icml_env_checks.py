@@ -2640,6 +2640,7 @@ def suggested_open_git_pr_body(
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
     offline_ids = _offline_bvd_id_range_blurb()
+    h2_blurb = _offline_bvd_h2_blurb()
     if fetch_diamond_ok is False:
         primary = (
             f"**PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local "
@@ -2649,7 +2650,7 @@ def suggested_open_git_pr_body(
             f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on NEBIUS + "
             f"(HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at "
             f"{offline_ids} (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, "
-            f"H2 preferred **4/5**; steered-window gen≥3). STATUS remains "
+            f"{h2_blurb}). STATUS remains "
             f"IN_PROGRESS (not READY)."
         )
     elif fetch_diamond_ok is True:
@@ -4382,10 +4383,36 @@ def _offline_bvd_id_range_blurb(*, repo_root: Path | None = None) -> str:
         b_ids, d_ids = [], []
     b_vars = _offline_id_range_strings(b_ids)
     d_vars = _offline_id_range_strings(d_ids)
-    b = next((v for v in b_vars if v.startswith("`")), "`1910–1914`")
-    d = next((v for v in d_vars if v.startswith("`")), "`1920–1924`")
+    b = next((v for v in b_vars if v.startswith("`")), "`1930–1934`")
+    d = next((v for v in d_vars if v.startswith("`")), "`1940–1944`")
     return f"{b} / {d}"
 
+
+def _offline_bvd_h2_blurb(*, repo_root: Path | None = None) -> str:
+    """Tick 397: tip PR body H2 line from ``docs/offline_bvd_summary.json``.
+
+    Avoid freezing ``H2 preferred **4/5**; steered-window gen≥3`` after a
+    re-pilot that flips MECHANISM seed wins (e.g. post-adoption tail → 5/5).
+    """
+    root = repo_root or _REPO_ROOT
+    path = root / "docs" / "offline_bvd_summary.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        compare = payload.get("compare") or {}
+        d_wins = compare.get("d_wins_h2")
+        n_pairs = compare.get("n_pairs") or 5
+        proto = payload.get("h2_protocol") or {}
+        floor = proto.get("min_generation_floor", proto.get("min_generation", 3))
+        tail = proto.get("tail_generations")
+        if d_wins is None:
+            raise ValueError("missing d_wins_h2")
+        if tail:
+            window = f"floor gen≥{floor} + tail={tail}"
+        else:
+            window = f"steered-window gen≥{floor}"
+        return f"H2 preferred **{int(d_wins)}/{int(n_pairs)}**; {window}"
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return "H2 preferred **5/5**; floor gen≥3 + tail=2"
 
 def _offline_id_range_strings(ids: Sequence[int]) -> list[str]:
     """Human-facing ID range spellings (en-dash / hyphen, bare / backticked)."""
