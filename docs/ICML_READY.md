@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 397: post-adoption H2 (floor gen≥3 + tail=2) — seed 22 preferred 0.44→0.75; offline H2 **5/5** on `1930–1944`; live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 398: case study reports post-adoption H2 window (gens5–6 share **0.875**, lift **+0.0607** on `run_1940`); Tick 397 offline H2 **5/5** on `1930–1944`; live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -285,7 +285,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 276 cron/pipeline preflight `--fetch-diamond` — `run_preflight_stack` + cron entry forward `--fetch-diamond` into G2/G3/G4 so gate reports require HF; aggregate HF only on fetch-diamond path
 - [x] Tick 277 `.env` + local diamond CSV unlock — `load_icml_dotenv` / `resolve_diamond_csv_path`; cron `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV)
 - [x] Tick 278 runner CSV autowire — `autowire_diamond_csv` in G2/G3/G4/pipeline so `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path)
-- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1940` (Tick 397 live shape; `selective` preferred → gen3 share **0.75**; lift +0.0436; Tick-396 `run_1920` / Tick-300 `run_1900` superseded)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1940` (Tick 397–398 live shape; `selective` preferred → gen3 share **0.75**; post-adoption **0.875**; lift +0.0436 / +0.0607; Tick-396 `run_1920` / Tick-300 `run_1900` superseded)
 - [x] Tick 376 partial-stage spend reconcile — `sync_spent_from_completed_stages` bills complete-but-partial G3/G4; pipeline remaining-pair `project_budget`; post-G3/G4 absolute re-sync
 - [x] Tick 377 direct G3/G4 budget hydrate — `hydrate_direct_gate_budget_spent` loads ledger + bills unbilled local completes before direct G3/G4 budget check (closes pipeline-only Tick 376 bypass)
 - [x] Tick 378 direct G2 budget hydrate — G2 preflight uses same helper with `run_estimate_usd` (closes G2 env-only spent bypass left after Tick 377)
@@ -308,6 +308,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 395 cron secrets refresh after preflight — `refresh_secrets_after_preflight` after G2 smoke layout so `gpqa_is_synthetic` is not left null on greenfield boots
 - [x] Tick 396 steered-window H2 — `compute_h2` / `collect_dna_traits` default `min_generation=3` (delay-all first steered DNA); offline re-pilot `1910–1924`; seed 22 preferred 0.29→0.44; MECHANISM still **4/5**
 - [x] Tick 397 post-adoption H2 — default last 2 gens (floored at gen≥3); offline re-pilot `1930–1944`; H2 preferred **5/5** (seed 22=0.75)
+- [x] Tick 398 case-study post-adoption H2 — `extract_case_study` reports `post_adoption_preferred_share` (same Tick 397 window); selection prefers post-adoption ≥0.5; `run_1940` post-adoption **0.875** / lift **+0.0607**; stale limitations fixed (no longer claim MECHANISM 4/5)
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

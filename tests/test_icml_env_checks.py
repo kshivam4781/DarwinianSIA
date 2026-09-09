@@ -3447,6 +3447,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML post-adoption H2 tail (Tick 397)" in master
     assert "Tick 397" in ready
     assert "Tick 397" in unblock
+    # Tick 398: case study reports post-adoption H2 tail (aligns with Tick 397 aggregate).
+    offline_cs = (root / "scripts" / "offline_bvd_case_study.py").read_text(
+        encoding="utf-8"
+    )
+    assert "post_adoption_preferred_share" in offline_cs
+    assert "Tick 398" in offline_cs
+    assert "test_extract_case_study_post_adoption_tail_excludes_discovery_lag" in (
+        root / "tests" / "test_offline_case_study_steered.py"
+    ).read_text(encoding="utf-8")
+    assert "ICML case-study post-adoption H2 (Tick 398)" in master
+    assert "Tick 398" in ready
+    assert "Tick 398" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

@@ -26,8 +26,10 @@ sys.path.insert(0, str(ROOT / "SIA"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from epistemic_results import (  # noqa: E402
+    H2_DEFAULT_TAIL_GENERATIONS,
     compare_b_vs_d,
     h2_preferred_seed_pass,
+    resolve_h2_min_generation,
     summarize_run,
 )
 from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
@@ -286,12 +288,17 @@ def extract_case_study(
     run_dir: Path,
     *,
     first_steered_gen: int = FIRST_STEERED_GEN,
+    tail_generations: int | None = None,
 ) -> dict | None:
     """Find one chain: contradiction → bias order → post-steering DNA skew → lift.
 
-    Under delay-all mutation bias, gen2 is still fair-bred. H2 DNA skew and the
-    fitness lift that attribute to CABS steering are measured at
-    ``first_steered_gen`` (default gen3) and later.
+    Under delay-all mutation bias, gen2 is still fair-bred. First-steered H2 DNA
+    skew (Tick 23) is measured at ``first_steered_gen`` (default gen3).
+
+    Tick 398: also report **post-adoption** preferred share using the same
+    window as aggregate H2 (Tick 397): last ``H2_DEFAULT_TAIL_GENERATIONS``
+    gens floored at gen≥3 — so late ε-discover→adopt consolidation (e.g. seed
+    22 selective at gen6) is visible in the case study, not only in Table 2.
     """
     store = run_dir / "belief_store"
     contradictions = _load_json(store / "contradictions.json").get("contradictions", [])
@@ -365,6 +372,31 @@ def extract_case_study(
     steered_share = shares.get(steered_gen)
     pre_steer_share = shares.get(first_steered_gen - 1)  # typically gen2 fair share
 
+    # Tick 398: post-adoption window matches aggregate H2 (Tick 397 defaults).
+    if tail_generations is None:
+        eff_tail = H2_DEFAULT_TAIL_GENERATIONS
+        post_min_g = resolve_h2_min_generation(Path(run_dir))
+    else:
+        eff_tail = int(tail_generations)
+        post_min_g = resolve_h2_min_generation(
+            Path(run_dir),
+            min_generation=first_steered_gen,
+            tail_generations=eff_tail,
+        )
+    post_gens = [g for g in available_gens if g >= post_min_g]
+    post_traits: list[dict] = []
+    for g in post_gens:
+        post_traits.extend(traits_by_gen.get(g) or [])
+    post_adoption_share = preferred_share(post_traits, preferred)
+    post_pref = [t for t in post_traits if t.get("trait") == preferred]
+    post_pref_fit = mean([t["fitness"] for t in post_pref]) if post_pref else None
+    post_pop_mean = mean([t["fitness"] for t in post_traits]) if post_traits else None
+    post_lift = None
+    if post_pref_fit is not None and g1_lose_fit is not None:
+        post_lift = post_pref_fit - g1_lose_fit
+    elif g1_mean is not None and post_pop_mean is not None:
+        post_lift = post_pop_mean - g1_mean
+
     # Fitness lift attributed to steered preferred carriers vs gen1 loser side.
     lift = None
     if steered_pref_fit is not None and g1_lose_fit is not None:
@@ -418,6 +450,14 @@ def extract_case_study(
         "gen2_preferred_share": preferred_share(gen2_traits, preferred),
         "pre_steer_preferred_share": pre_steer_share,
         "steered_preferred_share": steered_share,
+        # Tick 398: aggregate-H2-aligned post-adoption window.
+        "post_adoption_min_generation": post_min_g,
+        "post_adoption_tail_generations": eff_tail,
+        "post_adoption_gens": post_gens,
+        "post_adoption_preferred_share": post_adoption_share,
+        "post_adoption_preferred_mean_fitness": post_pref_fit,
+        "post_adoption_pop_mean": post_pop_mean,
+        "post_adoption_fitness_lift": post_lift,
         "dna_fitness_transfers": transfer_ok,
         "belief_count": len(beliefs),
         "agenda_prefers_first": preferred,
@@ -427,6 +467,8 @@ def extract_case_study(
 def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
     lift = case.get("fitness_lift")
     lift_s = f"{lift:+.4f}" if isinstance(lift, (int, float)) else "n/a"
+    post_lift = case.get("post_adoption_fitness_lift")
+    post_lift_s = f"{post_lift:+.4f}" if isinstance(post_lift, (int, float)) else "n/a"
     steered_gen = case.get("steered_gen")
     share_by_gen = case.get("preferred_share_by_gen") or {}
     share_s = ", ".join(
@@ -452,9 +494,20 @@ def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
         f"Delay-all keeps gen1→gen2 fair; first steered generation is gen"
         f"{case.get('first_steered_gen')} "
         f"(steered share **{case.get('steered_preferred_share')}** at gen{steered_gen}; "
-        f"pre-steer/gen2 share {case.get('gen2_preferred_share')}).",
+        f"pre-steer/gen2 share {case.get('gen2_preferred_share')}). "
+        f"Post-adoption H2 window (Tick 397–398: last "
+        f"{case.get('post_adoption_tail_generations')} gens, floor gen≥"
+        f"{case.get('post_adoption_min_generation')}; gens "
+        f"{case.get('post_adoption_gens')}) preferred share "
+        f"**{case.get('post_adoption_preferred_share')}**.",
         f"5. **Fitness lift:** preferred@gen{steered_gen} mean − loser@gen1 mean = **{lift_s}** "
-        f"(pop mean {case.get('gen1_pop_mean')} → {case.get('steered_pop_mean')}).",
+        f"(pop mean {case.get('gen1_pop_mean')} → {case.get('steered_pop_mean')})"
+        + (
+            f"; post-adoption lift **{post_lift_s}**"
+            if post_lift_s != "n/a"
+            else ""
+        )
+        + ".",
         "",
         f"DNA fitness transferability check: `{case.get('dna_fitness_transfers')}` "
         "(same DNA ⇒ same score across agent_id/gen).",
@@ -643,24 +696,29 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     compare = compare_b_vs_d(b_runs, d_runs)
-    # Prefer positive-lift + clear post-steering DNA skew (gen≥3 under delay-all).
+    # Prefer positive-lift + clear post-steering / post-adoption DNA skew.
     cases = [extract_case_study(d_run) for d_run in d_runs]
     cases = [c for c in cases if c and c.get("fitness_lift") is not None]
 
     def _case_score(c: dict) -> tuple:
         lift = float(c.get("fitness_lift") or 0)
         steered = float(c.get("steered_preferred_share") or 0)
+        post = float(c.get("post_adoption_preferred_share") or 0)
         pre = float(c.get("pre_steer_preferred_share") or c.get("gen2_preferred_share") or 0)
         alleles = contradiction_allele_count(c)
         aligned = preferred_matches_higher_fitness_side(c)
-        # Prefer multi-allele + fitness-aligned preferred + non-trivial lift,
+        # Tick 398: prefer post-adoption ≥0.5 (aggregate H2 window) then
+        # multi-allele + fitness-aligned preferred + non-trivial lift,
         # then post-steer skew/gain, then raw lift.
         return (
             alleles >= 2,
             aligned,
             lift >= 0.02,
+            post >= 0.5,
             steered >= 0.5,
+            post,
             steered,
+            post - steered,  # consolidation after first steer
             steered - pre,
             lift,
         )
@@ -722,15 +780,15 @@ def main(argv: list[str] | None = None) -> int:
             "min_generation_floor": 3,
             "tail_generations": 2,
             "note": (
-                "Tick 396–397: H2 preferred_share floors at gen≥3 (delay-all) and "
+                "Tick 396–398: H2 preferred_share floors at gen≥3 (delay-all) and "
                 "defaults to the last 2 gens (post-adoption tail) so ε-discover→adopt "
-                "lag does not dilute MECHANISM (seed 22 selective consolidates late)."
+                "lag does not dilute MECHANISM; case study also reports this window."
             ),
         },
         "note": (
             "Synthetic additive latent DNA fitness with transferable traits; offline only. "
-            "Do not set ICML_READY PRIMARY from this. Tick 397 post-adoption H2 "
-            "(floor gen≥3, tail=2); IDs 1930–1934 / 1940–1944."
+            "Do not set ICML_READY PRIMARY from this. Tick 397–398 post-adoption H2 "
+            "(floor gen≥3, tail=2) + case-study alignment; IDs 1930–1934 / 1940–1944."
         ),
     }
     args.json_out.parent.mkdir(parents=True, exist_ok=True)
@@ -745,6 +803,7 @@ def main(argv: list[str] | None = None) -> int:
             f"lift={case.get('fitness_lift')} "
             f"steered_gen={case.get('steered_gen')} "
             f"steered_pref_share={case.get('steered_preferred_share')} "
+            f"post_adoption_share={case.get('post_adoption_preferred_share')} "
             f"gen2_pref_share={case.get('gen2_preferred_share')}"
         )
     print(json.dumps(payload["compare"], indent=2))

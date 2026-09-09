@@ -1,11 +1,11 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-09-09T14:01:44Z
+**Timestamp:** 2026-09-09T18:03:34Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
 <!-- OFFLINE_G3_PILOT_START -->
-### Offline synthetic pilot (Tick 397 post-adoption H2; live Nebius shape)
+### Offline synthetic pilot (Tick 397–398 post-adoption H2; live Nebius shape)
 
 | Cond | Seeds | pop | elite | max_gen | eval | Run IDs |
 |------|-------|-----|-------|---------|------|---------|
@@ -19,9 +19,9 @@
 | D cost@30% (eval-call proxy) | **4/5** (B: 0) |
 | H5 ρ>0.3 | **5/5** |
 | H2 preferred≥0.5 (post-adoption tail) | **5/5** (seed 22 share **0.75**; was 0.44 gen≥3 / 0.29 all-gen) |
-| Case study | `docs/case_study_offline.md` (`run_1940`) — gen3 steered preferred share **0.75** (gen1/2/3 = 0.25→0.5→0.75); lift +0.0436 |
+| Case study | `docs/case_study_offline.md` (`run_1940`) — gen3 steered preferred share **0.75**; post-adoption (gens5–6) **0.875**; lift +0.0436 / +0.0607 |
 
-**Finding:** Tick **397** scores H2 on the last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share — seed 22 selective consolidates by gen6 and now passes ≥0.5. PRIMARY/H5 unchanged (`1930–1944` re-pilot). Prior Tick-396 IDs `1910–1924` / Tick-300 `1890–1904` superseded for paper-ID lock.
+**Finding:** Tick **397** scores H2 on the last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share — seed 22 selective consolidates by gen6 and now passes ≥0.5. Tick **398** aligns the case study to the same post-adoption window. PRIMARY/H5 unchanged (`1930–1944`). Prior Tick-396 IDs `1910–1924` / Tick-300 `1890–1904` superseded for paper-ID lock.
 
 <!-- OFFLINE_G3_PILOT_END -->
 
@@ -44,7 +44,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 395 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `tip_ok_for_live` | yes | local Tick 397 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
 
 ### Planned seed pairs
 

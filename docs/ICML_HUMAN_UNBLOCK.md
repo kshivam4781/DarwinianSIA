@@ -99,6 +99,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
 
+**Tick 398:** **case-study post-adoption H2** — `extract_case_study` reports the same last-2-gen window as aggregate H2 (`post_adoption_preferred_share`); `run_1940` post-adoption **0.875** / lift **+0.0607**; paper limitations no longer claim MECHANISM 4/5. Live still needs NEBIUS + HF/CSV.
+
 **Tick 397:** **post-adoption H2 tail** — default last 2 gens (floored at gen≥3) so ε-discover→adopt lag does not dilute preferred_share. Offline re-pilot `1930–1944` → H2 preferred **5/5** (seed 22 0.44→0.75). Live still needs NEBIUS + HF/CSV.
 
 **Tick 396:** **steered-window H2** — `compute_h2` defaults to `min_generation=3` (first steered DNA under delay-all; aligns Tick 23 case study). Offline re-pilot `1910–1924` keeps PRIMARY/H5; seed 22 preferred 0.29→0.44 still fails ≥0.5 honestly. Live still needs NEBIUS + HF/CSV.

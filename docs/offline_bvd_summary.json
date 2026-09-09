@@ -406,14 +406,21 @@
     "gen2_preferred_share": 0.5,
     "pre_steer_preferred_share": 0.5,
     "steered_preferred_share": 0.75,
+    "post_adoption_min_generation": 5,
+    "post_adoption_tail_generations": 2,
+    "post_adoption_gens": [
+      5,
+      6
+    ],
+    "post_adoption_preferred_share": 0.875,
+    "post_adoption_preferred_mean_fitness": 0.27622857142857143,
+    "post_adoption_pop_mean": 0.2728875,
+    "post_adoption_fitness_lift": 0.060678571428571415,
     "dna_fitness_transfers": true,
     "belief_count": 15,
     "agenda_prefers_first": "selective"
   },
-  "figures": [
-    "docs/figures/fig1_learning_curves.png",
-    "docs/figures/fig2_mechanism.png"
-  ],
+  "figures": [],
   "h5_protocol": {
     "min_generation": 2,
     "fitness_key": "mean",
@@ -423,7 +430,7 @@
   "h2_protocol": {
     "min_generation_floor": 3,
     "tail_generations": 2,
-    "note": "Tick 396\u2013397: H2 preferred_share floors at gen\u22653 (delay-all) and defaults to the last 2 gens (post-adoption tail) so \u03b5-discover\u2192adopt lag does not dilute MECHANISM (seed 22 selective consolidates late)."
+    "note": "Tick 396\u2013398: H2 preferred_share floors at gen\u22653 (delay-all) and defaults to the last 2 gens (post-adoption tail) so \u03b5-discover\u2192adopt lag does not dilute MECHANISM; case study also reports this window."
   },
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 397 post-adoption H2 (floor gen\u22653, tail=2); IDs 1930\u20131934 / 1940\u20131944."
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 397\u2013398 post-adoption H2 (floor gen\u22653, tail=2) + case-study alignment; IDs 1930\u20131934 / 1940\u20131944."
 }

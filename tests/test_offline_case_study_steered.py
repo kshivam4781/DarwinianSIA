@@ -21,24 +21,29 @@ from offline_bvd_case_study import (  # noqa: E402
 )
 
 
-def _write_agent(run_dir: Path, gen: int, agent_id: int, *, trait: str, fitness: float) -> None:
+def _write_agent(
+    run_dir: Path,
+    gen: int,
+    agent_id: int,
+    *,
+    trait: str,
+    fitness: float,
+    field: str = "planning_style",
+) -> None:
     agent = run_dir / f"gen_{gen}" / f"agent_{agent_id}"
     agent.mkdir(parents=True, exist_ok=True)
-    (agent / "agent_dna.json").write_text(
-        json.dumps(
-            {
-                "planning_style": trait,
-                "reflection": True,
-                "tool_strategy": "selective",
-                "retry_policy": "generic",
-                "memory": "short_summary",
-                "confidence_threshold": 0.75,
-                "prompt_structure": "detailed",
-                "technique_seeds": [],
-            }
-        ),
-        encoding="utf-8",
-    )
+    dna = {
+        "planning_style": "hierarchical",
+        "reflection": True,
+        "tool_strategy": "selective",
+        "retry_policy": "generic",
+        "memory": "short_summary",
+        "confidence_threshold": 0.75,
+        "prompt_structure": "detailed",
+        "technique_seeds": [],
+    }
+    dna[field] = trait
+    (agent / "agent_dna.json").write_text(json.dumps(dna), encoding="utf-8")
     (agent / "results.json").write_text(
         json.dumps({"accuracy": fitness, "eval_subset": 3}),
         encoding="utf-8",
@@ -314,3 +319,96 @@ def test_extract_case_study_measures_post_steering_skew(tmp_path: Path, monkeypa
     # Lift uses steered preferred mean vs gen1 loser mean.
     assert case["fitness_lift"] is not None
     assert case["fitness_lift"] > 0
+    # Tick 398: with only gen1–3 present, post-adoption tail (last 2, floor≥3)
+    # starts at max(3, 3-2+1)=3 → same as first-steered window.
+    assert case["post_adoption_min_generation"] == 3
+    assert case["post_adoption_tail_generations"] == 2
+    assert case["post_adoption_gens"] == [3]
+    assert case["post_adoption_preferred_share"] == 0.75
+
+
+def test_extract_case_study_post_adoption_tail_excludes_discovery_lag(
+    tmp_path: Path, monkeypatch
+):
+    """Tick 398: case study reports last-2-gen preferred share (floor gen≥3)."""
+    run_dir = tmp_path / "run_1941"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+
+    # Seed-22 style: preferred appears late; consolidates only in last gens.
+    for agent_id, trait, fit in (
+        (0, "minimal", 0.18),
+        (1, "aggressive", 0.20),
+        (2, "minimal", 0.19),
+        (3, "aggressive", 0.21),
+    ):
+        _write_agent(run_dir, 1, agent_id, trait=trait, fitness=fit, field="tool_strategy")
+    for agent_id, trait, fit in (
+        (0, "minimal", 0.22),
+        (1, "aggressive", 0.23),
+        (2, "minimal", 0.21),
+        (3, "aggressive", 0.24),
+    ):
+        _write_agent(run_dir, 2, agent_id, trait=trait, fitness=fit, field="tool_strategy")
+    # gen3–4: still mostly minimal (preferred=selective not yet dominant)
+    for gen in (3, 4):
+        for agent_id, trait, fit in (
+            (0, "minimal", 0.25),
+            (1, "selective", 0.28),
+            (2, "minimal", 0.24),
+            (3, "aggressive", 0.23),
+        ):
+            _write_agent(
+                run_dir, gen, agent_id, trait=trait, fitness=fit, field="tool_strategy"
+            )
+    # gen5–6: selective consolidates (post-adoption tail)
+    for gen in (5, 6):
+        for agent_id, trait, fit in (
+            (0, "selective", 0.30),
+            (1, "selective", 0.31),
+            (2, "selective", 0.29),
+            (3, "minimal", 0.22),
+        ):
+            _write_agent(
+                run_dir, gen, agent_id, trait=trait, fitness=fit, field="tool_strategy"
+            )
+
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "contradictions": [
+                    {
+                        "topic": "tools",
+                        "belief_a": "Agent 1: tool_strategy=selective achieved fitness 0.28",
+                        "belief_b": "Agent 0: tool_strategy=minimal achieved fitness 0.18",
+                        "priority": 0.9,
+                        "status": "open",
+                        "metadata": {"agents": [1, 0]},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(json.dumps({"beliefs": []}), encoding="utf-8")
+    (store / "research_questions.json").write_text(
+        json.dumps({"research_questions": []}), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(
+        "offline_bvd_case_study.load_mutation_bias",
+        lambda _run: {"tool_strategy": ["selective", "minimal"]},
+    )
+
+    case = extract_case_study(run_dir)
+    assert case is not None
+    assert case["field"] == "tool_strategy"
+    assert case["preferred_value"] == "selective"
+    assert case["steered_preferred_share"] == 0.25  # gen3: 1/4
+    # max_gen=6 → last 2 gens floored at ≥3 → gens 5–6; share 6/8=0.75
+    assert case["post_adoption_min_generation"] == 5
+    assert case["post_adoption_tail_generations"] == 2
+    assert case["post_adoption_gens"] == [5, 6]
+    assert case["post_adoption_preferred_share"] == 0.75
+    assert case["post_adoption_fitness_lift"] is not None
+    assert case["post_adoption_fitness_lift"] > 0

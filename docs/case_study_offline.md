@@ -9,8 +9,8 @@
 1. **Tie / disagreement:** population agents hold opposing DNA-linked beliefs.
 2. **Contradiction:** topic `tool_use` — 'Agent 0: tool_strategy=selective achieved fitness 0.2567 (population mean 0.2267)' vs 'Agent 1: tool_strategy=aggressive achieved fitness 0.2191 (population mean 0.2267)' (priority=0.85).
 3. **Fitness-weighted bias:** field `tool_strategy` ordered `['selective', 'minimal', 'aggressive']` (prefer `selective`).
-4. **DNA skew (post-steering):** preferred share by gen = gen1=0.25, gen2=0.5, gen3=0.75, gen4=1.0, gen5=1.0, gen6=0.75. Delay-all keeps gen1→gen2 fair; first steered generation is gen3 (steered share **0.75** at gen3; pre-steer/gen2 share 0.5).
-5. **Fitness lift:** preferred@gen3 mean − loser@gen1 mean = **+0.0436** (pop mean 0.226725 → 0.24957500000000002).
+4. **DNA skew (post-steering):** preferred share by gen = gen1=0.25, gen2=0.5, gen3=0.75, gen4=1.0, gen5=1.0, gen6=0.75. Delay-all keeps gen1→gen2 fair; first steered generation is gen3 (steered share **0.75** at gen3; pre-steer/gen2 share 0.5). Post-adoption H2 window (Tick 397–398: last 2 gens, floor gen≥5; gens [5, 6]) preferred share **0.875**.
+5. **Fitness lift:** preferred@gen3 mean − loser@gen1 mean = **+0.0436** (pop mean 0.226725 → 0.24957500000000002); post-adoption lift **+0.0607**.
 
 DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_id/gen).
 
@@ -285,6 +285,16 @@ DNA fitness transferability check: `True` (same DNA ⇒ same score across agent_
   "gen2_preferred_share": 0.5,
   "pre_steer_preferred_share": 0.5,
   "steered_preferred_share": 0.75,
+  "post_adoption_min_generation": 5,
+  "post_adoption_tail_generations": 2,
+  "post_adoption_gens": [
+    5,
+    6
+  ],
+  "post_adoption_preferred_share": 0.875,
+  "post_adoption_preferred_mean_fitness": 0.27622857142857143,
+  "post_adoption_pop_mean": 0.2728875,
+  "post_adoption_fitness_lift": 0.060678571428571415,
   "dna_fitness_transfers": true,
   "belief_count": 15,
   "agenda_prefers_first": "selective"
