@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-09T08:05Z — Tick 393 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-aea5`; recovered tip `f49c` (Tick 392 chicken-egg inline IGNORE verified)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Tip PR body helper still hard-coded the Tick 392 chicken-egg changelog into every future `Tick {N}` bullet, so `gh pr edit --body-file` / open_git_pr description lied about the current tick and buried the durable PRIMARY secrets ask under stale infra prose. Highest leverage without paid spend: **secrets-first generic tip PR body**.
+
+### What this tick did (ONE step)
+**Secrets-first generic tip PR body (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 392 (`f49c`); confirmed secrets absent; boot `aea5` vs tip `f49c`; re-filed NEBIUS+HF secrets request; verified Tick 392 chicken-egg tip-apply works
+2. `suggested_open_git_pr_body`: secrets-first / tick-generic lead + durable tip anti-churn notes; no longer claims each Tick N *is* the Tick 392 chicken-egg fix; per-tick detail points to `ICML_PROGRESS.md`
+3. Tests: `test_suggested_open_git_pr_body_secrets_first_generic` + source lock Tick 393 — STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 392) | After (Tick 393) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 4/5 | unchanged |
+| Tip PR body Tick N bullet | frozen Tick 392 chicken-egg changelog | **secrets-first generic** |
+| Greenfield tip-apply (Tick 392) | applies (inline IGNORE) | unchanged (verified this boot) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-09T06:05Z — Tick 392 (automation cron)
 
 ### Status snapshot

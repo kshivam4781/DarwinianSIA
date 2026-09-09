@@ -93,6 +93,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 392:** **chicken-egg tip-apply without tip module** — Tick 391 filtered only when `scripts/icml_env_checks.py` was already present; piped `icml_boot_recover.sh --apply` from tip still refused on the boot file. `icml_boot_recover.sh` / `icml_cron_entry.sh` now inline the same IGNORE set when the tip module is absent.
 
+**Tick 393:** **secrets-first generic tip PR body** — Tick 392 froze the chicken-egg tip-apply changelog into `suggested_open_git_pr_body` for every future `Tick {N}` bullet, so `gh pr edit --body-file` / open_git_pr description lied about what the current tick did. Body is now secrets-first + durable tip anti-churn notes; per-tick detail stays in `docs/ICML_PROGRESS.md`.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.

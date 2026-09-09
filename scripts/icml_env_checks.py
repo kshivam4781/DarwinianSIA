@@ -2626,6 +2626,13 @@ def suggested_open_git_pr_body(
     Tick 358: after tip checkout, refresh ``docs/icml_open_git_pr_call.json`` so
     ``cloud_boot_branch`` matches the just-persisted boot (not a stale
     prior-tick value when agents skip full cron status rewrite).
+
+    Tick 393: body must stay **secrets-first and tick-generic**. Tick 392
+    accidentally froze the chicken-egg tip-apply changelog into every future
+    ``Tick {N}`` bullet — ``gh pr edit --body-file`` / open_git_pr description
+    then lied about what the current tick did. Per-tick detail belongs in
+    ``docs/ICML_PROGRESS.md``; this helper only carries the durable PRIMARY ask
+    + tip anti-churn / MCP metadata notes.
     """
     tick = local_tick if local_tick is not None else 0
     n = tip_pr_number if tip_pr_number is not None else "N"
@@ -2634,34 +2641,50 @@ def suggested_open_git_pr_body(
             f"**PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local "
             f"`gpqa_diamond.csv`) so cron can run live G2→G3→G4."
         )
+        tick_lead = (
+            f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on NEBIUS + "
+            f"(HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at "
+            f"`1890–1904` (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, "
+            f"H2 preferred **4/5**). STATUS remains IN_PROGRESS (not READY)."
+        )
     elif fetch_diamond_ok is True:
         primary = (
             "**Secrets OK** — next: `bash scripts/icml_cron_entry.sh` for live "
             "G2→G3→G4 (or undraft+merge this tip into `main` first)."
+        )
+        tick_lead = (
+            f"Tick {tick}: secrets present — run `bash scripts/icml_cron_entry.sh` "
+            f"for live G2→G3→G4. Offline PRIMARY/H5 green at `1890–1904`. "
+            f"STATUS stays IN_PROGRESS until live criteria pass."
         )
     else:
         primary = (
             "Check `docs/icml_secrets_status.json` / `docs/ICML_HUMAN_UNBLOCK.md` "
             "for NEBIUS + HF/CSV gates."
         )
+        tick_lead = (
+            f"Tick {tick}: check secrets status / human unblock. Offline "
+            f"PRIMARY/H5 green at `1890–1904`. STATUS remains IN_PROGRESS "
+            f"(not READY)."
+        )
+    # Tick 393: keep this body *secrets-first and tick-generic*. Do **not**
+    # hardcode the latest infra changelog (Tick 392 froze the chicken-egg
+    # tip-apply narrative into every future Tick N body — operators reading
+    # `gh pr edit --body-file` / open_git_pr description saw a stale single-tick
+    # story instead of the durable PRIMARY ask). Per-tick work lives in
+    # `docs/ICML_PROGRESS.md`; tip recover notes stay durable below.
     return (
         f"## Summary\n"
-        f"- Tick {tick}: **chicken-egg tip-apply without tip module** — Tick 391 "
-        f"filtered gitignore-lag durables only when `scripts/icml_env_checks.py` "
-        f"was already present; greenfield/main boots pipe "
-        f"`icml_boot_recover.sh` from tip but still refused `--apply` on "
-        f"`?? docs/icml_cloud_boot_branch.txt` because the Python filter never "
-        f"ran. Tick 392 inlines the same IGNORE set in `icml_boot_recover.sh` / "
-        f"`icml_cron_entry.sh` when the tip module is absent (evidence still "
-        f"blocks — Tick 390). Tip PR GitHub **title and body** stay frozen "
-        f"when using `open_git_pr` MCP (does **not** rewrite either on existing "
-        f"PRs — Tick 345–350; prefer verbatim args from "
-        f"`{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
-        f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
-        f"--body-file {ICML_TIP_PR_BODY_RELPATH}`).\n"
+        f"- {tick_lead}\n"
         f"- {primary}\n"
-        f"- Offline PRIMARY/H5 unchanged (`1890–1904`); H2 preferred **4/5**; "
-        f"STATUS remains IN_PROGRESS (not READY).\n"
+        f"- Tip recover / chicken-egg stack through Tick 392; tip PR anti-churn "
+        f"on this PR (`cursor/icml-epistemic-results-f49c`). Tip PR GitHub "
+        f"**title and body** stay frozen when using `open_git_pr` MCP (does "
+        f"**not** rewrite either on existing PRs — Tick 345–350; prefer "
+        f"verbatim args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
+        f"`tip_pr_title_edit_commands` (`gh pr edit --title … "
+        f"--body-file {ICML_TIP_PR_BODY_RELPATH}`). See `docs/ICML_PROGRESS.md` "
+        f"for Tick {tick} detail.\n"
         f"\n"
         f"## Human unblock\n"
         f"1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or drop `gpqa_diamond.csv`)\n"
@@ -2671,11 +2694,7 @@ def suggested_open_git_pr_body(
         f"\n"
         f"## Test plan\n"
         f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_tip_apply_ignores_gitignore_lag_boot_and_call`\n"
-        f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_discard_ephemeral_gitignore_lag_boot_ok`\n"
-        f"- [x] `pytest tests/test_icml_env_checks.py::"
-        f"test_tip_apply_blocks_dirty_prior_live_evidence` (Tick 390)\n"
+        f"test_suggested_open_git_pr_body_secrets_first_generic`\n"
         f"- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n"
     )
 

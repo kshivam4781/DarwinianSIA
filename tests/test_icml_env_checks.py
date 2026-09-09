@@ -582,6 +582,28 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     assert merge_idx > 0
 
 
+def test_suggested_open_git_pr_body_secrets_first_generic() -> None:
+    """Tick 393: tip PR body stays secrets-first; no frozen infra changelog."""
+    from icml_env_checks import suggested_open_git_pr_body
+
+    body = suggested_open_git_pr_body(
+        local_tick=393, fetch_diamond_ok=False, tip_pr_number=337
+    )
+    assert "Tick 393" in body
+    assert "PRIMARY" in body
+    assert "NEBIUS_API_KEY" in body
+    # Must NOT claim Tick 393 *is* the Tick 392 chicken-egg fix.
+    assert "chicken-egg tip-apply without tip module" not in body
+    # Durable recover note may still mention Tick 392 as completed stack.
+    assert "Tick 392" in body
+    assert "ICML_PROGRESS.md" in body
+    ready = suggested_open_git_pr_body(
+        local_tick=393, fetch_diamond_ok=True, tip_pr_number=337
+    )
+    assert "Secrets OK" in ready or "secrets present" in ready.lower()
+    assert "icml_cron_entry.sh" in ready
+
+
 def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     """Tick 344–347: secrets-first title + body-file + tip_pr_title_stale + gh edit."""
     from icml_env_checks import (
@@ -612,6 +634,8 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     assert "NEBIUS_API_KEY" in body
     assert ICML_TIP_PR_BODY_RELPATH in body or "body-file" in body
     assert "tip_pr_body_stale" in body or "347" in body
+    # Tick 393: even older local_tick bodies must not claim chicken-egg as Tick N.
+    assert "chicken-egg tip-apply without tip module" not in body
     pr = {
         "number": 337,
         "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
@@ -3338,6 +3362,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "mirror TIP_APPLY_GITIGNORE_LAG_RELPATHS" in cron_entry
     assert "ICML chicken-egg tip-apply without tip module (Tick 392)" in master
     assert "Tick 392" in unblock
+    # Tick 393: secrets-first generic tip PR body (no frozen Tick 392 changelog).
+    assert "Tick 393" in env_checks
+    assert "secrets-first and tick-generic" in env_checks
+    assert "test_suggested_open_git_pr_body_secrets_first_generic" in env_checks
+    assert "ICML secrets-first generic tip PR body (Tick 393)" in master
+    assert "Tick 393" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks
