@@ -445,3 +445,46 @@ def test_resolve_h2_bias_field_prefers_tool_strategy(tmp_path: Path, monkeypatch
     h2_default = compute_h2(run)
     assert h2_default["field"] == "tool_strategy"
     assert h2_default["preferred_share"] == pytest.approx(1.0)
+    assert h2_default["min_generation"] == 3
+
+
+def test_compute_h2_steered_window_excludes_fair_bred_gens(tmp_path: Path, monkeypatch):
+    """Tick 396: delay-all fair gen1–2 must not dilute post-steer preferred share."""
+    from epistemic_results import H2_DEFAULT_MIN_GENERATION, compute_h2
+
+    assert H2_DEFAULT_MIN_GENERATION == 3
+    run = tmp_path / "run_h2_window"
+    # Fair-bred gens dominated by loser allele (would dilute all-gen H2).
+    for gen, trait in ((1, "aggressive"), (2, "aggressive")):
+        for agent in range(4):
+            agent_dir = run / f"gen_{gen}" / f"agent_{agent}"
+            agent_dir.mkdir(parents=True)
+            (agent_dir / "agent_dna.json").write_text(
+                json.dumps({"tool_strategy": trait}),
+                encoding="utf-8",
+            )
+    # Steered gens: preferred selective dominates (3/4).
+    for gen in (3, 4, 5, 6):
+        for agent, trait in enumerate(
+            ("selective", "selective", "selective", "aggressive")
+        ):
+            agent_dir = run / f"gen_{gen}" / f"agent_{agent}"
+            agent_dir.mkdir(parents=True)
+            (agent_dir / "agent_dna.json").write_text(
+                json.dumps({"tool_strategy": trait}),
+                encoding="utf-8",
+            )
+    monkeypatch.setattr(
+        "epistemic_results._load_mutation_bias_map",
+        lambda _run_dir: {"tool_strategy": ["selective", "aggressive"]},
+    )
+    # Legacy all-generation window dilutes preferred share with fair gens.
+    legacy = compute_h2(run, min_generation=1)
+    assert legacy["preferred_share"] == pytest.approx(12 / 24)  # 0.5 boundary
+    # Default steered window is strictly stronger (excludes fair dilution).
+    steered = compute_h2(run)
+    assert steered["min_generation"] == 3
+    assert steered["total"] == 16  # gens 3–6 × 4 agents
+    assert steered["preferred_share"] == pytest.approx(12 / 16)  # 0.75
+    assert steered["preferred_share"] > legacy["preferred_share"]
+    assert steered["preferred_share"] >= 0.5

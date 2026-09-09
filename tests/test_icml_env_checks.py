@@ -3425,6 +3425,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "test_cron_refreshes_secrets_after_preflight" in env_checks
     assert "ICML cron secrets refresh after preflight (Tick 395)" in master
     assert "Tick 395" in unblock
+    # Tick 396: steered-window H2 (min_generation=3 under delay-all).
+    epi = (root / "scripts" / "epistemic_results.py").read_text(encoding="utf-8")
+    ready = (root / "docs" / "ICML_READY.md").read_text(encoding="utf-8")
+    assert "H2_DEFAULT_MIN_GENERATION" in epi
+    assert "Tick 396" in epi
+    assert "min_generation: int = H2_DEFAULT_MIN_GENERATION" in epi or "min_generation: int = 3" in epi
+    assert "test_compute_h2_steered_window_excludes_fair_bred_gens" in (
+        root / "SIA" / "tests" / "test_epistemic_results.py"
+    ).read_text(encoding="utf-8")
+    assert "ICML steered-window H2 (Tick 396)" in master
+    assert "Tick 396" in ready
+    assert "Tick 396" in unblock
     # Tick 340: open_git_pr never-omit-branch (MCP defaults to boot branch).
     assert "def build_icml_open_git_pr_hint" in env_checks
     assert "def write_icml_open_git_pr_hint" in env_checks

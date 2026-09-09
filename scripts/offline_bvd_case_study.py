@@ -85,7 +85,7 @@ def _make_gpqa_task(tmp_path: Path) -> tuple[str, str]:
     pub = task_dir / "data" / "public"
     priv = task_dir / "data" / "private"
     for d in (shared, ref, pub, priv):
-        d.mkdir(parents=True)
+        d.mkdir(parents=True, exist_ok=True)
 
     questions = [
         {
@@ -227,7 +227,7 @@ def _load_gen_traits(layout: RunLayout, gen: int, field: str, max_agents: int = 
 
 
 def _brief_h2_fields(d_summary: dict) -> dict:
-    """Tick 362/365/366: primary H2 preferred-share fields for compare brief."""
+    """Tick 362/365/366/396: primary H2 preferred-share fields for compare brief."""
     h2 = d_summary.get("h2") or d_summary.get("h2_memory") or {}
     share = h2.get("preferred_share")
     return {
@@ -235,6 +235,7 @@ def _brief_h2_fields(d_summary: dict) -> dict:
         "D_h2_preferred": h2.get("preferred_value"),
         "D_h2_share": share,
         "D_h2_in_bias_share": h2.get("in_bias_share"),
+        "D_h2_min_generation": h2.get("min_generation"),
         "D_h2_pass": h2_preferred_seed_pass(h2),
     }
 
@@ -568,8 +569,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--elite", type=int, default=_shape["elite_count"])
     p.add_argument("--max-gen", type=int, default=_shape["max_gen"])
     p.add_argument("--eval-subset", type=int, default=_shape["eval_subset"])
-    p.add_argument("--b-id-start", type=int, default=1890)
-    p.add_argument("--d-id-start", type=int, default=1900)
+    p.add_argument("--b-id-start", type=int, default=1910)
+    p.add_argument("--d-id-start", type=int, default=1920)
     p.add_argument("--runs-root", type=Path, default=ROOT / "runs")
     p.add_argument("--work-root", type=Path, default=ROOT / "runs" / "_offline_bvd_work")
     p.add_argument("--json-out", type=Path, default=ROOT / "docs" / "offline_bvd_summary.json")
@@ -716,9 +717,17 @@ def main(argv: list[str] | None = None) -> int:
                 "after DNA steering is active (gen≥2), matching ε-greedy discovery lag."
             ),
         },
+        "h2_protocol": {
+            "min_generation": 3,
+            "note": (
+                "Tick 396: H2 preferred_share counts DNA only at gen≥3 (first steered "
+                "generation under delay-all). Fair-bred gen1–2 no longer dilute MECHANISM."
+            ),
+        },
         "note": (
             "Synthetic additive latent DNA fitness with transferable traits; offline only. "
-            "Do not set ICML_READY PRIMARY from this."
+            "Do not set ICML_READY PRIMARY from this. Tick 396 steered-window H2 "
+            "(min_generation=3); IDs 1910–1914 / 1920–1924."
         ),
     }
     args.json_out.parent.mkdir(parents=True, exist_ok=True)

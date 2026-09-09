@@ -186,9 +186,40 @@ def compute_h5(
     }
 
 
-def collect_dna_traits(run_dir: Path, field: str = "memory") -> Counter:
+# Tick 396: under delay-all, gen1 random + gen1→gen2 fair breed; first steered
+# DNA appears at gen≥3 (matches case-study ``first_steered_gen`` / Tick 23).
+H2_DEFAULT_MIN_GENERATION = 3
+
+
+def _generation_from_dna_path(dna_path: Path) -> int | None:
+    """Parse ``gen_N`` from ``.../gen_N/agent_K/agent_dna.json``."""
+    for part in dna_path.parts:
+        if part.startswith("gen_"):
+            try:
+                return int(part.split("_", 1)[1])
+            except ValueError:
+                return None
+    return None
+
+
+def collect_dna_traits(
+    run_dir: Path,
+    field: str = "memory",
+    *,
+    min_generation: int | None = None,
+) -> Counter:
+    """Count DNA allele values for ``field``.
+
+    Tick 396: optional ``min_generation`` excludes fair-bred gens under
+    Condition D delay-all (default H2 window uses gen≥3).
+    """
     counts: Counter = Counter()
+    min_g = None if min_generation is None else int(min_generation)
     for dna_path in run_dir.glob("gen_*/agent_*/agent_dna.json"):
+        if min_g is not None:
+            gen = _generation_from_dna_path(dna_path)
+            if gen is None or gen < min_g:
+                continue
         data = _load_json(dna_path)
         if not data:
             continue
@@ -255,8 +286,10 @@ def compute_h2(
     run_dir: Path,
     field: str | None = None,
     bias_values: list[str] | None = None,
+    *,
+    min_generation: int = H2_DEFAULT_MIN_GENERATION,
 ) -> dict[str, Any]:
-    """H2 helper: DNA trait skew under contradiction bias (Tick 361 / 364).
+    """H2 helper: DNA trait skew under contradiction bias (Tick 361 / 364 / 396).
 
     Default ``field=None`` auto-resolves the biased DNA field from the run's
     mutation-bias map (prefer ``tool_strategy`` over hard-coded ``memory``).
@@ -265,9 +298,16 @@ def compute_h2(
     allele = fitness-weighted winner). Pool membership alone (``in_bias_share``)
     is not MECHANISM skew — a population dominated by the *loser* allele still
     has ``in_bias_share=1.0``.
+
+    Tick 396: default ``min_generation=3`` (steered-window H2). Under delay-all,
+    gen1 is random and gen1→gen2 breeding is fair, so all-generation preferred
+    share dilutes true post-steer skew (same class of bug as Tick 18 H5 window
+    and Tick 23 case-study gen≥3). Pass ``min_generation=1`` for legacy
+    all-generation counts.
     """
     resolved = resolve_h2_bias_field(run_dir) if field is None else field
-    counts = collect_dna_traits(run_dir, resolved)
+    min_g = int(min_generation)
+    counts = collect_dna_traits(run_dir, resolved, min_generation=min_g)
     total = sum(counts.values())
     bias = list(bias_values or [])
     if not bias:
@@ -288,6 +328,7 @@ def compute_h2(
         "preferred_value": preferred,
         "preferred_count": preferred_count,
         "preferred_share": preferred_share,
+        "min_generation": min_g,
     }
 
 

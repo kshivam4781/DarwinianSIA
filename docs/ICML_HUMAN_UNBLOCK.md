@@ -99,6 +99,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
 
+**Tick 396:** **steered-window H2** — `compute_h2` defaults to `min_generation=3` (first steered DNA under delay-all; aligns Tick 23 case study). Offline re-pilot `1910–1924` keeps PRIMARY/H5; seed 22 preferred 0.29→0.44 still fails ≥0.5 honestly. Live still needs NEBIUS + HF/CSV.
+
 **Tick 360:** **PRIMARY mean_final_gap** — `compare_b_vs_d` now emits `mean_final_b` / `mean_final_d` / `mean_final_gap` / `primary_final_pass` so G3→G4 promising mean-gap fallback works and criterion (c) requires mean gap >1pp (not seed-win noise alone).
 
 **Tick 361:** **live H2 bias-field auto-resolve** — G4 `score_live_h2` / `compute_h2(field=None)` pick the DNA field CABS actually biased (prefer `tool_strategy` over hard-coded `memory`) so live MECHANISM does not false-fail when contradictions steer non-memory traits.

@@ -13,18 +13,18 @@
     "max_gen": 6
   },
   "b_run_ids": [
-    1890,
-    1891,
-    1892,
-    1893,
-    1894
+    1910,
+    1911,
+    1912,
+    1913,
+    1914
   ],
   "d_run_ids": [
-    1900,
-    1901,
-    1902,
-    1903,
-    1904
+    1920,
+    1921,
+    1922,
+    1923,
+    1924
   ],
   "compare": {
     "n_pairs": 5,
@@ -38,6 +38,7 @@
     "b_wins_cost30": 0,
     "d_wins_final": 5,
     "b_wins_final": 0,
+    "d_wins_h2": 4,
     "mean_final_b": 0.2526,
     "mean_final_d": 0.3141,
     "mean_final_gap": 0.0615,
@@ -46,7 +47,6 @@
     "primary_cost25_pass": false,
     "primary_cost30_pass": true,
     "primary_final_pass": true,
-    "d_wins_h2": 4,
     "h2_preferred_pass": true
   },
   "compare_rows_brief": [
@@ -61,14 +61,15 @@
       "B_cost30": null,
       "D_cost30": 80.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.3999999999999999,
+      "D_h5_rho": 0.39999999999999997,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
       "D_h2_preferred": "selective",
-      "D_h2_share": 0.7083333333333334,
+      "D_h2_share": 0.875,
       "D_h2_in_bias_share": 1.0,
+      "D_h2_min_generation": 3,
       "D_h2_pass": true
     },
     {
@@ -82,14 +83,15 @@
       "B_cost30": null,
       "D_cost30": 100.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.7999999999999998,
+      "D_h5_rho": 0.7999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
       "D_h2_preferred": "selective",
-      "D_h2_share": 0.2916666666666667,
+      "D_h2_share": 0.4375,
       "D_h2_in_bias_share": 1.0,
+      "D_h2_min_generation": 3,
       "D_h2_pass": false
     },
     {
@@ -103,14 +105,15 @@
       "B_cost30": null,
       "D_cost30": 60.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.7999999999999998,
+      "D_h5_rho": 0.7999999999999999,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "retry_policy",
       "D_h2_preferred": "error_specific",
-      "D_h2_share": 0.8333333333333334,
+      "D_h2_share": 0.875,
       "D_h2_in_bias_share": 1.0,
+      "D_h2_min_generation": 3,
       "D_h2_pass": true
     },
     {
@@ -124,14 +127,15 @@
       "B_cost30": 40.0,
       "D_cost30": 40.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.9999999999999998,
+      "D_h5_rho": 1.0,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "tool_strategy",
       "D_h2_preferred": "selective",
-      "D_h2_share": 0.6666666666666666,
+      "D_h2_share": 0.875,
       "D_h2_in_bias_share": 1.0,
+      "D_h2_min_generation": 3,
       "D_h2_pass": true
     },
     {
@@ -145,19 +149,20 @@
       "B_cost30": null,
       "D_cost30": 80.0,
       "cost30_unit": "calls",
-      "D_h5_rho": 0.3999999999999999,
+      "D_h5_rho": 0.39999999999999997,
       "D_h5_pass": true,
       "D_h5_key": "mean",
       "D_h5_horizon": 2,
       "D_h2_field": "retry_policy",
       "D_h2_preferred": "generic",
-      "D_h2_share": 0.75,
+      "D_h2_share": 0.875,
       "D_h2_in_bias_share": 1.0,
+      "D_h2_min_generation": 3,
       "D_h2_pass": true
     }
   ],
   "case_study": {
-    "run_dir": "runs/run_1900",
+    "run_dir": "runs/run_1920",
     "field": "tool_strategy",
     "preferred_value": "selective",
     "bias_order": [
@@ -410,5 +415,9 @@
     "delta_horizon": 2,
     "note": "H5 uses population-mean forward \u0394fitness over the next 1\u20132 gens after DNA steering is active (gen\u22652), matching \u03b5-greedy discovery lag."
   },
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this."
+  "h2_protocol": {
+    "min_generation": 3,
+    "note": "Tick 396: H2 preferred_share counts DNA only at gen\u22653 (first steered generation under delay-all). Fair-bred gen1\u20132 no longer dilute MECHANISM."
+  },
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 396 steered-window H2 (min_generation=3); IDs 1910\u20131914 / 1920\u20131924."
 }

@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-09T14:15Z — Tick 396 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/bc-d472f729-bcdd-4b37-be22-558d5ac6c57b-e190`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, MECHANISM H2 still averaged DNA across fair-bred gen1–2 under delay-all (same class of bug as Tick 18 H5 window / Tick 23 case-study gen≥3), diluting preferred share (seed 22 ≈0.29). Highest leverage without paid spend: **steered-window H2 (`min_generation=3`)**.
+
+### What this tick did (ONE step)
+**Steered-window H2 (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 395 (`f49c`); confirmed secrets absent; boot `…-e190` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `collect_dna_traits` / `compute_h2` default `min_generation=3`; live G4 `score_live_h2` inherits; offline re-pilot `1910–1924` + paper/gate3/READY/Section 12 ID lock
+3. Tests: `test_compute_h2_steered_window_excludes_fair_bred_gens` + source lock Tick 396 — STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 395 / all-gen H2) | After (Tick 396) |
+|--------|-------------------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 | 5/5 / 4/5 / 4/5 / 5/5 | unchanged |
+| H2 preferred (seed shares) | ~0.71/0.29/0.83/0.67/0.75 → **4/5** | **0.875/0.44/0.875/0.875/0.875** → **4/5** |
+| Seed 22 preferred share | 0.2917 (all-gen) | **0.4375** (gen≥3; still fail ≥0.5) |
+| Offline run IDs | `1890–1904` | **`1910–1924`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-09T12:05Z — Tick 395 (automation cron)
 
 ### Status snapshot

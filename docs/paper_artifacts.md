@@ -1,10 +1,10 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 300** at live Nebius shape pop4×eval5×max_gen6; IDs `1890–1894` / `1900–1904`) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–390** live stack hardening (… **Tick 389 committed prior_live evidence**; **Tick 390 tip-apply blocks dirty prior_live evidence**). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 396** steered-window H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1910–1914` / `1920–1924`; Tick-300 `1890–1904` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–395** live stack hardening. No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
-We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift). Delaying all Condition D DNA steering until breeding from gen≥2 prevents early preferred-allele collapse. Compressing the latent fitness ceiling to 0.34 (Tick 16) removes gen-1 threshold saturation. Tick 17 adds ε-greedy exploration plus latest-generation DNA harvest into the bias pool; Tick 20 makes explore **directed** (sample only alleles outside the disputed pool) so suboptimal frozen pairs (e.g. minimal vs aggressive) discover better outsiders (`selective`) — offline gens-to-30% wins on **4/5** seeds (final **5/5**, mean gap ~**6.15pp**). Tick 18–19 score H5 only after steering is active (gen≥2) against population-mean forward Δfitness over a 2-gen horizon → offline H5 ρ>0.3 on **5/5** seeds. Tick 22 adds **cost-to-threshold** (PRIMARY criterion b): cumulative tokens/USD when present, else eval-call proxies; D wins cost-to-30% on **4/5** seeds (≥15% fewer calls, or reach-vs-never). Tick 23 fixes the mechanism case study to report H2 DNA skew at the **first steered generation (gen≥3)** under delay-all — e.g. `tool_strategy=selective` share 0.25→0.5→0.75 across gen1/2/3 with fitness lift vs the loser side. **Live multi-seed GPQA subset results are pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
+We study whether a Contradiction-Aware Belief System (CABS) improves sample efficiency of population-based Darwinian self-improvement. Fitness-only evolution (Condition B) is compared to epistemic-full steering (Condition D: beliefs → contradictions → research questions → fitness-weighted biased mutation / bias-aware crossover / scoped feedback). Offline dry-run pilots with additive latent DNA fitness show a concrete case study (contradiction → preferred DNA → population skew → fitness lift). Delaying all Condition D DNA steering until breeding from gen≥2 prevents early preferred-allele collapse. Compressing the latent fitness ceiling to 0.34 (Tick 16) removes gen-1 threshold saturation. Tick 17 adds ε-greedy exploration plus latest-generation DNA harvest into the bias pool; Tick 20 makes explore **directed** (sample only alleles outside the disputed pool) so suboptimal frozen pairs (e.g. minimal vs aggressive) discover better outsiders (`selective`) — offline gens-to-30% wins on **4/5** seeds (final **5/5**, mean gap ~**6.15pp**). Tick 18–19 score H5 only after steering is active (gen≥2) against population-mean forward Δfitness over a 2-gen horizon → offline H5 ρ>0.3 on **5/5** seeds. Tick 22 adds **cost-to-threshold** (PRIMARY criterion b): cumulative tokens/USD when present, else eval-call proxies; D wins cost-to-30% on **4/5** seeds (≥15% fewer calls, or reach-vs-never). Tick 23 fixes the mechanism case study to report H2 DNA skew at the **first steered generation (gen≥3)** under delay-all — e.g. `tool_strategy=selective` share 0.25→0.5→0.75 across gen1/2/3 with fitness lift vs the loser side. Tick **396** aligns aggregate H2 scoring to the same gen≥3 window (fair-bred gen1–2 no longer dilute preferred share). **Live multi-seed GPQA subset results are pending.** Mechanism claim requires measurable DNA trait skew under contradiction bias (H2) and predictive validity of epistemic value for next-step fitness gain (H5) on live runs.
 
 
 ## Reproducible run IDs
@@ -23,16 +23,18 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B / D (Tick 22 cost-to-threshold) | 11–55 | 1810–1814 / 1820–1824 | First offline cost30 **4/5**; case study `1823` (gen2 share era) |
 | B darwinian-only (offline pilot Tick 23) | 11/22/33/44/55 | 1830–1834 | Post-steering case-study H2 (`max_gen=6`, **eval3**); superseded by Tick 300 for live-shape lock |
 | D epistemic_full (offline pilot Tick 23) | 11/22/33/44/55 | 1840–1844 | Final **5/5**; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; case study on `1840` (eval3 era) |
-| B darwinian-only (offline Tick 300 live-shape) | 11/22/33/44/55 | 1890–1894 | Exact Nebius live shape **pop4×eval5×elite2×max_gen6** |
-| D epistemic_full (offline Tick 300 live-shape) | 11/22/33/44/55 | 1900–1904 | Same PRIMARY/H5 as Tick 23; cost@30% scaled to eval5; case study `1900` (gen3 share **0.75**) |
+| B darwinian-only (offline Tick 300 live-shape) | 11/22/33/44/55 | 1890–1894 | Superseded by Tick 396 IDs (same shape) |
+| D epistemic_full (offline Tick 300 live-shape) | 11/22/33/44/55 | 1900–1904 | Superseded by Tick 396 IDs (all-gen H2 era) |
+| B darwinian-only (offline Tick 396 steered H2) | 11/22/33/44/55 | 1910–1914 | Exact Nebius live shape **pop4×eval5×elite2×max_gen6** |
+| D epistemic_full (offline Tick 396 steered H2) | 11/22/33/44/55 | 1920–1924 | Same PRIMARY/H5; H2 `min_generation=3`; case study `1920` (gen3 share **0.75**) |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1910. Preferred when keys + linked env present: `bash scripts/icml_cron_entry.sh` (Tick 271/308; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1930. Preferred when keys + linked env present: `bash scripts/icml_cron_entry.sh` (Tick 271/308; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
 
 ## Table 1 — Primary (B vs D)
 
-### Offline synthetic pilot (Tick 300 — live Nebius shape; not live PRIMARY)
+### Offline synthetic pilot (Tick 396 — steered-window H2; live Nebius shape; not live PRIMARY)
 
 | Seed | B final | D final | B gens@30% | D gens@30% | B cost@30% | D cost@30% | Winner (final>1pp / gens30 / cost30) |
 |------|---------|---------|------------|------------|------------|------------|--------------------------------------|
@@ -42,7 +44,7 @@ Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300
 | 44 | 0.2220 | 0.3109 | 2 | 2 | 40 | 40 calls | D / tie / tie |
 | 55 | 0.2550 | 0.3266 | — | 4 | — | 80 calls | D / D / D |
 
-Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b) at **pop4×eval5×max_gen6**). Tick **360**: `compare.primary_final_pass=true` (`mean_final_gap≈0.0615` >1pp). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json` (Tick 300 + Tick 360 mean-gap fields). Tick-23 eval3 pilot retained historically as `1830–1844`.
+Mean final: B ≈ 0.253, D ≈ 0.314 (gap ~**6.15pp**). D final wins **5/5**; gens30 wins **4/5**; cost30 wins **4/5** (offline PRIMARY-shaped on (a) and (b) at **pop4×eval5×max_gen6**). Tick **360**: `compare.primary_final_pass=true` (`mean_final_gap≈0.0615` >1pp). Cost unit = cumulative agent eval-calls (`pop × eval_subset` summed until threshold); live runs will prefer token/USD fields. Source: `docs/offline_bvd_summary.json` (Tick **396** IDs `1910–1914` / `1920–1924`; H2 `min_generation=3`). Tick-300 `1890–1904` / Tick-23 `1830–1844` retained historically.
 
 ### Live GPQA
 
@@ -63,8 +65,9 @@ _Live Table 1 columns match G4 `refresh_paper_artifacts_live` (Tick 28/363). Win
 | H5 Spearman ρ (live) | — | — |
 <!-- LIVE_TABLE2_H5_END -->
 | H2 dry-run scoped bias (G1) | memory∈{failure_based,none}; tool_strategy∈{aggressive,minimal}; ≠ full enums | yes (dry-run) |
-| H2 offline pilot D (Tick 300) | directed ε-explore + live harvest; **post-steer** gen3 preferred share **0.75** (`run_1900`; gen1/2/3 = 0.25→0.5→0.75) at live shape | informative (dry-run) |
-| H2 preferred ≥0.5 (offline D) | Tick **366**: `d_wins_h2=4/5` / `h2_preferred_pass=true` (seed 22 preferred≈0.29 fail; shares ≈0.71/0.29/0.83/0.67/0.75) | yes (≥3/5; case study covers) |
+| H2 offline pilot D (Tick 396) | steered-window gen≥3; **post-steer** gen3 preferred share **0.75** (`run_1920`; gen1/2/3 = 0.25→0.5→0.75) at live shape | informative (dry-run) |
+| H2 preferred ≥0.5 (offline D) | Tick **396**: `d_wins_h2=4/5` / `h2_preferred_pass=true` (seed 22 preferred=**0.4375** fail after window; shares ≈0.875/0.44/0.875/0.875/0.875; was ~0.29 all-gen) | yes (≥3/5; case study covers) |
+| H2 steered window | Tick **396**: `compute_h2` default `min_generation=3` (delay-all first steered DNA; aligns Tick 23 case study) | yes (unit + offline) |
 | H2 unit skew test | pass (+ preferred anchoring + bias-aware / delayed XO + tempered early mutate + delay-all + ε-greedy + directed explore) | yes (unit) |
 | Fitness-weighted bias order | higher-fitness side first; exponential rank weights | yes (unit) |
 | Singleton bias skip | `load_mutation_bias` requires ≥2 distinct candidates | yes (unit, Tick 10) |
@@ -77,7 +80,7 @@ _Live Table 1 columns match G4 `refresh_paper_artifacts_live` (Tick 28/363). Win
 | Cost-to-threshold | tokens/USD preferred; else eval-calls; ≥15% savings or reach-vs-never (Tick 22) | yes (unit + offline **4/5**) |
 | H5 protocol | `min_generation=2`, `fitness_key=mean`, `delta_horizon=2` (Tick 18–19) | yes (unit + offline) |
 | Case study chain | `docs/case_study_offline.md` (`run_1900`) | yes (offline; post-steer gen≥3; live shape) |
-| H5 Spearman ρ (offline) | offline D `1900–1904`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live row above | offline pass; live need > 0.3 |
+| H5 Spearman ρ (offline) | offline D `1920–1924`: **5/5** ρ>0.3 (0.4 / 0.8 / 0.8 / 1.0 / 0.4); live row above | offline pass; live need > 0.3 |
 | Steering opportunity term | `fitness_gap × (1 − preferred share)` in epi | yes (unit + offline) |
 
 ## Figures
@@ -87,14 +90,15 @@ _Live Table 1 columns match G4 `refresh_paper_artifacts_live` (Tick 28/363). Win
 | 1 | Accuracy / cost curves B vs D (offline draft) | `docs/figures/fig1_learning_curves.png` |
 | 2 | H2 DNA skew / case-study support (offline draft) | `docs/figures/fig2_mechanism.png` |
 
-Offline Figs 1–2 regenerated at Tick **365** from live-shape pilot `1890–1904` using **primary H2** + **preferred-allele** annotation (Tick 362 field alignment; Tick 365 prefer=/share= titles). Tick 302 first populated on-disk paths.
+Offline Figs 1–2 regenerated at Tick **396** from live-shape pilot `1910–1924` using steered-window **primary H2** (`min_generation=3`) + **preferred-allele** annotation (Tick 362/365 field alignment). Tick 302 first populated on-disk paths.
 
 ## Case study (offline)
 
-See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → preferred share gen1/2/3 = **0.25→0.5→0.75** (gen3 = first steered gen under delay-all) → fitness lift **+0.0436** vs loser side (`run_1900`, Tick 300 live shape; Tick-23 `run_1840` superseded).
+See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy` (`selective` vs `aggressive`) → fitness-weighted bias prefers `selective` → preferred share gen1/2/3 = **0.25→0.5→0.75** (gen3 = first steered gen under delay-all) → fitness lift **+0.0436** vs loser side (`run_1920`, Tick 396 live shape; Tick-300 `run_1900` / Tick-23 `run_1840` superseded).
 
 ## Limitations (honest, keep updated)
 
+- Tick 396 steered-window H2 (`min_generation=3`) stops fair-bred gen1–2 from diluting preferred share (seed 22: 0.29→0.44) but seed 22 still fails ≥0.5 — selective only consolidates at gen6 while gen3–5 stay mostly `minimal`. MECHANISM remains **4/5** + case study; still **not** live GPQA.
 - Mutation bias was previously a no-op (full enum); fixed and **validated on dry-run G1** (`run_1401`) but **not yet on live GPQA**.
 - Live H2 scoring previously hard-coded DNA field `memory` while CABS typically steers `tool_strategy` (case study); Tick **361** auto-resolves the biased field so live MECHANISM does not false-fail — still **unverified on live GPQA**. Offline Fig 2 / `D_h2_share` still plotted `h2_memory` until Tick **362** aligned them with primary `h2`. Live G4 Fig 2 / Table 1 / H2 rows still omitted field + mean gap until Tick **363**. Tick **364** further requires **preferred-allele** share (not mere contradiction-pool membership) so loser-dominated populations cannot false-pass H2. Tick **365** aligns offline `D_h2_share` / Fig 2 / gate4 H2 report with that preferred-share key (regen shows honest shares, e.g. seed 22 ≈0.29 vs prior pool 1.0). Tick **366** aggregates those shares into `d_wins_h2` / `h2_preferred_pass` (**4/5** offline; seed 22 fails) so paper/gate3 cannot omit the loser-dominated seed. Tick **367** wires the same aggregate into **live** G4 paper pack / gate4 metrics (`d_wins_h2=N/5` + `h2_preferred_pass`; `apply_paper_pack` prefers compare when n≥5). Tick **368** brings the same honesty to **live G3** (`score_pilot` returns H2; gate3 live metrics surface preferred_share + mean_final_gap). Tick **369** surfaces those G3 metrics in the **live pipeline** G3→G4 gate (`icml_live_pipeline_report.md`; previously binary `g3_promising` only). Tick **370** further tightens the G3→G4 **decision**: H5 ρ>0.3 alone no longer auto-spends ~$14 on 5-seed G4 — PRIMARY-shaped D win / mean_final_gap>1pp required (`--force-g4` override) — still **unverified on live GPQA**.
 - Same-allele cross-agent “contradictions” previously created singleton bias pools that wiped better elites; Tick 10 skips those pools — still **unverified on live GPQA**.

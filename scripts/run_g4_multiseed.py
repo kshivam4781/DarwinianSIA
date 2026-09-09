@@ -472,6 +472,10 @@ def score_live_h2(d_dirs: list[Path], field: str | None = None) -> dict[str, Any
     run's mutation-bias map (prefer ``tool_strategy``). Hard-coded ``memory``
     previously yielded empty bias_values when CABS steered tool_strategy — a
     latent live MECHANISM false-fail.
+
+    Tick 396: ``compute_h2`` defaults to steered-window ``min_generation=3``
+    (delay-all first steered DNA); do not override unless diagnosing legacy
+    all-generation dilution.
     """
     from epistemic_results import compute_h2
 
