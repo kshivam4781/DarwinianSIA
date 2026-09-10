@@ -51,6 +51,9 @@ Hard stops (delegated to gate runners; never violate here either):
     trust Tick 386 ``prior_live_metrics`` on gate4 (parity with Tick 385
     gate3) so cron ``--preflight-only`` cannot wipe paid G4 paper-pack
     evidence needed for ``ICML_READY``.
+  - Tick 407: ``load_g3_metrics_for_g4`` refuses G4 when Condition D local
+    artifacts lack gen≥3 Contradiction-Aware agenda (positive control that
+    delay-all lifted — Tick 406 only proves the fair gen1→gen2 skip).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -659,11 +662,25 @@ def load_g3_metrics_for_g4(
         d_dirs = _resolve_run_dirs(list(g3_d_ids))
         if len(b_dirs) == len(g3_b_ids) and len(d_dirs) == len(g3_d_ids):
             comparison, h5, h2 = g3.score_pilot(b_dirs, d_dirs)
+            # Tick 407: refuse G4 when Condition D never steered after delay-all.
+            steering_ok, steering_checks = g3.g3_d_steering_ok(d_dirs)
+            if not steering_ok:
+                detail = "; ".join(
+                    c.detail for c in steering_checks if not c.ok
+                ) or "gen≥3 steering missing"
+                return (
+                    None,
+                    {},
+                    {},
+                    "Tick 407: local G3 D runs lack gen≥3 CABS agenda "
+                    f"({detail}) — refuse G4 burn on never-steer Condition D",
+                )
             return (
                 comparison,
                 h5 or {},
                 h2 or {},
-                "Tick 373: re-scored G3 from local B/D run dirs",
+                "Tick 373/407: re-scored G3 from local B/D run dirs "
+                "(gen≥3 steering ok)",
             )
         return (
             None,
@@ -676,6 +693,21 @@ def load_g3_metrics_for_g4(
     data = _load_gate3_sidecar_raw(report_md)
     comparison, h5, h2, source = g3._live_metrics_from_gate3_sidecar(data)
     if comparison is not None:
+        # Tick 407: sidecar trust also refuses explicit never-steer flag.
+        prior_steering = None
+        if source == "prior_live_metrics":
+            prior = data.get("prior_live_metrics") or {}
+            prior_steering = prior.get("steering_applied_gen3")
+        else:
+            prior_steering = data.get("steering_applied_gen3")
+        if prior_steering is False:
+            return (
+                None,
+                {},
+                {},
+                "Tick 407: gate3 sidecar steering_applied_gen3=false — "
+                "refuse G4 burn on never-steer Condition D",
+            )
         if source == "prior_live_metrics":
             note = (
                 "Tick 385: trusted gate3 prior_live_metrics "
@@ -686,6 +718,8 @@ def load_g3_metrics_for_g4(
                 "Tick 373: trusted live-executed gate3 sidecar "
                 "(no local G3 dirs)"
             )
+        if prior_steering is True:
+            note += "; steering_applied_gen3=true"
         return comparison, h5, h2, note
     mode = str(data.get("mode") or "")
     executed = bool(data.get("executed"))

@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T12:15Z — Tick 407 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-3b63`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 406 only proves fair gen1→gen2 *skip* (negative control). A regression that never applies Condition D steering after delay-all still PASSes G2 and can burn ~$19 on G3/G4 with D≈B. Highest leverage without paid spend: **G3 gen≥3 steering positive-control**.
+
+### What this tick did (ONE step)
+**G3 Condition D steering positive-control (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 406 (`f49c`); confirmed secrets absent; boot `3b63` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `validate_g3_d_steering` / `g3_d_steering_ok` require gen≥3 feedback to carry Contradiction-Aware agenda; wired into direct G3 live, ledger-skip refresh, and pipeline `load_g3_metrics_for_g4` (refuse G4 + exit 4 on never-steer)
+3. Unit tests: `test_validate_g3_d_steering_positive_control`, ledger-skip refuse paths, pipeline never-steer refuse
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 406) | After (Tick 407) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| G3 gen≥3 steering positive-control | absent | **PASS** unit + refuse G4 on never-steer |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T10:25Z — Tick 406 (automation cron)
 
 ### Status snapshot

@@ -884,6 +884,11 @@ def test_g3_resume_rescores_local_when_sidecar_preflight(
         return fake_cmp, {"run_1301": {"spearman_rho": 0.6}}, {"run_1301": {"preferred_share": 0.75}}
 
     monkeypatch.setattr(g3, "score_pilot", _fake_score)
+    monkeypatch.setattr(
+        g3,
+        "g3_d_steering_ok",
+        lambda d_dirs: (True, []),
+    )
 
     comparison, h5, h2, src = load_g3_metrics_for_g4(
         g3_b_ids=[1201],
@@ -894,7 +899,67 @@ def test_g3_resume_rescores_local_when_sidecar_preflight(
     assert h5["run_1301"]["spearman_rho"] == 0.6
     assert h2["run_1301"]["preferred_share"] == 0.75
     assert "re-scored G3 from local" in src
+    assert "steering ok" in src
     assert g3_pilot_promising(comparison, h5) is True
+
+
+def test_load_g3_metrics_refuses_never_steer_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 407: local G3 D without gen≥3 agenda → refuse G4 metrics."""
+    import run_icml_live_pipeline as pipe
+    import run_g3_pilot as g3
+    from run_g3_pilot import CheckResult
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    b_dir = tmp_path / "runs" / "run_1201"
+    d_dir = tmp_path / "runs" / "run_1301"
+    b_dir.mkdir(parents=True)
+    d_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: set(ids) <= {1201, 1301})
+    monkeypatch.setattr(
+        pipe,
+        "_resolve_run_dirs",
+        lambda ids: [b_dir if i == 1201 else d_dir for i in ids],
+    )
+    monkeypatch.setattr(
+        g3,
+        "score_pilot",
+        lambda b_dirs, d_dirs: (
+            {"n_pairs": 1, "d_wins_gens30": 1, "mean_final_gap": 0.05},
+            {},
+            {},
+        ),
+    )
+    monkeypatch.setattr(
+        g3,
+        "g3_d_steering_ok",
+        lambda d_dirs: (
+            False,
+            [
+                CheckResult(
+                    "steering_applied_gen3",
+                    False,
+                    "Condition D never steered after delay-all",
+                )
+            ],
+        ),
+    )
+
+    comparison, h5, h2, src = load_g3_metrics_for_g4(
+        g3_b_ids=[1201],
+        g3_d_ids=[1301],
+        report_md=docs / "gate3_report.md",
+    )
+    assert comparison is None
+    assert h5 == {}
+    assert h2 == {}
+    assert "Tick 407" in src
+    assert "never-steer" in src
 
 
 def test_g3_resume_refuses_preflight_sidecar_without_local(

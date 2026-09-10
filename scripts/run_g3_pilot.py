@@ -32,6 +32,10 @@ Hard stops (never violate):
     ``--preflight-only`` cannot wipe live comparison/H2/H5 that pipeline
     ``load_g3_metrics_for_g4`` / ledger-skip trust after G3 (Tick 384 G2
     ``prior_live_post`` parity)
+  - Tick 407: Condition D post-checks require gen≥3 feedback to carry the
+    Contradiction-Aware agenda (positive control that delay-all *lifted*).
+    Tick 406 only proves fair gen1→gen2 skip — without this, a never-steer
+    regression still PASSes G2 and can burn G3/G4 with D≈B
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -595,6 +599,111 @@ def score_pilot(
     return comparison, h5, h2
 
 
+_AGENDA_MARKER = "Contradiction-Aware Research Agenda"
+_FEEDBACK_PROMPT_NAME = "feedback_agent_prompt.txt"
+_STEERING_MIN_GEN = 3
+
+
+def _iter_gen_agent_dirs(run_dir: Path, gen: int) -> list[Path]:
+    gen_dir = run_dir / f"gen_{gen}"
+    if not gen_dir.is_dir():
+        return []
+    return sorted(
+        p for p in gen_dir.iterdir() if p.is_dir() and p.name.startswith("agent_")
+    )
+
+
+def validate_g3_d_steering(
+    d_dirs: list[Path],
+    *,
+    min_gen: int = _STEERING_MIN_GEN,
+) -> list[CheckResult]:
+    """Tick 407: prove Condition D delay-all *lifted* by gen≥3 (positive control).
+
+    Tick 406 G2 post-checks only prove fair gen1→gen2 skip (no agenda / no
+    technique_seeds on gen2). A regression that never applies steering still
+    PASSes those checks and can burn ~$19 on G3/G4 with Condition D ≈ B.
+    G3 runs ``max_gen≥3``, so gen3 feedback prompts must carry the
+    Contradiction-Aware agenda once ``apply_cabs_feedback`` is True.
+    """
+    if not d_dirs:
+        return [
+            CheckResult(
+                "steering_applied_gen3",
+                False,
+                "no Condition D run dirs — cannot prove delay-all lifted",
+            )
+        ]
+
+    checks: list[CheckResult] = []
+    for d_dir in d_dirs:
+        agents = _iter_gen_agent_dirs(d_dir, min_gen)
+        name = f"steering_applied_{d_dir.name}"
+        if not agents:
+            checks.append(
+                CheckResult(
+                    name,
+                    False,
+                    f"no gen_{min_gen}/agent_* — cannot prove delay-all lifted "
+                    "(refuse G4 burn on never-steer Condition D)",
+                )
+            )
+            continue
+
+        found_agenda: list[str] = []
+        missing_fb: list[str] = []
+        for agent_dir in agents:
+            fb_path = agent_dir / _FEEDBACK_PROMPT_NAME
+            if not fb_path.is_file():
+                missing_fb.append(agent_dir.name)
+                continue
+            try:
+                text = fb_path.read_text(encoding="utf-8")
+            except OSError:
+                missing_fb.append(agent_dir.name)
+                continue
+            if _AGENDA_MARKER in text:
+                found_agenda.append(agent_dir.name)
+
+        if found_agenda:
+            checks.append(
+                CheckResult(
+                    name,
+                    True,
+                    f"gen{min_gen} n={len(agents)} agenda in {found_agenda} "
+                    "(delay-all lifted)",
+                )
+            )
+        else:
+            detail = (
+                f"gen{min_gen} feedback lacks {_AGENDA_MARKER!r} — "
+                "Condition D never steered after delay-all; refuse G4 burn"
+            )
+            if missing_fb:
+                detail += f"; missing prompts: {missing_fb}"
+            checks.append(CheckResult(name, False, detail))
+
+    all_ok = all(c.ok for c in checks)
+    checks.append(
+        CheckResult(
+            "steering_applied_gen3",
+            all_ok,
+            (
+                f"Condition D n={len(d_dirs)} gen≥{min_gen} steering evidenced"
+                if all_ok
+                else "one or more Condition D runs lack gen≥3 CABS agenda"
+            ),
+        )
+    )
+    return checks
+
+
+def g3_d_steering_ok(d_dirs: list[Path]) -> tuple[bool, list[CheckResult]]:
+    """Convenience wrapper: True iff every Condition D run shows gen≥3 steering."""
+    checks = validate_g3_d_steering(d_dirs)
+    return all(c.ok for c in checks), checks
+
+
 def _load_gate3_sidecar_raw(report_md: Path) -> dict[str, Any]:
     """Full gate3 JSON (mode/executed + compare) for Tick 382 ledger-skip trust."""
     sidecar = report_md.with_suffix(".json")
@@ -675,10 +784,22 @@ def refresh_g3_metrics_on_ledger_skip(
         report.comparison = comparison
         report.h5_by_d_run = h5 or {}
         report.h2_by_d_run = h2 or {}
+        # Tick 407: local re-score must also prove delay-all lifted on D.
+        steering_ok, steering_checks = g3_d_steering_ok(d_dirs)
+        for c in steering_checks:
+            report.checks.append(c)
         n_pairs = comparison.get("n_pairs") if isinstance(comparison, dict) else None
+        if not steering_ok:
+            note = (
+                "Tick 407: re-scored G3 from local B/D after ledger-skip but "
+                f"Condition D gen≥3 steering FAILED (n_pairs={n_pairs}) — "
+                "refuse G4 burn on never-steer D"
+            )
+            report.notes.append(note)
+            return False, note
         note = (
-            "Tick 382: re-scored G3 from local B/D after ledger-skip "
-            f"(n_pairs={n_pairs})"
+            "Tick 382/407: re-scored G3 from local B/D after ledger-skip "
+            f"(n_pairs={n_pairs}; gen≥3 steering ok)"
         )
         report.notes.append(note)
         return True, note
@@ -689,6 +810,24 @@ def refresh_g3_metrics_on_ledger_skip(
         report.comparison = comparison
         report.h5_by_d_run = h5
         report.h2_by_d_run = h2
+        # Tick 407: when trusting sidecar without local dirs, require prior
+        # live payload already recorded steering_applied_gen3=True (if present).
+        prior_steering = None
+        if source == "prior_live_metrics":
+            prior = data.get("prior_live_metrics") or {}
+            prior_steering = prior.get("steering_applied_gen3")
+        else:
+            prior_steering = data.get("steering_applied_gen3")
+        if prior_steering is False:
+            note = (
+                "Tick 407: trusted gate3 sidecar but steering_applied_gen3=false "
+                "— refuse G4 burn on never-steer Condition D"
+            )
+            report.notes.append(note)
+            report.checks.append(
+                CheckResult("steering_applied_gen3", False, note)
+            )
+            return False, note
         if source == "prior_live_metrics":
             note = (
                 "Tick 385: trusted gate3 prior_live_metrics after ledger-skip "
@@ -698,6 +837,15 @@ def refresh_g3_metrics_on_ledger_skip(
             note = (
                 "Tick 382: trusted live-executed gate3 sidecar "
                 f"(no/partial local G3 dirs; mode={str(data.get('mode') or '')})"
+            )
+        if prior_steering is True:
+            note += "; steering_applied_gen3=true"
+            report.checks.append(
+                CheckResult(
+                    "steering_applied_gen3",
+                    True,
+                    "sidecar recorded gen≥3 Condition D steering",
+                )
             )
         report.notes.append(note)
         return True, note
@@ -898,20 +1046,44 @@ def write_gate3_report(
             "h5_by_d_run": report.h5_by_d_run or {},
             "h2_by_d_run": report.h2_by_d_run or {},
             "executed": True,
+            # Tick 407: preserve steering positive-control across preflight wipe.
+            "steering_applied_gen3": any(
+                c.name == "steering_applied_gen3" and c.ok for c in report.checks
+            ),
         }
     else:
         preserved_cmp, preserved_h5, preserved_h2, _src = (
             _live_metrics_from_gate3_sidecar(existing)
         )
         if preserved_cmp is not None:
+            prior_steering = None
+            if isinstance(existing.get("prior_live_metrics"), dict):
+                prior_steering = existing["prior_live_metrics"].get(
+                    "steering_applied_gen3"
+                )
+            if prior_steering is None:
+                prior_steering = existing.get("steering_applied_gen3")
+            if prior_steering is None:
+                # Infer from checks on this report / existing sidecar.
+                for c in report.checks:
+                    if c.name == "steering_applied_gen3":
+                        prior_steering = c.ok
+                        break
             prior_live_metrics = {
                 "comparison": preserved_cmp,
                 "h5_by_d_run": preserved_h5,
                 "h2_by_d_run": preserved_h2,
                 "executed": True,
             }
+            if prior_steering is not None:
+                prior_live_metrics["steering_applied_gen3"] = bool(prior_steering)
         elif isinstance(existing.get("prior_live_metrics"), dict):
             prior_live_metrics = existing.get("prior_live_metrics")
+    steering_flag = None
+    for c in report.checks:
+        if c.name == "steering_applied_gen3":
+            steering_flag = c.ok
+            break
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -926,6 +1098,8 @@ def write_gate3_report(
         "notes": report.notes,
         "executed": executed,
     }
+    if steering_flag is not None:
+        payload["steering_applied_gen3"] = steering_flag
     if prior_live_metrics is not None:
         payload["prior_live_metrics"] = prior_live_metrics
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -1195,6 +1369,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Tick 380: ledger-complete G3 → exit 0 without sia (even if secrets absent).
     # Tick 382: still re-score / trust pilot metrics (pipeline Tick 373 parity).
+    # Tick 407: return 4 when metrics/steering cannot be proven (G2 Tick 384 parity).
     if report.ledger_skip:
         report.notes.append(
             "Tick 380: skipped paid G3 — ledger stages_complete already lists G3 "
@@ -1210,6 +1385,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"G3 live skipped (ledger resume) → {args.report}")
         print(metrics_note)
         print(f"g3_metrics_ok={metrics_ok} comparison={report.comparison is not None}")
+        if not metrics_ok:
+            print(
+                "G3 ledger-skip refused G4 advance — missing metrics / "
+                "gen≥3 Condition D steering",
+                file=sys.stderr,
+            )
+            return 4
         return 0
 
     if not report.ready_for_live:
@@ -1229,31 +1411,48 @@ def main(argv: list[str] | None = None) -> int:
     )
     report.notes.extend(run_notes)
 
+    steering_ok = False
     if b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
         comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
         report.comparison = comparison
         report.h5_by_d_run = h5
         report.h2_by_d_run = h2
+        # Tick 407: positive control — delay-all must have lifted by gen≥3.
+        steering_ok, steering_checks = g3_d_steering_ok(d_dirs)
+        for c in steering_checks:
+            report.checks.append(c)
+        if not steering_ok:
+            report.notes.append(
+                "Tick 407: Condition D gen≥3 steering FAILED — refuse G4 burn"
+            )
     else:
         report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d")
 
+    g3_ok = bool(report.comparison) and steering_ok
+
     # Tick 379: stamp ledger G3 after direct live when every planned run is
     # complete (partials bill via persist but stay unstamped).
+    # Tick 407: only stamp when gen≥3 steering also passes (mirror G2 post-ok).
     planned_ids = [p.b_run_id for p in report.plans] + [
         p.d_run_id for p in report.plans
     ]
-    _, persist_detail = persist_direct_gate_stage_spend(
-        "G3",
-        planned_ids,
-        pair_estimate_usd=float(DEFAULT_PAIR_ESTIMATE_USD),
-        resolve_run_dir=_run_dir_for,
-        repo_root=REPO_ROOT,
-    )
-    report.notes.append(persist_detail)
+    if g3_ok:
+        _, persist_detail = persist_direct_gate_stage_spend(
+            "G3",
+            planned_ids,
+            pair_estimate_usd=float(DEFAULT_PAIR_ESTIMATE_USD),
+            resolve_run_dir=_run_dir_for,
+            repo_root=REPO_ROOT,
+        )
+        report.notes.append(persist_detail)
+    else:
+        report.notes.append(
+            "Tick 407: skipped ledger G3 stamp — comparison/steering incomplete"
+        )
 
-    write_gate3_report(report, args.report, executed=True)
+    write_gate3_report(report, args.report, executed=bool(report.comparison))
     print(f"G3 report → {args.report}")
-    if report.comparison is None:
+    if not g3_ok:
         return 4
     return 0
 

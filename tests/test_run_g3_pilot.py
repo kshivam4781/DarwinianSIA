@@ -638,6 +638,22 @@ def _write_complete_run(run_dir: Path) -> None:
     (agent / "results.json").write_text('{"accuracy": 0.2}', encoding="utf-8")
 
 
+def _write_d_gen_feedback(run_dir: Path, gen: int, *, with_agenda: bool) -> None:
+    """Minimal Condition D gen_N/agent_* feedback artifacts for Tick 407."""
+    for i in range(2):
+        agent = run_dir / f"gen_{gen}" / f"agent_{i}"
+        agent.mkdir(parents=True, exist_ok=True)
+        body = (
+            "Contradiction-Aware Research Agenda\n- investigate tool_strategy\n"
+            if with_agenda
+            else "Darwinian feedback only (no CABS agenda)\n"
+        )
+        (agent / "feedback_agent_prompt.txt").write_text(body, encoding="utf-8")
+        (agent / "results.json").write_text(
+            json.dumps({"accuracy": 0.2}), encoding="utf-8"
+        )
+
+
 def test_classify_plan_run_occupancy_resume_vs_incomplete(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -780,6 +796,8 @@ def test_refresh_g3_metrics_on_ledger_skip_local_dirs(
 
     _write_complete_run(tmp_path / "runs" / "run_1201")
     _write_complete_run(tmp_path / "runs" / "run_1301")
+    # Tick 407: Condition D must evidence gen≥3 steering for ledger-skip ok.
+    _write_d_gen_feedback(tmp_path / "runs" / "run_1301", 3, with_agenda=True)
 
     report = G3PreflightReport(
         timestamp="2026-09-08T10:05:00Z",
@@ -810,6 +828,7 @@ def test_refresh_g3_metrics_on_ledger_skip_local_dirs(
     )
     assert ok is True
     assert "re-scored G3 from local" in note
+    assert "steering ok" in note
     assert len(calls["b_dirs"]) == 1  # type: ignore[arg-type]
     assert len(calls["d_dirs"]) == 1  # type: ignore[arg-type]
     assert report.comparison is not None
@@ -1118,3 +1137,125 @@ def test_refresh_g3_metrics_on_ledger_skip_trusts_prior_live_metrics(
     assert report.comparison is not None
     assert report.comparison["d_wins_gens30"] == 1
     assert report.h5_by_d_run["run_1301"]["spearman_rho"] == 0.65
+
+
+def test_validate_g3_d_steering_positive_control(tmp_path: Path) -> None:
+    """Tick 407: gen≥3 must show Contradiction-Aware agenda (delay-all lifted)."""
+    from run_g3_pilot import validate_g3_d_steering
+
+    d_ok = tmp_path / "run_1301"
+    _write_d_gen_feedback(d_ok, 2, with_agenda=False)
+    _write_d_gen_feedback(d_ok, 3, with_agenda=True)
+    checks = {c.name: c for c in validate_g3_d_steering([d_ok])}
+    assert checks["steering_applied_gen3"].ok is True
+    assert checks["steering_applied_run_1301"].ok is True
+
+    d_bad = tmp_path / "run_1302"
+    _write_d_gen_feedback(d_bad, 2, with_agenda=False)
+    _write_d_gen_feedback(d_bad, 3, with_agenda=False)
+    leaked = {c.name: c for c in validate_g3_d_steering([d_bad])}
+    assert leaked["steering_applied_gen3"].ok is False
+    assert leaked["steering_applied_run_1302"].ok is False
+    assert "never steered" in leaked["steering_applied_run_1302"].detail
+
+    d_missing = tmp_path / "run_1303"
+    d_missing.mkdir()
+    (d_missing / "results.json").write_text("{}", encoding="utf-8")
+    missing = {c.name: c for c in validate_g3_d_steering([d_missing])}
+    assert missing["steering_applied_gen3"].ok is False
+    assert "no gen_3" in missing["steering_applied_run_1303"].detail
+
+
+def test_refresh_g3_metrics_refuses_never_steer_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 407: ledger-skip local re-score fails when D gen3 lacks agenda."""
+    import run_g3_pilot as mod
+
+    runs = tmp_path / "runs"
+    b = runs / "run_1201"
+    d = runs / "run_1301"
+    b.mkdir(parents=True)
+    d.mkdir(parents=True)
+    (b / "results.json").write_text(
+        json.dumps({"accuracy": 0.1}), encoding="utf-8"
+    )
+    (d / "results.json").write_text(
+        json.dumps({"accuracy": 0.2}), encoding="utf-8"
+    )
+    _write_d_gen_feedback(d, 3, with_agenda=False)
+
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: runs / f"run_{rid}")
+    monkeypatch.setattr(
+        mod,
+        "darwinian_run_complete",
+        lambda p: p is not None and (p / "results.json").is_file(),
+    )
+    monkeypatch.setattr(
+        mod,
+        "score_pilot",
+        lambda b_dirs, d_dirs: (
+            {"n_pairs": 1, "d_wins_gens30": 1, "mean_final_gap": 0.05},
+            {"run_1301": {"spearman_rho": 0.8}},
+            {"run_1301": {"preferred_share": 0.7}},
+        ),
+    )
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    report = G3PreflightReport(
+        timestamp="2026-09-10T12:00:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is False
+    assert "steering FAILED" in note
+    assert any(
+        c.name == "steering_applied_gen3" and not c.ok for c in report.checks
+    )
+
+
+def test_refresh_g3_metrics_refuses_sidecar_steering_false(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 407: sidecar with steering_applied_gen3=false refuses G4 advance."""
+    import run_g3_pilot as mod
+
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: None)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate3_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "steering_applied_gen3": False,
+                "comparison": {
+                    "n_pairs": 1,
+                    "d_wins_gens30": 1,
+                    "mean_final_gap": 0.06,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.9}},
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate3_report.md").write_text("# Gate 3\n", encoding="utf-8")
+    report = G3PreflightReport(
+        timestamp="2026-09-10T12:00:00Z",
+        mode="live",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=docs / "gate3_report.md"
+    )
+    assert ok is False
+    assert "steering_applied_gen3=false" in note

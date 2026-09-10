@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–406** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–406** live stack hardening (Tick 406: G2 post-checks prove delay-all feedback/seeds skip; `run_1953`). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–407** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–407** live stack hardening (Tick 406: G2 delay-all skip post-checks; Tick 407: G3 gen≥3 steering positive-control). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
