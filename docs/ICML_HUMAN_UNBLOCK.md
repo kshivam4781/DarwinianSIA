@@ -99,6 +99,10 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
 
+**Tick 410:** **G4 full-pair paper-pack gate** — live + `apply_paper_pack` require `len(B)==len(D)==len(plans)` before Live Table / READY (closes partial equal-pair promote after sia-exit mid-abort). Live still needs NEBIUS + HF/CSV.
+
+**Tick 409:** **mid-G4 never-steer abort** — abort remaining pairs after first never-steer Condition D; skip partial paper pack. Live still needs NEBIUS + HF/CSV.
+
 **Tick 406:** **G2 delay-all post-checks** — `validate_g2_artifacts` requires gen2 feedback lack Contradiction-Aware agenda + empty technique_seeds (`run_1953`). Live still needs NEBIUS + HF/CSV.
 
 **Tick 405:** **dry-run feedback fidelity + prior_live scrub** — dry-run resolves CABS feedback prompts (`run_1952`) and no longer stamps `prior_live_post` (G2→G3 poison). Live still needs NEBIUS + HF/CSV.

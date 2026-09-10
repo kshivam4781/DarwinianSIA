@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T20:15Z — Tick 410 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-28fb`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 409 only skipped paper pack when never-steer abort notes were present — a non-never-steer mid-G4 abort (sia exit on seed 2) left `len(B)==len(D)==1` and could still call `apply_paper_pack` / refresh a partial Live Table. Highest leverage without paid spend: **require all planned pairs before G4 paper pack**.
+
+### What this tick did (ONE step)
+**G4 full-pair paper-pack gate (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 409 (`f49c`); confirmed secrets absent; boot `28fb` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `g4_full_pairs_for_paper` + `decide_g4_live_paper_action` (`abort_never_steer` | `apply` | `incomplete`)
+3. Live path + `apply_paper_pack` refuse unless `len(B)==len(D)==len(plans)`; partial equal pairs skip Live Table / READY
+4. Unit tests: `test_g4_full_pairs_for_paper_requires_all_plans`, `test_decide_g4_live_paper_action_partial_vs_abort_vs_apply`, `test_apply_paper_pack_refuses_partial_pairs`, `test_g4_live_skips_paper_pack_on_partial_equal_pairs` (+ Tick 409 abort test updated to helper)
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 409) | After (Tick 410) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| G4 paper pack on partial equal pairs | possible (len B==D only) | **PASS** unit — refuse unless all planned pairs |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T18:10Z — Tick 409 (automation cron)
 
 ### Status snapshot
@@ -28,6 +64,7 @@ Live PRIMARY still blocked on **secrets**. Separately, Tick 408 only refuses REA
 | Metric | Before (Tick 408) | After (Tick 409) |
 |--------|-------------------|------------------|
 | Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+
 | Mid-G4 never-steer abort | absent (burn all 5 pairs then refuse READY) | **PASS** unit — abort after first D; skip partial paper |
 | Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
 | `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
