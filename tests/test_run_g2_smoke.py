@@ -976,6 +976,53 @@ def test_write_gate2_preflight_preserves_prior_live_post(tmp_path: Path) -> None
     assert post and all(c.ok for c in post)
 
 
+def test_write_gate2_dry_run_does_not_stamp_prior_live_post(tmp_path: Path) -> None:
+    """Tick 405: dry-run post must not become prior_live_post (G2→G3 poison)."""
+    from dataclasses import asdict as dc_asdict
+
+    import run_g2_smoke as mod
+
+    report_md = tmp_path / "gate2_report.md"
+    dry_post = [
+        mod.CheckResult(name="belief_store", ok=True, detail="present"),
+        mod.CheckResult(name="nonzero_fitness", ok=True, detail="best=0.2 > min=0"),
+    ]
+    report = mod.PreflightReport(
+        timestamp="2026-09-10T08:00:00Z",
+        mode="dry-run",
+        run_id=1952,
+        ready_for_live=False,
+        ready_for_dry_run=True,
+        blockers=[],
+        checks=[],
+        command=["sia", "run", "--dry-run"],
+        notes=[],
+    )
+    mod.write_gate2_report(report, report_md, post=dry_post)
+    data = json.loads(report_md.with_suffix(".json").read_text(encoding="utf-8"))
+    assert data["mode"] == "dry-run"
+    assert data["post"]
+    assert "prior_live_post" not in data
+
+    # Polluted dry-run sidecar must be scrubbed on rewrite.
+    report_md.with_suffix(".json").write_text(
+        json.dumps(
+            {
+                "mode": "dry-run",
+                "run_id": 1952,
+                "post": [dc_asdict(c) for c in dry_post],
+                "prior_live_post": [
+                    {"name": "nonzero_fitness", "ok": True, "detail": "poison"}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    mod.write_gate2_report(report, report_md, post=dry_post)
+    scrubbed = json.loads(report_md.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "prior_live_post" not in scrubbed
+
+
 def test_g2_live_ledger_skip_refuses_without_post(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

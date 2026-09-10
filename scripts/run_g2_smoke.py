@@ -724,9 +724,25 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
     # trust still works after cron --preflight-only.
     existing = _load_gate2_sidecar_raw(out)
     prior_live_post = None
-    if post is not None:
-        # Fresh post from live/dry-run — also keep as prior for later preflights.
+    if post is not None and report.mode == "live":
+        # Tick 405: only *live* post becomes prior_live_post. Dry-run must not
+        # poison pipeline G2→G3 trust / committed prior_live evidence
+        # (Tick 384–389).
         prior_live_post = [asdict(c) for c in post]
+    elif report.mode == "dry-run":
+        # Preserve a real live prior if the previous sidecar was live or a
+        # preflight that already carried prior_live_post. Scrub dry-run→dry-run
+        # pollution (prior_live_post copied from dry-run post).
+        prev_mode = str(existing.get("mode") or "")
+        if prev_mode == "live":
+            preserved, _src = _live_post_from_gate2_sidecar(existing)
+            if preserved:
+                prior_live_post = [asdict(c) for c in preserved]
+        elif prev_mode != "dry-run" and isinstance(
+            existing.get("prior_live_post"), (list, dict)
+        ):
+            prior_live_post = existing.get("prior_live_post")
+        # else: leave None (do not carry dry-run post as prior_live)
     else:
         preserved, _src = _live_post_from_gate2_sidecar(existing)
         if preserved:
@@ -750,6 +766,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         payload["prior_live_post"] = prior_live_post
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     # Tick 389: mirror prior_live into committed evidence (cross-VM) + stash.
+    # Tick 405: only when prior_live_post is present (live-stamped or preserved).
     if prior_live_post is not None:
         persist_prior_live_stash_from_working_tree(REPO_ROOT)
 

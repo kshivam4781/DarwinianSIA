@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 404: delay-all also skips contradiction-scoped CABS feedback agenda on fair gen1→gen2 (Ticks 402–403 DNA/seed parity). Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 405: dry-run writes resolved CABS feedback under delay-all (`run_1952`) and no longer stamps `prior_live_post` (G2→G3 poison). Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -315,6 +315,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 402 delay-all CABS steering log honesty — breed logs say `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951` confirms; unit test
 - [x] Tick 403 delay-all technique_seeds gate — `breed_offspring` does not inject committee seeds when `apply_mutation_bias=False`; `test_breed_offspring_delay_all_skips_technique_seed_inject`
 - [x] Tick 404 delay-all scoped feedback gate — `_resolve_cabs_feedback_addon` / `_create_offspring_with_feedback(apply_cabs_feedback=…)` skip contradiction-scoped agenda when delay-all defers DNA steering; unit test
+- [x] Tick 405 dry-run feedback fidelity + prior_live scrub — dry-run resolves CABS addon into `feedback_agent_prompt.txt`; `run_1952`; gate2 dry-run no longer stamps `prior_live_post`
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

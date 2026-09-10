@@ -245,6 +245,10 @@ def _create_offspring_with_feedback(
     Tick 404: ``apply_cabs_feedback`` mirrors delay-all DNA steering — when False
     (fair gen1→gen2), skip contradiction-scoped CABS agenda in the feedback
     prompt so Condition D early breed stays Condition-B-like.
+
+    Tick 405: dry-run still resolves and writes the CABS feedback header into
+    ``feedback_agent_prompt.txt`` (no API call) so G1/G2 dry-run artifacts prove
+    the delay-all gate instead of a stub that hides scoped-agenda injection.
     """
     os.makedirs(agent_dir, exist_ok=True)
     offspring_dna.save(os.path.join(agent_dir, Names.AGENT_DNA))
@@ -266,8 +270,35 @@ def _create_offspring_with_feedback(
 
     if dry_run:
         write_mock_target_agent(agent_dir, task_name)
-        write_text(os.path.join(agent_dir, Names.FEEDBACK_PROMPT), "# Dry-run: offspring from parent mock agents\n")
-        logger.info(f"  → Dry-run: wrote mock offspring target agent in {agent_dir}")
+        # Tick 405: resolve the same CABS gate as the live path so dry-run
+        # FEEDBACK_PROMPT artifacts can prove delay-all skips scoped agenda.
+        from sia.evolution.evolution_prompts import cabs_feedback_addon
+
+        cabs_addon = _resolve_cabs_feedback_addon(
+            enable_cabs=enable_cabs,
+            apply_cabs_feedback=apply_cabs_feedback,
+            run_dir=run_dir,
+            cabs_store=cabs_store,
+        )
+        civ_insights = civilization.summary_markdown()
+        evolution_addon = darwinian_feedback_addon(
+            offspring_dna,
+            parent_dnas,
+            parent_fitnesses,
+            agent_id,
+            population_size,
+            civilization_insights=civ_insights,
+        )
+        dry_prompt = (
+            "# Dry-run: offspring from parent mock agents (no meta/feedback API)\n"
+            + cabs_feedback_addon(cabs_addon)
+            + evolution_addon
+        )
+        write_text(os.path.join(agent_dir, Names.FEEDBACK_PROMPT), dry_prompt)
+        logger.info(
+            f"  → Dry-run: wrote mock offspring + resolved feedback prompt "
+            f"(cabs_scoped={'on' if cabs_addon.strip() else 'off'}) in {agent_dir}"
+        )
         return
 
     agent_file = os.path.join(agent_dir, Names.TARGET_AGENT if focus == "harness" else Names.TRAIN_SCRIPT)

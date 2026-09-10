@@ -549,6 +549,109 @@ def test_resolve_cabs_feedback_addon_respects_delay_all(tmp_path):
     assert disabled == ""
 
 
+def test_dry_run_offspring_feedback_respects_delay_all(tmp_path):
+    """Tick 405: dry-run FEEDBACK_PROMPT must honor apply_cabs_feedback (not a stub)."""
+    from sia.evolution.civilization import CivilizationMemory
+    from sia.evolution.population import _create_offspring_with_feedback
+    from sia.layout import Names
+
+    store = tmp_path / "belief_store"
+    store.mkdir()
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "contradictions": [
+                    {
+                        "id": "c1",
+                        "topic": "memory",
+                        "belief_a": "memory helps",
+                        "belief_b": "memory hurts",
+                        "priority": 0.9,
+                        "status": "open",
+                        "metadata": {"agents": [0, 1], "cross_agent": True},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "research_questions.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "research_questions": [
+                    {
+                        "id": "q1",
+                        "question": "Does memory help?",
+                        "priority": 0.8,
+                        "status": "open",
+                        "dna_field": "memory",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "approved_techniques.json").write_text(
+        json.dumps({"techniques": []}), encoding="utf-8"
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps({"schema_version": "1.0", "beliefs": []}), encoding="utf-8"
+    )
+
+    parent_dir = tmp_path / "gen_1" / "agent_0"
+    parent_dir.mkdir(parents=True)
+    (parent_dir / Names.TARGET_AGENT).write_text("print('parent')\n", encoding="utf-8")
+    parent_dna = AgentDNA(memory="short_summary", tool_strategy="selective")
+    civ = CivilizationMemory(
+        path=str(tmp_path / "civilization.json"),
+        population_size=2,
+        elite_count=1,
+        mutation_rate=0.3,
+    )
+
+    def _breed(*, apply_cabs_feedback: bool, agent_id: int) -> str:
+        out_dir = tmp_path / f"out_{agent_id}"
+        _create_offspring_with_feedback(
+            agent_dir=str(out_dir),
+            offspring_dna=AgentDNA(memory="none", tool_strategy="minimal"),
+            agent_id=agent_id,
+            population_size=2,
+            parent_dirs=[str(parent_dir)],
+            parent_dnas=[parent_dna],
+            parent_fitnesses=[0.2],
+            current_gen=1,
+            max_gen=3,
+            run_dir=str(tmp_path),
+            task_files=None,  # unused on dry_run
+            dataset_dir=str(tmp_path),
+            meta_profile=None,  # unused on dry_run
+            env_config=None,  # unused on dry_run
+            task_model="m",
+            target_provider=None,  # unused on dry_run
+            focus="harness",
+            resolved_ref=None,
+            civilization=civ,
+            dry_run=True,
+            resume=False,
+            task_name="gpqa",
+            enable_cabs=True,
+            cabs_store=str(store),
+            apply_cabs_feedback=apply_cabs_feedback,
+        )
+        return (out_dir / Names.FEEDBACK_PROMPT).read_text(encoding="utf-8")
+
+    deferred = _breed(apply_cabs_feedback=False, agent_id=0)
+    assert "Dry-run: offspring from parent mock agents" in deferred
+    assert "Contradiction-Aware Research Agenda" not in deferred
+    assert "Darwinian Evolution Context" in deferred
+
+    applied = _breed(apply_cabs_feedback=True, agent_id=1)
+    assert "Contradiction-Aware Research Agenda" in applied
+    assert "Darwinian Evolution Context" in applied
+
+
 def test_breed_offspring_can_delay_all_mutation_bias():
     """Early gens can disable mutation bias entirely (uniform mutate)."""
     bias = {"memory": ["failure_based", "full_history"]}

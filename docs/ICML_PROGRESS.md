@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T08:10Z — Tick 405 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-a50d`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 404 gated scoped CABS feedback under delay-all in the live path, but dry-run `_create_offspring_with_feedback` still wrote a stub `feedback_agent_prompt.txt` and returned early — G2 dry-run artifacts could not prove the Tick 404 gate. While verifying, also found dry-run stamped `prior_live_post` (G2→G3 poison). Highest leverage without paid spend: **dry-run feedback fidelity + prior_live scrub**.
+
+### What this tick did (ONE step)
+**Dry-run feedback fidelity + gate2 prior_live scrub (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 404 (`f49c`); confirmed secrets absent; boot `a50d` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Dry-run path resolves `_resolve_cabs_feedback_addon` + writes Darwinian feedback context into `feedback_agent_prompt.txt` (no meta API); unit test `test_dry_run_offspring_feedback_respects_delay_all`; G1 dry-run asserts gen2 prompts lack Contradiction-Aware agenda; G2 dry-run evidence `run_1952`
+3. `write_gate2_report`: only `mode=="live"` stamps `prior_live_post`; dry-run scrubs self-pollution (`test_write_gate2_dry_run_does_not_stamp_prior_live_post`); restored empty `icml_prior_live_evidence.json`
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 404) | After (Tick 405) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Dry-run FEEDBACK_PROMPT under delay-all | stub (hides Tick 404 gate) | **resolved**; agenda absent on fair gen1→gen2 (`run_1952`) |
+| Dry-run → `prior_live_post` | stamped (G2→G3 poison risk) | **not stamped**; pollution scrubbed |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T06:20Z — Tick 404 (automation cron)
 
 ### Status snapshot

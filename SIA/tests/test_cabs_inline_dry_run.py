@@ -134,6 +134,16 @@ def test_condition_d_dry_run_g1_belief_store_and_bias(mock_venv, mock_llm, tmp_p
         dna_path = Path(layout.gen_agent_dir(2, agent_id)) / "agent_dna.json"
         assert dna_path.is_file()
 
+    # Tick 405: fair gen1→gen2 dry-run feedback must not inject scoped CABS agenda
+    # even though belief_store already has contradictions (delay-all).
+    for agent_id in (0, 1):
+        fb_path = Path(layout.gen_agent_dir(2, agent_id)) / "feedback_agent_prompt.txt"
+        assert fb_path.is_file()
+        fb_text = fb_path.read_text(encoding="utf-8")
+        assert "Dry-run: offspring from parent mock agents" in fb_text
+        assert "Contradiction-Aware Research Agenda" not in fb_text
+        assert "Darwinian Evolution Context" in fb_text
+
     bias = load_mutation_bias(str(run_dir))
     assert bias, "G1 requires non-empty contradiction-scoped mutation bias before/after gen≥2"
     if "memory" in bias:

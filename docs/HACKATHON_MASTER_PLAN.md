@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-10 (Section 21 ICML; Tick 404 delay-all scoped feedback gate; Tick 403 delay-all technique_seeds gate; Tick 402 delay-all log honesty; …)
+**Last updated:** 2026-09-10 (Section 21 ICML; Tick 405 dry-run feedback fidelity; Tick 404 delay-all scoped feedback gate; Tick 403 delay-all technique_seeds gate; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -856,6 +856,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs mark `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951`; unit test |
 | ICML delay-all technique_seeds gate (Tick 403) | **DONE** | `breed_offspring` skips committee `technique_seeds` inject when `apply_mutation_bias=False`; Tick 402 deferred log now matches DNA |
 | ICML delay-all scoped feedback gate (Tick 404) | **DONE** | Fair gen1→gen2 skips contradiction-scoped CABS agenda in feedback (`apply_cabs_feedback`); `_resolve_cabs_feedback_addon` + unit test |
+| ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run writes resolved CABS+Darwinian feedback prompt; proves delay-all skip in `run_1952`; dry-run does not stamp `prior_live_post` |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -927,6 +928,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | `_cabs_steering_log_line` deferred vs applied; dry-run `run_1951` confirms |
 | ICML delay-all technique_seeds gate (Tick 403) | **DONE** | Gate `inject_technique_seeds` on delay-all; `test_breed_offspring_delay_all_skips_technique_seed_inject` |
 | ICML delay-all scoped feedback gate (Tick 404) | **DONE** | `_resolve_cabs_feedback_addon` / `apply_cabs_feedback`; `test_resolve_cabs_feedback_addon_respects_delay_all` |
+| ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run FEEDBACK_PROMPT resolves CABS under delay-all; `run_1952` + unit test; no dry-run `prior_live_post` |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1010,7 +1012,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs deferred vs applied under delay-all; `run_1951` |
 | ICML delay-all technique_seeds gate (Tick 403) | **DONE** | Fair gen1→gen2 DNA no longer gets committee technique_seeds |
 | ICML delay-all scoped feedback gate (Tick 404) | **DONE** | Fair gen1→gen2 feedback no longer gets contradiction-scoped CABS agenda |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–404 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run FEEDBACK_PROMPT proves Tick 404 gate (`run_1952`); dry-run does not stamp `prior_live_post` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–405 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2639,3 +2642,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Delay-all technique_seeds gate (Tick 403):** Tick 402 marked technique seeds `(deferred…)`, but `breed_offspring` still injected committee `technique_seeds` onto gen1→gen2 DNA. Seeds are now skipped when `apply_mutation_bias=False`; unit test. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **Delay-all scoped feedback gate (Tick 404):** DNA + technique_seeds were gated under delay-all, but `_create_offspring_with_feedback` still injected contradiction-scoped CABS agenda into the feedback prompt on fair gen1→gen2 — meta rewrite could steer Condition D early breed while DNA stayed fair. `_resolve_cabs_feedback_addon` + `apply_cabs_feedback` now share the same gate; deferred log line; unit test. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Dry-run feedback prompt fidelity (Tick 405):** Tick 404 gated scoped CABS feedback on the live path, but dry-run still wrote a stub `feedback_agent_prompt.txt` and returned early — G2 dry-run could not prove the gate. Dry-run now resolves the same CABS addon + Darwinian feedback context (no meta API); unit + G1 assertions; G2 dry-run `run_1952`. Also: dry-run no longer stamps `prior_live_post` (would poison G2→G3 trust / committed prior_live evidence). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
