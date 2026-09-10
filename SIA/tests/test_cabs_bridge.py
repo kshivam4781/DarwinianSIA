@@ -467,6 +467,86 @@ def test_cabs_steering_log_line_marks_deferred_vs_applied():
     )
     assert "deferred until gen≥2" in seeds_deferred
     assert "fair mutate" not in seeds_deferred
+    fb_deferred = _cabs_steering_log_line(
+        "scoped feedback", "agenda", applied=False
+    )
+    assert "deferred until gen≥2" in fb_deferred
+    assert "fair mutate" not in fb_deferred
+
+
+def test_resolve_cabs_feedback_addon_respects_delay_all(tmp_path):
+    """Tick 404: fair gen1→gen2 must not inject scoped CABS agenda into feedback."""
+    from sia.evolution.population import _resolve_cabs_feedback_addon
+
+    store = tmp_path / "belief_store"
+    store.mkdir()
+    (store / "contradictions.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "contradictions": [
+                    {
+                        "id": "c1",
+                        "topic": "memory",
+                        "belief_a": "memory helps",
+                        "belief_b": "memory hurts",
+                        "priority": 0.9,
+                        "status": "open",
+                        "metadata": {"agents": [0, 1], "cross_agent": True},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "research_questions.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "research_questions": [
+                    {
+                        "id": "q1",
+                        "question": "Does memory help?",
+                        "priority": 0.8,
+                        "status": "open",
+                        "dna_field": "memory",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (store / "approved_techniques.json").write_text(
+        json.dumps({"techniques": []}), encoding="utf-8"
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps({"schema_version": "1.0", "beliefs": []}), encoding="utf-8"
+    )
+
+    deferred = _resolve_cabs_feedback_addon(
+        enable_cabs=True,
+        apply_cabs_feedback=False,
+        run_dir=str(tmp_path),
+        cabs_store=str(store),
+    )
+    assert deferred == ""
+
+    applied = _resolve_cabs_feedback_addon(
+        enable_cabs=True,
+        apply_cabs_feedback=True,
+        run_dir=str(tmp_path),
+        cabs_store=str(store),
+    )
+    assert "Contradiction-Aware Research Agenda" in applied
+    assert "memory" in applied.lower()
+
+    disabled = _resolve_cabs_feedback_addon(
+        enable_cabs=False,
+        apply_cabs_feedback=True,
+        run_dir=str(tmp_path),
+        cabs_store=str(store),
+    )
+    assert disabled == ""
 
 
 def test_breed_offspring_can_delay_all_mutation_bias():

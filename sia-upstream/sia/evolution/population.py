@@ -238,8 +238,14 @@ def _create_offspring_with_feedback(
     task_name: str = "gpqa",
     enable_cabs: bool = False,
     cabs_store: str | None = None,
+    apply_cabs_feedback: bool = True,
 ) -> None:
-    """Breed offspring via feedback agent using best parent code + new DNA."""
+    """Breed offspring via feedback agent using best parent code + new DNA.
+
+    Tick 404: ``apply_cabs_feedback`` mirrors delay-all DNA steering — when False
+    (fair gen1→gen2), skip contradiction-scoped CABS agenda in the feedback
+    prompt so Condition D early breed stays Condition-B-like.
+    """
     os.makedirs(agent_dir, exist_ok=True)
     offspring_dna.save(os.path.join(agent_dir, Names.AGENT_DNA))
 
@@ -316,11 +322,12 @@ def _create_offspring_with_feedback(
         civilization_insights=civ_insights,
     )
 
-    cabs_addon = ""
-    if enable_cabs:
-        from sia.evolution.cabs_bridge import load_cabs_agenda
-
-        cabs_addon = load_cabs_agenda(run_dir, cabs_store)
+    cabs_addon = _resolve_cabs_feedback_addon(
+        enable_cabs=enable_cabs,
+        apply_cabs_feedback=apply_cabs_feedback,
+        run_dir=run_dir,
+        cabs_store=cabs_store,
+    )
 
     from sia.evolution.evolution_prompts import cabs_feedback_addon
 
@@ -397,14 +404,34 @@ def run_population_generation(
     return records
 
 
-def _cabs_steering_log_line(kind: str, payload: object, *, applied: bool) -> str:
-    """Tick 402/403: honest delay-all log line for loaded CABS steering.
+def _resolve_cabs_feedback_addon(
+    *,
+    enable_cabs: bool,
+    apply_cabs_feedback: bool,
+    run_dir: str,
+    cabs_store: str | None,
+) -> str:
+    """Return contradiction-scoped CABS agenda text, or "" under delay-all.
 
-    Bias / technique seeds are loaded every breed step, but under delay-all
-    they are not applied until breeding from gen≥2 (Tick 403 also gates
-    ``inject_technique_seeds`` on ``apply_mutation_bias``). Saying only
-    ``CABS mutation bias: …`` made dry-run/live logs look steered on the
-    fair gen1→gen2 step.
+    Tick 404: fair gen1→gen2 must not inject scoped DNA targets / RQs /
+    committee techniques into the feedback prompt while DNA steering is also
+    deferred (Ticks 14 / 402 / 403).
+    """
+    if not enable_cabs or not apply_cabs_feedback:
+        return ""
+    from sia.evolution.cabs_bridge import load_cabs_agenda
+
+    return load_cabs_agenda(run_dir, cabs_store)
+
+
+def _cabs_steering_log_line(kind: str, payload: object, *, applied: bool) -> str:
+    """Tick 402–404: honest delay-all log line for loaded CABS steering.
+
+    Bias / technique seeds / scoped feedback are loaded or considered every
+    breed step, but under delay-all they are not applied until breeding from
+    gen≥2 (Tick 403 gates ``inject_technique_seeds``; Tick 404 gates scoped
+    feedback agenda). Saying only ``CABS mutation bias: …`` made dry-run/live
+    logs look steered on the fair gen1→gen2 step.
     """
     if applied:
         return f"  CABS {kind} (applied): {payload}"
@@ -627,6 +654,14 @@ def run_darwinian_loop(
                         applied=apply_mutation_bias,
                     )
                 )
+            # Tick 404: same delay-all gate for contradiction-scoped feedback.
+            logger.info(
+                _cabs_steering_log_line(
+                    "scoped feedback",
+                    "contradiction-scoped DNA targets in feedback prompt",
+                    applied=apply_mutation_bias,
+                )
+            )
 
         for agent_id in range(population_size):
             # Tournament selection: pick two elites (with replacement if only one)
@@ -672,6 +707,7 @@ def run_darwinian_loop(
                 task_name=task_name,
                 enable_cabs=enable_cabs,
                 cabs_store=cabs_store,
+                apply_cabs_feedback=apply_mutation_bias,
             )
 
     # Append civilization summary to context.md
