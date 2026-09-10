@@ -240,8 +240,8 @@ python3 -m pytest
 
 **Hard stop:** Do **not** run full LawBench without explicit human approval in the run notes (Section 0 / Section 21). Prefer GPQA diamond under the ~$20 Nebius ceiling.
 
-1. Offline / dry-run evidence: `docs/paper_artifacts.md` + `docs/offline_bvd_summary.json` (IDs `1890–1904`)
+1. Offline / dry-run evidence: `docs/paper_artifacts.md` + `docs/offline_bvd_summary.json` (IDs `1930–1934` / `1940–1944`; Tick 397–398 post-adoption H2)
 2. Live PRIMARY (when secrets present): `bash scripts/icml_cron_entry.sh` → G2→G3→G4; fill Live Table 1
 3. Compare Condition B vs D on gens-to-threshold / cost-to-threshold / final accuracy
-4. Show at least one contradiction → DNA/code → fitness chain (`docs/case_study_offline.md`; live case study when available)
+4. Show at least one contradiction → DNA/code → fitness chain (`docs/case_study_offline.md` / `run_1940`; live case study when available)
 5. Keep H5 Spearman ρ > 0.3; set `docs/ICML_READY.md` STATUS: READY only when criteria 1–4 pass

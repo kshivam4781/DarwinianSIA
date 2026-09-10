@@ -4461,6 +4461,10 @@ def committed_offline_bvd_matches_live_shape(
     Tick 400: also require operator-facing ``ICML_HUMAN_UNBLOCK.md`` (when
     present) to cite current offline B/D ranges — dual-unblock intro still
     froze Tick-300 ``1890–1904`` after Tick 397–399 ID locks.
+
+    Tick 401: also require root ``README.md`` (when present) evidence checklist
+    to cite current offline B/D ranges — Tick 318/322 surfaces still pointed at
+    superseded Tick-300 ``1890–1904`` after Tick 397–400 ID locks.
     """
     root = repo_root or _REPO_ROOT
     expected = icml_g3g4_live_shape(profile)
@@ -4727,6 +4731,31 @@ def committed_offline_bvd_matches_live_shape(
                 problems.append(
                     "docs/ICML_HUMAN_UNBLOCK.md dual-unblock: superseded "
                     "Tick-300 combined ID span 1890-1904 (Tick 400)"
+                )
+
+        # Tick 401: root README evidence checklist (first surface humans open).
+        readme = root / "README.md"
+        if readme.is_file():
+            readme_text = readme.read_text(encoding="utf-8")
+            # Prefer the Submission / ICML evidence checklist section.
+            chk_idx = readme_text.find("## Submission / ICML evidence checklist")
+            chk_block = (
+                readme_text[chk_idx : chk_idx + 700]
+                if chk_idx != -1
+                else readme_text
+            )
+            if not _text_cites_any(chk_block, b_variants) or not _text_cites_any(
+                chk_block, d_variants
+            ):
+                problems.append(
+                    "README.md evidence checklist: missing current offline "
+                    f"B/D ranges {b_variants[0]} / {d_variants[0]} (Tick 401)"
+                )
+            # Reject superseded Tick-300 combined span in the checklist.
+            if re.search(r"`?1890[-–]1904`?", chk_block):
+                problems.append(
+                    "README.md evidence checklist: superseded Tick-300 "
+                    "combined ID span 1890-1904 (Tick 401)"
                 )
 
     return (len(problems) == 0, problems)

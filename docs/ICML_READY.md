@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 400: operator-facing `ICML_HUMAN_UNBLOCK.md` dual-unblock cites current offline IDs `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 401: README evidence checklist cites current offline IDs `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -311,6 +311,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 398 case-study post-adoption H2 — `extract_case_study` reports `post_adoption_preferred_share` (same Tick 397 window); selection prefers post-adoption ≥0.5; `run_1940` post-adoption **0.875** / lift **+0.0607**; stale limitations fixed (no longer claim MECHANISM 4/5)
 - [x] Tick 399 judge-surface offline ID lock — SUBMISSION/PRESENTATION/present_hackathon cite `1930–1944` / `run_1940`; restore summary `figures`; `committed_offline_bvd_matches_live_shape` extended
 - [x] Tick 400 human-unblock offline ID lock — `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended
+- [x] Tick 401 README offline ID lock — root `README.md` evidence checklist cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

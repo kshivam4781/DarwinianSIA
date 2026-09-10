@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T00:15Z — Tick 401 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-86b3`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 399–400 locked judge/operator surfaces to `1930–1944`, but root `README.md` evidence checklist still froze Tick-300 `1890–1904` as the offline cite (first surface humans open). Highest leverage without paid spend: **README offline ID lock**.
+
+### What this tick did (ONE step)
+**README offline ID lock (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 400 (`f49c`); confirmed secrets absent; boot `86b3` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Sync `README.md` evidence checklist to `1930–1934` / `1940–1944` / `run_1940`; extend `committed_offline_bvd_matches_live_shape` + tests; Section 12 / READY / paper limitations / HUMAN_UNBLOCK
+3. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 400) | After (Tick 401) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| README evidence checklist offline IDs | stale `1890–1904` | **`1930–1934` / `1940–1944`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-09T22:05Z — Tick 400 (automation cron)
 
 ### Status snapshot
