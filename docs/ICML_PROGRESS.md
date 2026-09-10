@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T10:25Z — Tick 406 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-d53e`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 403–405 fixed delay-all technique_seeds / scoped feedback / dry-run prompt fidelity, but `validate_g2_artifacts` still only checked belief_store / bias / nonzero fitness — a regression of the delay-all gate could still PASS G2 dry-run/live smoke and auto-burn ~$19 on G3/G4. Highest leverage without paid spend: **G2 post-check delay-all fidelity**.
+
+### What this tick did (ONE step)
+**G2 delay-all post-checks (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 405 (`f49c`); confirmed secrets absent; boot `d53e` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `validate_g2_artifacts` now requires gen2 feedback prompts to lack Contradiction-Aware agenda and gen2 DNA `technique_seeds` empty (`delay_all_feedback_skip` / `delay_all_technique_seeds_skip`)
+3. Unit tests + G2 dry-run evidence `run_1953` (both checks PASS; `prior_live_post` not stamped)
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 405) | After (Tick 406) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| G2 post-check delay-all feedback / seeds | absent | **PASS** on `run_1953` |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T08:10Z — Tick 405 (automation cron)
 
 ### Status snapshot

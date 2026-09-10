@@ -240,6 +240,28 @@ def test_preflight_refuses_stale_tip(
     assert any("allow-stale-tip" in n for n in report2.notes)
 
 
+def _write_fair_gen2_agent(
+    run_dir: Path, agent_id: int = 0, *, agenda: bool = False, seeds=None
+) -> Path:
+    """Tick 406 helper: minimal fair gen2 agent artifacts for G2 post-checks."""
+    agent2 = run_dir / "gen_2" / f"agent_{agent_id}"
+    agent2.mkdir(parents=True, exist_ok=True)
+    fb = "# Dry-run: offspring\n### Darwinian Evolution Context\n"
+    if agenda:
+        fb = "## CABS: Contradiction-Aware Research Agenda\n" + fb
+    (agent2 / "feedback_agent_prompt.txt").write_text(fb, encoding="utf-8")
+    (agent2 / "agent_dna.json").write_text(
+        json.dumps(
+            {
+                "tool_strategy": "selective",
+                "technique_seeds": list(seeds or []),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return agent2
+
+
 def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
     run_dir = tmp_path / "run_1850"
     store = run_dir / "belief_store"
@@ -249,6 +271,7 @@ def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
     )
     (store / "contradictions.json").write_text("[]\n", encoding="utf-8")
     (store / "beliefs.json").write_text("[]\n", encoding="utf-8")
+    _write_fair_gen2_agent(run_dir)
     checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
     assert checks["belief_store"].ok
     assert checks["epistemic_value_jsonl"].ok
@@ -256,6 +279,8 @@ def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
     assert "scoped_mutation_bias" in checks
     # Tick 371: no fitness artifacts → nonzero_fitness fails (blocks G3 burn).
     assert checks["nonzero_fitness"].ok is False
+    assert checks["delay_all_feedback_skip"].ok is True
+    assert checks["delay_all_technique_seeds_skip"].ok is True
 
 
 def test_validate_g2_artifacts_nonzero_fitness_gate(tmp_path: Path) -> None:
@@ -280,6 +305,7 @@ def test_validate_g2_artifacts_nonzero_fitness_gate(tmp_path: Path) -> None:
     (agent / "results.json").write_text(
         json.dumps({"accuracy": 0.0}), encoding="utf-8"
     )
+    _write_fair_gen2_agent(run_dir)
     checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
     assert checks["nonzero_fitness"].ok is False
 
@@ -289,6 +315,44 @@ def test_validate_g2_artifacts_nonzero_fitness_gate(tmp_path: Path) -> None:
     checks_ok = {c.name: c for c in validate_g2_artifacts(run_dir)}
     assert checks_ok["nonzero_fitness"].ok is True
     assert "0.2000" in checks_ok["nonzero_fitness"].detail
+
+
+def test_validate_g2_artifacts_delay_all_gates(tmp_path: Path) -> None:
+    """Tick 406: G2 post-checks refuse agenda / technique_seeds on fair gen2."""
+    run_dir = tmp_path / "run_1953"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(json.dumps({"accuracy": 0.25}), encoding="utf-8")
+
+    missing = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert missing["delay_all_feedback_skip"].ok is False
+    assert missing["delay_all_technique_seeds_skip"].ok is False
+
+    _write_fair_gen2_agent(run_dir, agenda=True, seeds=["self_consistency"])
+    leaked = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert leaked["delay_all_feedback_skip"].ok is False
+    assert "leaked" in leaked["delay_all_feedback_skip"].detail
+    assert leaked["delay_all_technique_seeds_skip"].ok is False
+    assert "technique_seeds" in leaked["delay_all_technique_seeds_skip"].detail
+
+    _write_fair_gen2_agent(run_dir, agenda=False, seeds=[])
+    fair = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert fair["delay_all_feedback_skip"].ok is True
+    assert fair["delay_all_technique_seeds_skip"].ok is True
 
 
 def test_main_fetch_diamond_from_csv_clears_synthetic(

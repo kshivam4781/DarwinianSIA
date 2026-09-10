@@ -25,6 +25,10 @@ turnkey and hard-stops unsafe paid runs:
   - stale tip lineage for --live (Tick 306; same tip_ok_for_live as pipeline/G3/G4)
   - Tick 371: post-run best fitness must be > SIA_G2_MIN_BEST_FITNESS (default 0)
     so 0%/unscored smoke cannot auto-advance the live pipeline into paid G3/G4
+  - Tick 406: post-run delay-all fidelity — gen2 feedback prompts must lack
+    Contradiction-Aware agenda and gen2 DNA must not carry committee
+    technique_seeds (fair gen1→gen2 under Tick 403–405). Prevents G3/G4 burn
+    if the delay-all gate regresses.
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -428,6 +432,101 @@ def _g2_min_best_fitness() -> float:
         return 0.0
 
 
+_AGENDA_MARKER = "Contradiction-Aware Research Agenda"
+_FEEDBACK_PROMPT_NAME = "feedback_agent_prompt.txt"
+_AGENT_DNA_NAME = "agent_dna.json"
+
+
+def _iter_gen_agent_dirs(run_dir: Path, gen: int) -> list[Path]:
+    gen_dir = run_dir / f"gen_{gen}"
+    if not gen_dir.is_dir():
+        return []
+    return sorted(
+        p for p in gen_dir.iterdir() if p.is_dir() and p.name.startswith("agent_")
+    )
+
+
+def _delay_all_gen2_checks(run_dir: Path) -> list[CheckResult]:
+    """Tick 406: prove fair gen1→gen2 left CABS agenda / technique_seeds off."""
+    agents = _iter_gen_agent_dirs(run_dir, 2)
+    if not agents:
+        return [
+            CheckResult(
+                "delay_all_feedback_skip",
+                False,
+                "no gen_2/agent_* — cannot prove delay-all scoped-feedback skip",
+            ),
+            CheckResult(
+                "delay_all_technique_seeds_skip",
+                False,
+                "no gen_2/agent_* — cannot prove delay-all technique_seeds skip",
+            ),
+        ]
+
+    fb_leaks: list[str] = []
+    fb_missing: list[str] = []
+    seed_leaks: list[str] = []
+    dna_missing: list[str] = []
+    for agent_dir in agents:
+        fb_path = agent_dir / _FEEDBACK_PROMPT_NAME
+        if not fb_path.is_file():
+            fb_missing.append(agent_dir.name)
+        else:
+            try:
+                text = fb_path.read_text(encoding="utf-8")
+            except OSError:
+                fb_missing.append(agent_dir.name)
+            else:
+                if _AGENDA_MARKER in text:
+                    fb_leaks.append(agent_dir.name)
+
+        dna_path = agent_dir / _AGENT_DNA_NAME
+        if not dna_path.is_file():
+            dna_missing.append(agent_dir.name)
+            continue
+        try:
+            dna = json.loads(dna_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            dna_missing.append(agent_dir.name)
+            continue
+        seeds = dna.get("technique_seeds") if isinstance(dna, dict) else None
+        if isinstance(seeds, list) and any(str(s).strip() for s in seeds):
+            seed_leaks.append(f"{agent_dir.name}:{seeds}")
+
+    if fb_missing:
+        fb_ok = False
+        fb_detail = f"missing feedback prompt(s): {fb_missing}"
+    elif fb_leaks:
+        fb_ok = False
+        fb_detail = (
+            f"Contradiction-Aware agenda leaked into fair gen2 feedback: {fb_leaks}"
+        )
+    else:
+        fb_ok = True
+        fb_detail = (
+            f"gen2 n={len(agents)} feedback prompts lack {_AGENDA_MARKER!r} (delay-all)"
+        )
+
+    if dna_missing:
+        seeds_ok = False
+        seeds_detail = f"missing/invalid agent_dna.json: {dna_missing}"
+    elif seed_leaks:
+        seeds_ok = False
+        seeds_detail = (
+            f"committee technique_seeds on fair gen2 DNA (delay-all leak): {seed_leaks}"
+        )
+    else:
+        seeds_ok = True
+        seeds_detail = (
+            f"gen2 n={len(agents)} DNA technique_seeds empty (delay-all)"
+        )
+
+    return [
+        CheckResult("delay_all_feedback_skip", fb_ok, fb_detail),
+        CheckResult("delay_all_technique_seeds_skip", seeds_ok, seeds_detail),
+    ]
+
+
 def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     checks: list[CheckResult] = []
     store = run_dir / "belief_store"
@@ -485,6 +584,11 @@ def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     except Exception as exc:  # pragma: no cover
         bias_detail = f"import/load error: {exc}"
     checks.append(CheckResult("scoped_mutation_bias", bias_ok, bias_detail))
+
+    # Tick 406: G2 smoke is max_gen=2 — gen2 is always the fair-bred generation
+    # under delay-all. Post-checks must prove Tick 403–405 gates so a regression
+    # cannot burn ~$19 on G3/G4 while DNA/feedback look steered early.
+    checks.extend(_delay_all_gen2_checks(run_dir))
 
     # Tick 371: refuse G2 PASS when best fitness is missing/zero so the live
     # pipeline cannot auto-advance into paid G3/G4 after a silent 0% eval
