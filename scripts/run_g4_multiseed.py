@@ -37,6 +37,10 @@ Hard stops (never violate):
   - Tick 409: mid-G4 abort after first never-steer Condition D (via
     ``run_sequential_live(abort_on_d_never_steer=True)``) so remaining pairs
     do not burn ~$12; skip partial paper pack / Live Table promote
+  - Tick 410: live paper pack only when **all planned pairs** complete
+    (``len(B)==len(D)==len(plans)``), not merely equal B/D counts — closes
+    partial Live Table promote after non-never-steer mid-abort (e.g. sia
+    exit on seed 2 leaving one steered pair)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -447,6 +451,43 @@ def primary_criteria_pass(comparison: dict[str, Any] | None) -> bool:
         except (TypeError, ValueError):
             return True
     return False
+
+
+def g4_full_pairs_for_paper(
+    b_dirs: list[Path],
+    d_dirs: list[Path],
+    plans: list[PilotPlan],
+) -> bool:
+    """Tick 410: True only when every planned B/D pair is present.
+
+    Equal ``len(B)==len(D)`` is not enough — a mid-G4 abort (sia exit, never-steer,
+    crash) can leave 1–4 complete pairs with equal counts and must not refresh
+    Live Tables / READY. ``--refresh-paper-from-runs`` already requires 5 dirs;
+    live + ``apply_paper_pack`` now share this gate.
+    """
+    n = len(plans)
+    return bool(n) and len(b_dirs) == n and len(d_dirs) == n
+
+
+def decide_g4_live_paper_action(
+    *,
+    b_dirs: list[Path],
+    d_dirs: list[Path],
+    plans: list[PilotPlan],
+    run_notes: list[str],
+) -> str:
+    """Tick 409–410: decide live-path paper pack fate.
+
+    Returns one of:
+      - ``abort_never_steer`` — Tick 409 mid-G4 never-steer abort notes present
+      - ``apply`` — all planned pairs complete (safe to ``apply_paper_pack``)
+      - ``incomplete`` — partial / unequal pairs (skip paper pack)
+    """
+    if any("Tick 409:" in n for n in run_notes):
+        return "abort_never_steer"
+    if g4_full_pairs_for_paper(b_dirs, d_dirs, plans):
+        return "apply"
+    return "incomplete"
 
 
 def h5_pass_count(h5_by_d_run: dict[str, Any]) -> tuple[int, int]:
@@ -1447,7 +1488,25 @@ def apply_paper_pack(
 
     Tick 408: Condition D gen≥3 steering positive-control — never-steer D
     forces ``allow_ready=False`` so ``ICML_READY`` cannot flip to READY.
+
+    Tick 410: refuse when ``len(B)/len(D)`` ≠ ``len(plans)`` (partial Live Table).
     """
+    # Tick 410: never refresh Live Tables from a partial G4 pair set.
+    if not g4_full_pairs_for_paper(b_dirs, d_dirs, report.plans):
+        report.notes.append(
+            "Tick 410: refuse paper pack — need all planned pairs "
+            f"(got B={len(b_dirs)} D={len(d_dirs)} plans={len(report.plans)}; "
+            "refuse partial Live Table / READY)"
+        )
+        report.checks.append(
+            CheckResult(
+                "g4_full_pairs",
+                False,
+                f"B={len(b_dirs)} D={len(d_dirs)} plans={len(report.plans)}",
+            )
+        )
+        return False
+
     # Tick 408: prove delay-all lifted on every Condition D run before READY.
     steering_ok, steering_checks = g3_d_steering_ok(d_dirs)
     for c in steering_checks:
@@ -1871,8 +1930,14 @@ def main(argv: list[str] | None = None) -> int:
 
     paper_refreshed = False
     steering_ok = False
-    aborted_never_steer = any("Tick 409:" in n for n in run_notes)
-    if aborted_never_steer:
+    # Tick 409–410: never-steer abort OR partial pairs → skip paper pack.
+    paper_action = decide_g4_live_paper_action(
+        b_dirs=b_dirs,
+        d_dirs=d_dirs,
+        plans=report.plans,
+        run_notes=run_notes,
+    )
+    if paper_action == "abort_never_steer":
         # Record steering checks for completed D dirs; do NOT promote a
         # partial Live Table / READY from <5 pairs after mid-G4 abort.
         if d_dirs:
@@ -1884,7 +1949,7 @@ def main(argv: list[str] | None = None) -> int:
             "paper pack (refuse partial Live Table / READY)"
         )
         steering_ok = False
-    elif b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
+    elif paper_action == "apply":
         paper_refreshed = apply_paper_pack(
             report,
             b_dirs=b_dirs,
@@ -1904,7 +1969,11 @@ def main(argv: list[str] | None = None) -> int:
                 "stamp / READY (never-steer)"
             )
     else:
-        report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d / paper refresh")
+        report.notes.append(
+            "Tick 410: incomplete / partial B/D pairs "
+            f"(B={len(b_dirs)} D={len(d_dirs)} plans={len(report.plans)}) — "
+            "skipped compare_b_vs_d / paper refresh"
+        )
 
     # Tick 379: stamp ledger G4 after direct live when every planned run is complete.
     # Tick 408: only stamp when gen≥3 steering also passes (mirror G3 Tick 407).

@@ -58,6 +58,8 @@ Hard stops (delegated to gate runners; never violate here either):
     Condition D before READY (Tick 407 gated G3→G4 only).
   - Tick 409: mid-G4 abort after first never-steer Condition D (save remaining
     pair budget; skip partial Live Table / paper pack promote).
+  - Tick 410: G4 live + ``apply_paper_pack`` require all planned pairs before
+    Live Table / READY (not merely equal B/D counts after mid-abort).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API

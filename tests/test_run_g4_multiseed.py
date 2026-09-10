@@ -1873,13 +1873,131 @@ def test_refresh_paper_pack_refuses_never_steer_sidecar(
     assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
 
 
+def test_g4_full_pairs_for_paper_requires_all_plans() -> None:
+    """Tick 410: equal B/D counts are not enough — need len == len(plans)."""
+    from run_g4_multiseed import build_g4_plans, g4_full_pairs_for_paper
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    assert g4_full_pairs_for_paper([Path("b")] * 5, [Path("d")] * 5, plans) is True
+    # Partial but equal — the pre-Tick-410 live-path bug class.
+    assert g4_full_pairs_for_paper([Path("b")], [Path("d")], plans) is False
+    assert g4_full_pairs_for_paper([Path("b")] * 2, [Path("d")] * 2, plans) is False
+    assert g4_full_pairs_for_paper([Path("b")] * 5, [Path("d")] * 4, plans) is False
+
+
+def test_decide_g4_live_paper_action_partial_vs_abort_vs_apply() -> None:
+    """Tick 410: decide helper covers never-steer abort, partial, full apply."""
+    from run_g4_multiseed import build_g4_plans, decide_g4_live_paper_action
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    b5 = [Path(f"b{i}") for i in range(5)]
+    d5 = [Path(f"d{i}") for i in range(5)]
+    assert (
+        decide_g4_live_paper_action(
+            b_dirs=b5, d_dirs=d5, plans=plans, run_notes=["ok"]
+        )
+        == "apply"
+    )
+    assert (
+        decide_g4_live_paper_action(
+            b_dirs=[Path("b")],
+            d_dirs=[Path("d")],
+            plans=plans,
+            run_notes=["B ok", "D ok"],
+        )
+        == "incomplete"
+    )
+    assert (
+        decide_g4_live_paper_action(
+            b_dirs=[Path("b")],
+            d_dirs=[Path("d")],
+            plans=plans,
+            run_notes=[
+                "Tick 409: Condition D run_1311 never steered after delay-all "
+                "(x) — abort remaining pairs to save budget",
+            ],
+        )
+        == "abort_never_steer"
+    )
+
+
+def test_apply_paper_pack_refuses_partial_pairs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 410: apply_paper_pack must not refresh Live Tables from 1/5 pairs."""
+    import run_g4_multiseed as mod
+    from run_g4_multiseed import G4PreflightReport, build_g4_plans
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    paper = docs / "paper_artifacts.md"
+    paper.write_text("# paper\n", encoding="utf-8")
+    ready = docs / "ICML_READY.md"
+    ready.write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    figs = docs / "figures"
+    figs.mkdir()
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-10T20:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+    )
+    b1 = tmp_path / "runs" / "run_1211"
+    d1 = tmp_path / "runs" / "run_1311"
+    b1.mkdir(parents=True)
+    d1.mkdir(parents=True)
+
+    scored: list[str] = []
+
+    def _boom(*_a, **_k):  # noqa: ANN001
+        scored.append("score")
+        raise AssertionError("score_pilot must not run on partial pairs")
+
+    monkeypatch.setattr(mod, "score_pilot", _boom)
+    monkeypatch.setattr(mod, "g3_d_steering_ok", lambda _d: (True, []))
+
+    refreshed = mod.apply_paper_pack(
+        report,
+        b_dirs=[b1],
+        d_dirs=[d1],
+        paper_artifacts=paper,
+        ready_path=ready,
+        figures_dir=figs,
+        allow_ready=True,
+    )
+    assert refreshed is False
+    assert scored == []
+    assert any("Tick 410:" in n and "refuse paper pack" in n for n in report.notes)
+    assert any(c.name == "g4_full_pairs" and not c.ok for c in report.checks)
+    assert "**STATUS: IN_PROGRESS**" in ready.read_text(encoding="utf-8")
+
+
 def test_g4_live_skips_paper_pack_after_never_steer_abort(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Tick 409: mid-G4 never-steer abort must not promote partial Live Table."""
     import run_g4_multiseed as mod
     import run_g3_pilot as g3
-    from run_g4_multiseed import G4PreflightReport, build_g4_plans
+    from run_g4_multiseed import (
+        G4PreflightReport,
+        build_g4_plans,
+        decide_g4_live_paper_action,
+    )
 
     monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
@@ -1918,27 +2036,12 @@ def test_g4_live_skips_paper_pack_after_never_steer_abort(
 
     paper_calls: list[str] = []
 
-    def _fake_sequential(compat, **kw):  # noqa: ANN001
-        assert kw.get("abort_on_d_never_steer") is True
-        return (
-            [b_ok],
-            [d_bad],
-            [
-                "B run_1211 ok",
-                "D run_1311 ok",
-                "Tick 409: Condition D run_1311 never steered after delay-all "
-                "(gen3 feedback lacks) — abort remaining pairs to save budget",
-            ],
-        )
-
     def _fake_apply(**kw):  # noqa: ANN001
         paper_calls.append("apply")
         return True
 
-    monkeypatch.setattr(mod, "run_sequential_live", _fake_sequential)
     monkeypatch.setattr(mod, "apply_paper_pack", _fake_apply)
 
-    # Simulate the live-path branch after sequential (extract via small helper).
     run_notes = [
         "B run_1211 ok",
         "D run_1311 ok",
@@ -1949,9 +2052,11 @@ def test_g4_live_skips_paper_pack_after_never_steer_abort(
     b_dirs, d_dirs = [b_ok], [d_bad]
     paper_refreshed = False
     steering_ok = False
-    aborted_never_steer = any("Tick 409:" in n for n in run_notes)
-    assert aborted_never_steer
-    if aborted_never_steer:
+    paper_action = decide_g4_live_paper_action(
+        b_dirs=b_dirs, d_dirs=d_dirs, plans=plans, run_notes=run_notes
+    )
+    assert paper_action == "abort_never_steer"
+    if paper_action == "abort_never_steer":
         if d_dirs:
             _ok, steering_checks = g3.g3_d_steering_ok(d_dirs)
             for c in steering_checks:
@@ -1961,7 +2066,7 @@ def test_g4_live_skips_paper_pack_after_never_steer_abort(
             "paper pack (refuse partial Live Table / READY)"
         )
         steering_ok = False
-    elif b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
+    elif paper_action == "apply":
         paper_refreshed = mod.apply_paper_pack(
             report,
             b_dirs=b_dirs,
@@ -1978,3 +2083,68 @@ def test_g4_live_skips_paper_pack_after_never_steer_abort(
     assert paper_calls == []
     assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
     assert any("skipped paper pack" in n for n in report.notes)
+
+
+def test_g4_live_skips_paper_pack_on_partial_equal_pairs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 410: sia-exit mid-G4 with 1 equal pair must not call apply_paper_pack."""
+    import run_g4_multiseed as mod
+    from run_g4_multiseed import (
+        G4PreflightReport,
+        build_g4_plans,
+        decide_g4_live_paper_action,
+    )
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-10T20:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+    )
+    b_ok = tmp_path / "b"
+    d_ok = tmp_path / "d"
+    b_ok.mkdir()
+    d_ok.mkdir()
+    paper_calls: list[str] = []
+    monkeypatch.setattr(
+        mod, "apply_paper_pack", lambda **_k: paper_calls.append("apply") or True
+    )
+
+    run_notes = [
+        "B run_1211 ok",
+        "D run_1311 ok",
+        "B run_1212 exited 1; aborting remaining pairs",
+    ]
+    b_dirs, d_dirs = [b_ok], [d_ok]
+    # Pre-Tick-410 bug: len(B)==len(D)==1 would have called apply_paper_pack.
+    assert len(b_dirs) == len(d_dirs) == 1
+    paper_action = decide_g4_live_paper_action(
+        b_dirs=b_dirs, d_dirs=d_dirs, plans=plans, run_notes=run_notes
+    )
+    assert paper_action == "incomplete"
+    paper_refreshed = False
+    if paper_action == "apply":
+        paper_refreshed = mod.apply_paper_pack(
+            report,
+            b_dirs=b_dirs,
+            d_dirs=d_dirs,
+            paper_artifacts=tmp_path / "p.md",
+            ready_path=tmp_path / "r.md",
+            figures_dir=tmp_path,
+            allow_ready=True,
+        )
+    else:
+        report.notes.append(
+            "Tick 410: incomplete / partial B/D pairs "
+            f"(B={len(b_dirs)} D={len(d_dirs)} plans={len(plans)}) — "
+            "skipped compare_b_vs_d / paper refresh"
+        )
+    assert paper_refreshed is False
+    assert paper_calls == []
+    assert any("Tick 410:" in n and "partial" in n for n in report.notes)
