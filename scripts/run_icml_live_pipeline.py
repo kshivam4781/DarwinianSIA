@@ -54,6 +54,8 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 407: ``load_g3_metrics_for_g4`` refuses G4 when Condition D local
     artifacts lack gen≥3 Contradiction-Aware agenda (positive control that
     delay-all lifted — Tick 406 only proves the fair gen1→gen2 skip).
+  - Tick 408: G4 ``apply_paper_pack`` / resume / ledger-skip refuse never-steer
+    Condition D before READY (Tick 407 gated G3→G4 only).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -806,6 +808,9 @@ def refresh_g4_paper_pack_on_resume(
                 skip_paper_refresh=False,
                 allow_ready=allow_ready,
             )
+            steering_ok = any(
+                c.name == "steering_applied_gen3" and c.ok for c in g4_report.checks
+            )
             g4.write_gate4_report(
                 g4_report,
                 gate4_report_md,
@@ -813,6 +818,11 @@ def refresh_g4_paper_pack_on_resume(
                 paper_refreshed=paper_refreshed,
             )
             report.icml_ready_status = g4_report.ready_status
+            if not steering_ok:
+                return (
+                    "Tick 408: G4 resume paper pack refused — Condition D gen≥3 "
+                    f"steering FAILED (ICML_READY={g4_report.ready_status})"
+                )
             return (
                 "Tick 374: re-scored G4 from local B/D + refreshed paper pack "
                 f"(primary={g4_report.primary_pass}; h2={g4_report.h2_pass}; "
@@ -827,19 +837,35 @@ def refresh_g4_paper_pack_on_resume(
     data = _load_gate4_sidecar_raw(gate4_report_md)
     comparison, _h5, _h2, meta, source = g4._live_paper_from_gate4_sidecar(data)
     if comparison is not None:
+        # Tick 408: refuse never-steer sidecar trust (G3 Tick 407 / G4 ledger-skip parity).
+        prior_steering = None
+        prior = data.get("prior_live_metrics")
+        if isinstance(prior, dict) and "steering_applied_gen3" in prior:
+            prior_steering = prior.get("steering_applied_gen3")
+        elif "steering_applied_gen3" in data:
+            prior_steering = data.get("steering_applied_gen3")
+        if prior_steering is False:
+            return (
+                "Tick 408: gate4 sidecar steering_applied_gen3=false — "
+                "refuse READY / paper-pack trust on never-steer Condition D"
+            )
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
             report.icml_ready_status = ready_status
         if source == "prior_live_metrics":
-            return (
+            note = (
                 "Tick 386: trusted gate4 prior_live_metrics paper pack "
                 f"(no local G4 dirs; ICML_READY={ready_status or 'n/a'})"
             )
-        mode = str(data.get("mode") or "")
-        return (
-            "Tick 374: trusted live-executed gate4 sidecar paper pack "
-            f"(no local G4 dirs; mode={mode}; ICML_READY={ready_status or 'n/a'})"
-        )
+        else:
+            mode = str(data.get("mode") or "")
+            note = (
+                "Tick 374: trusted live-executed gate4 sidecar paper pack "
+                f"(no local G4 dirs; mode={mode}; ICML_READY={ready_status or 'n/a'})"
+            )
+        if prior_steering is True:
+            note += "; steering_applied_gen3=true"
+        return note
     mode = str(data.get("mode") or "")
     executed = bool(data.get("executed"))
     paper_refreshed = bool(data.get("paper_refreshed"))

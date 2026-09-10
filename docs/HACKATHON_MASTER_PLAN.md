@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-10 (Section 21 ICML; Tick 407 G3 steering positive-control; Tick 406 G2 delay-all post-checks; Tick 405 dry-run feedback fidelity; …)
+**Last updated:** 2026-09-10 (Section 21 ICML; Tick 408 G4 never-steer refuse before READY; Tick 407 G3 steering positive-control; Tick 406 G2 delay-all post-checks; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -859,6 +859,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run writes resolved CABS+Darwinian feedback prompt; proves delay-all skip in `run_1952`; dry-run does not stamp `prior_live_post` |
 | ICML G2 delay-all post-checks (Tick 406) | **DONE** | `validate_g2_artifacts` requires gen2 feedback lack Contradiction-Aware agenda + empty `technique_seeds`; dry-run `run_1953` |
 | ICML G3 steering positive-control (Tick 407) | **DONE** | `validate_g3_d_steering` requires gen≥3 agenda on Condition D; refuse G4 on never-steer |
+| ICML G4 never-steer refuse before READY (Tick 408) | **DONE** | `apply_paper_pack` / ledger-skip / resume refuse never-steer D before READY / ledger stamp |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -933,6 +934,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run FEEDBACK_PROMPT resolves CABS under delay-all; `run_1952` + unit test; no dry-run `prior_live_post` |
 | ICML G2 delay-all post-checks (Tick 406) | **DONE** | Gate G2 PASS on delay-all fidelity (`delay_all_feedback_skip` / `delay_all_technique_seeds_skip`); `run_1953` |
 | ICML G3 steering positive-control (Tick 407) | **DONE** | Gate G3→G4 on gen≥3 Condition D agenda (`steering_applied_gen3`) |
+| ICML G4 never-steer refuse before READY (Tick 408) | **DONE** | G4 paper pack / ledger / resume refuse never-steer before READY |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1019,7 +1021,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML dry-run feedback fidelity (Tick 405) | **DONE** | Dry-run FEEDBACK_PROMPT proves Tick 404 gate (`run_1952`); dry-run does not stamp `prior_live_post` |
 | ICML G2 delay-all post-checks (Tick 406) | **DONE** | G2 post-checks refuse agenda/seeds on fair gen2; prevents G3/G4 burn on delay-all regression (`run_1953`) |
 | ICML G3 steering positive-control (Tick 407) | **DONE** | G3/pipeline require gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 on never-steer |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–407 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML G4 never-steer refuse before READY (Tick 408) | **DONE** | G4 paper pack / ledger / resume refuse never-steer Condition D before READY |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–408 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2654,3 +2657,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G2 delay-all post-checks (Tick 406):** Tick 403–405 fixed delay-all technique_seeds / scoped feedback / dry-run prompt fidelity, but `validate_g2_artifacts` still only checked belief_store / bias / nonzero fitness — a delay-all regression could PASS G2 and auto-burn ~$19 on G3/G4. Now requires gen2 feedback lack Contradiction-Aware agenda and gen2 DNA `technique_seeds` empty (`delay_all_feedback_skip` / `delay_all_technique_seeds_skip`); unit tests + dry-run `run_1953`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **G3 steering positive-control (Tick 407):** Tick 406 only proves fair gen1→gen2 *skip*. A never-steer regression still PASSes G2 and can burn G3/G4 with D≈B. `validate_g3_d_steering` now requires Condition D gen≥3 feedback to carry the Contradiction-Aware agenda; wired into direct G3 live (exit 4 / no ledger stamp), ledger-skip refresh, and pipeline `load_g3_metrics_for_g4`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**G4 never-steer refuse before READY (Tick 408):** Tick 407 gated G3→G4 only. G4 `apply_paper_pack` / ledger-skip / pipeline resume could still promote never-steer Condition D into Live Tables / `ICML_READY`. Now `g3_d_steering_ok` runs inside `apply_paper_pack` (forces `allow_ready=False`), live G4 refuses ledger stamp + exit 4, and sidecar trust refuses `steering_applied_gen3=false`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

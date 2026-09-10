@@ -30,6 +30,10 @@ Hard stops (never violate):
   - Tick 386: preflight preserves ``prior_live_metrics`` so cron
     ``--preflight-only`` cannot wipe paid G4 comparison / paper_refreshed
     evidence (Tick 385 gate3 ``prior_live_metrics`` parity)
+  - Tick 408: Condition D gen≥3 steering positive-control before paper pack /
+    READY / ledger stamp (Tick 407 G3 gate was G3→G4 only — G4 could still
+    promote never-steer D into ``ICML_READY``); refuse READY + ledger on
+    never-steer; sidecar trust refuses ``steering_applied_gen3=false``
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -104,6 +108,7 @@ from run_g3_pilot import (  # noqa: E402
     _utc_now,
     build_sia_command,
     classify_plan_run_occupancy,
+    g3_d_steering_ok,
     parse_int_list,
     run_sequential_live,
     score_pilot,
@@ -1138,6 +1143,10 @@ def write_gate4_report(
             "h5_pass": bool(report.h5_pass),
             "ready_status": report.ready_status,
             "figures_written": list(report.figures_written or []),
+            # Tick 408: preserve steering positive-control across preflight wipe.
+            "steering_applied_gen3": any(
+                c.name == "steering_applied_gen3" and c.ok for c in report.checks
+            ),
         }
     else:
         preserved_cmp, preserved_h5, preserved_h2, preserved_meta, _src = (
@@ -1156,8 +1165,28 @@ def write_gate4_report(
                 "ready_status": preserved_meta.get("ready_status"),
                 "figures_written": list(preserved_meta.get("figures_written") or []),
             }
+            # Carry steering flag from prior_live / top-level when present.
+            prior_steering = None
+            if isinstance(existing.get("prior_live_metrics"), dict):
+                prior_steering = existing["prior_live_metrics"].get(
+                    "steering_applied_gen3"
+                )
+            if prior_steering is None:
+                prior_steering = existing.get("steering_applied_gen3")
+            if prior_steering is None:
+                for c in report.checks:
+                    if c.name == "steering_applied_gen3":
+                        prior_steering = c.ok
+                        break
+            if prior_steering is not None:
+                prior_live_metrics["steering_applied_gen3"] = bool(prior_steering)
         elif isinstance(existing.get("prior_live_metrics"), dict):
             prior_live_metrics = existing.get("prior_live_metrics")
+    steering_flag = None
+    for c in report.checks:
+        if c.name == "steering_applied_gen3":
+            steering_flag = c.ok
+            break
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -1178,6 +1207,8 @@ def write_gate4_report(
         "executed": executed,
         "paper_refreshed": paper_refreshed,
     }
+    if steering_flag is not None:
+        payload["steering_applied_gen3"] = steering_flag
     if prior_live_metrics is not None:
         payload["prior_live_metrics"] = prior_live_metrics
     sidecar.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -1282,6 +1313,7 @@ def refresh_paper_pack_on_ledger_skip(
     live-executed / refresh-paper sidecar with non-null comparison +
     ``paper_refreshed`` (or Tick 386 ``prior_live_metrics`` preserved across
     preflight; never promote READY from a bare preflight sidecar).
+    Tick 408: refuse trust when ``steering_applied_gen3`` is explicitly false.
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1311,6 +1343,16 @@ def refresh_paper_pack_on_ledger_skip(
             skip_paper_refresh=skip_paper_refresh,
             allow_ready=allow_ready,
         )
+        steering_ok = any(
+            c.name == "steering_applied_gen3" and c.ok for c in report.checks
+        )
+        if not steering_ok:
+            note = (
+                "Tick 408: ledger-skip local re-score — Condition D gen≥3 "
+                "steering FAILED — refuse paper-pack READY trust"
+            )
+            report.notes.append(note)
+            return False, note
         return (
             paper_refreshed,
             "Tick 381: re-scored G4 from local B/D + refreshed paper pack "
@@ -1322,6 +1364,23 @@ def refresh_paper_pack_on_ledger_skip(
     data = _load_gate4_sidecar_raw(gate4_report_md)
     comparison, h5, h2, meta, source = _live_paper_from_gate4_sidecar(data)
     if comparison is not None:
+        # Tick 408: refuse never-steer sidecar (G3 Tick 407 parity).
+        prior_steering = None
+        prior = data.get("prior_live_metrics")
+        if isinstance(prior, dict) and "steering_applied_gen3" in prior:
+            prior_steering = prior.get("steering_applied_gen3")
+        elif "steering_applied_gen3" in data:
+            prior_steering = data.get("steering_applied_gen3")
+        if prior_steering is False:
+            note = (
+                "Tick 408: trusted gate4 sidecar but steering_applied_gen3=false "
+                "— refuse READY / paper-pack trust on never-steer Condition D"
+            )
+            report.checks.append(
+                CheckResult("steering_applied_gen3", False, note)
+            )
+            report.notes.append(note)
+            return False, note
         report.comparison = comparison
         report.primary_pass = bool(meta.get("primary_pass"))
         report.h2_pass = bool(meta.get("h2_pass"))
@@ -1345,6 +1404,15 @@ def refresh_paper_pack_on_ledger_skip(
                 "Tick 381: trusted live-executed gate4 sidecar paper pack "
                 f"(no/partial local G4 dirs; mode={mode}; "
                 f"ICML_READY={ready_status or 'n/a'})"
+            )
+        if prior_steering is True:
+            note += "; steering_applied_gen3=true"
+            report.checks.append(
+                CheckResult(
+                    "steering_applied_gen3",
+                    True,
+                    "sidecar recorded gen≥3 Condition D steering",
+                )
             )
         report.notes.append(note)
         return True, note
@@ -1372,7 +1440,22 @@ def apply_paper_pack(
     skip_paper_refresh: bool = False,
     allow_ready: bool = True,
 ) -> bool:
-    """Score PRIMARY/H2/H5, refresh paper pack + figures + ICML_READY. Returns paper_refreshed."""
+    """Score PRIMARY/H2/H5, refresh paper pack + figures + ICML_READY. Returns paper_refreshed.
+
+    Tick 408: Condition D gen≥3 steering positive-control — never-steer D
+    forces ``allow_ready=False`` so ``ICML_READY`` cannot flip to READY.
+    """
+    # Tick 408: prove delay-all lifted on every Condition D run before READY.
+    steering_ok, steering_checks = g3_d_steering_ok(d_dirs)
+    for c in steering_checks:
+        report.checks.append(c)
+    if not steering_ok:
+        allow_ready = False
+        report.notes.append(
+            "Tick 408: Condition D gen≥3 steering FAILED — refuse ICML_READY "
+            "READY (never-steer D must not promote paper pack)"
+        )
+
     # Tick 368: score_pilot also returns H2 (preferred-allele); avoid double compute_h2.
     comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
     report.comparison = comparison
@@ -1601,7 +1684,13 @@ def main(argv: list[str] | None = None) -> int:
             f"primary_pass={report.primary_pass} h2_pass={report.h2_pass} "
             f"h5_pass={report.h5_pass} STATUS={report.ready_status}"
         )
-        return 0 if report.comparison is not None else 4
+        steering_ok = any(
+            c.name == "steering_applied_gen3" and c.ok for c in report.checks
+        )
+        # Tick 408: never-steer → exit 4 even if comparison scored.
+        if report.comparison is None or not steering_ok:
+            return 4
+        return 0
 
     fetch_notes: list[str] = []
     # Tick 278: auto-wire local diamond CSV under --fetch-diamond (match cron).
@@ -1776,6 +1865,7 @@ def main(argv: list[str] | None = None) -> int:
     report.notes.extend(run_notes)
 
     paper_refreshed = False
+    steering_ok = False
     if b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
         paper_refreshed = apply_paper_pack(
             report,
@@ -1787,21 +1877,36 @@ def main(argv: list[str] | None = None) -> int:
             skip_paper_refresh=args.skip_paper_refresh,
             allow_ready=allow_ready_flag,
         )
+        steering_ok = any(
+            c.name == "steering_applied_gen3" and c.ok for c in report.checks
+        )
+        if not steering_ok:
+            report.notes.append(
+                "Tick 408: Condition D gen≥3 steering FAILED — refuse G4 ledger "
+                "stamp / READY (never-steer)"
+            )
     else:
         report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d / paper refresh")
 
     # Tick 379: stamp ledger G4 after direct live when every planned run is complete.
+    # Tick 408: only stamp when gen≥3 steering also passes (mirror G3 Tick 407).
     planned_ids = [p.b_run_id for p in report.plans] + [
         p.d_run_id for p in report.plans
     ]
-    _, persist_detail = persist_direct_gate_stage_spend(
-        "G4",
-        planned_ids,
-        pair_estimate_usd=float(DEFAULT_PAIR_ESTIMATE_USD),
-        resolve_run_dir=_run_dir_for,
-        repo_root=REPO_ROOT,
-    )
-    report.notes.append(persist_detail)
+    g4_ok = bool(report.comparison) and steering_ok
+    if g4_ok:
+        _, persist_detail = persist_direct_gate_stage_spend(
+            "G4",
+            planned_ids,
+            pair_estimate_usd=float(DEFAULT_PAIR_ESTIMATE_USD),
+            resolve_run_dir=_run_dir_for,
+            repo_root=REPO_ROOT,
+        )
+        report.notes.append(persist_detail)
+    else:
+        report.notes.append(
+            "Tick 408: skipped G4 ledger stamp — need comparison + gen≥3 steering"
+        )
 
     write_gate4_report(
         report, args.report, executed=True, paper_refreshed=paper_refreshed
@@ -1811,7 +1916,7 @@ def main(argv: list[str] | None = None) -> int:
         f"primary_pass={report.primary_pass} h2_pass={report.h2_pass} "
         f"h5_pass={report.h5_pass} STATUS={report.ready_status}"
     )
-    if report.comparison is None:
+    if report.comparison is None or not steering_ok:
         return 4
     return 0
 

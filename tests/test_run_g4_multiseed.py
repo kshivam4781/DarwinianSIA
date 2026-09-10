@@ -14,6 +14,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 from prepare_gpqa_smoke_data import is_synthetic_smoke, prepare_task_tree  # noqa: E402
 from run_g4_multiseed import (  # noqa: E402
+    CheckResult,
     PilotPlan,
     TABLE2_LIVE_H2_END,
     TABLE2_LIVE_H2_MARKER,
@@ -982,6 +983,14 @@ def test_apply_paper_pack_prefers_compare_h2_preferred_pass(
             h2_payloads,
         ),
     )
+    monkeypatch.setattr(
+        mod,
+        "g3_d_steering_ok",
+        lambda _d: (
+            True,
+            [CheckResult("steering_applied_gen3", True, "mocked steered")],
+        ),
+    )
     monkeypatch.setattr(mod, "write_live_bvd_figures", lambda **kw: [])
     monkeypatch.setattr(mod, "refresh_paper_artifacts_live", lambda **kw: True)
     monkeypatch.setattr(mod, "update_icml_ready_from_g4", lambda **kw: "IN_PROGRESS")
@@ -1310,6 +1319,11 @@ def test_refresh_paper_pack_on_ledger_skip_local_dirs(
         calls["b_dirs"] = [str(p) for p in b_dirs]
         calls["d_dirs"] = [str(p) for p in d_dirs]
         calls["allow_ready"] = allow_ready
+        from run_g3_pilot import CheckResult
+
+        rep.checks.append(
+            CheckResult("steering_applied_gen3", True, "mocked steered")
+        )
         rep.comparison = {"n_pairs": 5, "primary_gens30_pass": True}
         rep.primary_pass = True
         rep.h2_pass = True
@@ -1688,3 +1702,172 @@ def test_g4_live_ledger_skip_refreshes_paper_pack(
     assert refreshed == ["yes"]
     text = report_path.read_text(encoding="utf-8")
     assert "Tick 381" in text or "ledger" in text.lower()
+
+
+def _write_d_gen_feedback(run_dir: Path, gen: int, *, with_agenda: bool) -> None:
+    """Minimal Condition D gen_N/agent_* feedback for Tick 408."""
+    for i in range(2):
+        agent = run_dir / f"gen_{gen}" / f"agent_{i}"
+        agent.mkdir(parents=True, exist_ok=True)
+        body = (
+            "Contradiction-Aware Research Agenda\n- investigate tool_strategy\n"
+            if with_agenda
+            else "Darwinian feedback only (no CABS agenda)\n"
+        )
+        (agent / "feedback_agent_prompt.txt").write_text(body, encoding="utf-8")
+        (agent / "results.json").write_text(
+            json.dumps({"accuracy": 0.2}), encoding="utf-8"
+        )
+
+
+def test_apply_paper_pack_refuses_never_steer_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 408: never-steer Condition D forces allow_ready=False."""
+    from run_g4_multiseed import G4PreflightReport, apply_paper_pack
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    paper = docs / "paper_artifacts.md"
+    paper.write_text(
+        "### Live GPQA\n\n"
+        "| Seed | B | D |\n|------|---|---|\n| — | — | — |\n\n"
+        f"{TABLE2_LIVE_H2_MARKER}\n| H2 | — | — |\n{TABLE2_LIVE_H2_END}\n"
+        f"{TABLE2_LIVE_H5_MARKER}\n| H5 | — | — |\n{TABLE2_LIVE_H5_END}\n",
+        encoding="utf-8",
+    )
+    ready = docs / "ICML_READY.md"
+    ready.write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+
+    d_dirs = []
+    b_dirs = []
+    for s in range(1, 6):
+        b = tmp_path / f"run_{1210 + s}"
+        d = tmp_path / f"run_{1310 + s}"
+        b.mkdir()
+        d.mkdir()
+        _write_d_gen_feedback(d, 3, with_agenda=False)
+        b_dirs.append(b)
+        d_dirs.append(d)
+
+    report = G4PreflightReport(
+        timestamp="2026-09-10T16:10:00Z",
+        mode="refresh-paper",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1210 + s, d_run_id=1310 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=True,
+    )
+    import run_g4_multiseed as mod
+
+    monkeypatch.setattr(
+        mod,
+        "score_pilot",
+        lambda b, d: (
+            {
+                "n_pairs": 5,
+                "primary_gens30_pass": True,
+                "primary_cost30_pass": True,
+                "primary_final_pass": True,
+                "mean_final_gap": 0.06,
+                "d_wins_h2": 5,
+                "h2_preferred_pass": True,
+                "rows": [],
+            },
+            {f"run_{1310 + s}": {"spearman_rho": 0.9} for s in range(1, 6)},
+            {
+                f"run_{1310 + s}": {
+                    "preferred_share": 0.8,
+                    "field": "tool_strategy",
+                    "preferred_value": "selective",
+                    "in_bias_share": 1.0,
+                    "counts": {},
+                    "total": 4,
+                    "bias_values": [],
+                }
+                for s in range(1, 6)
+            },
+        ),
+    )
+    captured: dict[str, object] = {}
+
+    def _fake_ready(**kw):
+        captured["allow_ready"] = kw.get("allow_ready")
+        return "IN_PROGRESS"
+
+    monkeypatch.setattr(mod, "write_live_bvd_figures", lambda **kw: [])
+    monkeypatch.setattr(mod, "refresh_paper_artifacts_live", lambda **kw: True)
+    monkeypatch.setattr(mod, "update_icml_ready_from_g4", _fake_ready)
+
+    apply_paper_pack(
+        report,
+        b_dirs=b_dirs,
+        d_dirs=d_dirs,
+        paper_artifacts=paper,
+        ready_path=ready,
+        figures_dir=docs / "figures",
+        allow_ready=True,
+    )
+    assert captured["allow_ready"] is False
+    assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
+    assert any("never-steer" in n or "steering FAILED" in n for n in report.notes)
+
+
+def test_refresh_paper_pack_refuses_never_steer_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 408: ledger-skip sidecar with steering_applied_gen3=false refuses trust."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": False,
+                "comparison": {"n_pairs": 5, "primary_gens30_pass": True},
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {},
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-10T16:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert ok is False
+    assert "steering_applied_gen3=false" in note
+    assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
