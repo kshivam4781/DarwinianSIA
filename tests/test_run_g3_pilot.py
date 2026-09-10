@@ -1259,3 +1259,114 @@ def test_refresh_g3_metrics_refuses_sidecar_steering_false(
     )
     assert ok is False
     assert "steering_applied_gen3=false" in note
+
+
+def test_run_sequential_live_aborts_on_d_never_steer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 409: after first never-steer D, do not launch remaining pairs."""
+    import run_g3_pilot as mod
+
+    calls: list[str] = []
+
+    def fake_run(cmd, cwd=None, env=None):  # noqa: ANN001
+        rid = cmd[cmd.index("--run_id") + 1]
+        cond = "D" if "--cabs-inline" in cmd else "B"
+        calls.append(f"{cond}:{rid}")
+        run_dir = tmp_path / "SIA" / "runs" / f"run_{rid}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "results.json").write_text(
+            json.dumps({"accuracy": 0.1}), encoding="utf-8"
+        )
+        if cond == "D":
+            # gen3 feedback without Contradiction-Aware agenda → never-steer
+            _write_d_gen_feedback(run_dir, 2, with_agenda=False)
+            _write_d_gen_feedback(run_dir, 3, with_agenda=False)
+
+        class P:
+            returncode = 0
+
+        return P()
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+
+    report = G3PreflightReport(
+        timestamp="t",
+        mode="live",
+        plans=[
+            PilotPlan(seed=1, b_run_id=1201, d_run_id=1301),
+            PilotPlan(seed=2, b_run_id=1202, d_run_id=1302),
+        ],
+        ready_for_live=True,
+    )
+    b_dirs, d_dirs, notes = mod.run_sequential_live(
+        report,
+        cwd=tmp_path / "SIA",
+        eval_subset=5,
+        population_size=4,
+        elite_count=2,
+        max_gen=6,
+        abort_on_d_never_steer=True,
+    )
+    assert calls == ["B:1201", "D:1301"]  # seed 2 never launched
+    assert len(b_dirs) == 1 and len(d_dirs) == 1
+    assert any("Tick 409:" in n and "abort remaining" in n for n in notes)
+
+
+def test_run_sequential_live_continues_when_d_steered(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 409: steered D does not abort; all pairs still run."""
+    import run_g3_pilot as mod
+
+    calls: list[str] = []
+
+    def fake_run(cmd, cwd=None, env=None):  # noqa: ANN001
+        rid = cmd[cmd.index("--run_id") + 1]
+        cond = "D" if "--cabs-inline" in cmd else "B"
+        calls.append(f"{cond}:{rid}")
+        run_dir = tmp_path / "SIA" / "runs" / f"run_{rid}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "results.json").write_text(
+            json.dumps({"accuracy": 0.2}), encoding="utf-8"
+        )
+        if cond == "D":
+            _write_d_gen_feedback(run_dir, 2, with_agenda=False)
+            _write_d_gen_feedback(run_dir, 3, with_agenda=True)
+
+        class P:
+            returncode = 0
+
+        return P()
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+
+    report = G3PreflightReport(
+        timestamp="t",
+        mode="live",
+        plans=[
+            PilotPlan(seed=1, b_run_id=1201, d_run_id=1301),
+            PilotPlan(seed=2, b_run_id=1202, d_run_id=1302),
+        ],
+        ready_for_live=True,
+    )
+    b_dirs, d_dirs, notes = mod.run_sequential_live(
+        report,
+        cwd=tmp_path / "SIA",
+        eval_subset=5,
+        population_size=4,
+        elite_count=2,
+        max_gen=6,
+        abort_on_d_never_steer=True,
+    )
+    assert calls == ["B:1201", "D:1301", "B:1202", "D:1302"]
+    assert len(b_dirs) == 2 and len(d_dirs) == 2
+    assert not any("Tick 409:" in n for n in notes)

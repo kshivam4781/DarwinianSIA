@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T18:10Z — Tick 409 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-afe6`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 408 only refuses READY / ledger *after* all five G4 pairs complete — a never-steer first Condition D still burns ~$12 on remaining seeds and risks a partial Live Table. Highest leverage without paid spend: **mid-G4 abort on first never-steer D**.
+
+### What this tick did (ONE step)
+**Mid-G4 never-steer abort + skip partial paper pack (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 408 (`f49c`); confirmed secrets absent; boot `afe6` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `run_sequential_live(..., abort_on_d_never_steer=True)` checks gen≥3 CABS agenda after each Condition D and aborts remaining pairs on never-steer (wired into G3 multi-seed + G4 live)
+3. G4 live skips `apply_paper_pack` on Tick 409 abort (refuse partial Live Table / READY); still records steering checks
+4. Unit tests: `test_run_sequential_live_aborts_on_d_never_steer`, `test_run_sequential_live_continues_when_d_steered`, `test_g4_live_skips_paper_pack_after_never_steer_abort`
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 408) | After (Tick 409) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Mid-G4 never-steer abort | absent (burn all 5 pairs then refuse READY) | **PASS** unit — abort after first D; skip partial paper |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T16:20Z — Tick 408 (automation cron)
 
 ### Status snapshot

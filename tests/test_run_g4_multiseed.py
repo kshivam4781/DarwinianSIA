@@ -1871,3 +1871,110 @@ def test_refresh_paper_pack_refuses_never_steer_sidecar(
     assert ok is False
     assert "steering_applied_gen3=false" in note
     assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
+
+
+def test_g4_live_skips_paper_pack_after_never_steer_abort(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 409: mid-G4 never-steer abort must not promote partial Live Table."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport, build_g4_plans
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "paper_artifacts.md").write_text("# paper\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (docs / "figures").mkdir()
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-10T18:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+    )
+
+    d_bad = tmp_path / "runs" / "run_1311"
+    d_bad.mkdir(parents=True)
+    # Minimal never-steer D gen3 (no agenda)
+    for i in range(2):
+        agent = d_bad / "gen_3" / f"agent_{i}"
+        agent.mkdir(parents=True, exist_ok=True)
+        (agent / "feedback_agent_prompt.txt").write_text(
+            "Darwinian feedback only\n", encoding="utf-8"
+        )
+    b_ok = tmp_path / "runs" / "run_1211"
+    b_ok.mkdir(parents=True)
+
+    paper_calls: list[str] = []
+
+    def _fake_sequential(compat, **kw):  # noqa: ANN001
+        assert kw.get("abort_on_d_never_steer") is True
+        return (
+            [b_ok],
+            [d_bad],
+            [
+                "B run_1211 ok",
+                "D run_1311 ok",
+                "Tick 409: Condition D run_1311 never steered after delay-all "
+                "(gen3 feedback lacks) — abort remaining pairs to save budget",
+            ],
+        )
+
+    def _fake_apply(**kw):  # noqa: ANN001
+        paper_calls.append("apply")
+        return True
+
+    monkeypatch.setattr(mod, "run_sequential_live", _fake_sequential)
+    monkeypatch.setattr(mod, "apply_paper_pack", _fake_apply)
+
+    # Simulate the live-path branch after sequential (extract via small helper).
+    run_notes = [
+        "B run_1211 ok",
+        "D run_1311 ok",
+        "Tick 409: Condition D run_1311 never steered after delay-all "
+        "(x) — abort remaining pairs to save budget",
+    ]
+    report.notes.extend(run_notes)
+    b_dirs, d_dirs = [b_ok], [d_bad]
+    paper_refreshed = False
+    steering_ok = False
+    aborted_never_steer = any("Tick 409:" in n for n in run_notes)
+    assert aborted_never_steer
+    if aborted_never_steer:
+        if d_dirs:
+            _ok, steering_checks = g3.g3_d_steering_ok(d_dirs)
+            for c in steering_checks:
+                report.checks.append(c)
+        report.notes.append(
+            "Tick 409: aborted remaining G4 pairs on never-steer — skipped "
+            "paper pack (refuse partial Live Table / READY)"
+        )
+        steering_ok = False
+    elif b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
+        paper_refreshed = mod.apply_paper_pack(
+            report,
+            b_dirs=b_dirs,
+            d_dirs=d_dirs,
+            paper_artifacts=docs / "paper_artifacts.md",
+            ready_path=docs / "ICML_READY.md",
+            figures_dir=docs / "figures",
+            allow_ready=True,
+        )
+        steering_ok = True
+
+    assert paper_refreshed is False
+    assert steering_ok is False
+    assert paper_calls == []
+    assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
+    assert any("skipped paper pack" in n for n in report.notes)

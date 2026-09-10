@@ -56,6 +56,8 @@ Hard stops (delegated to gate runners; never violate here either):
     delay-all lifted — Tick 406 only proves the fair gen1→gen2 skip).
   - Tick 408: G4 ``apply_paper_pack`` / resume / ledger-skip refuse never-steer
     Condition D before READY (Tick 407 gated G3→G4 only).
+  - Tick 409: mid-G4 abort after first never-steer Condition D (save remaining
+    pair budget; skip partial Live Table / paper pack promote).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API

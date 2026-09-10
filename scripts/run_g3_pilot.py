@@ -1116,18 +1116,39 @@ def run_sequential_live(
     population_size: int,
     elite_count: int,
     max_gen: int,
+    abort_on_d_never_steer: bool = False,
 ) -> tuple[list[Path], list[Path], list[str]]:
     """Execute B then D for each seed. Never launches two GPQA jobs at once.
 
     Tick 375: if a planned run ID already has a complete Darwinian
     ``results.json``, resume-skip it (never overwrite). Incomplete existing
     dirs abort (preflight should have blocked them).
+
+    Tick 409: when ``abort_on_d_never_steer`` and ``max_gen≥3``, after each
+    Condition D completes (or resume-skips), prove gen≥3 CABS agenda via
+    ``g3_d_steering_ok``. On never-steer, abort remaining pairs so G4 cannot
+    burn ~$12 more after the first failed D (Tick 408 only refused READY
+    *after* all five pairs finished).
     """
     env = os.environ.copy()
     env.setdefault("SIA_CABS_ROOT", str(REPO_ROOT))
     b_dirs: list[Path] = []
     d_dirs: list[Path] = []
     notes: list[str] = []
+
+    def _maybe_abort_never_steer(run_id: int, d_dir: Path) -> bool:
+        """Return True if caller should abort remaining pairs."""
+        if not abort_on_d_never_steer or max_gen < _STEERING_MIN_GEN:
+            return False
+        ok, steers = g3_d_steering_ok([d_dir])
+        if ok:
+            return False
+        detail = next((c.detail for c in steers if not c.ok), "never-steer")
+        notes.append(
+            f"Tick 409: Condition D run_{run_id} never steered after delay-all "
+            f"({detail}) — abort remaining pairs to save budget"
+        )
+        return True
 
     for plan in report.plans:
         for condition, run_id, bucket in (
@@ -1141,6 +1162,8 @@ def run_sequential_live(
                 notes.append(
                     f"{condition} run_{run_id} resume-skip (already complete) → {existing}"
                 )
+                if condition == "D" and _maybe_abort_never_steer(run_id, existing):
+                    return b_dirs, d_dirs, notes
                 continue
             if existing is not None:
                 notes.append(
@@ -1171,6 +1194,8 @@ def run_sequential_live(
                 return b_dirs, d_dirs, notes
             bucket.append(run_dir)
             notes.append(f"{condition} run_{run_id} ok → {run_dir}")
+            if condition == "D" and _maybe_abort_never_steer(run_id, run_dir):
+                return b_dirs, d_dirs, notes
     return b_dirs, d_dirs, notes
 
 
@@ -1408,6 +1433,8 @@ def main(argv: list[str] | None = None) -> int:
         population_size=args.population_size,
         elite_count=args.elite_count,
         max_gen=args.max_gen,
+        # Tick 409: multi-seed G3 also aborts after first never-steer D.
+        abort_on_d_never_steer=True,
     )
     report.notes.extend(run_notes)
 

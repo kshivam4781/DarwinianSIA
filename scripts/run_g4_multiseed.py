@@ -34,6 +34,9 @@ Hard stops (never violate):
     READY / ledger stamp (Tick 407 G3 gate was G3→G4 only — G4 could still
     promote never-steer D into ``ICML_READY``); refuse READY + ledger on
     never-steer; sidecar trust refuses ``steering_applied_gen3=false``
+  - Tick 409: mid-G4 abort after first never-steer Condition D (via
+    ``run_sequential_live(abort_on_d_never_steer=True)``) so remaining pairs
+    do not burn ~$12; skip partial paper pack / Live Table promote
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1849,6 +1852,7 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     # Reuse G3 sequential executor (same hard-stop: never parallel).
+    # Tick 409: abort remaining pairs after first never-steer D (save budget).
     class _Compat:
         pass
 
@@ -1861,12 +1865,26 @@ def main(argv: list[str] | None = None) -> int:
         population_size=args.population_size,
         elite_count=args.elite_count,
         max_gen=args.max_gen,
+        abort_on_d_never_steer=True,
     )
     report.notes.extend(run_notes)
 
     paper_refreshed = False
     steering_ok = False
-    if b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
+    aborted_never_steer = any("Tick 409:" in n for n in run_notes)
+    if aborted_never_steer:
+        # Record steering checks for completed D dirs; do NOT promote a
+        # partial Live Table / READY from <5 pairs after mid-G4 abort.
+        if d_dirs:
+            _ok, steering_checks = g3_d_steering_ok(d_dirs)
+            for c in steering_checks:
+                report.checks.append(c)
+        report.notes.append(
+            "Tick 409: aborted remaining G4 pairs on never-steer — skipped "
+            "paper pack (refuse partial Live Table / READY)"
+        )
+        steering_ok = False
+    elif b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
         paper_refreshed = apply_paper_pack(
             report,
             b_dirs=b_dirs,
