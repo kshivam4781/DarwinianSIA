@@ -60,6 +60,9 @@ Hard stops (delegated to gate runners; never violate here either):
     pair budget; skip partial Live Table / paper pack promote).
   - Tick 410: G4 live + ``apply_paper_pack`` require all planned pairs before
     Live Table / READY (not merely equal B/D counts after mid-abort).
+  - Tick 411: G3 live + ``load_g3_metrics_for_g4`` require all planned pairs
+    before ``score_pilot`` / G4 advance (Tick 410 full-pair parity on G3 —
+    equal B/D after mid-abort must not promote a partial pilot).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -713,6 +716,21 @@ def load_g3_metrics_for_g4(
                 {},
                 "Tick 407: gate3 sidecar steering_applied_gen3=false — "
                 "refuse G4 burn on never-steer Condition D",
+            )
+        # Tick 411: refuse partial-pilot sidecar (n_pairs < planned B ids).
+        planned_n = len(g3_b_ids)
+        try:
+            scored_n = int(comparison.get("n_pairs") or 0)
+        except (TypeError, ValueError):
+            scored_n = 0
+        if planned_n and scored_n < planned_n:
+            return (
+                None,
+                {},
+                {},
+                "Tick 411: gate3 sidecar n_pairs="
+                f"{scored_n} < planned={planned_n} — refuse G4 burn on "
+                "partial G3 pilot",
             )
         if source == "prior_live_metrics":
             note = (

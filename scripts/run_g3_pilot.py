@@ -36,6 +36,11 @@ Hard stops (never violate):
     Contradiction-Aware agenda (positive control that delay-all *lifted*).
     Tick 406 only proves fair gen1→gen2 skip — without this, a never-steer
     regression still PASSes G2 and can burn G3/G4 with D≈B
+  - Tick 409: ``run_sequential_live(abort_on_d_never_steer=True)`` aborts
+    remaining pairs after first never-steer Condition D
+  - Tick 411: refuse ``score_pilot`` / G4 advance unless
+    ``len(B)==len(D)==len(plans)`` (Tick 410 G4 full-pair parity — equal
+    B/D counts after mid-abort must not promote a partial pilot)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - optional rough spend estimate before launching paid pairs (remaining only)
 
@@ -576,6 +581,44 @@ def resolve_run_dir(run_id: int, cwd: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
+def g3_full_pairs_for_metrics(
+    b_dirs: list[Path],
+    d_dirs: list[Path],
+    plans: list[PilotPlan],
+) -> bool:
+    """Tick 411: True only when every planned B/D pair is present.
+
+    Equal ``len(B)==len(D)`` is not enough — a mid-G3 abort (sia exit,
+    never-steer, crash) can leave 1 of 2 planned pairs with equal counts and
+    must not write a partial ``comparison`` that pipeline
+    ``g3_pilot_promising`` would treat as a full pilot → ~$14 G4 burn.
+    Mirrors Tick 410 ``g4_full_pairs_for_paper``.
+    """
+    n = len(plans)
+    return bool(n) and len(b_dirs) == n and len(d_dirs) == n
+
+
+def decide_g3_live_metrics_action(
+    *,
+    b_dirs: list[Path],
+    d_dirs: list[Path],
+    plans: list[PilotPlan],
+    run_notes: list[str],
+) -> str:
+    """Tick 409–411: decide live-path G3 metrics fate.
+
+    Returns one of:
+      - ``abort_never_steer`` — Tick 409 mid-G3 never-steer abort notes present
+      - ``score`` — all planned pairs complete (safe to ``score_pilot``)
+      - ``incomplete`` — partial / unequal pairs (skip compare / G4 advance)
+    """
+    if any("Tick 409:" in n for n in run_notes):
+        return "abort_never_steer"
+    if g3_full_pairs_for_metrics(b_dirs, d_dirs, plans):
+        return "score"
+    return "incomplete"
+
+
 def score_pilot(
     b_dirs: list[Path], d_dirs: list[Path]
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -827,6 +870,26 @@ def refresh_g3_metrics_on_ledger_skip(
             report.checks.append(
                 CheckResult("steering_applied_gen3", False, note)
             )
+            return False, note
+        # Tick 411: refuse partial-pilot sidecar vs planned pairs.
+        planned_n = len(b_ids)
+        try:
+            scored_n = int(comparison.get("n_pairs") or 0)
+        except (TypeError, ValueError):
+            scored_n = 0
+        if planned_n and scored_n < planned_n:
+            note = (
+                "Tick 411: trusted gate3 sidecar but n_pairs="
+                f"{scored_n} < planned={planned_n} — refuse G4 burn on "
+                "partial G3 pilot"
+            )
+            report.notes.append(note)
+            report.checks.append(
+                CheckResult("g3_full_pairs", False, note)
+            )
+            report.comparison = None
+            report.h5_by_d_run = {}
+            report.h2_by_d_run = {}
             return False, note
         if source == "prior_live_metrics":
             note = (
@@ -1439,7 +1502,26 @@ def main(argv: list[str] | None = None) -> int:
     report.notes.extend(run_notes)
 
     steering_ok = False
-    if b_dirs and d_dirs and len(b_dirs) == len(d_dirs):
+    # Tick 409–411: never-steer abort OR partial pairs → skip score_pilot.
+    metrics_action = decide_g3_live_metrics_action(
+        b_dirs=b_dirs,
+        d_dirs=d_dirs,
+        plans=report.plans,
+        run_notes=run_notes,
+    )
+    if metrics_action == "abort_never_steer":
+        # Record steering checks for completed D dirs; do NOT promote a
+        # partial pilot comparison that could auto-advance G4.
+        if d_dirs:
+            _ok, steering_checks = g3_d_steering_ok(d_dirs)
+            for c in steering_checks:
+                report.checks.append(c)
+        report.notes.append(
+            "Tick 409: aborted remaining G3 pairs on never-steer — skipped "
+            "compare_b_vs_d (refuse partial pilot → G4)"
+        )
+        steering_ok = False
+    elif metrics_action == "score":
         comparison, h5, h2 = score_pilot(b_dirs, d_dirs)
         report.comparison = comparison
         report.h5_by_d_run = h5
@@ -1453,7 +1535,18 @@ def main(argv: list[str] | None = None) -> int:
                 "Tick 407: Condition D gen≥3 steering FAILED — refuse G4 burn"
             )
     else:
-        report.notes.append("incomplete B/D pairs — skipped compare_b_vs_d")
+        report.notes.append(
+            "Tick 411: incomplete / partial B/D pairs "
+            f"(B={len(b_dirs)} D={len(d_dirs)} plans={len(report.plans)}) — "
+            "skipped compare_b_vs_d (refuse partial pilot → G4)"
+        )
+        report.checks.append(
+            CheckResult(
+                "g3_full_pairs",
+                False,
+                f"B={len(b_dirs)} D={len(d_dirs)} plans={len(report.plans)}",
+            )
+        )
 
     g3_ok = bool(report.comparison) and steering_ok
 

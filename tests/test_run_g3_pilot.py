@@ -1370,3 +1370,176 @@ def test_run_sequential_live_continues_when_d_steered(
     assert calls == ["B:1201", "D:1301", "B:1202", "D:1302"]
     assert len(b_dirs) == 2 and len(d_dirs) == 2
     assert not any("Tick 409:" in n for n in notes)
+
+
+def test_g3_full_pairs_for_metrics_requires_all_plans() -> None:
+    """Tick 411: equal B/D counts ≠ full planned pairs."""
+    from run_g3_pilot import build_plans, g3_full_pairs_for_metrics
+
+    plans = build_plans([1, 2], [1201, 1202], [1301, 1302])
+    assert g3_full_pairs_for_metrics([Path("b")] * 2, [Path("d")] * 2, plans) is True
+    assert g3_full_pairs_for_metrics([Path("b")], [Path("d")], plans) is False
+    assert g3_full_pairs_for_metrics([Path("b")] * 2, [Path("d")], plans) is False
+    assert g3_full_pairs_for_metrics([], [], plans) is False
+
+
+def test_decide_g3_live_metrics_action_partial_vs_abort_vs_score() -> None:
+    """Tick 411: abort / score / incomplete triage for G3 live metrics."""
+    from run_g3_pilot import build_plans, decide_g3_live_metrics_action
+
+    plans = build_plans([1, 2], [1201, 1202], [1301, 1302])
+    assert (
+        decide_g3_live_metrics_action(
+            b_dirs=[Path("b")],
+            d_dirs=[Path("d")],
+            plans=plans,
+            run_notes=["Tick 409: Condition D run_1301 never steered"],
+        )
+        == "abort_never_steer"
+    )
+    assert (
+        decide_g3_live_metrics_action(
+            b_dirs=[Path("b")] * 2,
+            d_dirs=[Path("d")] * 2,
+            plans=plans,
+            run_notes=["ok"],
+        )
+        == "score"
+    )
+    assert (
+        decide_g3_live_metrics_action(
+            b_dirs=[Path("b")],
+            d_dirs=[Path("d")],
+            plans=plans,
+            run_notes=["B run_1202 exited 1; aborting remaining pairs"],
+        )
+        == "incomplete"
+    )
+
+
+def test_g3_live_skips_score_on_partial_equal_pairs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 411: sia-exit mid-G3 with 1 equal pair must not call score_pilot."""
+    import run_g3_pilot as mod
+    from run_g3_pilot import (
+        decide_g3_live_metrics_action,
+        build_plans,
+    )
+
+    plans = build_plans([1, 2], [1201, 1202], [1301, 1302])
+    score_calls: list[str] = []
+
+    def _fake_score(b_dirs, d_dirs):  # noqa: ANN001
+        score_calls.append("score")
+        return {"n_pairs": 1}, {}, {}
+
+    monkeypatch.setattr(mod, "score_pilot", _fake_score)
+    monkeypatch.setattr(
+        mod,
+        "g3_d_steering_ok",
+        lambda d_dirs: (True, []),
+    )
+
+    # Simulate mid-abort: one equal pair, no Tick 409 notes (sia exit).
+    b_dirs = [tmp_path / "b1"]
+    d_dirs = [tmp_path / "d1"]
+    run_notes = ["B run_1202 exited 1; aborting remaining pairs"]
+    # Pre-Tick-411 bug: len(B)==len(D)==1 would have called score_pilot.
+    action = decide_g3_live_metrics_action(
+        b_dirs=b_dirs,
+        d_dirs=d_dirs,
+        plans=plans,
+        run_notes=run_notes,
+    )
+    assert action == "incomplete"
+    if action == "score":
+        mod.score_pilot(b_dirs, d_dirs)
+    assert score_calls == []
+
+
+def test_refresh_g3_metrics_refuses_partial_sidecar(
+    tmp_path: Path,
+) -> None:
+    """Tick 411: ledger-skip must not trust sidecar with n_pairs < planned."""
+    import run_g3_pilot as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    md = docs / "gate3_report.md"
+    md.write_text("# Gate 3\n", encoding="utf-8")
+    sidecar = md.with_suffix(".json")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": {
+                    "n_pairs": 1,
+                    "d_wins_final": 1,
+                    "mean_final_gap": 0.05,
+                    "primary_final_pass": True,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.6}},
+                "h2_by_d_run": {"run_1301": {"preferred_share": 0.75}},
+                "steering_applied_gen3": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = G3PreflightReport(
+        timestamp="t",
+        mode="live",
+        plans=build_plans([1, 2], [1201, 1202], [1301, 1302]),
+        ready_for_live=False,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_g3_metrics_on_ledger_skip(
+        report, gate3_report_md=md
+    )
+    assert ok is False
+    assert "Tick 411" in note
+    assert "n_pairs=1" in note
+    assert report.comparison is None
+
+
+def test_load_g3_metrics_refuses_partial_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 411: pipeline G3→G4 must not trust partial-pilot sidecar."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    md = docs / "gate3_report.md"
+    md.write_text("# Gate 3\n", encoding="utf-8")
+    sidecar = md.with_suffix(".json")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "comparison": {
+                    "n_pairs": 1,
+                    "d_wins_final": 1,
+                    "mean_final_gap": 0.05,
+                    "primary_final_pass": True,
+                },
+                "h5_by_d_run": {"run_1301": {"spearman_rho": 0.6}},
+                "h2_by_d_run": {},
+                "steering_applied_gen3": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+    comparison, h5, h2, src = pipe.load_g3_metrics_for_g4(
+        g3_b_ids=[1201, 1202],
+        g3_d_ids=[1301, 1302],
+        report_md=md,
+    )
+    assert comparison is None
+    assert "Tick 411" in src
+    assert "n_pairs=1" in src
+    assert "planned=2" in src
