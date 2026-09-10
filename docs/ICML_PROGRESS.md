@@ -1,5 +1,39 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-10T02:18Z — Tick 402 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-1487`; recovered tip `f49c` (Tick 392 chicken-egg path)
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, G2 dry-run Condition D logs printed `CABS mutation bias: {…}` while breeding gen1→gen2 even though delay-all sets `apply_mutation_bias=False` — operators/reviewers could misread the fair early breed as steered. Highest leverage without paid spend: **honest deferred-vs-applied CABS steering logs**.
+
+### What this tick did (ONE step)
+**Delay-all CABS steering log honesty (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 401 (`f49c`); confirmed secrets absent; boot `1487` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_cabs_steering_log_line` + breed-loop log: `(deferred until gen≥2 …)` vs `(applied)`; synced `sia-upstream`; unit test; G2 dry-run `run_1951` confirms deferred line on gen1→gen2
+3. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 401) | After (Tick 402) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Gen1→gen2 breed log | looked steered (`CABS mutation bias: …`) | **deferred** (`… (deferred until gen≥2 breed; fair mutate this step)`) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-10T00:15Z — Tick 401 (automation cron)
 
 ### Status snapshot

@@ -397,6 +397,24 @@ def run_population_generation(
     return records
 
 
+def _cabs_steering_log_line(kind: str, payload: object, *, applied: bool) -> str:
+    """Tick 402: honest delay-all log line for loaded CABS steering.
+
+    Bias / technique seeds are loaded every breed step, but under delay-all
+    they are not applied until breeding from gen≥2. Saying only
+    ``CABS mutation bias: …`` made dry-run/live logs look steered on the
+    fair gen1→gen2 step.
+    """
+    if applied:
+        return f"  CABS {kind} (applied): {payload}"
+    return (
+        f"  CABS {kind} (deferred until gen≥2 breed; "
+        f"fair mutate this step): {payload}"
+        if kind == "mutation bias"
+        else f"  CABS {kind} (deferred until gen≥2 breed): {payload}"
+    )
+
+
 def run_darwinian_loop(
     max_gen: int,
     run_setup: RunSetup,
@@ -580,16 +598,6 @@ def run_darwinian_loop(
 
         mutation_bias = None
         cabs_technique_seeds: list[str] = []
-        if enable_cabs:
-            from sia.evolution.cabs_bridge import load_approved_technique_names, load_mutation_bias
-
-            mutation_bias = load_mutation_bias(run_setup.run_directory, cabs_store)
-            cabs_technique_seeds = load_approved_technique_names(run_setup.run_directory, cabs_store)
-            if mutation_bias:
-                logger.info(f"  CABS mutation bias: {mutation_bias}")
-            if cabs_technique_seeds:
-                logger.info(f"  CABS technique seeds: {cabs_technique_seeds}")
-
         # Delay *all* Condition D DNA steering until breeding from gen≥2:
         # gen1→gen2 stays fair (no XO bias, no mutation bias) so preferred
         # share cannot collapse before H5 / gens-to-threshold accumulate.
@@ -597,6 +605,27 @@ def run_darwinian_loop(
         apply_crossover_bias = current_gen >= 2
         apply_mutation_bias = current_gen >= 2
         apply_mutation_anchor = current_gen >= 2
+
+        if enable_cabs:
+            from sia.evolution.cabs_bridge import load_approved_technique_names, load_mutation_bias
+
+            mutation_bias = load_mutation_bias(run_setup.run_directory, cabs_store)
+            cabs_technique_seeds = load_approved_technique_names(run_setup.run_directory, cabs_store)
+            # Tick 402: log deferred vs applied (see `_cabs_steering_log_line`).
+            if mutation_bias:
+                logger.info(
+                    _cabs_steering_log_line(
+                        "mutation bias", mutation_bias, applied=apply_mutation_bias
+                    )
+                )
+            if cabs_technique_seeds:
+                logger.info(
+                    _cabs_steering_log_line(
+                        "technique seeds",
+                        cabs_technique_seeds,
+                        applied=apply_mutation_bias,
+                    )
+                )
 
         for agent_id in range(population_size):
             # Tournament selection: pick two elites (with replacement if only one)

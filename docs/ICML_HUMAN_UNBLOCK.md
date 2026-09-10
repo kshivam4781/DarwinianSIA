@@ -99,6 +99,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
 
+**Tick 402:** **delay-all CABS steering log honesty** — breed logs mark `(deferred until gen≥2…)` vs `(applied)` so gen1→gen2 fair mutate is not misread as steered (G2 dry-run `run_1951`). Live still needs NEBIUS + HF/CSV.
+
 **Tick 401:** **README offline ID lock** — root `README.md` evidence checklist no longer freezes superseded Tick-300 `1890–1904`; cites current offline B/D `1930–1934` / `1940–1944`. `committed_offline_bvd_matches_live_shape` extended. Live still needs NEBIUS + HF/CSV.
 
 **Tick 400:** **human-unblock offline ID lock** — dual-unblock intro no longer freezes superseded Tick-300 `1890–1904`; cites current offline B/D `1930–1934` / `1940–1944`. `committed_offline_bvd_matches_live_shape` extended. Live still needs NEBIUS + HF/CSV.

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-10 (Section 21 ICML; Tick 401 README offline ID lock; Tick 400 human-unblock ID lock; Tick 399 judge-surface ID lock; Tick 398 case-study post-adoption H2; …)
+**Last updated:** 2026-09-10 (Section 21 ICML; Tick 402 delay-all CABS steering log honesty; Tick 401 README offline ID lock; Tick 400 human-unblock ID lock; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -853,6 +853,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | SUBMISSION/PRESENTATION/present_hackathon cite `1930–1944` / `run_1940`; restore `offline_bvd_summary.json` figures list; lock extended |
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root `README.md` evidence checklist cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended |
+| ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs mark `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951`; unit test |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -921,6 +922,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | SUBMISSION/PRESENTATION/present_hackathon track current offline Bvd IDs; empty `figures: []` restored; `committed_offline_bvd_matches_live_shape` extended |
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | Dual-unblock intro tracks current offline B/D IDs; lock rejects Tick-300 `1890–1904` span |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root README evidence checklist tracks current offline B/D IDs; lock rejects Tick-300 `1890–1904` span |
+| ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | `_cabs_steering_log_line` deferred vs applied; dry-run `run_1951` confirms |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1001,6 +1003,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML judge-surface offline ID lock (Tick 399) | **DONE** | Judge docs + present demo cite `1930–1944` / `run_1940`; restore summary figures; paper-ID lock extended |
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944`; paper-ID lock extended |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root `README.md` evidence checklist cites `1930–1934` / `1940–1944`; paper-ID lock extended |
+| ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs deferred vs applied under delay-all; `run_1951` |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–401 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2624,3 +2627,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Human-unblock offline ID lock (Tick 400):** After Tick 399, operator-facing `docs/ICML_HUMAN_UNBLOCK.md` dual-unblock intro still froze Tick-300 `1890–1904` as the “PRIMARY-shaped offline” cite. Dual-unblock now cites `1930–1934` / `1940–1944`; `committed_offline_bvd_matches_live_shape` rejects the superseded combined span in that section. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **README offline ID lock (Tick 401):** After Tick 399–400, root `README.md` evidence checklist still froze Tick-300 `1890–1904` (first surface humans open). Checklist now cites `1930–1934` / `1940–1944`; `committed_offline_bvd_matches_live_shape` extended. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Delay-all CABS steering log honesty (Tick 402):** G2 dry-run Condition D printed `CABS mutation bias: {…}` while breeding gen1→gen2 even though `apply_mutation_bias=False` (delay-all). Operators could misread fair early breeding as steered. `_cabs_steering_log_line` now marks `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951` confirms; unit test. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

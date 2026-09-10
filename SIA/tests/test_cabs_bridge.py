@@ -451,6 +451,24 @@ def test_breed_offspring_can_delay_crossover_bias():
     assert steered < n
 
 
+def test_cabs_steering_log_line_marks_deferred_vs_applied():
+    """Tick 402: delay-all logs must not look steered on fair gen1→gen2 breed."""
+    from sia.evolution.population import _cabs_steering_log_line
+
+    bias = {"tool_strategy": ["aggressive", "minimal"]}
+    deferred = _cabs_steering_log_line("mutation bias", bias, applied=False)
+    applied = _cabs_steering_log_line("mutation bias", bias, applied=True)
+    assert "deferred until gen≥2" in deferred
+    assert "fair mutate this step" in deferred
+    assert "applied" in applied
+    assert "deferred" not in applied
+    seeds_deferred = _cabs_steering_log_line(
+        "technique seeds", ["seed_a"], applied=False
+    )
+    assert "deferred until gen≥2" in seeds_deferred
+    assert "fair mutate" not in seeds_deferred
+
+
 def test_breed_offspring_can_delay_all_mutation_bias():
     """Early gens can disable mutation bias entirely (uniform mutate)."""
     bias = {"memory": ["failure_based", "full_history"]}
