@@ -269,7 +269,9 @@ def breed_offspring(
     optional so early generations can stay fair (Condition-B-like breeding)
     while later gens apply full CABS steering (soft bias-aware XO + anchored
     mutate). When ``apply_mutation_bias`` is False, mutate is uniform even if
-    ``bias`` is set.
+    ``bias`` is set, and committee ``technique_seeds`` are **not** injected
+    (Tick 403 — delay-all must not leak seeds onto gen1→gen2 DNA while logs
+    claim steering is deferred).
     """
     xo_bias = bias if apply_crossover_bias else None
     mut_bias = bias if apply_mutation_bias else None
@@ -281,4 +283,7 @@ def breed_offspring(
         bias=mut_bias,
         anchor_preferred=apply_mutation_anchor,
     )
-    return inject_technique_seeds(child, technique_seeds or [])
+    # Tick 403: same delay-all gate as mutation bias — do not inject
+    # committee technique_seeds during the fair early breed step.
+    seeds = technique_seeds if apply_mutation_bias else None
+    return inject_technique_seeds(child, seeds or [])

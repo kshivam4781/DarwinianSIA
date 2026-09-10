@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-10 (Section 21 ICML; Tick 402 delay-all CABS steering log honesty; Tick 401 README offline ID lock; Tick 400 human-unblock ID lock; …)
+**Last updated:** 2026-09-10 (Section 21 ICML; Tick 403 delay-all technique_seeds gate; Tick 402 delay-all log honesty; Tick 401 README offline ID lock; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -854,6 +854,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root `README.md` evidence checklist cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended |
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs mark `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951`; unit test |
+| ICML delay-all technique_seeds gate (Tick 403) | **DONE** | `breed_offspring` skips committee `technique_seeds` inject when `apply_mutation_bias=False`; Tick 402 deferred log now matches DNA |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -923,6 +924,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | Dual-unblock intro tracks current offline B/D IDs; lock rejects Tick-300 `1890–1904` span |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root README evidence checklist tracks current offline B/D IDs; lock rejects Tick-300 `1890–1904` span |
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | `_cabs_steering_log_line` deferred vs applied; dry-run `run_1951` confirms |
+| ICML delay-all technique_seeds gate (Tick 403) | **DONE** | Gate `inject_technique_seeds` on delay-all; `test_breed_offspring_delay_all_skips_technique_seed_inject` |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1004,6 +1006,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML human-unblock offline ID lock (Tick 400) | **DONE** | `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944`; paper-ID lock extended |
 | ICML README offline ID lock (Tick 401) | **DONE** | Root `README.md` evidence checklist cites `1930–1934` / `1940–1944`; paper-ID lock extended |
 | ICML delay-all CABS steering log honesty (Tick 402) | **DONE** | Breed logs deferred vs applied under delay-all; `run_1951` |
+| ICML delay-all technique_seeds gate (Tick 403) | **DONE** | Fair gen1→gen2 DNA no longer gets committee technique_seeds |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–401 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |

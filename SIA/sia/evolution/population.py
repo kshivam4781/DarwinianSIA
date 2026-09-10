@@ -398,10 +398,11 @@ def run_population_generation(
 
 
 def _cabs_steering_log_line(kind: str, payload: object, *, applied: bool) -> str:
-    """Tick 402: honest delay-all log line for loaded CABS steering.
+    """Tick 402/403: honest delay-all log line for loaded CABS steering.
 
     Bias / technique seeds are loaded every breed step, but under delay-all
-    they are not applied until breeding from gen≥2. Saying only
+    they are not applied until breeding from gen≥2 (Tick 403 also gates
+    ``inject_technique_seeds`` on ``apply_mutation_bias``). Saying only
     ``CABS mutation bias: …`` made dry-run/live logs look steered on the
     fair gen1→gen2 step.
     """
