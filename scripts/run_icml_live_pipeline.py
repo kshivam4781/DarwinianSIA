@@ -66,6 +66,8 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 412: G4 ledger-skip + ``refresh_g4_paper_pack_on_resume`` refuse
     sidecar ``n_pairs < planned`` (Tick 411 G3 parity); direct G4 ledger-skip
     exits 4 when paper-pack trust fails.
+  - Tick 413: G4 H5 VALIDITY + pipeline resume refuse thin H5 (ρ>0.3 on
+    ``n_pass < 3`` of planned 5 — errors must not shrink the denominator).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -886,8 +888,18 @@ def refresh_g4_paper_pack_on_resume(
                 f"{scored_n} < planned={planned_n} — refuse READY / "
                 "paper-pack trust on partial G4 Live Table"
             )
+        # Tick 413: re-validate H5 vs planned denominator (thin H5 READY poison).
+        h5_payload = _h5 if isinstance(_h5, dict) else {}
+        if not g4.h5_validity_pass(h5_payload, planned_n=planned_n):
+            return (
+                "Tick 413: gate4 sidecar H5 fails planned denominator "
+                f"(planned={planned_n}) — refuse READY / paper-pack trust "
+                "on thin H5 VALIDITY"
+            )
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
+            if ready_status == "READY" and not bool(meta.get("primary_pass")):
+                ready_status = "IN_PROGRESS"
             report.icml_ready_status = ready_status
         if source == "prior_live_metrics":
             note = (

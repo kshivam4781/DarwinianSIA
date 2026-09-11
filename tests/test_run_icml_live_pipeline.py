@@ -1089,6 +1089,11 @@ def test_g4_resume_refreshes_paper_pack_when_sidecar_preflight(
         calls["b_dirs"] = kwargs["b_dirs"]
         calls["d_dirs"] = kwargs["d_dirs"]
         calls["allow_ready"] = kwargs["allow_ready"]
+        from run_g3_pilot import CheckResult
+
+        report.checks.append(
+            CheckResult("steering_applied_gen3", True, "mocked steered")
+        )
         report.primary_pass = True
         report.h2_pass = True
         report.h5_pass = True
@@ -1176,11 +1181,19 @@ def test_g4_resume_trusts_live_executed_sidecar_ledger_only(
                 "executed": True,
                 "paper_refreshed": True,
                 "ready_status": "READY",
+                "steering_applied_gen3": True,
+                "primary_pass": True,
+                "h5_pass": True,
                 "comparison": {
                     "n_pairs": 5,
                     "primary_gens30_pass": True,
                     "d_wins_gens30": 4,
                 },
+                "h5_by_d_run": {
+                    f"run_{1311 + i}": {"spearman_rho": 0.55}
+                    for i in range(5)
+                },
+                "h2_by_d_run": {},
             }
         ),
         encoding="utf-8",
@@ -1222,14 +1235,21 @@ def test_refresh_g4_paper_pack_on_resume_trusts_prior_live_metrics(
                         "primary_gens30_pass": True,
                         "d_wins_gens30": 4,
                     },
-                    "h5_by_d_run": {},
-                    "h2_by_d_run": {},
+                    "h5_by_d_run": {
+                        f"run_{1311 + i}": {"spearman_rho": 0.7}
+                        for i in range(5)
+                    },
+                    "h2_by_d_run": {
+                        f"run_{1311 + i}": {"preferred_share": 0.75}
+                        for i in range(5)
+                    },
                     "executed": True,
                     "paper_refreshed": True,
                     "primary_pass": True,
                     "h2_pass": True,
                     "h5_pass": True,
                     "ready_status": "READY",
+                    "steering_applied_gen3": True,
                 },
             }
         ),
@@ -1332,6 +1352,56 @@ def test_refresh_g4_paper_pack_refuses_partial_sidecar(
     )
     assert "n_pairs=2" in note
     assert "planned=5" in note
+    assert "refuse" in note.lower()
+    assert report.icml_ready_status != "READY"
+
+
+def test_refresh_g4_paper_pack_refuses_thin_h5_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 413: full n_pairs sidecar with thin H5 refuses READY trust."""
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {"n_pairs": 5, "primary_gens30_pass": True},
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {
+                    "run_1311": {"spearman_rho": 0.95},
+                    "run_1312": {"error": "x"},
+                    "run_1313": {"error": "x"},
+                    "run_1314": {"error": "x"},
+                    "run_1315": {"error": "x"},
+                },
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    report = PipelineReport(timestamp="2026-09-11T02:12:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+        report=report,
+        gate4_report_md=docs / "gate4_report.md",
+    )
+    assert "Tick 413" in note
+    assert "thin H5" in note or "planned=5" in note
     assert "refuse" in note.lower()
     assert report.icml_ready_status != "READY"
 

@@ -45,6 +45,10 @@ Hard stops (never violate):
     ``n_pairs < planned`` (Tick 411 G3 parity) — a partial prior_live /
     live sidecar must not promote READY / paper-pack trust; ledger-skip
     returns exit 4 when paper-pack trust fails (G3 Tick 407/411 parity)
+  - Tick 413: H5 VALIDITY (and live H2 skew helper) use **planned** G4
+    seed count as denominator — errors/missing must not shrink ``n_total``
+    so a single ρ>0.3 among four H5 errors cannot flip ``h5_pass`` /
+    ``ICML_READY`` READY; sidecar trust re-validates H5/H2 vs planned
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -508,9 +512,21 @@ def h5_pass_count(h5_by_d_run: dict[str, Any]) -> tuple[int, int]:
     return n_pass, n_total
 
 
-def h5_validity_pass(h5_by_d_run: dict[str, Any]) -> bool:
-    """VALIDITY: majority of scored D seeds have Spearman ρ > 0.3 (≥3 when n≥5)."""
+def h5_validity_pass(
+    h5_by_d_run: dict[str, Any],
+    *,
+    planned_n: int | None = None,
+) -> bool:
+    """VALIDITY: ≥3/5 Condition D seeds have Spearman ρ > 0.3 (G4 planned).
+
+    Tick 413: when ``planned_n >= 5`` (G4), require ``n_pass >= 3`` against the
+    **planned** seed count — ``h5_pass_count`` skips errors, so a single ρ>0.3
+    among four ``error`` payloads previously false-passed via
+    ``n_total < 5 → n_pass == n_total``. Errors/missing count as non-pass.
+    """
     n_pass, n_total = h5_pass_count(h5_by_d_run)
+    if planned_n is not None and planned_n >= 5:
+        return n_pass >= 3
     if n_total <= 0:
         return False
     if n_total >= 5:
@@ -541,13 +557,21 @@ def score_live_h2(d_dirs: list[Path], field: str | None = None) -> dict[str, Any
     return out
 
 
-def h2_skew_pass(h2_by_d_run: dict[str, Any], *, min_share: float = 0.5) -> bool:
+def h2_skew_pass(
+    h2_by_d_run: dict[str, Any],
+    *,
+    min_share: float = 0.5,
+    planned_n: int | None = None,
+) -> bool:
     """MECHANISM live H2: ≥3/5 D runs show *preferred*-allele DNA share ≥ min_share.
 
     Tick 364: require the fitness-weighted preferred allele (first ``bias_values``
     entry / ``preferred_share``), not mere contradiction-pool membership
     (``in_bias_share``). A population dominated by the loser allele still has
     ``in_bias_share=1.0`` and previously false-passed MECHANISM.
+
+    Tick 413: when ``planned_n >= 5``, require ``n_pass >= 3`` against planned
+    seeds (errors/missing no longer shrink the denominator — H5 parity).
     """
     n_pass = 0
     n_total = 0
@@ -571,6 +595,8 @@ def h2_skew_pass(h2_by_d_run: dict[str, Any], *, min_share: float = 0.5) -> bool
         if isinstance(pref_share, (int, float)) and float(pref_share) >= min_share:
             n_pass += 1
             continue
+    if planned_n is not None and planned_n >= 5:
+        return n_pass >= 3
     if n_total >= 5:
         return n_pass >= 3
     return n_pass >= 1 and n_pass == n_total
@@ -837,7 +863,7 @@ def refresh_paper_artifacts_live(
     h5_n_pass, h5_n = h5_pass_count(h5_by_d_run)
     h5_line = f"H5 ρ>0.3 on live D runs: **{h5_n_pass}/{h5_n}**.\n"
     h2 = h2_by_d_run or {}
-    h2_ok = h2_skew_pass(h2)
+    h2_ok = h2_skew_pass(h2, planned_n=len(plans))
     # Tick 367: when compare has a 5-seed aggregate, prefer h2_preferred_pass
     # (same key as offline Tick 366) so Live Table cannot hide loser-dominated
     # seed counts behind a binary skew_pass.
@@ -894,7 +920,7 @@ def refresh_paper_artifacts_live(
     for name, payload in h5_by_d_run.items():
         if isinstance(payload, dict) and "error" not in payload:
             rhos.append(f"{name}={_fmt_num(payload.get('spearman_rho'))}")
-    h5_ok = h5_validity_pass(h5_by_d_run)
+    h5_ok = h5_validity_pass(h5_by_d_run, planned_n=len(plans))
     h5_row = (
         f"| H5 Spearman ρ (live) | "
         f"{'; '.join(rhos) if rhos else '—'}; "
@@ -1456,15 +1482,42 @@ def refresh_paper_pack_on_ledger_skip(
             return False, note
         report.comparison = comparison
         report.primary_pass = bool(meta.get("primary_pass"))
-        report.h2_pass = bool(meta.get("h2_pass"))
-        report.h5_pass = bool(meta.get("h5_pass"))
+        # Tick 413: re-validate H5/H2 vs planned denominator — do not trust
+        # meta.h5_pass / meta.h2_pass written by pre-413 thin-denominator logic.
         report.h5_by_d_run = h5
         report.h2_by_d_run = h2
+        report.h5_pass = h5_validity_pass(h5, planned_n=planned_n)
+        if (
+            int(comparison.get("n_pairs") or 0) >= 5
+            and comparison.get("h2_preferred_pass") is not None
+        ):
+            report.h2_pass = bool(comparison["h2_preferred_pass"])
+        else:
+            report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
+        if bool(meta.get("h5_pass")) and not report.h5_pass:
+            note = (
+                "Tick 413: trusted gate4 sidecar but H5 fails planned "
+                f"denominator (planned={planned_n}; "
+                f"ρ>0.3 pass count insufficient) — refuse READY / "
+                "paper-pack trust on thin H5 VALIDITY"
+            )
+            report.checks.append(CheckResult("h5_planned", False, note))
+            report.notes.append(note)
+            report.primary_pass = False
+            report.h2_pass = False
+            report.h5_pass = False
+            report.ready_status = "IN_PROGRESS"
+            return False, note
         figs = meta.get("figures_written")
         if isinstance(figs, list):
             report.figures_written = figs
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
+            # Demote poisoned READY when recomputed validity fails.
+            if ready_status == "READY" and not (
+                report.primary_pass and report.h5_pass
+            ):
+                ready_status = "IN_PROGRESS"
             report.ready_status = ready_status
         if source == "prior_live_metrics":
             note = (
@@ -1553,7 +1606,8 @@ def apply_paper_pack(
     report.h5_by_d_run = h5
     report.h2_by_d_run = h2
     report.primary_pass = primary_criteria_pass(comparison)
-    report.h5_pass = h5_validity_pass(h5)
+    planned_n = len(report.plans)
+    report.h5_pass = h5_validity_pass(h5, planned_n=planned_n)
     # Tick 367: align MECHANISM with compare aggregate when n≥5 (Tick 366 key).
     if (
         int(comparison.get("n_pairs") or 0) >= 5
@@ -1561,7 +1615,7 @@ def apply_paper_pack(
     ):
         report.h2_pass = bool(comparison["h2_preferred_pass"])
     else:
-        report.h2_pass = h2_skew_pass(h2)
+        report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
 
     paper_refreshed = False
     figures: list[str] = []

@@ -596,6 +596,26 @@ def test_h2_h5_pass_helpers() -> None:
             "e": {"spearman_rho": 0.1},
         }
     )
+    # Tick 413: 1 ρ>0.3 + 4 errors must NOT pass when planned_n=5.
+    thin_h5 = {
+        "r0": {"spearman_rho": 0.9},
+        "r1": {"error": "missing"},
+        "r2": {"error": "missing"},
+        "r3": {"error": "missing"},
+        "r4": {"error": "missing"},
+    }
+    assert h5_validity_pass(thin_h5) is True  # legacy: n_total=1 path
+    assert h5_validity_pass(thin_h5, planned_n=5) is False
+    assert h5_validity_pass(
+        {
+            "r0": {"spearman_rho": 0.5},
+            "r1": {"spearman_rho": 0.6},
+            "r2": {"spearman_rho": 0.7},
+            "r3": {"error": "x"},
+            "r4": {"error": "y"},
+        },
+        planned_n=5,
+    )
     assert h2_skew_pass(
         {
             f"r{i}": {
@@ -649,6 +669,23 @@ def test_h2_h5_pass_helpers() -> None:
             for i in range(5)
         }
     )
+    # Tick 413: single preferred H2 + errors must not pass planned_n=5.
+    thin_h2 = {
+        "r0": {
+            "preferred_share": 0.9,
+            "in_bias_share": 1.0,
+            "preferred_value": "selective",
+            "counts": {"selective": 9},
+            "total": 9,
+            "bias_values": ["selective"],
+        },
+        "r1": {"error": "x"},
+        "r2": {"error": "x"},
+        "r3": {"error": "x"},
+        "r4": {"error": "x"},
+    }
+    assert h2_skew_pass(thin_h2) is True  # legacy thin path
+    assert h2_skew_pass(thin_h2, planned_n=5) is False
 
 
 def test_compare_b_vs_d_h2_preferred_aggregate(monkeypatch) -> None:
@@ -1374,6 +1411,22 @@ def test_refresh_paper_pack_on_ledger_skip_trusts_sidecar(
                 "h2_pass": True,
                 "h5_pass": True,
                 "ready_status": "READY",
+                "steering_applied_gen3": True,
+                "h5_by_d_run": {
+                    f"run_{1311 + i}": {"spearman_rho": 0.5 + 0.05 * i}
+                    for i in range(5)
+                },
+                "h2_by_d_run": {
+                    f"run_{1311 + i}": {
+                        "preferred_share": 0.8,
+                        "in_bias_share": 1.0,
+                        "preferred_value": "selective",
+                        "counts": {"selective": 4},
+                        "total": 4,
+                        "bias_values": ["selective"],
+                    }
+                    for i in range(5)
+                },
             }
         ),
         encoding="utf-8",
@@ -1550,14 +1603,21 @@ def test_refresh_paper_pack_on_ledger_skip_trusts_prior_live_metrics(
                         "d_wins_gens30": 4,
                         "primary_gens30_pass": True,
                     },
-                    "h5_by_d_run": {"run_1311": {"spearman_rho": 0.65}},
-                    "h2_by_d_run": {"run_1311": {"preferred_share": 0.7}},
+                    "h5_by_d_run": {
+                        f"run_{1311 + i}": {"spearman_rho": 0.65}
+                        for i in range(5)
+                    },
+                    "h2_by_d_run": {
+                        f"run_{1311 + i}": {"preferred_share": 0.7}
+                        for i in range(5)
+                    },
                     "executed": True,
                     "paper_refreshed": True,
                     "primary_pass": True,
                     "h2_pass": True,
                     "h5_pass": True,
                     "ready_status": "READY",
+                    "steering_applied_gen3": True,
                 },
             }
         ),
@@ -1933,6 +1993,88 @@ def test_refresh_paper_pack_refuses_partial_sidecar(
     assert report.comparison is None
     assert report.ready_status is None or report.ready_status == "IN_PROGRESS"
     assert any(c.name == "g4_full_pairs" and not c.ok for c in report.checks)
+
+
+def test_refresh_paper_pack_refuses_thin_h5_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 413: n_pairs=5 sidecar with thin H5 (1 pass / 4 errors) refuses READY."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {
+                    "n_pairs": 5,
+                    "primary_gens30_pass": True,
+                    "h2_preferred_pass": True,
+                },
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {
+                    "run_1311": {"spearman_rho": 0.9},
+                    "run_1312": {"error": "missing"},
+                    "run_1313": {"error": "missing"},
+                    "run_1314": {"error": "missing"},
+                    "run_1315": {"error": "missing"},
+                },
+                "h2_by_d_run": {
+                    f"run_{1311 + i}": {
+                        "preferred_share": 0.8,
+                        "in_bias_share": 1.0,
+                        "preferred_value": "selective",
+                        "counts": {"selective": 4},
+                        "total": 4,
+                        "bias_values": ["selective"],
+                    }
+                    for i in range(5)
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-11T02:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert ok is False
+    assert "Tick 413" in note
+    assert "thin H5" in note or "planned" in note
+    assert report.h5_pass is False
+    assert report.ready_status == "IN_PROGRESS"
+    assert any(c.name == "h5_planned" and not c.ok for c in report.checks)
 
 
 def test_g4_full_pairs_for_paper_requires_all_plans() -> None:
