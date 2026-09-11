@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-11T02:15Z — Tick 413 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-64d0`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 412 closed G4 sidecar `n_pairs < planned`, but `h5_validity_pass` still treated error payloads as absent — a single ρ>0.3 among four H5 errors false-passed VALIDITY (`n_total < 5 → n_pass == n_total`) and could flip `ICML_READY` READY. Highest leverage without paid spend: **H5 planned-denominator VALIDITY**.
+
+### What this tick did (ONE step)
+**H5 planned-denominator VALIDITY gate (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 412 (`f49c`); confirmed secrets absent; boot `64d0` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `h5_validity_pass(..., planned_n=)` + `h2_skew_pass(..., planned_n=)` require `n_pass ≥ 3` when planned ≥5
+3. G4 ledger-skip + pipeline resume re-validate thin H5 sidecars (refuse READY trust)
+4. Unit tests: thin H5 helpers + `test_refresh_paper_pack_refuses_thin_h5_sidecar` + pipeline resume thin H5 — **29/29** related
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 412) | After (Tick 413) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| H5 1-pass + 4-error → READY | possible | **PASS** unit — refuse |
+| Sidecar thin H5 trust | possible | **PASS** unit — refuse |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-11T00:05Z — Tick 412 (automation cron)
 
 ### Status snapshot

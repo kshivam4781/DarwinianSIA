@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-11 (Section 21 ICML; Tick 412 G4 full-pair sidecar trust; Tick 411 G3 full-pair metrics gate; Tick 410 G4 full-pair paper-pack gate; …)
+**Last updated:** 2026-09-11 (Section 21 ICML; Tick 413 H5 planned-denominator VALIDITY; Tick 412 G4 full-pair sidecar trust; Tick 411 G3 full-pair metrics gate; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -864,6 +864,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair paper-pack gate (Tick 410) | **DONE** | Live + `apply_paper_pack` require `len(B)==len(D)==len(plans)`; refuse partial Live Table after sia-exit mid-abort |
 | ICML G3 full-pair metrics gate (Tick 411) | **DONE** | Live + ledger-skip + pipeline require all planned pairs before `score_pilot` / G4 advance (refuse partial pilot) |
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + pipeline resume refuse sidecar `n_pairs < planned`; ledger-skip / resume exit 4 on trust fail |
+| ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` requires ≥3/5 ρ>0.3; sidecar/resume refuse thin H5 READY poison |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -943,6 +944,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair paper-pack gate (Tick 410) | **DONE** | Require all planned pairs before Live Table / READY |
 | ICML G3 full-pair metrics gate (Tick 411) | **DONE** | Require all planned pairs before `score_pilot` / G4 advance |
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + resume refuse `n_pairs < planned`; exit 4 on trust fail |
+| ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` ≥3/5; refuse thin H5 READY |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1034,7 +1036,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair paper-pack gate (Tick 410) | **DONE** | `g4_full_pairs_for_paper` / `decide_g4_live_paper_action`; refuse partial equal B/D paper pack |
 | ICML G3 full-pair metrics gate (Tick 411) | **DONE** | `g3_full_pairs_for_metrics` / `decide_g3_live_metrics_action`; refuse partial pilot → G4 |
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + resume refuse `n_pairs < planned`; exit 4 on trust fail |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–411 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` ≥3/5; refuse thin H5 READY |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–413 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2679,3 +2682,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **G3 full-pair metrics gate (Tick 411):** Tick 410 closed G4 partial equal-pair paper pack, but G3 live still scored when `len(B)==len(D)` only — a mid-G3 sia-exit leaving 1 of 2 pairs could write a partial `comparison` that pipeline `g3_pilot_promising` would treat as a full pilot → ~$14 G4 burn. Now `g3_full_pairs_for_metrics` / `decide_g3_live_metrics_action` require all planned pairs before `score_pilot`; ledger-skip + `load_g3_metrics_for_g4` refuse sidecar `n_pairs < planned`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **G4 full-pair sidecar trust (Tick 412):** Tick 411 closed G3 sidecar `n_pairs < planned`, but G4 ledger-skip / pipeline resume still trusted a partial gate4 sidecar (e.g. `n_pairs=1` with `ready_status=READY`) and exited 0 — poisoning READY trust after mid-abort. Now `refresh_paper_pack_on_ledger_skip` + `refresh_g4_paper_pack_on_resume` refuse sidecar `n_pairs < planned`; direct G4 ledger-skip exits 4 on trust fail; pipeline resume returns 4 on refuse notes. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**H5 planned-denominator VALIDITY (Tick 413):** `h5_pass_count` skips errors, so a single ρ>0.3 among four H5 errors previously false-passed via `n_total < 5 → n_pass == n_total` and could flip `ICML_READY` READY. `h5_validity_pass(..., planned_n=)` (and `h2_skew_pass` parity) now require `n_pass ≥ 3` against planned G4 seeds; ledger-skip / pipeline resume re-validate and refuse thin H5 sidecars. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

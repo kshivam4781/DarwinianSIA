@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 412: G4 ledger-skip / resume refuse sidecar `n_pairs < planned` (Tick 411 G3 parity) + ledger-skip exit 4 on trust fail. Tick 411 G3 full-pair metrics. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 413: H5 VALIDITY uses planned G4 seed denominator (≥3/5 ρ>0.3; thin H5 sidecar refuse). Tick 412 G4 full-pair sidecar trust. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -323,6 +323,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 410 G4 full-pair paper-pack gate — `g4_full_pairs_for_paper` / `decide_g4_live_paper_action` require `len(B)==len(D)==len(plans)` before Live Table / READY (refuse partial equal pairs after sia-exit mid-abort)
 - [x] Tick 411 G3 full-pair metrics gate — `g3_full_pairs_for_metrics` / `decide_g3_live_metrics_action` require all planned pairs before `score_pilot`; ledger-skip + pipeline refuse sidecar `n_pairs < planned` (Tick 410 parity — refuse partial pilot → G4)
 - [x] Tick 412 G4 full-pair sidecar trust gate — ledger-skip + `refresh_g4_paper_pack_on_resume` refuse sidecar `n_pairs < planned` (Tick 411 G3 parity); direct G4 ledger-skip exits 4 on trust fail; pipeline resume returns 4 on refuse notes
+- [x] Tick 413 H5 planned-denominator VALIDITY — `h5_validity_pass(..., planned_n=)` requires ≥3/5 ρ>0.3 (errors no longer shrink denominator); ledger-skip + pipeline resume refuse thin H5 READY poison; `h2_skew_pass` planned_n parity
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 
