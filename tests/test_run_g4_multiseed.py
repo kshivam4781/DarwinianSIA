@@ -1873,6 +1873,68 @@ def test_refresh_paper_pack_refuses_never_steer_sidecar(
     assert any(c.name == "steering_applied_gen3" and not c.ok for c in report.checks)
 
 
+def test_refresh_paper_pack_refuses_partial_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 412: ledger-skip sidecar with n_pairs < planned refuses trust."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {"n_pairs": 1, "primary_gens30_pass": True},
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {},
+                "h2_by_d_run": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-11T00:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert ok is False
+    assert "n_pairs=1" in note
+    assert "planned=5" in note
+    assert report.comparison is None
+    assert report.ready_status is None or report.ready_status == "IN_PROGRESS"
+    assert any(c.name == "g4_full_pairs" and not c.ok for c in report.checks)
+
+
 def test_g4_full_pairs_for_paper_requires_all_plans() -> None:
     """Tick 410: equal B/D counts are not enough — need len == len(plans)."""
     from run_g4_multiseed import build_g4_plans, g4_full_pairs_for_paper

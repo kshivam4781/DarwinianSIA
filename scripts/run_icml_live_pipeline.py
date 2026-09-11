@@ -63,6 +63,9 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 411: G3 live + ``load_g3_metrics_for_g4`` require all planned pairs
     before ``score_pilot`` / G4 advance (Tick 410 full-pair parity on G3 —
     equal B/D after mid-abort must not promote a partial pilot).
+  - Tick 412: G4 ledger-skip + ``refresh_g4_paper_pack_on_resume`` refuse
+    sidecar ``n_pairs < planned`` (Tick 411 G3 parity); direct G4 ledger-skip
+    exits 4 when paper-pack trust fails.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -870,6 +873,18 @@ def refresh_g4_paper_pack_on_resume(
             return (
                 "Tick 408: gate4 sidecar steering_applied_gen3=false — "
                 "refuse READY / paper-pack trust on never-steer Condition D"
+            )
+        # Tick 412: refuse partial Live Table sidecar vs planned pairs.
+        planned_n = len(g4_b_ids)
+        try:
+            scored_n = int(comparison.get("n_pairs") or 0)
+        except (TypeError, ValueError):
+            scored_n = 0
+        if planned_n and scored_n < planned_n:
+            return (
+                "Tick 412: gate4 sidecar n_pairs="
+                f"{scored_n} < planned={planned_n} — refuse READY / "
+                "paper-pack trust on partial G4 Live Table"
             )
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
@@ -1685,6 +1700,10 @@ def run_live_stack(
         )
         report.notes.append(pack_note)
         report.stopped_after = "G4"
+        # Tick 412: refuse notes must not look like a successful G4 resume.
+        if "refuse" in pack_note.lower():
+            report.blockers.append(f"G4 resume paper pack refused: {pack_note}")
+            return 4
         return 0
 
     if remaining + 1e-9 < g4_need:

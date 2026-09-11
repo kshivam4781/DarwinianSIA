@@ -41,6 +41,10 @@ Hard stops (never violate):
     (``len(B)==len(D)==len(plans)``), not merely equal B/D counts — closes
     partial Live Table promote after non-never-steer mid-abort (e.g. sia
     exit on seed 2 leaving one steered pair)
+  - Tick 412: ledger-skip / pipeline resume sidecar trust refuse
+    ``n_pairs < planned`` (Tick 411 G3 parity) — a partial prior_live /
+    live sidecar must not promote READY / paper-pack trust; ledger-skip
+    returns exit 4 when paper-pack trust fails (G3 Tick 407/411 parity)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1358,6 +1362,7 @@ def refresh_paper_pack_on_ledger_skip(
     ``paper_refreshed`` (or Tick 386 ``prior_live_metrics`` preserved across
     preflight; never promote READY from a bare preflight sidecar).
     Tick 408: refuse trust when ``steering_applied_gen3`` is explicitly false.
+    Tick 412: refuse sidecar when ``n_pairs < planned`` (Tick 411 G3 parity).
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1424,6 +1429,30 @@ def refresh_paper_pack_on_ledger_skip(
                 CheckResult("steering_applied_gen3", False, note)
             )
             report.notes.append(note)
+            return False, note
+        # Tick 412: refuse partial-pilot sidecar vs planned pairs (Tick 411 G3).
+        planned_n = len(b_ids)
+        try:
+            scored_n = int(comparison.get("n_pairs") or 0)
+        except (TypeError, ValueError):
+            scored_n = 0
+        if planned_n and scored_n < planned_n:
+            note = (
+                "Tick 412: trusted gate4 sidecar but n_pairs="
+                f"{scored_n} < planned={planned_n} — refuse READY / "
+                "paper-pack trust on partial G4 Live Table"
+            )
+            report.checks.append(
+                CheckResult("g4_full_pairs", False, note)
+            )
+            report.notes.append(note)
+            report.comparison = None
+            report.h5_by_d_run = {}
+            report.h2_by_d_run = {}
+            report.primary_pass = False
+            report.h2_pass = False
+            report.h5_pass = False
+            report.ready_status = "IN_PROGRESS"
             return False, note
         report.comparison = comparison
         report.primary_pass = bool(meta.get("primary_pass"))
@@ -1874,6 +1903,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Tick 380: ledger-complete G4 → exit 0 without sia (even if secrets absent).
     # Tick 381: still refresh paper pack / ICML_READY (pipeline Tick 374 parity).
+    # Tick 412: return 4 when paper-pack trust fails (G3 Tick 407/411 parity).
     if report.ledger_skip:
         report.notes.append(
             "Tick 380: skipped paid G4 — ledger stages_complete already lists G4 "
@@ -1899,8 +1929,24 @@ def main(argv: list[str] | None = None) -> int:
         print(pack_note)
         print(
             f"primary_pass={report.primary_pass} h2_pass={report.h2_pass} "
-            f"h5_pass={report.h5_pass} STATUS={report.ready_status}"
+            f"h5_pass={report.h5_pass} STATUS={report.ready_status} "
+            f"paper_pack_ok={paper_refreshed}"
         )
+        # Tick 412: exit 4 on trust failure (never-steer / partial n_pairs /
+        # missing artifacts). Local re-score may return paper_refreshed=False
+        # under --skip-paper-refresh while still proving metrics — only fail
+        # when comparison is absent or a refuse check fired.
+        trust_refused = any(
+            c.name in ("steering_applied_gen3", "g4_full_pairs") and not c.ok
+            for c in report.checks
+        )
+        if trust_refused or (not paper_refreshed and report.comparison is None):
+            print(
+                "G4 ledger-skip refused READY / paper-pack trust — missing "
+                "full-pair metrics / gen≥3 Condition D steering",
+                file=sys.stderr,
+            )
+            return 4
         return 0
 
     if not report.ready_for_live:
