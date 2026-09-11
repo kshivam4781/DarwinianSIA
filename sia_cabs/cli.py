@@ -14,7 +14,10 @@ from cabs.tavily_grounding import ground_open_questions
 
 def _cmd_analyze(args: argparse.Namespace) -> None:
     engine = BeliefEngine.for_run(args.run_dir)
-    results = engine.process_run(args.run_dir, max_generation=args.max_gen)
+    if args.generation is not None:
+        results = [engine.process_generation(args.run_dir, args.generation)]
+    else:
+        results = engine.process_run(args.run_dir, max_generation=args.max_gen)
     payload = {
         "run_dir": str(args.run_dir),
         "generations_processed": len(results),
@@ -77,6 +80,12 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_parser = sub.add_parser("analyze", help="Run CABS on an existing SIA run directory")
     analyze_parser.add_argument("--run-dir", required=True, help="Path to runs/run_<id>")
     analyze_parser.add_argument("--max-gen", type=int, default=None, help="Only process up to this generation")
+    analyze_parser.add_argument(
+        "--generation",
+        type=int,
+        default=None,
+        help="Process a single generation only (for --cabs-inline / Condition D)",
+    )
     analyze_parser.set_defaults(func=_cmd_analyze)
 
     agenda_parser = sub.add_parser("agenda", help="Print current CABS research agenda for a run")

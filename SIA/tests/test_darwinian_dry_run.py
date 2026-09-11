@@ -100,9 +100,14 @@ def test_darwinian_dry_run_two_generations(mock_venv, mock_llm, tmp_path, monkey
     civ = json.loads(Path(civ_path).read_text(encoding="utf-8"))
     assert len(civ["generations"]) == 2
 
+    fits = []
     for gen in (1, 2):
         for agent_id in (0, 1):
             agent_dir = Path(layout.gen_agent_dir(gen, agent_id))
             assert (agent_dir / "agent_dna.json").is_file()
             assert (agent_dir / "target_agent.py").is_file()
             assert (agent_dir / "results.json").is_file()
+            results = json.loads((agent_dir / "results.json").read_text(encoding="utf-8"))
+            assert results.get("dry_run") is True
+            fits.append(float(results["accuracy"]))
+    assert len(set(fits)) >= 2

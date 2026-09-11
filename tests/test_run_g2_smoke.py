@@ -1,0 +1,1155 @@
+"""Tests for scripts/run_g2_smoke.py (Tick 24 live G2 preflight)."""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "scripts"))
+
+from prepare_gpqa_smoke_data import is_synthetic_smoke, prepare_task_tree  # noqa: E402
+from run_g2_smoke import (  # noqa: E402
+    build_sia_command,
+    run_preflight,
+    validate_g2_artifacts,
+    write_gate2_report,
+)
+
+
+def test_is_synthetic_smoke_detects_fixture(tmp_path: Path) -> None:
+    task_dir = tmp_path / "gpqa"
+    task_dir.mkdir()
+    prepare_task_tree(task_dir, n=5)
+    assert is_synthetic_smoke(task_dir) is True
+
+
+def test_is_synthetic_smoke_false_for_real_looking(tmp_path: Path) -> None:
+    task_dir = tmp_path / "gpqa"
+    pub = task_dir / "data" / "public"
+    priv = task_dir / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": 1,
+            "Question": "Which enzyme catalyzes …?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "B",
+            "domain": "biology",
+        }
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# real", encoding="utf-8")
+    assert is_synthetic_smoke(task_dir) is False
+
+
+def test_build_sia_command_flags() -> None:
+    dry = build_sia_command(run_id=1850, seed=42, dry_run=True)
+    assert "--dry-run" in dry
+    assert "--cabs-inline" in dry
+    assert "1850" in dry
+    assert "--meta-agent-profile" in dry
+    assert "kimi-nebius-pydantic-meta" in dry
+    assert "--target-agent-profile" in dry
+    assert "kimi-nebius-target" in dry
+    live = build_sia_command(run_id=1300, seed=1, dry_run=False)
+    assert "--dry-run" not in live
+    assert "1300" in live
+    assert "--meta-agent-profile" in live
+    assert "kimi-nebius-pydantic-meta" in live
+    assert "--target-agent-profile" in live
+    assert "kimi-nebius-target" in live
+
+
+def test_build_sia_command_honors_icml_profile_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ICML_TARGET_AGENT_PROFILE", "qwen-nebius-target")
+    cmd = build_sia_command(run_id=1300, seed=1, dry_run=False)
+    assert "qwen-nebius-target" in cmd
+    assert "kimi-nebius-target" not in cmd
+
+
+def test_preflight_live_blocks_without_keys(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    # Point task tree at a temp smoke fixture via monkeypatch of helper paths
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+
+    report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    # Tick 289: Nebius meta → anthropic optional (check still present, ok=True)
+    assert names["anthropic_key"] is True
+    assert names["nebius_key"] is False
+    assert names["gpqa_not_synthetic"] is False  # smoke fixture
+
+
+def test_preflight_mode_also_reports_live_not_ready(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regression: ready_for_live must not be vacuously true when mode!=live."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+
+    report = run_preflight(mode="preflight", run_id=1850, ensure_smoke_layout=False)
+    assert report.ready_for_dry_run is True
+    assert report.ready_for_live is False
+    assert any(not c.ok and c.name == "nebius_key" for c in report.checks)
+    assert any(c.name == "nebius_meta_profile" and c.ok for c in report.checks)
+
+
+def test_preflight_live_ready_with_keys_and_real_gpqa(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+        for i in range(5)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    # Tick 306: stub tip lineage green (tmp tree has no ICML_PROGRESS tip).
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
+
+    report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
+    assert report.ready_for_live is True
+    assert report.blockers == []
+
+
+def test_preflight_refuses_stale_tip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 306: direct G2 --live refuses when tip lineage lags (not only pipeline)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+        for i in range(5)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": False,
+            "local_tick": 300,
+            "remote_tip_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-tip",
+            "blockers": [
+                "local Tick 300 behind remote tip Tick 306 "
+                "(refs/remotes/origin/cursor/icml-epistemic-results-tip)"
+            ],
+        },
+    )
+
+    report = run_preflight(mode="live", run_id=1300, ensure_smoke_layout=False)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["tip_ok_for_live"] is False
+    assert names["nebius_key"] is True
+    assert names["gpqa_not_synthetic"] is True
+
+    report2 = run_preflight(
+        mode="live",
+        run_id=1300,
+        ensure_smoke_layout=False,
+        allow_stale_tip=True,
+    )
+    assert report2.ready_for_live is True
+    names2 = {c.name: c.ok for c in report2.checks}
+    assert names2["tip_ok_for_live"] is True
+    assert any("allow-stale-tip" in n for n in report2.notes)
+
+
+def _write_fair_gen2_agent(
+    run_dir: Path, agent_id: int = 0, *, agenda: bool = False, seeds=None
+) -> Path:
+    """Tick 406 helper: minimal fair gen2 agent artifacts for G2 post-checks."""
+    agent2 = run_dir / "gen_2" / f"agent_{agent_id}"
+    agent2.mkdir(parents=True, exist_ok=True)
+    fb = "# Dry-run: offspring\n### Darwinian Evolution Context\n"
+    if agenda:
+        fb = "## CABS: Contradiction-Aware Research Agenda\n" + fb
+    (agent2 / "feedback_agent_prompt.txt").write_text(fb, encoding="utf-8")
+    (agent2 / "agent_dna.json").write_text(
+        json.dumps(
+            {
+                "tool_strategy": "selective",
+                "technique_seeds": list(seeds or []),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return agent2
+
+
+def test_validate_g2_artifacts_reads_belief_store(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run_1850"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text("[]\n", encoding="utf-8")
+    (store / "beliefs.json").write_text("[]\n", encoding="utf-8")
+    _write_fair_gen2_agent(run_dir)
+    checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert checks["belief_store"].ok
+    assert checks["epistemic_value_jsonl"].ok
+    # empty JSON arrays are size>2? "[]\n" is 3 bytes — has_cabs true; bias may fail
+    assert "scoped_mutation_bias" in checks
+    # Tick 371: no fitness artifacts → nonzero_fitness fails (blocks G3 burn).
+    assert checks["nonzero_fitness"].ok is False
+    assert checks["delay_all_feedback_skip"].ok is True
+    assert checks["delay_all_technique_seeds_skip"].ok is True
+
+
+def test_validate_g2_artifacts_nonzero_fitness_gate(tmp_path: Path) -> None:
+    """Tick 371: G2 PASS requires best fitness > floor (default 0)."""
+    run_dir = tmp_path / "run_1852"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.0}), encoding="utf-8"
+    )
+    _write_fair_gen2_agent(run_dir)
+    checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert checks["nonzero_fitness"].ok is False
+
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2}), encoding="utf-8"
+    )
+    checks_ok = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert checks_ok["nonzero_fitness"].ok is True
+    assert "0.2000" in checks_ok["nonzero_fitness"].detail
+
+
+def test_validate_g2_artifacts_delay_all_gates(tmp_path: Path) -> None:
+    """Tick 406: G2 post-checks refuse agenda / technique_seeds on fair gen2."""
+    run_dir = tmp_path / "run_1953"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text(json.dumps({"accuracy": 0.25}), encoding="utf-8")
+
+    missing = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert missing["delay_all_feedback_skip"].ok is False
+    assert missing["delay_all_technique_seeds_skip"].ok is False
+
+    _write_fair_gen2_agent(run_dir, agenda=True, seeds=["self_consistency"])
+    leaked = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert leaked["delay_all_feedback_skip"].ok is False
+    assert "leaked" in leaked["delay_all_feedback_skip"].detail
+    assert leaked["delay_all_technique_seeds_skip"].ok is False
+    assert "technique_seeds" in leaked["delay_all_technique_seeds_skip"].detail
+
+    _write_fair_gen2_agent(run_dir, agenda=False, seeds=[])
+    fair = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert fair["delay_all_feedback_skip"].ok is True
+    assert fair["delay_all_technique_seeds_skip"].ok is True
+
+
+def test_main_fetch_diamond_from_csv_clears_synthetic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 25: --fetch-diamond --diamond-csv replaces smoke before preflight."""
+    import csv
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+
+    root = tmp_path
+    for name in ("SIA", "sia-upstream"):
+        task = root / name / "sia" / "tasks" / "gpqa"
+        task.mkdir(parents=True)
+        prepare_task_tree(task, n=5)
+        assert is_synthetic_smoke(task) is True
+
+    csv_path = root / "fake_diamond.csv"
+    fieldnames = [
+        "Question",
+        "Correct Answer",
+        "Incorrect Answer 1",
+        "Incorrect Answer 2",
+        "Incorrect Answer 3",
+        "High-level domain",
+        "Subdomain",
+    ]
+    with csv_path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        for i in range(5):
+            w.writerow(
+                {
+                    "Question": f"Harness chem item {i}?",
+                    "Correct Answer": "yes",
+                    "Incorrect Answer 1": "no",
+                    "Incorrect Answer 2": "maybe",
+                    "Incorrect Answer 3": "never",
+                    "High-level domain": "Chemistry",
+                    "Subdomain": "General",
+                }
+            )
+
+    monkeypatch.setattr(mod, "REPO_ROOT", root)
+    report_path = root / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--preflight-only",
+            "--run-id",
+            "1851",
+            "--fetch-diamond",
+            "--diamond-csv",
+            str(csv_path),
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 0
+    sia_task = root / "SIA" / "sia" / "tasks" / "gpqa"
+    assert is_synthetic_smoke(sia_task) is False
+    text = report_path.read_text(encoding="utf-8")
+    assert "materialized diamond from CSV" in text
+    # Still not live-ready without API keys
+    payload = json.loads(report_path.with_suffix(".json").read_text())
+    assert payload["ready_for_live"] is False
+    assert any(c["name"] == "gpqa_not_synthetic" and c["ok"] for c in payload["checks"])
+
+
+def test_write_gate2_report(tmp_path: Path) -> None:
+    from run_g2_smoke import PreflightReport, CheckResult
+
+    report = PreflightReport(
+        timestamp="2026-08-05T20:00:00Z",
+        mode="preflight",
+        run_id=1850,
+        ready_for_dry_run=True,
+        ready_for_live=False,
+        command=["sia", "run", "--dry-run"],
+        blockers=["anthropic_key: missing"],
+    )
+    report.checks.append(CheckResult("anthropic_key", False, "missing"))
+    out = tmp_path / "gate2_report.md"
+    write_gate2_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    assert "Gate 2 report" in text
+    assert "ready_for_live" not in text.lower() or "Ready for live G2" in text
+    assert out.with_suffix(".json").is_file()
+
+
+def test_preflight_require_hf_for_diamond_blocks_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 275: --fetch-diamond path requires HF in ready_for_live."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+        }
+        for i in range(5)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 306,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
+
+    report = run_preflight(
+        mode="live", run_id=1300, ensure_smoke_layout=False, require_hf_for_diamond=True
+    )
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["hf_token"] is False
+    assert names["anthropic_key"] is True
+    assert names["tip_ok_for_live"] is True
+
+
+def test_main_live_fetch_diamond_refuses_without_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 275: G2 --live --fetch-diamond exits 4 before materialize without HF."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF")
+
+    monkeypatch.setattr(mod, "materialize_from_hf", boom)
+    report_path = tmp_path / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def test_main_fetch_diamond_bootstraps_deps_before_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 282: ensure_deps_before_diamond_fetch runs before materialize_from_hf."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("HF_TOKEN", "hf-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_g2_smoke as mod
+
+    order: list[str] = []
+
+    def _deps(*, allow_install: bool = True) -> tuple[bool, str]:
+        order.append("deps")
+        return True, "deps-ok"
+
+    def _hf(*_a, **_k):
+        order.append("hf")
+        return ["SIA/sia/tasks/gpqa"]
+
+    monkeypatch.setattr(mod, "ensure_deps_before_diamond_fetch", _deps)
+    monkeypatch.setattr(mod, "materialize_from_hf", _hf)
+    monkeypatch.setattr(
+        mod,
+        "run_preflight",
+        lambda **_k: mod.PreflightReport(
+            timestamp="t", mode="preflight", run_id=1399
+        ),
+    )
+    monkeypatch.setattr(mod, "write_gate2_report", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir(exist_ok=True)
+
+    rc = mod.main(
+        [
+            "--preflight-only",
+            "--run-id",
+            "1399",
+            "--fetch-diamond",
+            "--report",
+            str(tmp_path / "docs" / "gate2_report.md"),
+        ]
+    )
+    assert rc == 0
+    assert order == ["deps", "hf"]
+
+
+def test_g2_preflight_hydrates_budget_from_ledger(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 378: direct G2 preflight loads ledger spent when env is unset."""
+    import os
+
+    import run_g2_smoke as mod
+
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 17.5,
+                "stages_complete": ["G2", "G3"],
+                "run_ids": [1300, 1201, 1301],
+                "detail": "prior stack",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 378},
+    )
+
+    report = run_preflight(mode="preflight", run_id=1400, ensure_smoke_layout=False)
+    names = {c.name: c for c in report.checks}
+    assert names["budget"].ok is True
+    assert "17.50" in names["budget"].detail or "17.5" in names["budget"].detail
+    assert any("hydrate" in n.lower() for n in report.notes)
+    assert float(os.environ.get("SIA_BUDGET_SPENT_USD", "0")) == pytest.approx(17.5)
+
+
+def test_g2_preflight_hydrates_budget_from_unbilled_local(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 378: direct G2 bills a complete unbilled local smoke into spent."""
+    import os
+
+    import run_g2_smoke as mod
+
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("SIA_G2_ESTIMATE_USD", "1.25")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.0,
+                "stages_complete": [],
+                "run_ids": [],
+                "detail": "empty",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # Planned run_id already complete locally but not in ledger
+    agent = tmp_path / "runs" / "run_1300" / "gen_1" / "agent_0"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "results.json").write_text(
+        json.dumps({"accuracy": 0.2, "total_cost_usd": 0.4}),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 378},
+    )
+
+    report = run_preflight(mode="preflight", run_id=1300, ensure_smoke_layout=False)
+    names = {c.name: c for c in report.checks}
+    assert names["budget"].ok is True
+    assert any("Tick 377/378" in n or "hydrate" in n.lower() for n in report.notes)
+    assert float(os.environ.get("SIA_BUDGET_SPENT_USD", "0")) > 2.0
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert 1300 in ledger["run_ids"]
+    assert "G2" not in ledger["stages_complete"]
+
+
+def test_g2_live_skips_when_ledger_stage_complete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 380: direct --live no-ops when ledger already marks G2 complete."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 380},
+    )
+
+    # No local runs/ — cross-VM resume. Must not call sia.
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 380" in text or "ledger" in text.lower()
+
+
+def test_refresh_g2_post_on_ledger_skip_local_dirs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: ledger-skip re-validates local G2 into post-checks."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+
+    run_dir = tmp_path / "runs" / "run_1300"
+    agent = run_dir / "gen_1" / "agent_0"
+    agent.mkdir(parents=True)
+    (agent / "results.json").write_text('{"accuracy": 0.2}', encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    fake_post = [
+        mod.CheckResult("belief_store", True, "ok"),
+        mod.CheckResult("nonzero_fitness", True, "best=0.2000 > min=0"),
+    ]
+
+    def _fake_validate(path: Path):  # noqa: ANN001
+        assert path == run_dir
+        return fake_post
+
+    monkeypatch.setattr(mod, "validate_g2_artifacts", _fake_validate)
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is not None
+    assert all(c.ok for c in post)
+    assert "re-validated local G2" in note
+    assert any("re-validated local G2" in n for n in report.notes)
+
+
+def test_refresh_g2_post_on_ledger_skip_trusts_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: no local run → trust live-executed gate2 sidecar post."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "run_id": 1300,
+                "post": [
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                    {
+                        "name": "nonzero_fitness",
+                        "ok": True,
+                        "detail": "best=0.2000 > min=0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is not None
+    assert len(post) == 2
+    assert all(c.ok for c in post)
+    assert "trusted live-executed gate2 sidecar" in note
+
+
+def test_refresh_g2_post_on_ledger_skip_refuses_preflight_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: preflight sidecar must not invent G2 post on ledger-skip."""
+    import run_g2_smoke as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "run_id": 1300,
+                "post": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# Gate 2\n", encoding="utf-8")
+
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T12:05:00Z",
+        mode="live",
+        run_id=1300,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    post, note = mod.refresh_g2_post_on_ledger_skip(
+        report, gate2_report_md=docs / "gate2_report.md"
+    )
+    assert post is None
+    assert "post-checks not updated" in note
+
+
+def test_g2_live_ledger_skip_refreshes_post(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 383: direct --live ledger-skip calls post refresh (no sia)."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "run_id": 1300,
+                "post": [
+                    {"name": "belief_store", "ok": True, "detail": "present"},
+                    {
+                        "name": "nonzero_fitness",
+                        "ok": True,
+                        "detail": "best=0.2500 > min=0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 383},
+    )
+
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 0
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 383" in text
+    assert "nonzero_fitness" in text
+    sidecar = json.loads(report_path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert sidecar["post"]
+    assert any(c["name"] == "nonzero_fitness" and c["ok"] for c in sidecar["post"])
+
+
+def test_write_gate2_preflight_preserves_prior_live_post(tmp_path: Path) -> None:
+    """Tick 384: preflight rewrite keeps prior_live_post for pipeline trust."""
+    import run_g2_smoke as mod
+
+    report_md = tmp_path / "gate2_report.md"
+    sidecar = report_md.with_suffix(".json")
+    live_post = [
+        {"name": "belief_store", "ok": True, "detail": "present"},
+        {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2 > min=0"},
+    ]
+    sidecar.write_text(
+        json.dumps({"mode": "live", "run_id": 1300, "post": live_post}),
+        encoding="utf-8",
+    )
+    report = mod.PreflightReport(
+        timestamp="2026-09-08T14:00:00Z",
+        mode="preflight",
+        run_id=1300,
+        ready_for_live=False,
+        ready_for_dry_run=True,
+        blockers=["nebius_key"],
+        checks=[],
+        command=["sia", "run"],
+        notes=[],
+    )
+    mod.write_gate2_report(report, report_md, post=None)
+    data = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert data["mode"] == "preflight"
+    assert data["post"] == []
+    assert data["prior_live_post"]
+    assert any(c["name"] == "nonzero_fitness" and c["ok"] for c in data["prior_live_post"])
+    # Trust path still finds the preserved post.
+    post, source = mod._live_post_from_gate2_sidecar(data)
+    assert source == "prior_live_post"
+    assert post and all(c.ok for c in post)
+
+
+def test_write_gate2_dry_run_does_not_stamp_prior_live_post(tmp_path: Path) -> None:
+    """Tick 405: dry-run post must not become prior_live_post (G2→G3 poison)."""
+    from dataclasses import asdict as dc_asdict
+
+    import run_g2_smoke as mod
+
+    report_md = tmp_path / "gate2_report.md"
+    dry_post = [
+        mod.CheckResult(name="belief_store", ok=True, detail="present"),
+        mod.CheckResult(name="nonzero_fitness", ok=True, detail="best=0.2 > min=0"),
+    ]
+    report = mod.PreflightReport(
+        timestamp="2026-09-10T08:00:00Z",
+        mode="dry-run",
+        run_id=1952,
+        ready_for_live=False,
+        ready_for_dry_run=True,
+        blockers=[],
+        checks=[],
+        command=["sia", "run", "--dry-run"],
+        notes=[],
+    )
+    mod.write_gate2_report(report, report_md, post=dry_post)
+    data = json.loads(report_md.with_suffix(".json").read_text(encoding="utf-8"))
+    assert data["mode"] == "dry-run"
+    assert data["post"]
+    assert "prior_live_post" not in data
+
+    # Polluted dry-run sidecar must be scrubbed on rewrite.
+    report_md.with_suffix(".json").write_text(
+        json.dumps(
+            {
+                "mode": "dry-run",
+                "run_id": 1952,
+                "post": [dc_asdict(c) for c in dry_post],
+                "prior_live_post": [
+                    {"name": "nonzero_fitness", "ok": True, "detail": "poison"}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    mod.write_gate2_report(report, report_md, post=dry_post)
+    scrubbed = json.loads(report_md.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "prior_live_post" not in scrubbed
+
+
+def test_g2_live_ledger_skip_refuses_without_post(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 384: ledger-skip without trustable post → exit 4 (no false-green)."""
+    import run_g2_smoke as mod
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 1.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "prior G2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Preflight-only sidecar — no live post / prior_live_post.
+    (docs / "gate2_report.json").write_text(
+        json.dumps({"mode": "preflight", "run_id": 1300, "post": []}),
+        encoding="utf-8",
+    )
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 384},
+    )
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("sia must not run")),
+    )
+
+    report_path = docs / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--report",
+            str(report_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+    assert rc == 4

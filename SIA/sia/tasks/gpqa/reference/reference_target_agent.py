@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Qwen/Qwen3-4B-Instruct-2507 on diamond_questions.json via Tinker API.
+Kimi-K2.6 on diamond_questions.json via Nebius Token Factory (OpenAI-compatible).
+
+Tick 288: Retargeted from Tinker/Qwen (TINKER_API_KEY) to Nebius so ICML live
+G2–G4 gen-1 seeds match ``evolution_prompts`` and ``kimi-nebius-target``.
 
 This script:
 1. Loads questions from data/public/diamond_questions.json (pre-shuffled, no answers)
-2. Calls Tinker API (Qwen) to get model predictions (letters A-D)
-3. Saves answers to: results/{model}_{dataset}_{timestamp}.json
+2. Calls Nebius (Kimi) to get model predictions (letters A-D)
+3. Saves answers to: results/submission.json (+ timestamped copy)
 """
 
 # -----------------------------------------------------------------------------
@@ -20,25 +23,20 @@ from datetime import datetime
 from pathlib import Path
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
 from tqdm.asyncio import tqdm as async_tqdm
 
 
 # -----------------------------------------------------------------------------
 # Configuration — model, labels, concurrency, pricing
 # -----------------------------------------------------------------------------
-MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
-TINKER_BASE_URL = "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"
+MODEL_NAME = "moonshotai/Kimi-K2.6"
+NEBIUS_BASE_URL = "https://api.tokenfactory.us-central1.nebius.com/v1/"
 DATASET_LABEL = "diamond_qna"
 CONCURRENCY = 5
-MODEL_PRICING = {"input": 0.0, "output": 0.0}
-
-
-# -----------------------------------------------------------------------------
-# Structured output — schema
-# -----------------------------------------------------------------------------
-class Answer(BaseModel):
-    answer: str = Field(description="Letter A, B, C, or D")
+# Tick 291: Nebius Token Factory catalog rates ($/1M tokens) for Kimi-K2.6.
+# Zero pricing previously left total_cost_usd=0 even when tokens were recorded,
+# so Tick 283 budget reconcile silently fell back to gate estimates.
+MODEL_PRICING = {"input": 0.95, "output": 4.0}
 
 
 # -----------------------------------------------------------------------------
@@ -49,10 +47,10 @@ def calculate_cost(input_tokens: int, output_tokens: int, reasoning_tokens: int 
 
 
 def setup_client() -> AsyncOpenAI:
-    api_key = os.getenv("TINKER_API_KEY")
+    api_key = os.getenv("NEBIUS_API_KEY")
     if not api_key:
-        raise SystemExit("Set TINKER_API_KEY environment variable.")
-    return AsyncOpenAI(api_key=api_key, base_url=TINKER_BASE_URL)
+        raise SystemExit("Set NEBIUS_API_KEY environment variable.")
+    return AsyncOpenAI(api_key=api_key, base_url=NEBIUS_BASE_URL)
 
 
 # -----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ def format_question(example: dict) -> str:
     prompt = (
         f"Answer this multiple choice question.\n\n{question_text}\n\n"
         f"A) {options['A']}\nB) {options['B']}\nC) {options['C']}\nD) {options['D']}\n\n"
-        f'Respond with JSON only: {{"answer": "A"}} (value is A, B, C, or D).'
+        f'Respond with ONLY a JSON object: {{"answer": "A"}} (value is A, B, C, or D).'
     )
 
     return prompt
@@ -93,12 +91,12 @@ def parse_answer_letter(model_answer_raw: str) -> str:
     answer = model_answer_raw.strip().upper()
     if answer in "ABCD":
         return answer
-    
+
     # Try to find "The answer is X" pattern
     match = re.search(r'ANSWER IS ([ABCD])', answer)
     if match:
         return match.group(1)
-        
+
     match = re.search(r'ANSWER: ([ABCD])', answer)
     if match:
         return match.group(1)
@@ -127,31 +125,31 @@ async def get_answer_async(
 
             for attempt in range(3):
                 try:
+                    # Plain chat completion — no response_format / pydantic modes
+                    # (evolution_prompts: avoid empty structured-output replies).
                     response = await client.chat.completions.create(
                         model=MODEL_NAME,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.0,
                         max_tokens=1000,
-                        # Some models might not support json_object mode, but Tinker usually does
-                        response_format={"type": "json_object"}
                     )
                     model_answer_raw = (response.choices[0].message.content or "").strip()
                     if not model_answer_raw:
                         raise ValueError("empty model response")
-                    
+
                     model_answer = parse_answer_letter(model_answer_raw)
                     if model_answer not in "ABCD":
                         raise ValueError(f"answer must be A–D, got: {model_answer_raw[:120]!r}")
-                    
+
                     usage = response.usage
-                    input_tokens = usage.prompt_tokens
-                    output_tokens = usage.completion_tokens
+                    input_tokens = usage.prompt_tokens if usage else 0
+                    output_tokens = usage.completion_tokens if usage else 0
                     break
                 except Exception as e:
                     if attempt == 2:
                         raise
                     await asyncio.sleep(2**attempt)
-            
+
             return {
                 "success": True,
                 "question_id": question_id,
@@ -229,7 +227,9 @@ def build_results(questions: list, question_results: list) -> dict:
 # Entry — load data, get answers, persist, print summary
 # -----------------------------------------------------------------------------
 def main():
-    parser = argparse.ArgumentParser(description="GPQA Reference Agent - Qwen via Tinker")
+    parser = argparse.ArgumentParser(
+        description="GPQA Reference Agent - Kimi via Nebius Token Factory"
+    )
     parser.add_argument(
         "--dataset_dir",
         type=Path,
@@ -257,13 +257,15 @@ def main():
     question_results = asyncio.run(get_all_answers_async(questions, client, CONCURRENCY))
     results = build_results(questions, question_results)
 
-    # Save results to working_dir/results/
+    # Save results to working_dir/results/ (submission.json required by GPQA harness)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = output_dir / f"{MODEL_NAME.replace('/', '_')}_{DATASET_LABEL}_{timestamp}.json"
+    submission_file = output_dir / "submission.json"
     os.makedirs(output_dir, exist_ok=True)
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+    payload = json.dumps(results, indent=2)
+    output_file.write_text(payload, encoding="utf-8")
+    submission_file.write_text(payload, encoding="utf-8")
 
     total_tokens = (
         results["total_input_tokens"] + results["total_output_tokens"] + results["total_reasoning_tokens"]
@@ -271,7 +273,7 @@ def main():
     answered = results["total_questions"] - results["errors"]
     print(
         f"{answered}/{len(questions)} answered | "
-        f"cost ${results['total_cost_usd']:.4f} | tokens {total_tokens} | saved {output_file}"
+        f"cost ${results['total_cost_usd']:.4f} | tokens {total_tokens} | saved {submission_file}"
     )
 
 

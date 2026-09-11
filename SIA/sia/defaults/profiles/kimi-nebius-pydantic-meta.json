@@ -1,0 +1,7 @@
+{
+  "profile_id": "kimi-nebius-pydantic-meta",
+  "name": "Kimi K2.6 meta via pydantic-ai on Nebius (ICML)",
+  "agent_impl": "pydantic-ai",
+  "model": "moonshotai/Kimi-K2.6",
+  "provider_id": "nebius"
+}

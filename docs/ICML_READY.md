@@ -1,0 +1,462 @@
+# ICML Thesis 1 — Ready checklist
+
+**STATUS: IN_PROGRESS**
+
+_Tick 413: H5 VALIDITY uses planned G4 seed denominator (≥3/5 ρ>0.3; thin H5 sidecar refuse). Tick 412 G4 full-pair sidecar trust. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+
+Do not set STATUS: READY until every item below is checked and evidence paths are real.
+
+## Criteria
+
+### 1. PRIMARY — Condition D beats B
+- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**
+- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**
+- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)
+- Evidence: offline synthetic pilot `1930–1934` vs `1940–1944` (Tick 397 post-adoption H2; **live Nebius shape** pop4×eval5×max_gen6; Tick-396 `1910–1924` superseded) — D gens30 wins **4/5** (B: 0), D cost30 wins **4/5** (B: 0; eval-call proxy), D final wins **5/5**, mean final gap ~**6.15pp**. Offline PRIMARY-shaped signal only — **not** live GPQA; leave unchecked for READY. Live → `docs/paper_artifacts.md` Table 1
+
+### 2. MECHANISM — H2 or case study
+- [x] Unit-level H2: contradiction bias skews DNA vs uniform (`SIA/tests/test_cabs_bridge.py`)
+- [x] Dry-run in-loop H2 path: scoped mutation bias after `--cabs-inline` (`runs/run_1401`, `SIA/tests/test_cabs_inline_dry_run.py`)
+- [x] Scoped feedback injects same DNA candidates as bias (`load_cabs_agenda` + `test_cabs_agenda_includes_scoped_dna_feedback_targets`)
+- [x] Fitness-weighted bias: higher-fitness contradiction side ranked first + rank-weighted mutate (`test_mutation_bias_prefers_higher_fitness_side`)
+- [x] Preferred-allele anchoring + singleton-bias skip (Tick 10) — Tick 17: outsiders preserved; ε-greedy explores
+- [x] Bias-aware crossover (Tick 11) — soft preferred inherit in `crossover(..., bias=)` + `test_bias_aware_crossover_prefers_winner_allele`
+- [x] Delayed crossover bias (Tick 12) — fair XO gen1→gen2; soft bias XO from gen2→gen3+ (`apply_crossover_bias`, `test_breed_offspring_can_delay_crossover_bias`)
+- [x] Tempered early mutation bias (Tick 13) — soft rank-weighted mutate gen1→gen2; full preferred anchoring from gen≥2 (`apply_mutation_anchor`, `test_biased_mutate_can_soften_preferred_anchor`)
+- [x] Delayed **all** mutation bias (Tick 14) — fair mutate+XO gen1→gen2; full CABS steering from gen≥2 (`apply_mutation_bias`, `test_breed_offspring_can_delay_all_mutation_bias`); Tick **403** also skips committee `technique_seeds` inject; Tick **404** also skips scoped CABS feedback agenda under the same gate
+- [x] Compressed latent fitness scale (Tick 16) — `[0.02, 0.34]` keeps gen-1 under 30% (`test_deterministic_fitness_scale_keeps_mid_dna_under_threshold`)
+- [x] ε-greedy mutation + live population bias harvest (Tick 17) — escape suboptimal frozen contradiction pairs
+- [x] Directed ε-explore outside disputed pools (Tick 20) — explore samples only outsiders (`test_biased_mutate_directed_explore_never_redraws_pool`)
+- [x] H5 protocol (Tick 18–19) — steered-window (`min_generation=2`) + population-mean forward Δfitness (`delta_horizon=2`; `scripts/epistemic_results.py`)
+- [x] Cost-to-threshold PRIMARY helper (Tick 22) — tokens/USD/eval-calls; ≥15% savings wins (`cost_to_threshold`, `primary_cost30_pass`)
+- [x] Post-steering case-study H2 (Tick 23) — preferred DNA share at gen≥3 (not fair-bred gen2); multi-allele + fitness-aligned selection (`tests/test_offline_case_study_steered.py`)
+- [x] Live G2 preflight runner (Tick 24) — `scripts/run_g2_smoke.py` hard-stops paid smoke without keys / non-smoke GPQA / free run_id / budget (`docs/gate2_report.md`)
+- [x] GPQA diamond materializer (Tick 25) — `scripts/prepare_gpqa_diamond.py` + `run_g2_smoke.py --fetch-diamond` (HF/CSV → SIA schema; never commit JSON)
+- [x] Live G3 sequential pilot runner (Tick 26) — `scripts/run_g3_pilot.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / incomplete run dirs (Tick 375 resume-skips complete); preserves offline gate3 block (`docs/gate3_report.md`)
+- [x] Live G4 5-seed sequential runner (Tick 27) — `scripts/run_g4_multiseed.py` hard-stops parallel GPQA / missing keys / synthetic smoke / budget projection / incomplete run dirs (Tick 375 resume-skips complete); refreshes Live Table 1 in `docs/paper_artifacts.md` (`docs/gate4_report.md`)
+- [x] G4 full paper-pack refresh (Tick 28) — live H2 scoring + Table 2 H2/H5 markers + Figs 1–2 + `ICML_READY` updater; `--refresh-paper-from-runs` recovery (READY only when criteria pass + `--allow-ready`)
+- [x] Unified live G2→G3→G4 pipeline (Tick 29) — `scripts/run_icml_live_pipeline.py` chains gates serially under one budget projection; G3→G4 promising gate; `docs/icml_live_pipeline_report.md`
+- [x] Linked Cursor environment for live stack (Tick 30) — draft env `0ed19edd-916e-11f1-ba66-0e7d0216e441` + `.cursor/environment.json` (was `environment: null` every prior tick); secrets still required
+- [x] Re-linked Cursor environment on greenfield cron (Tick 31) — draft `4b2bb39a-917e-11f1-ba66-0e7d0216e441`; build `bld-20260806-933779ed-…` **SUCCEEDED** + proposed; Tick 30 draft was **not** inherited by automation (cron still booted `environment: null`)
+- [x] Per-run venv capability (Tick 32) — `probe_per_run_venv_capable` + G2/G3/G4 `per_run_venv`; Cursor env installs **uv** (draft `e0434bc7-…` / build `5be244b4` SUCCEEDED); fixes vacuous `import venv` false green on images without ensurepip
+- [x] Canonical Portal Save target (Tick 33) — `docs/icml_portal_save_target.json`; re-linked uv draft `b0a8b976-…` / build `3b1c84c6` **SUCCEEDED** + proposed (prefer over older Tick 30–32 drafts)
+- [x] Tick 34 Portal Save re-link + SystemExit-safe per_run_venv probe — draft `91d72d0c-…` / build `262ebfe1` **SUCCEEDED** + proposed; `probe_per_run_venv_capable` subprocess isolation so ensurepip `sys.exit` cannot kill G2/G3/G4 preflight
+- [x] Tick 35 Portal Save re-link — draft `291a67ab-…` / build `da839bad` **SUCCEEDED** + proposed (uv 0.12.2); Tick 34 draft again not inherited by automation cron
+- [x] Tick 36 Portal Save re-link — draft `df01ec67-…` / build `aecd8ae8` **SUCCEEDED** + proposed (uv 0.12.2); Tick 35 draft again not inherited by automation cron
+- [x] Tick 37 Portal Save re-link — draft `a60e2d80-…` / build `f1fa5eeb` **SUCCEEDED** + proposed (uv 0.12.2); Tick 36 draft again not inherited by automation cron
+- [x] Tick 38 Portal Save re-link — draft `667059f5-…` / build `d9b1019f` **SUCCEEDED** + proposed (uv 0.12.2); Tick 37 draft again not inherited by automation cron
+- [x] Tick 39 Portal Save re-link — draft `f77c2796-…` / build `fd6c1a72` **SUCCEEDED** + proposed (uv 0.12.2); Tick 38 draft again not inherited by automation cron
+- [x] Tick 40 Portal Save re-link — draft `a1202e1f-…` / build `47d88b32` **SUCCEEDED** + proposed (uv 0.12.2); Tick 39 draft again not inherited by automation cron
+- [x] Tick 41 Portal Save re-link — draft `b28dbfe2-…` / build `5b2c6af7` **SUCCEEDED** + proposed (uv 0.12.2); Tick 40 draft again not inherited by automation cron
+- [x] Tick 42 Portal Save re-link — draft `44dc791a-…` / build `ef042f32` **SUCCEEDED** + proposed (uv 0.12.2); Tick 41 draft again not inherited by automation cron
+- [x] Tick 43 Portal Save re-link — draft `fbd56e14-…` / build `a55ab7fc` **SUCCEEDED** + proposed (uv 0.12.2); Tick 42 draft again not inherited by automation cron
+- [x] Tick 44 Portal Save re-link — draft `c9cbb09f-…` / build `685c7aeb` **SUCCEEDED** + proposed (uv 0.12.2); Tick 43 draft again not inherited by automation cron
+- [x] Tick 45 Portal Save re-link — draft `855d7b11-…` / build `6bb19bfe` **SUCCEEDED** + proposed (uv 0.12.2); Tick 44 draft again not inherited by automation cron
+- [x] Tick 46 Portal Save re-link — draft `3b6f81a0-…` / build `b7044749` **SUCCEEDED** + proposed (uv 0.12.3); Tick 45 draft again not inherited by automation cron
+- [x] Tick 47 Portal Save re-link — draft `eabae511-…` / build `b06442a0` **SUCCEEDED** + proposed (uv 0.12.3); Tick 46 draft again not inherited by automation cron
+- [x] Tick 48 Portal Save re-link — draft `8433b834-…` / build `d649e6ed` **SUCCEEDED** + proposed (uv 0.12.3); Tick 47 draft again not inherited by automation cron
+- [x] Tick 49 Portal Save re-link — draft `909a3205-…` / build `bca77a07` **SUCCEEDED** + proposed (uv 0.12.3); Tick 48 draft again not inherited by automation cron
+- [x] Tick 50 Portal Save re-link — draft `160e4ee0-…` / build `d235cd35` **SUCCEEDED** + proposed (uv 0.12.3); Tick 49 draft again not inherited by automation cron
+- [x] Tick 51 Portal Save re-link — draft `2782ce96-…` / build `58b60bde` **SUCCEEDED** + proposed (uv 0.12.3); Tick 50 draft again not inherited by automation cron
+- [x] Tick 52 Portal Save re-link — draft `8be212f6-…` / build `c1181f30` **SUCCEEDED** + proposed (uv 0.12.3); Tick 51 draft again not inherited by automation cron
+- [x] Tick 53 Portal Save re-link — draft `430427cc-…` / build `d133e171` **SUCCEEDED** + proposed (uv 0.12.3); Tick 52 draft again not inherited by automation cron
+- [x] Tick 54 Portal Save re-link — draft `3b58dff6-…` / build `14292e5c` **SUCCEEDED** + proposed (uv 0.12.3); Tick 53 draft again not inherited by automation cron
+- [x] Tick 55 Portal Save re-link — draft `0e1a7bfe-…` / build `789436c4` **SUCCEEDED** + proposed (uv 0.12.3); Tick 54 draft again not inherited by automation cron
+- [x] Tick 56 Portal Save re-link — draft `f5eaef73-…` / build `e43fc033` **SUCCEEDED** + proposed (uv 0.12.3); Tick 55 draft again not inherited by automation cron
+- [x] Tick 57 Portal Save re-link — draft `a7c13aa8-…` / build `ec58f81c` **SUCCEEDED** + proposed (uv 0.12.3); Tick 56 draft again not inherited by automation cron
+- [x] Tick 58 Portal Save re-link — draft `66abb010-…` / build `99028280` **SUCCEEDED** + proposed (uv 0.12.3); Tick 57 draft again not inherited by automation cron
+- [x] Tick 59 Portal Save re-link — draft `39fe73ff-…` / build `48a4d1ef` **SUCCEEDED** + proposed (uv 0.12.3); Tick 58 draft again not inherited by automation cron
+- [x] Tick 60 Portal Save re-link — draft `f863aceb-…` / build `99f4efcc` **SUCCEEDED** + proposed (uv 0.12.3); Tick 59 draft again not inherited by automation cron
+- [x] Tick 61 Portal Save re-link — draft `7b1e2a15-…` / build `a747edc1` **SUCCEEDED** + proposed (uv 0.12.3); Tick 60 draft again not inherited by automation cron
+- [x] Tick 62 Portal Save re-link — draft `2b12c210-…` / build `25f4758b` **SUCCEEDED** + proposed (uv 0.12.3); Tick 61 draft again not inherited by automation cron
+- [x] Tick 63 Portal Save re-link — draft `47335cc6-…` / build `3833df8a` **SUCCEEDED** + proposed (uv 0.12.3); Tick 62 draft again not inherited by automation cron
+- [x] Tick 64 Portal Save re-link — draft `0a0ee6f6-…` / build `92568beb` **SUCCEEDED** + proposed (uv 0.12.3); Tick 63 draft again not inherited by automation cron
+- [x] Tick 65 Portal Save re-link — draft `71ef1042-…` / build `9765a488` **SUCCEEDED** + proposed (uv 0.12.3); Tick 64 draft again not inherited by automation cron
+- [x] Tick 66 Portal Save re-link — draft `7fd7e079-…` / build `941005fa` **SUCCEEDED** + proposed (uv 0.12.3); Tick 65 draft again not inherited by automation cron
+- [x] Tick 67 Portal Save re-link — draft `48095237-…` / build `0a4957c3` **SUCCEEDED** + proposed (uv 0.12.3); Tick 66 draft again not inherited by automation cron
+- [x] Tick 68 Portal Save re-link — draft `e057b40a-…` / build `42000aad` **SUCCEEDED** + proposed (uv 0.12.3); Tick 67 draft again not inherited by automation cron
+- [x] Tick 69 Portal Save re-link — draft `af3715f5-…` / build `8710d0db` **SUCCEEDED** + proposed (uv 0.12.3); Tick 68 draft again not inherited by automation cron
+- [x] Tick 70 Portal Save re-link — draft `7e344b44-…` / build `0cb5c67f` **SUCCEEDED** + proposed (uv 0.12.3); Tick 69 draft again not inherited by automation cron
+- [x] Tick 71 Portal Save re-link — draft `3dbda37b-…` / build `5c9bd0c9` **SUCCEEDED** + proposed (uv 0.12.3); Tick 70 draft again not inherited by automation cron
+- [x] Tick 72 Portal Save re-link — draft `d82d8e67-…` / build `9c2becbc` **SUCCEEDED** + proposed (uv 0.12.3); Tick 71 draft again not inherited by automation cron
+- [x] Tick 73 Portal Save re-link — draft `b69608ac-…` / build `46f388db` **SUCCEEDED** + proposed (uv 0.12.3); Tick 72 draft again not inherited by automation cron
+- [x] Tick 74 Portal Save re-link — draft `5f5823ed-…` / build `bd0d630d` **SUCCEEDED** + proposed (uv 0.12.3); Tick 73 draft again not inherited by automation cron
+- [x] Tick 75 Portal Save re-link — draft `470cff2e-…` / build `fe8f63e4` **SUCCEEDED** + proposed (uv 0.12.3); Tick 74 draft again not inherited by automation cron
+- [x] Tick 76 Portal Save re-link — draft `be57c785-…` / build `8b16e793` **SUCCEEDED** + proposed (uv 0.12.3); Tick 75 draft again not inherited by automation cron
+- [x] Tick 77 Portal Save re-link — draft `6c885367-…` / build `760dbe3c` **SUCCEEDED** + proposed (uv 0.12.3); Tick 76 draft again not inherited by automation cron
+- [x] Tick 78 Portal Save re-link — draft `547ecd9a-…` / build `5011b4a6` **SUCCEEDED** + proposed (uv 0.12.3); Tick 77 draft again not inherited by automation cron
+- [x] Tick 79 Portal Save re-link — draft `1c5a132a-…` / build `c6113f21` **SUCCEEDED** + proposed (uv 0.12.3); Tick 78 draft again not inherited by automation cron
+- [x] Tick 80 Portal Save re-link — draft `b9734a8b-…` / build `17e3b68b` **SUCCEEDED** + proposed (uv 0.12.3); Tick 79 draft again not inherited by automation cron
+- [x] Tick 81 Portal Save re-link — draft `b39f988c-…` / build `673ccc12` **SUCCEEDED** + proposed (uv 0.12.3); Tick 80 draft again not inherited by automation cron
+- [x] Tick 82 Portal Save re-link — draft `8a2353eb-…` / build `c62a6167` **SUCCEEDED** + proposed (uv 0.12.3); Tick 81 draft again not inherited by automation cron
+- [x] Tick 83 Portal Save re-link — draft `2bd15cd6-…` / build `c3fe0508` **SUCCEEDED** + proposed (uv 0.12.3); Tick 82 draft again not inherited by automation cron
+- [x] Tick 84 Portal Save re-link — draft `c2580665-…` / build `20b04108` **SUCCEEDED** + proposed (uv 0.12.3); Tick 83 draft again not inherited by automation cron
+- [x] Tick 85 Portal Save re-link — draft `b14c1b00-…` / build `a371a9fd` **SUCCEEDED** + proposed (uv 0.12.3); Tick 84 draft again not inherited by automation cron
+- [x] Tick 86 Portal Save re-link — draft `97f8da5a-…` / build `a67cdff0` **SUCCEEDED** + proposed (uv 0.12.3); Tick 85 draft again not inherited by automation cron
+- [x] Tick 87 Portal Save re-link — draft `2b9d6576-…` / build `ee330319` **SUCCEEDED** + proposed (uv 0.12.3); Tick 86 draft again not inherited by automation cron
+- [x] Tick 88 Portal Save re-link — draft `b1e29669-…` / build `768b7912` **SUCCEEDED** + proposed (uv 0.12.3); Tick 87 draft again not inherited by automation cron
+- [x] Tick 89 Portal Save re-link — draft `07261747-…` / build `4b0c704f` **SUCCEEDED** + proposed (uv 0.12.3); Tick 88 draft again not inherited by automation cron
+- [x] Tick 90 Portal Save re-link — draft `53bfbb6f-…` / build `8ce062cd` **SUCCEEDED** + proposed (uv 0.12.3); Tick 89 draft again not inherited by automation cron
+- [x] Tick 91 Portal Save re-link — draft `b070825a-…` / build `e19d52de` **SUCCEEDED** + proposed (uv 0.12.3); Tick 90 draft again not inherited by automation cron
+- [x] Tick 92 Portal Save re-link — draft `76c7ad3f-…` / build `f81fa69c` **SUCCEEDED** + proposed (uv 0.12.3); Tick 91 draft again not inherited by automation cron
+- [x] Tick 93 Portal Save re-link — draft `fcb0a0f4-…` / build `96041347` **SUCCEEDED** + proposed (uv 0.12.3); Tick 92 draft again not inherited by automation cron
+- [x] Tick 94 Portal Save re-link — draft `229fd6ce-…` / build `5596330f` **SUCCEEDED** + proposed (uv 0.12.3); Tick 93 draft again not inherited by automation cron
+- [x] Tick 95 Portal Save re-link — draft `bb5e7e76-…` / build `88c48096` **SUCCEEDED** + proposed (uv 0.12.3); Tick 94 draft again not inherited by automation cron
+- [x] Tick 96 Portal Save re-link — draft `81e72868-…` / build `6e157bcc` **SUCCEEDED** + proposed (uv 0.12.3); Tick 95 draft again not inherited by automation cron
+- [x] Tick 97 Portal Save re-link — draft `751332fe-…` / build `23f873be` **SUCCEEDED** + proposed (uv 0.12.3); Tick 96 draft again not inherited by automation cron
+- [x] Tick 98 Portal Save re-link — draft `e08cd29b-…` / build `eea1e9ca` **SUCCEEDED** + proposed (uv 0.12.3); Tick 97 draft again not inherited by automation cron
+- [x] Tick 99 Portal Save re-link — draft `70fcc83e-…` / build `361b109b` **SUCCEEDED** + proposed (uv 0.12.3); Tick 98 draft again not inherited by automation cron
+- [x] Tick 100 Portal Save re-link — draft `c2ad6d68-…` / build `490aa59b` **SUCCEEDED** + proposed (uv 0.12.3); Tick 99 draft again not inherited by automation cron
+- [x] Tick 101 Portal Save re-link — draft `53b0d180-…` / build `eae9e731` **SUCCEEDED** + proposed (uv 0.12.3); Tick 100 draft again not inherited by automation cron
+- [x] Tick 102 Portal Save re-link — draft `e834f19a-…` / build `563ac7ae` **SUCCEEDED** + proposed (uv 0.12.3); Tick 101 draft again not inherited by automation cron
+- [x] Tick 103 Portal Save re-link — draft `945cf4e0-…` / build `ff4cb61f` **SUCCEEDED** + proposed (uv 0.12.3); Tick 102 draft again not inherited by automation cron
+- [x] Tick 104 Portal Save re-link — draft `d5ce09b1-…` / build `2191a0c0` **SUCCEEDED** + proposed (uv 0.12.3); Tick 103 draft again not inherited by automation cron
+- [x] Tick 105 Portal Save re-link — draft `c96922a7-…` / build `158c6a74` **SUCCEEDED** + proposed (uv 0.12.3); Tick 104 draft again not inherited by automation cron
+- [x] Tick 106 Portal Save re-link — draft `7a0d714b-…` / build `852aa860` **SUCCEEDED** + proposed (uv 0.12.3); Tick 105 draft again not inherited by automation cron
+- [x] Tick 107 Portal Save re-link — draft `eccd72e0-…` / build `55688c31` **SUCCEEDED** + proposed (uv 0.12.3); Tick 106 draft again not inherited by automation cron
+- [x] Tick 108 Portal Save re-link — draft `a88df79f-…` / build `cebb7bd7` **SUCCEEDED** + proposed (uv 0.12.3); Tick 107 draft again not inherited by automation cron
+- [x] Tick 109 Portal Save re-link — draft `8a5f870d-…` / build `5cc5d6e4` **SUCCEEDED** + proposed (uv 0.12.3); Tick 108 draft again not inherited by automation cron
+- [x] Tick 110 Portal Save re-link — draft `51029881-…` / build `8c3754f3` **SUCCEEDED** + proposed (uv 0.12.3); Tick 109 draft again not inherited by automation cron
+- [x] Tick 111 Portal Save re-link — draft `e150b7f1-…` / build `0042344a` **SUCCEEDED** + proposed (uv 0.12.3); Tick 110 draft again not inherited by automation cron
+- [x] Tick 112 Portal Save re-link — draft `d7e6f41e-…` / build `8e1487e8` **SUCCEEDED** + proposed (uv 0.12.3); Tick 111 draft again not inherited by automation cron
+- [x] Tick 113 Portal Save re-link — draft `4b6c5dd1-…` / build `79322e5f` **SUCCEEDED** + proposed (uv 0.12.3); Tick 112 draft again not inherited by automation cron
+- [x] Tick 114 Portal Save re-link — draft `ab63f1e2-…` / build `6e71fc43` **SUCCEEDED** + proposed (uv 0.12.3); Tick 113 draft again not inherited by automation cron
+- [x] Tick 115 Portal Save re-link — draft `4be50240-…` / build `427c3d44` **SUCCEEDED** + proposed (uv 0.12.3); Tick 114 draft again not inherited by automation cron
+- [x] Tick 116 Portal Save re-link — draft `1b3a12e9-…` / build `5f067c36` **SUCCEEDED** + proposed (uv 0.12.4); Tick 115 draft again not inherited by automation cron
+- [x] Tick 117 Portal Save re-link — draft `be42444c-…` / build `cc5e6bd7` **SUCCEEDED** + proposed (uv 0.12.4); Tick 116 draft again not inherited by automation cron
+- [x] Tick 118 Portal Save re-link — draft `75254e0e-…` / build `6aede369` **SUCCEEDED** + proposed (uv 0.12.4); Tick 117 draft again not inherited by automation cron
+- [x] Tick 119 Portal Save re-link — draft `92caf434-…` / build `24cfc26e` **SUCCEEDED** + proposed (uv 0.12.4); Tick 118 draft again not inherited by automation cron
+- [x] Tick 120 Portal Save re-link — draft `58f2651d-…` / build `8455afe8` **SUCCEEDED** + proposed (uv 0.12.5); Tick 119 draft again not inherited by automation cron
+- [x] Tick 121 Portal Save re-link — draft `0fe5bb37-…` / build `1a30bd18` **SUCCEEDED** + proposed (uv 0.12.5); Tick 120 draft again not inherited by automation cron
+- [x] Tick 122 Portal Save re-link — draft `7a341c97-…` / build `c0548436` **SUCCEEDED** + proposed (uv 0.12.5); Tick 121 draft again not inherited by automation cron
+- [x] Tick 123 Portal Save re-link — draft `01d80b32-…` / build `05b0fe3f` **SUCCEEDED** + proposed (uv 0.12.5); Tick 122 draft again not inherited by automation cron
+- [x] Tick 124 Portal Save re-link — draft `cfa45bdf-…` / build `ac69edae` **SUCCEEDED** + proposed (uv 0.12.5); Tick 123 draft again not inherited by automation cron
+- [x] Tick 125 Portal Save re-link — draft `d8436f8e-…` / build `345243d2` **SUCCEEDED** + proposed (uv 0.12.5); Tick 124 draft again not inherited by automation cron
+- [x] Tick 126 Portal Save re-link — draft `7462f7f9-…` / build `514ddaaf` **SUCCEEDED** + proposed (uv 0.12.5); Tick 125 draft again not inherited by automation cron
+- [x] Tick 127 Portal Save re-link — draft `54dea794-…` / build `d5e3334b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 126 draft again not inherited by automation cron
+- [x] Tick 128 Portal Save re-link — draft `6fdaef21-…` / build `80d57b01` **SUCCEEDED** + proposed (uv 0.12.5); Tick 127 draft again not inherited by automation cron
+- [x] Tick 129 Portal Save re-link — draft `2acd30d9-…` / build `d9c1598f` **SUCCEEDED** + proposed (uv 0.12.5); Tick 128 draft again not inherited by automation cron
+- [x] Tick 130 Portal Save re-link — draft `015756d5-…` / build `b292908f` **SUCCEEDED** + proposed (uv 0.12.5); Tick 129 draft again not inherited by automation cron
+- [x] Tick 131 Portal Save re-link — draft `b386c9a9-…` / build `7dd2b14f` **SUCCEEDED** + proposed (uv 0.12.5); Tick 130 draft again not inherited by automation cron
+- [x] Tick 132 Portal Save re-link — draft `3e680d4c-…` / build `33f67cb5` **SUCCEEDED** + proposed (uv 0.12.5); Tick 131 draft again not inherited by automation cron
+- [x] Tick 133 Portal Save re-link — draft `30a347b7-…` / build `ea1872bd` **SUCCEEDED** + proposed (uv 0.12.5); Tick 132 draft again not inherited by automation cron
+- [x] Tick 134 Portal Save re-link — draft `f324774e-…` / build `6b15cc9d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 133 draft again not inherited by automation cron
+- [x] Tick 135 Portal Save re-link — draft `793f5f75-…` / build `6f995d2d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 134 draft again not inherited by automation cron
+- [x] Tick 136 Portal Save re-link — draft `47e09c17-…` / build `a2400bfe` **SUCCEEDED** + proposed (uv 0.12.5); Tick 135 draft again not inherited by automation cron
+- [x] Tick 137 Portal Save re-link — draft `e5d93035-…` / build `0613302b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 136 draft again not inherited by automation cron
+- [x] Tick 138 Portal Save re-link — draft `0225f827-…` / build `36c10b0a` **SUCCEEDED** + proposed (uv 0.12.5); Tick 137 draft again not inherited by automation cron
+- [x] Tick 139 Portal Save re-link — draft `b439de3e-…` / build `a45083f0` **SUCCEEDED** + proposed (uv 0.12.5); Tick 138 draft again not inherited by automation cron
+- [x] Tick 140 Portal Save re-link — draft `1de8d11c-…` / build `ae9d2731` **SUCCEEDED** + proposed (uv 0.12.5); Tick 139 draft again not inherited by automation cron
+- [x] Tick 141 Portal Save re-link — draft `a6aa98a7-…` / build `84e5d8a5` **SUCCEEDED** + proposed (uv 0.12.5); Tick 140 draft again not inherited by automation cron
+- [x] Tick 142 Portal Save re-link — draft `5d2ea419-…` / build `6a671495` **SUCCEEDED** + proposed (uv 0.12.5); Tick 141 draft again not inherited by automation cron
+- [x] Tick 143 Portal Save re-link — draft `14ed9320-…` / build `fb7f57ba` **SUCCEEDED** + proposed (uv 0.12.5); Tick 142 draft again not inherited by automation cron
+- [x] Tick 144 Portal Save re-link — draft `01df85f5-…` / build `17ca332e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 143 draft again not inherited by automation cron
+- [x] Tick 145 Portal Save re-link — draft `9b30808d-…` / build `56e14f1c` **SUCCEEDED** + proposed (uv 0.12.5); Tick 144 draft again not inherited by automation cron
+- [x] Tick 146 Portal Save re-link — draft `362bb30f-…` / build `8f8a4648` **SUCCEEDED** + proposed (uv 0.12.5); Tick 145 draft again not inherited by automation cron
+- [x] Tick 147 Portal Save re-link — draft `38306c22-…` / build `0a1b6261` **SUCCEEDED** + proposed (uv 0.12.5); Tick 146 draft again not inherited by automation cron
+- [x] Tick 148 Portal Save re-link — draft `d4bf301f-…` / build `4d23714d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 147 draft again not inherited by automation cron
+- [x] Tick 149 Portal Save re-link — draft `8fdd51f9-…` / build `4dbf76d8` **SUCCEEDED** + proposed (uv 0.12.5); Tick 148 draft again not inherited by automation cron
+- [x] Tick 150 Portal Save re-link — draft `3609469a-…` / build `696ac676` **SUCCEEDED** + proposed (uv 0.12.5); Tick 149 draft again not inherited by automation cron
+- [x] Tick 151 Portal Save re-link — draft `09627802-…` / build `7eb90e06` **SUCCEEDED** + proposed (uv 0.12.5); Tick 150 draft again not inherited by automation cron
+- [x] Tick 152 Portal Save re-link — draft `609a704f-…` / build `21a56ece` **SUCCEEDED** + proposed (uv 0.12.5); Tick 151 draft again not inherited by automation cron
+- [x] Tick 153 Portal Save re-link — draft `5a9477ec-…` / build `6e55fea2` **SUCCEEDED** + proposed (uv 0.12.5); Tick 152 draft again not inherited by automation cron
+- [x] Tick 154 Portal Save re-link — draft `1407b50c-…` / build `b3e87d64` **SUCCEEDED** + proposed (uv 0.12.5); Tick 153 draft again not inherited by automation cron
+- [x] Tick 155 Portal Save re-link — draft `eab65d49-…` / build `363b76c4` **SUCCEEDED** + proposed (uv 0.12.5); Tick 154 draft again not inherited by automation cron
+- [x] Tick 156 Portal Save re-link — draft `7f492c98-…` / build `2526ce25` **SUCCEEDED** + proposed (uv 0.12.5); Tick 155 draft again not inherited by automation cron
+- [x] Tick 157 Portal Save re-link — draft `1ff2ffe2-…` / build `8598414c` **SUCCEEDED** + proposed (uv 0.12.5); Tick 156 draft again not inherited by automation cron
+- [x] Tick 158 Portal Save re-link — draft `e8dc8a19-…` / build `875b56ec` **SUCCEEDED** + proposed (uv 0.12.5); Tick 157 draft again not inherited by automation cron
+- [x] Tick 159 Portal Save re-link — draft `ac80f521-…` / build `aeb894b5` **SUCCEEDED** + proposed (uv 0.12.5); Tick 158 draft again not inherited by automation cron
+- [x] Tick 160 Portal Save re-link — draft `7a57b118-…` / build `17f3a0cf` **SUCCEEDED** + proposed (uv 0.12.5); Tick 159 draft again not inherited by automation cron
+- [x] Tick 161 Portal Save re-link — draft `61ff5314-…` / build `e1cc7dda` **SUCCEEDED** + proposed (uv 0.12.5); Tick 160 draft again not inherited by automation cron
+- [x] Tick 162 Portal Save re-link — draft `c74b08d2-…` / build `211d02e4` **SUCCEEDED** + proposed (uv 0.12.5); Tick 161 draft again not inherited by automation cron
+- [x] Tick 163 Portal Save re-link — draft `a2e4e42a-…` / build `c260e2da` **SUCCEEDED** + proposed (uv 0.12.5); Tick 162 draft again not inherited by automation cron
+- [x] Tick 164 Portal Save re-link — draft `8d6298aa-…` / build `9cb94cae` **SUCCEEDED** + proposed (uv 0.12.5); Tick 163 draft again not inherited by automation cron
+- [x] Tick 165 Portal Save re-link — draft `7af24780-…` / build `9e3b0eeb` **SUCCEEDED** + proposed (uv 0.12.5); Tick 164 draft again not inherited by automation cron
+- [x] Tick 166 Portal Save re-link — draft `dcebbcb8-…` / build `718ef891` **SUCCEEDED** + proposed (uv 0.12.5); Tick 165 draft again not inherited by automation cron
+- [x] Tick 167 Portal Save re-link — draft `0ddbb09f-…` / build `90215949` **SUCCEEDED** + proposed (uv 0.12.5); Tick 166 draft again not inherited by automation cron
+- [x] Tick 168 Portal Save re-link — draft `95537bcc-…` / build `c5f0575a` **SUCCEEDED** + proposed (uv 0.12.5); Tick 167 draft again not inherited by automation cron
+- [x] Tick 169 Portal Save re-link — draft `3475a2ec-…` / build `84bf37db` **SUCCEEDED** + proposed (uv 0.12.5); Tick 168 draft again not inherited by automation cron
+- [x] Tick 170 Portal Save re-link — draft `da28d14f-…` / build `fb31002a` **SUCCEEDED** + proposed (uv 0.12.5); Tick 169 draft again not inherited by automation cron
+- [x] Tick 171 Portal Save re-link — draft `ac65a60c-…` / build `5c40fbd4` **SUCCEEDED** + proposed (uv 0.12.5); Tick 170 draft again not inherited by automation cron
+- [x] Tick 172 Portal Save re-link — env `31d13f14-…` / build `7f6cd7af` **SUCCEEDED** + proposed (uv 0.12.5); Tick 171 draft again not inherited; built uv onto RUNTIME_FORWARD_FILL personal env (SYSTEM build lacked uv)
+- [x] Tick 173 Portal Save re-link — env `31d13f14-…` / build `bd48ab05` **SUCCEEDED** + proposed (uv 0.12.5); Tick 172 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 174 Portal Save re-link — env `31d13f14-…` / build `2cdb9082` **SUCCEEDED** + proposed (uv 0.12.5); Tick 173 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 175 Portal Save re-link — env `31d13f14-…` / build `2f0d5352` **SUCCEEDED** + proposed (uv 0.12.5); Tick 174 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 176 Portal Save re-link — env `31d13f14-…` / build `b540ef99` **SUCCEEDED** + proposed (uv 0.12.5); Tick 175 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 177 Portal Save re-link — env `31d13f14-…` / build `4427440f` **SUCCEEDED** + proposed (uv 0.12.5); Tick 176 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 178 Portal Save re-link — env `31d13f14-…` / build `11e5295d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 177 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 179 Portal Save re-link — env `31d13f14-…` / build `21a1fd3e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 178 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 180 Portal Save re-link — env `31d13f14-…` / build `66195074` **SUCCEEDED** + proposed (uv 0.12.5); Tick 179 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 181 Portal Save re-link — env `31d13f14-…` / build `ec143be0` **SUCCEEDED** + proposed (uv 0.12.5); Tick 180 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 182 Portal Save re-link — env `31d13f14-…` / build `7776257c` **SUCCEEDED** + proposed (uv 0.12.5); Tick 181 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 183 Portal Save re-link — env `31d13f14-…` / build `e7045d35` **SUCCEEDED** + proposed (uv 0.12.5); Tick 182 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 184 Portal Save re-link — env `31d13f14-…` / build `5a64921b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 183 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 185 Portal Save re-link — env `31d13f14-…` / build `c2e9eab5` **SUCCEEDED** + proposed (uv 0.12.5); Tick 184 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 186 Portal Save re-link — env `31d13f14-…` / build `d2af6e7e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 185 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 187 Portal Save re-link — env `31d13f14-…` / build `31ab9b56` **SUCCEEDED** + proposed (uv 0.12.5); Tick 186 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 188 Portal Save re-link — env `31d13f14-…` / build `6712f42e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 187 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 189 Portal Save re-link — env `31d13f14-…` / build `a311f163` **SUCCEEDED** + proposed (uv 0.12.5); Tick 188 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 190 Portal Save re-link — env `31d13f14-…` / build `051699b9` **SUCCEEDED** + proposed (uv 0.12.5); Tick 189 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 191 Portal Save re-link — env `31d13f14-…` / build `4d087b19` **SUCCEEDED** + proposed (uv 0.12.5); Tick 190 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 192 Portal Save re-link — env `31d13f14-…` / build `06293e5d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 191 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 193 Portal Save re-link — env `31d13f14-…` / build `9578e331` **SUCCEEDED** + proposed (uv 0.12.5); Tick 192 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 194 Portal Save re-link — env `31d13f14-…` / build `f2c12908` **SUCCEEDED** + proposed (uv 0.12.5); Tick 193 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 195 Portal Save re-link — env `31d13f14-…` / build `e4396b08` **SUCCEEDED** + proposed (uv 0.12.5); Tick 194 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 196 Portal Save re-link — env `31d13f14-…` / build `6adcee0b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 195 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 197 Portal Save re-link — env `31d13f14-…` / build `17c5439b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 196 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 198 Portal Save re-link — env `31d13f14-…` / build `9b42d7fe` **SUCCEEDED** + proposed (uv 0.12.5); Tick 197 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 199 Portal Save re-link — env `31d13f14-…` / build `0314ab45` **SUCCEEDED** + proposed (uv 0.12.5); Tick 198 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 200 Portal Save re-link — env `31d13f14-…` / build `2795fa6e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 199 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 201 Portal Save re-link — env `31d13f14-…` / build `dda82a3e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 200 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 202 Portal Save re-link — env `31d13f14-…` / build `a18560b9` **SUCCEEDED** + proposed (uv 0.12.5); Tick 201 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 203 Portal Save re-link — env `31d13f14-…` / build `5f9c3070` **SUCCEEDED** + proposed (uv 0.12.5); Tick 202 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 204 Portal Save re-link — env `31d13f14-…` / build `87a6e3dd` **SUCCEEDED** + proposed (uv 0.12.5); Tick 203 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 205 Portal Save re-link — env `31d13f14-…` / build `8b274f8b` **SUCCEEDED** + proposed (uv 0.12.5); Tick 204 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 206 Portal Save re-link — env `31d13f14-…` / build `38125de5` **SUCCEEDED** + proposed (uv 0.12.5); Tick 205 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 207 Portal Save re-link — env `31d13f14-…` / build `4c419015` **SUCCEEDED** + proposed (uv 0.12.5); Tick 206 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 208 Portal Save re-link — env `31d13f14-…` / build `36026a20` **SUCCEEDED** + proposed (uv 0.12.5); Tick 207 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 209 Portal Save re-link — env `31d13f14-…` / build `bb874733` **SUCCEEDED** + proposed (uv 0.12.5); Tick 208 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 210 Portal Save re-link — env `31d13f14-…` / build `b1e209df` **SUCCEEDED** + proposed (uv 0.12.5); Tick 209 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 211 Portal Save re-link — env `31d13f14-…` / build `a7b3ddcb` **SUCCEEDED** + proposed (uv 0.12.5); Tick 210 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 212 Portal Save re-link — env `31d13f14-…` / build `c4bee979` **SUCCEEDED** + proposed (uv 0.12.5); Tick 211 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 213 Portal Save re-link — env `31d13f14-…` / build `706f8e21` **SUCCEEDED** + proposed (uv 0.12.5); Tick 212 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 214 Portal Save re-link — env `31d13f14-…` / build `aa5a43de` **SUCCEEDED** + proposed (uv 0.12.5); Tick 213 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 215 Portal Save re-link — env `31d13f14-…` / build `f83691ca` **SUCCEEDED** + proposed (uv 0.12.5); Tick 214 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 216 Portal Save re-link — env `31d13f14-…` / build `35eb93cc` **SUCCEEDED** + proposed (uv 0.12.5); Tick 215 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 217 Portal Save re-link — env `31d13f14-…` / build `de90de5d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 216 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 218 Portal Save re-link — env `31d13f14-…` / build `4698ebf3` **SUCCEEDED** + proposed (uv 0.12.5); Tick 217 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 219 Portal Save re-link — env `31d13f14-…` / build `8ddff59d` **SUCCEEDED** + proposed (uv 0.12.5); Tick 218 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 220 Portal Save re-link — env `31d13f14-…` / build `28f75c82` **SUCCEEDED** + proposed (uv 0.12.5); Tick 219 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 221 Portal Save re-link — env `31d13f14-…` / build `361ede14` **SUCCEEDED** + proposed (uv 0.12.5); Tick 220 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 222 Portal Save re-link — env `31d13f14-…` / build `54a16417` **SUCCEEDED** + proposed (uv 0.12.5); Tick 221 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 223 Portal Save re-link — env `31d13f14-…` / build `ac091b7e` **SUCCEEDED** + proposed (uv 0.12.5); Tick 222 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 224 Portal Save re-link — env `31d13f14-…` / build `d3228702` **SUCCEEDED** + proposed (uv 0.12.5); Tick 223 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 225 Portal Save re-link — env `31d13f14-…` / build `8cd601e9` **SUCCEEDED** + proposed (uv 0.12.6); Tick 224 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 226 Portal Save re-link — env `31d13f14-…` / build `7d4a4a18` **SUCCEEDED** + proposed (uv 0.12.6); Tick 225 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 227 Portal Save re-link — env `31d13f14-…` / build `c1a49215` **SUCCEEDED** + proposed (uv 0.12.6); Tick 226 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 228 Portal Save re-link — env `31d13f14-…` / build `e82f2c14` **SUCCEEDED** + proposed (uv 0.12.6); Tick 227 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 229 Portal Save re-link — env `31d13f14-…` / build `e1d81012` **SUCCEEDED** + proposed (uv 0.12.6); Tick 228 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 230 Portal Save re-link — env `31d13f14-…` / build `0f30c5bc` **SUCCEEDED** + proposed (uv 0.12.6); Tick 229 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 231 Portal Save re-link — env `31d13f14-…` / build `2e93adeb` **SUCCEEDED** + proposed (uv 0.12.6); Tick 230 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 232 Portal Save re-link — env `31d13f14-…` / build `31aa854f` **SUCCEEDED** + proposed (uv 0.12.6); Tick 231 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 233 Portal Save re-link — env `31d13f14-…` / build `8689ae57` **SUCCEEDED** + proposed (uv 0.12.6); Tick 232 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 234 Portal Save re-link — env `31d13f14-…` / build `1cc7c1d8` **SUCCEEDED** + proposed (uv 0.12.6); Tick 233 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 235 Portal Save re-link — env `31d13f14-…` / build `a50b3b9d` **SUCCEEDED** + proposed (uv 0.12.6); Tick 234 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 236 Portal Save re-link — env `31d13f14-…` / build `e05117b3` **SUCCEEDED** + proposed (uv 0.12.6); Tick 235 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 237 Portal Save re-link — env `31d13f14-…` / build `b4697757` **SUCCEEDED** + proposed (uv 0.12.6); Tick 236 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 238 Portal Save re-link — env `31d13f14-…` / build `18f3df08` **SUCCEEDED** + proposed (uv 0.12.6); Tick 237 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 239 Portal Save re-link — env `31d13f14-…` / build `8f015ff2` **SUCCEEDED** + proposed (uv 0.12.6); Tick 238 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 240 Portal Save re-link — env `31d13f14-…` / build `2bca4865` **SUCCEEDED** + proposed (uv 0.12.6); Tick 239 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 241 Portal Save re-link — env `31d13f14-…` / build `043f774c` **SUCCEEDED** + proposed (uv 0.12.6); Tick 240 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 242 Portal Save re-link — env `31d13f14-…` / build `456ce042` **SUCCEEDED** + proposed (uv 0.12.6); Tick 241 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 243 Portal Save re-link — env `31d13f14-…` / build `f5bee605` **SUCCEEDED** + proposed (uv 0.12.6); Tick 242 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 244 Portal Save re-link — env `31d13f14-…` / build `c8738370` **SUCCEEDED** + proposed (uv 0.12.6); Tick 243 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 245 Portal Save re-link — env `31d13f14-…` / build `bcb86082` **SUCCEEDED** + proposed (uv 0.12.6); Tick 244 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 246 Portal Save re-link — env `31d13f14-…` / build `9b26362f` **SUCCEEDED** + proposed (uv 0.12.6); Tick 245 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 247 Portal Save re-link — env `31d13f14-…` / build `c3955e0b` **SUCCEEDED** + proposed (uv 0.12.6); Tick 246 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 248 Portal Save re-link — env `31d13f14-…` / build `ea2034f0` **SUCCEEDED** + proposed (uv 0.12.6); Tick 247 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 249 Portal Save re-link — env `31d13f14-…` / build `1f39e390` **SUCCEEDED** + proposed (uv 0.12.6); Tick 248 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 250 Portal Save re-link — env `31d13f14-…` / build `e61298ff` **SUCCEEDED** + proposed (uv 0.12.6); Tick 249 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 251 Portal Save re-link — env `31d13f14-…` / build `43427d67` **SUCCEEDED** + proposed (uv 0.12.7); Tick 250 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 252 Portal Save re-link — env `31d13f14-…` / build `d76f3afd` **SUCCEEDED** + proposed (uv 0.12.7); Tick 251 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 253 Portal Save re-link — env `31d13f14-…` / build `d1684411` **SUCCEEDED** + proposed (uv 0.12.7); Tick 252 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 254 Portal Save re-link — env `31d13f14-…` / build `e2ae1ac6` **SUCCEEDED** + proposed (uv 0.12.7); Tick 253 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 255 Portal Save re-link — env `31d13f14-…` / build `f0158dac` **SUCCEEDED** + proposed (uv 0.12.7); Tick 254 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 256 Portal Save re-link — env `31d13f14-…` / build `22a61cd6` **SUCCEEDED** + proposed (uv 0.12.7); Tick 255 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 257 Portal Save re-link — env `31d13f14-…` / build `25c611c6` **SUCCEEDED** + proposed (uv 0.12.7); Tick 256 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 258 Portal Save re-link — env `31d13f14-…` / build `88f4c19c` **SUCCEEDED** + proposed (uv 0.12.7); Tick 257 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 259 Portal Save re-link — env `31d13f14-…` / build `d543e805` **SUCCEEDED** + proposed (uv 0.12.7); Tick 258 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 260 Portal Save re-link — env `31d13f14-…` / build `c76d39ff` **SUCCEEDED** + proposed (uv 0.12.7); Tick 259 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 261 Portal Save re-link — env `31d13f14-…` / build `6ad37578` **SUCCEEDED** + proposed (uv 0.12.7); Tick 260 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 262 Portal Save re-link — env `31d13f14-…` / build `eac66d47` **SUCCEEDED** + proposed (uv 0.12.7); Tick 261 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 263 Portal Save re-link — env `31d13f14-…` / build `104c2352` **SUCCEEDED** + proposed (uv 0.12.7); Tick 262 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 264 Portal Save re-link — env `31d13f14-…` / build `cf7c2280` **SUCCEEDED** + proposed (uv 0.12.7); Tick 263 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
+- [x] Tick 265 uv auto-bootstrap — `ensure_uv_on_path` + G2/G3/G4 `probe_per_run_venv_capable(bootstrap_uv=True)` so `per_run_venv` no longer depends on Portal Save; env `31d13f14-…` / build `ec92739d` **SUCCEEDED** + proposed (uv 0.12.7)
+- [x] Tick 266 runtime-deps bootstrap — `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps` (`huggingface_hub` + SIA PYTHONPATH); env `31d13f14-…` / build `5a2d7f34` **SUCCEEDED** + proposed (uv 0.12.7)
+- [x] Tick 267 secrets-only live gate verified — SYSTEM-boot G2/G3/G4 preflight `per_run_venv` + `runtime_deps` **yes**; live blockers = API keys + real diamond only; env `31d13f14-…` / build `0eb37243` **SUCCEEDED** + proposed (uv 0.12.7)
+- [x] Tick 268 secrets-first human unblock — `docs/icml_secrets_status.json` + `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional; no new AGENT build)
+- [x] Tick 269 tip lineage recovery — `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; live pipeline refuses `--live` on stale/main trees (cron often boots without ICML docs)
+- [x] Tick 270 main-boot bash tip recover — `scripts/icml_boot_recover.sh` + AGENTS.md ICML section; chicken-egg `git show <tip>:…/icml_boot_recover.sh | bash -s -- --apply`
+- [x] Tick 271 single cron entry — `scripts/icml_cron_entry.sh` tip recover + secrets gate + auto live/preflight; AGENTS.md / HUMAN_UNBLOCK prefer one command
+- [x] Tick 272 lineage-aware chicken-egg tip pick — `scripts/icml_pick_remote_tip.sh` + cron_entry `_pick_tip_ref`; AGENTS/HUMAN_UNBLOCK stop committerdate-only; secrets `human_next` → cron entry
+- [x] Tick 273 cron HF / `fetch_diamond_ok` live gate — auto/`--live` requires API keys **and** HF (`cron_live_ok`); prevents partial-secrets `--fetch-diamond` launch
+- [x] Tick 274 pipeline HF / `fetch_diamond_ok` gate — `--live --fetch-diamond` refuses without HF; preflight + Next-steps + `ready_for_live_pipeline` track `fetch_diamond_ok` (not API keys alone)
+- [x] Tick 275 G2/G3/G4 HF / `fetch_diamond_ok` gate — individual runners refuse `--live --fetch-diamond` without HF (exit 4); `require_hf_for_diamond` real `hf_token` check; CSV skips HF
+- [x] Tick 276 cron/pipeline preflight `--fetch-diamond` — `run_preflight_stack` + cron entry forward `--fetch-diamond` into G2/G3/G4 so gate reports require HF; aggregate HF only on fetch-diamond path
+- [x] Tick 277 `.env` + local diamond CSV unlock — `load_icml_dotenv` / `resolve_diamond_csv_path`; cron `--diamond-csv`; `fetch_diamond_ok` = keys + (HF or CSV)
+- [x] Tick 278 runner CSV autowire — `autowire_diamond_csv` in G2/G3/G4/pipeline so `--fetch-diamond` skips HF when drop-path CSV exists (cron no longer sole path)
+- [x] Documented case study (tie → contradiction → different DNA → fitness lift) with artifacts — offline dry-run `docs/case_study_offline.md` + `run_1940` (Tick 397–398 live shape; `selective` preferred → gen3 share **0.75**; post-adoption **0.875**; lift +0.0436 / +0.0607; Tick-396 `run_1920` / Tick-300 `run_1900` superseded)
+- [x] Tick 376 partial-stage spend reconcile — `sync_spent_from_completed_stages` bills complete-but-partial G3/G4; pipeline remaining-pair `project_budget`; post-G3/G4 absolute re-sync
+- [x] Tick 377 direct G3/G4 budget hydrate — `hydrate_direct_gate_budget_spent` loads ledger + bills unbilled local completes before direct G3/G4 budget check (closes pipeline-only Tick 376 bypass)
+- [x] Tick 378 direct G2 budget hydrate — G2 preflight uses same helper with `run_estimate_usd` (closes G2 env-only spent bypass left after Tick 377)
+- [x] Tick 379 direct gate post-live ledger stamp — `persist_direct_gate_stage_spend` stamps G2/G3/G4 after successful direct `--live` (closes cross-VM re-burn when hydrate never marked `stages_complete`)
+- [x] Tick 380 direct gate ledger-stage skip — `direct_gate_ledger_skip` + wired skip-before-sia on direct G2/G3/G4 `--live` when ledger already marks stage complete (pipeline Tick 285 parity; stamp alone was not enough)
+- [x] Tick 381 direct G4 ledger-skip paper-pack refresh — `refresh_paper_pack_on_ledger_skip` re-scores local B/D or trusts live-executed gate4 sidecar after Tick 380 early-return (pipeline Tick 374 parity; closes READY stuck after paid G4)
+- [x] Tick 382 direct G3 ledger-skip pilot-metrics refresh — `refresh_g3_metrics_on_ledger_skip` re-scores local B/D or trusts live-executed gate3 sidecar after Tick 380 wrote empty `executed=False` (pipeline Tick 373 parity; closes G3 sidecar clobber / G4 advance false-refuse)
+- [x] Tick 383 direct G2 ledger-skip post-validation refresh — `refresh_g2_post_on_ledger_skip` re-validates local G2 or trusts live-executed gate2 sidecar after Tick 380 wrote gate2 without `post=` (closes nonzero-fitness / belief_store clobber; completes G2/G3/G4 ledger-skip refresh triad)
+- [x] Tick 384 pipeline G2→G3 post-gate + prior_live_post preserve — `load_g2_post_for_g3` before paid G3; direct ledger-skip exit 4 without post; preflight preserves `prior_live_post` (closes pipeline-only Tick 383 bypass / preflight wipe)
+- [x] Tick 385 pipeline G3→G4 prior_live_metrics preserve — `write_gate3_report` keeps `prior_live_metrics`; `_live_metrics_from_gate3_sidecar` + `load_g3_metrics_for_g4` / ledger-skip trust it after cron preflight wipe (Tick 384 gate2 parity)
+- [x] Tick 386 gate4 prior_live_metrics preserve — `write_gate4_report` keeps `prior_live_metrics`; `_live_paper_from_gate4_sidecar` + `refresh_g4_paper_pack_on_resume` / `refresh_paper_pack_on_ledger_skip` trust it after cron preflight wipe (Tick 385 gate3 parity; completes G2/G3/G4 prior_live triad)
+- [x] Tick 387 discard/tip-apply prior_live stash — `discard_ephemeral_icml_dirt` persists prior_live_* to gitignored `docs/icml_prior_live_stash.json`; `reinject_prior_live_stash` after tip `--apply` in cron/boot_recover (closes discard+hard-reset wipe of Tick 384–386 evidence)
+- [x] Tick 388 recover_tip prior_live stash — `icml_recover_tip.py --apply` also discard+stash+reinject (closes Tick 387 hole on agent chicken-egg / mid-tick recover path)
+- [x] Tick 389 committed prior_live evidence (cross-VM) — `docs/icml_prior_live_evidence.json` (budget-ledger parity); reinject falls back when gitignored stash absent on fresh boots
+- [x] Tick 390 tip-apply blocks dirty prior_live evidence — dirty `docs/icml_prior_live_evidence.json` blocks tip `--apply` like budget ledger (stash-only ignore; closes Tick 389 wipe-before-commit hole)
+- [x] Tick 391 tip-apply gitignore-lag durables — boot file + open_git_pr call JSON + prior_live stash ignored when `.gitignore` lags (chicken-egg greenfield; evidence still blocks)
+- [x] Tick 392 chicken-egg tip-apply without tip module — `icml_boot_recover.sh` / `icml_cron_entry.sh` inline IGNORE when `scripts/icml_env_checks.py` absent (closes Tick 391 hole on `git show tip:… | bash -s -- --apply`)
+- [x] Tick 393 secrets-first generic tip PR body — `suggested_open_git_pr_body` no longer hardcodes Tick 392 chicken-egg changelog into every future Tick N; secrets-first + durable tip anti-churn; per-tick detail in `ICML_PROGRESS.md`
+- [x] Tick 394 secrets-status auto-detect synthetic GPQA — `detect_gpqa_is_synthetic` + `write_icml_secrets_status` auto-probe when flag omitted (cron path); tip PR body drops frozen "through Tick 392"
+- [x] Tick 395 cron secrets refresh after preflight — `refresh_secrets_after_preflight` after G2 smoke layout so `gpqa_is_synthetic` is not left null on greenfield boots
+- [x] Tick 396 steered-window H2 — `compute_h2` / `collect_dna_traits` default `min_generation=3` (delay-all first steered DNA); offline re-pilot `1910–1924`; seed 22 preferred 0.29→0.44; MECHANISM still **4/5**
+- [x] Tick 397 post-adoption H2 — default last 2 gens (floored at gen≥3); offline re-pilot `1930–1944`; H2 preferred **5/5** (seed 22=0.75)
+- [x] Tick 398 case-study post-adoption H2 — `extract_case_study` reports `post_adoption_preferred_share` (same Tick 397 window); selection prefers post-adoption ≥0.5; `run_1940` post-adoption **0.875** / lift **+0.0607**; stale limitations fixed (no longer claim MECHANISM 4/5)
+- [x] Tick 399 judge-surface offline ID lock — SUBMISSION/PRESENTATION/present_hackathon cite `1930–1944` / `run_1940`; restore summary `figures`; `committed_offline_bvd_matches_live_shape` extended
+- [x] Tick 400 human-unblock offline ID lock — `ICML_HUMAN_UNBLOCK.md` dual-unblock cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended
+- [x] Tick 401 README offline ID lock — root `README.md` evidence checklist cites `1930–1934` / `1940–1944` (not Tick-300 `1890–1904`); paper-ID lock extended
+- [x] Tick 402 delay-all CABS steering log honesty — breed logs say `(deferred until gen≥2…)` vs `(applied)`; G2 dry-run `run_1951` confirms; unit test
+- [x] Tick 403 delay-all technique_seeds gate — `breed_offspring` does not inject committee seeds when `apply_mutation_bias=False`; `test_breed_offspring_delay_all_skips_technique_seed_inject`
+- [x] Tick 404 delay-all scoped feedback gate — `_resolve_cabs_feedback_addon` / `_create_offspring_with_feedback(apply_cabs_feedback=…)` skip contradiction-scoped agenda when delay-all defers DNA steering; unit test
+- [x] Tick 405 dry-run feedback fidelity + prior_live scrub — dry-run resolves CABS addon into `feedback_agent_prompt.txt`; `run_1952`; gate2 dry-run no longer stamps `prior_live_post`
+- [x] Tick 406 G2 delay-all post-checks — `validate_g2_artifacts` requires gen2 feedback lack Contradiction-Aware agenda + empty technique_seeds; dry-run `run_1953`
+- [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
+- [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
+- [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table
+- [x] Tick 410 G4 full-pair paper-pack gate — `g4_full_pairs_for_paper` / `decide_g4_live_paper_action` require `len(B)==len(D)==len(plans)` before Live Table / READY (refuse partial equal pairs after sia-exit mid-abort)
+- [x] Tick 411 G3 full-pair metrics gate — `g3_full_pairs_for_metrics` / `decide_g3_live_metrics_action` require all planned pairs before `score_pilot`; ledger-skip + pipeline refuse sidecar `n_pairs < planned` (Tick 410 parity — refuse partial pilot → G4)
+- [x] Tick 412 G4 full-pair sidecar trust gate — ledger-skip + `refresh_g4_paper_pack_on_resume` refuse sidecar `n_pairs < planned` (Tick 411 G3 parity); direct G4 ledger-skip exits 4 on trust fail; pipeline resume returns 4 on refuse notes
+- [x] Tick 413 H5 planned-denominator VALIDITY — `h5_validity_pass(..., planned_n=)` requires ≥3/5 ρ>0.3 (errors no longer shrink denominator); ledger-skip + pipeline resume refuse thin H5 READY poison; `h2_skew_pass` planned_n parity
+- [ ] Live API-run H2 DNA trait skew under contradiction bias
+- Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
+
+### 3. VALIDITY — H5
+- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs
+- Evidence: offline multi-seed Condition D `1940–1944` (Tick 397 live shape pop4×eval5×max_gen6) → ρ>0.3 on **5/5** seeds (0.4 / 0.8 / 0.8 / 1.0 / 0.4) using population-mean forward Δfitness (`delta_horizon=2`) and gen≥2 pairs. Still **not** live GPQA.
+
+### 4. PAPER
+- [x] Figure 1 draft (offline B vs D learning curves) — `docs/figures/fig1_learning_curves.png`
+- [x] Figure 2 draft (H2 DNA histogram / case-study support) — `docs/figures/fig2_mechanism.png`
+- [ ] Table 1 (primary metrics by seed) — offline stub filled (incl. cost30); live empty
+- [ ] Table 2 (H2/H5 / cost) — offline cost30 **4/5** + post-steer H2 filled; live empty
+- [x] Abstract draft (scaffold in `docs/paper_artifacts.md` — live results TBD)
+- [x] Limitations (honest; kept updated in `docs/paper_artifacts.md`)
+- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md` (dry-run IDs present; live pending)
+- Metrics helper: `scripts/epistemic_results.py`; offline pilot: `scripts/offline_bvd_case_study.py`
+- G2 layout helper: `scripts/prepare_gpqa_smoke_data.py` (Tick 21; CLI dry-run `run_1800` — not live)
+- G2 live runner: `scripts/run_g2_smoke.py` (Tick 24; preflight `docs/gate2_report.md` — live blocked on keys + real GPQA)
+- G2 diamond fetcher: `scripts/prepare_gpqa_diamond.py` (Tick 25; `--from-hf` / `--from-csv`; `run_g2_smoke.py --fetch-diamond`)
+- G3 sequential pilot: `scripts/run_g3_pilot.py` (Tick 26; preflight `docs/gate3_report.md` — live blocked on keys + real GPQA; run after G2)
+- G4 5-seed PRIMARY: `scripts/run_g4_multiseed.py` (Tick 27–28; preflight `docs/gate4_report.md` — live blocked on keys + real GPQA; run after G3; paper pack auto-fills Tables/Figs/READY)
+- Live stack orchestrator: `scripts/run_icml_live_pipeline.py` (Tick 29; preflight `docs/icml_live_pipeline_report.md` — preferred entry once keys appear; **Tick 268** secrets-first Next + `docs/icml_secrets_status.json`; **Tick 269** tip lineage guard + `docs/icml_tip_status.json`)
+- Human unblock: `docs/ICML_HUMAN_UNBLOCK.md` (Tick 268)
+- Tip recover: `scripts/icml_recover_tip.py` (Tick 269) + `scripts/icml_boot_recover.sh` (Tick 270 main-boot / chicken-egg)
+- Single cron entry: `scripts/icml_cron_entry.sh` (Tick 271 — recover tip → live or preflight; **Tick 272** lineage-aware chicken-egg via `scripts/icml_pick_remote_tip.sh`; **Tick 273** auto-live requires `fetch_diamond_ok` / HF; **Tick 274** pipeline mirrors HF gate; **Tick 275** G2/G3/G4 runners mirror HF gate; **Tick 276** preflight also passes `--fetch-diamond`; **Tick 277** `.env` load + local CSV → `--diamond-csv`; **Tick 278** runners autowire the same CSV under `--fetch-diamond`)
+- Cursor env: `.cursor/environment.json` (+ **uv**) + Tick 267 env `31d13f14-…` (build `0eb37243` SUCCEEDED + proposed; Tick 268–281 did **not** re-trigger) + **Astral uv + runtime-deps bootstrap in G2/G3/G4**; pointer `docs/icml_portal_save_target.json`
+- Per-run venv / runtime deps / secrets / tip gate: `scripts/icml_env_checks.py` (`ensure_uv_on_path` Tick 265; `ensure_icml_runtime_deps` Tick 266/**279–281 uv-first + user-site target + PYTHONPATH**; `write_icml_secrets_status` Tick 268/272/273/274/275/276 `cron_live_ok` + `ready_for_live_pipeline←fetch_diamond_ok`; `write_icml_tip_status` Tick 269; Tick 32/34 SystemExit-safe probe; Tick 278 `autowire_diamond_csv`)
+- [x] Tick 279 uv-first runtime package bootstrap — `_pip_install_user` prefers `uv pip install --python <sys.executable>` before `pip --user` (pip-less / `uv run` envs no longer false-fail `runtime_deps`)
+- [x] Tick 280 uv pip `--target` user site — `_uv_pip_install` installs into user site-packages (not read-only `/usr/local/...`); pip-less + system-Python boots clear `runtime_deps`
+- [x] Tick 281 user-site on PYTHONPATH — `_expose_user_site_on_pythonpath` so Tick 280 `--target` packages survive `PYTHONNOUSERSITE` / venv children (latent `--fetch-diamond` fix)
+- [x] Tick 282 deps-before-diamond-fetch — `ensure_deps_before_diamond_fetch` in G2/G3/G4/pipeline before `materialize_from_hf` (cold-boot ImportError fix)
+- [x] Tick 283 live budget reconcile — `bump_spent_reconciled` from actual `total_cost_usd` × meta overhead after G2/G3/G4; preflight `diamond_n` default 15
+- [x] Tick 284 live resume + budget ledger — `darwinian_run_complete` + `docs/icml_budget_spent.json`; skip completed G2/G3/G4 run IDs; reload spend across cron ticks
+- [x] Tick 285 cross-VM ledger resume — stop gitignoring ledger; `ledger_stage_complete` skips gates when `runs/` absent but committed ledger matches run IDs
+- [x] Tick 286 ephemeral-dirt tip recover + zero ledger — `discard_ephemeral_icml_dirt` before tip `--apply`; committed zero `docs/icml_budget_spent.json`; cron/boot_recover wired
+- [x] Tick 287 host pandas-free GPQA `--eval_subset` — lazy `_require_pandas()` in `SIA/sia/eval_subset.py`; G2 dry-run `run_1852` PASS on system Python without host pandas (latent live abort fixed)
+- [x] Tick 288 Nebius target profile + GPQA reference retarget — G2/G3/G4 `--target-agent-profile kimi-nebius-target` + `nebius_target_profile` preflight; GPQA seed uses Nebius/Kimi (not Tinker); dry-run `run_1855` PASS
+- [x] Tick 289 Nebius pydantic-ai meta — G2/G3/G4 `--meta-agent-profile kimi-nebius-pydantic-meta` + `nebius_meta_profile` preflight; Anthropic optional for live secrets; dry-run `run_1856` PASS
+- [x] Tick 290 GPQA subset eval cost merge — `_evaluate_gpqa_subset` copies tokens/USD/`details` from `submission.json` into `results.json`; `sum_run_dirs_cost_usd` + `load_gen_cost` fall back to submission (PRIMARY cost + budget reconcile)
+- [x] Tick 291 Nebius Kimi USD + token→USD budget reconcile — reference `MODEL_PRICING` 0.95/4.0; `estimate_usd_from_tokens` when USD=0; Nebius meta overhead 3.0; Nebius evolved-agent cost prompt (latent under-count after Tick 289 meta)
+- [x] Tick 292 Anthropic-optional human secrets messaging — `icml_human_required_secrets_phrase`; cron + G2/G3/G4/pipeline Next/refuse no longer hard-demand ANTHROPIC under Nebius meta
+- [x] Tick 293 Nebius budget-fit G3/G4 shape — `icml_g3g4_live_shape` eval10/pop3/elite1/max_gen4 + estimates G2+$2+G3+$3+G4+$14=$19 ≤ $20 (avoids latent mid-stack refuse/overrun after Tick 291 Kimi metering)
+- [x] Tick 294 Nebius G3/G4 elite≥2 floor — cost-neutral elite 1→2 + `icml_g3g4_live_shape` floors env elite=1 when pop≥2 (elite=1 → same-parent crossover / H2 collapse under delay-all)
+- [x] Tick 295 Nebius G3/G4 max_gen=5 cost-neutral — eval10→8 / max_gen4→5 (3×8×5=120 agent-evals); restores PRIMARY gens30 horizon (offline seed 22 @ gen5 under delay-all)
+- [x] Tick 296 Nebius G3/G4 pop4 diversity restore — offline @ Tick295 pop3 shape FAIL PRIMARY/H5; cost-neutral **pop4×eval5×max_gen6**=120 + G3/G4 max_gen cap→6; offline PRIMARY+H5 restored (matches Tick 23)
+- [x] Tick 297 Tick-296 shape recipe/report sync — Section 21.7 + gate3/4/pipeline reports advertise **pop4×eval5×max_gen6** (was stale pop3); pipeline note → Tick 296; focused **82/82**
+- [x] Tick 298 committed recipe↔shape lock — `committed_g3g4_recipes_match_live_shape` locks gate3/4 JSON + pipeline note + Section 21.7 B/D examples to live shape (prevents Tick-297 stale-recipe burn); focused **98/98**
+- [x] Tick 299 recipe lock on live path — pipeline preflight + `--live` refuse call `committed_g3g4_recipes_match_live_shape` (Tick 298 was tests-only); focused pipeline+env **66/66**
+- [x] Tick 300 offline Bvd↔live-shape lock — re-pilot `1890–1894`/`1900–1904` at pop4×eval5×max_gen6; `committed_offline_bvd_matches_live_shape` + pipeline preflight/`--live` refuse; paper/gate3 offline tables refreshed
+- [x] Tick 301 offline Bvd paper-ID lock — extend lock to `paper_artifacts` / `ICML_READY` / Section 12 / case study citing summary IDs; sync stale `run_1840`/`1830–1844` → `run_1900`/`1890–1904`
+- [x] Tick 302 offline Bvd figures lock — regen Figs 1–2 at live shape (`1890–1904`); summary `figures` relative paths; lock requires fig1+fig2 on disk + paper cites (fixes Tick 300 `figures: []`)
+- [x] Tick 303 G3/G4 direct-live shape locks — `run_g3_pilot` / `run_g4_multiseed` preflight `ready_for_live` requires recipe + offline Bvd locks (closes pipeline-only bypass from Tick 299–302); focused g3+g4+env **71/71**
+- [x] Tick 304 offline Bvd CLI defaults←live shape — `offline_bvd_case_study` defaults from `icml_g3g4_live_shape()`; refuse divergent shape unless `--allow-shape-override` (prevents future re-pilot drift vs Tick 300–302 locks); focused offline+env **5/5**
+- [x] Tick 305 G3/G4 direct-live tip lineage guard — `run_g3_pilot` / `run_g4_multiseed` preflight `ready_for_live` requires `tip_ok_for_live` (closes pipeline-only bypass from Tick 269); `--allow-stale-tip` escape; focused g3+g4 **25/25**
+- [x] Tick 306 G2 direct-live tip lineage guard — `run_g2_smoke` preflight `ready_for_live` requires `tip_ok_for_live` (closes remaining direct-live tip bypass after Tick 305); `--allow-stale-tip` escape; focused g2 **14/14**
+- [x] Tick 307 prepare_* Anthropic-optional Next messaging — `prepare_gpqa_diamond` / `prepare_gpqa_smoke_data` use `icml_human_required_secrets_phrase` (closes Tick 292 leftover hardcode); focused prepare **11/11**
+- [x] Tick 308 verify_keys + portal_save_target Anthropic-optional — `verify_keys.py` SKIP Anthropic under Nebius meta; `icml_portal_save_target.json` required_secrets = NEBIUS+HF (ANTHROPIC optional); focused **5/5**
+- [x] Tick 309 `.env.example` + Section 4.1 Anthropic-optional — `.env.example` comments Anthropic / leads with Nebius; Section 4.1 ICML note; paper Tick-30 stale claim fixed; `test_env_example_and_section4_anthropic_optional`
+- [x] Tick 310 README + §6.2/§21 Anthropic-optional — README Nebius-first; Section 6.2 gate + Tick 24/25/30 notes no longer hard-require Anthropic; lock test extended
+- [x] Tick 311 load_env.ps1 Anthropic-optional — `scripts/load_env.ps1` Nebius-first + HF_TOKEN status; Anthropic marked optional (not bare "missing"); lock test extended
+- [x] Tick 312 load_env.sh Linux/cloud twin — `scripts/load_env.sh` Nebius-first + HF status; Anthropic optional; README + AGENTS + lock test; bash parity with Tick 311
+- [x] Tick 313 §8.2 + Phase 0.2 Anthropic-optional — spending rules Nebius-first; Phase 0.2 marked optional under Nebius meta (no STOP waiting on Anthropic); lock test extended
+- [x] Tick 314 Section 12 cloud secrets honesty — NEBIUS/HF **ABSENT (cloud)**; Anthropic **OPTIONAL (ICML)**; HF/CSV row; §4.1/§6.2 labels → 314; lock test extended
+- [x] Tick 315 Section 4.4 ICML Nebius model defaults — §4.4 leads with `kimi-nebius-pydantic-meta` + `kimi-nebius-target` (not Anthropic/Nemotron “all runs”); §4.5 Kimi-K2.6 $0.95/$4.00; lock test extended
+- [x] Tick 316 §3.3 + §6.3 ICML Nebius inference architecture — §3.3 diagram + §6.3 rules lead with Nebius Kimi (not Claude meta + Nemotron-as-default target); budget note Nebius-only; lock test extended
+- [x] Tick 317 §13/§18/§21.7 ICML Kimi command surfaces — Exact run commands + Phase 2 + Section 18 handoff + §21.7 bare `sia run` examples use `kimi-nebius-*` (not Nemotron-only copy-paste); lock test extended
+- [x] Tick 318 README ICML Kimi command surfaces — README leads with cron + `kimi-nebius-*` GPQA; chess/Qwen demoted; LawBench checklist removed (hard-stop note); lock test extended
+- [x] Tick 319 SUBMISSION + PRESENTATION ICML judge surfaces — judge docs (linked from README) lead with ICML cron/Kimi + offline PRIMARY `1890–1904` + LawBench hard-stop; lock test extended
+- [x] Tick 320 finish/present ICML-honest judge demos — `finish_hackathon.py` / `present_hackathon.py` surface ICML STATUS + offline Bvd + cron; no false READY FOR SUBMISSION; lock test extended
+- [x] Tick 321 finish pytest bootstrap — cold-cloud `finish_hackathon.py` bootstraps/SKIPs missing pytest and always prints ICML STATUS footer (no exit-1 suppressing honest IN_PROGRESS); lock test extended
+- [x] Tick 322 python3-safe judge entrypoints — README/SUBMISSION/PRESENTATION + finish/present use `python3` / `sys.executable` (cold Linux has no bare `python` shim); lock test extended
+- [x] Tick 323 python3-safe gate Next — G2/G3/G4/pipeline Next + tip refuse + prepare_*/verify_keys use `icml_python_cli()` (no bare `python scripts/…` on cold Linux); lock test extended
+- [x] Tick 324 python3-safe Section 21.7 — §21.7 prepare/G2/G3/G4/pipeline copy-paste uses `python3` (cold Linux has no bare `python`); lock test extended
+- [x] Tick 326 python3-safe script --help Examples — G2/G3/G4/pipeline/prepare/recover/epistemic module docstrings use `python3` (cold Linux); lock test extended
+- [x] Tick 327 dual human unblock — `ICML_HUMAN_UNBLOCK.md` leads with secrets **and** merge tip PR → `main` (cron boots hackathon AGENTS without ICML tip files); lock test extended
+- [x] Tick 328 machine-readable dual unblock — `main_has_icml_tip_files` + secrets/tip JSON + pipeline Next surface merge tip→main when `main` lacks tip (does not gate `fetch_diamond_ok`); lock test extended
+- [x] Tick 329 cron full human_next on blocked paths — `print_human_next` on `--preflight-only` / auto / live-refuse (Tick 328 JSON was silent on preflight); lock test extended
+- [x] Tick 330 concrete tip PR URL in human_next — `resolve_icml_tip_pr` + `tip_pr_url` / `#N` (+ draft undraft note) on secrets/tip JSON + merge Next (300+ tip PRs); lock test extended
+- [x] Tick 331 tip lineage scans cursor/bc-* cron boots — tip pickers / recover / cron / `list_remote_icml_tip_candidates` also scan `cursor/bc-*` (cloud automation boot branches); `resolve_icml_tip_pr` no stale unrelated-PR fallback; lock test extended
+- [x] Tick 332 HUMAN_UNBLOCK chicken-egg scans cursor/bc-* — `ICML_HUMAN_UNBLOCK.md` chicken-egg + cron/boot_recover header recipes also fetch/scan `cursor/bc-*` (Tick 331 fixed pickers/AGENTS only); lock test extended
+- [x] Tick 333 same-SHA sibling tip PR fallback — `resolve_icml_tip_pr` uses open PR on same-SHA sibling tip ref when tip head has no PR yet (mid-tick / greenfield); still no unrelated-ICML-PR fallback; lock test extended
+- [x] Tick 334 tip PR HEAD/local SHA fallback — `_tip_sha_for_pr_resolve` uses HEAD/local branch when tip_ref remote is unpushed (greenfield after tip recover); same-SHA sibling tip PR still resolves; lock test extended
+- [x] Tick 335 tip PR mergeability in human_next — `_gh_pr_list_for_head` fetches `mergeable`/`mergeStateStatus`; `_tip_pr_mergeability_note` → human_next + tip/secrets JSON; MERGEABLE/CLEAN → undraft & merge now; lock test extended
+- [x] Tick 336 tip PR gh copy-paste merge commands — `_tip_pr_merge_commands` + churn warning in human_next; tip/secrets JSON `tip_pr_merge_commands`; merge before next cron or tip PR supersedes; lock test extended
+- [x] Tick 337 tip PR anti-churn — `prefer_tip_pr_commit_branch` + `tip_pr_commit_branch` / `tip_pr_anti_churn` in tip/secrets JSON; `scripts/icml_checkout_tip_pr_branch.sh`; human_next “do NOT open a new tip PR”; lock test extended
+- [x] Tick 338 cron tip PR anti-churn auto-checkout — `icml_cron_entry.sh` auto-checkouts `tip_pr_commit_branch` after tip/secrets status write (closes Tick-337 greenfield branch-name gap); lock test extended
+- [x] Tick 339 tip recover --apply anti-churn checkout — `icml_boot_recover.sh --apply` + `icml_recover_tip.py --apply` also auto-checkout `tip_pr_commit_branch` (closes Tick-338 chicken-egg-only path); lock test extended
+- [x] Tick 340 open_git_pr never-omit-branch — `docs/icml_open_git_pr.json` + tip/secrets `open_git_pr_branch` / `open_git_pr_never_omit_branch`; cron prints ALWAYS pass branch=; MCP omit defaults to greenfield boot branch → new tip PR; lock test extended
+- [x] Tick 341 main-boot AGENTS chicken-egg bootstrap — branch `cursor/icml-main-agents-bootstrap` (1-file PR onto `main`; not a tip PR); cron cloud instructions stop needing automation memory for recover once merged; lock test extended
+- [x] Tick 342 AGENTS bootstrap PR in human_next — `resolve_icml_agents_bootstrap_pr` + secrets/tip `agents_bootstrap_pr_*` / `agents_bootstrap_merge_commands`; cron `human_next` leads with interim bootstrap when open; lock test extended
+- [x] Tick 343 PRIMARY-first human_next — when `fetch_diamond_ok` is false, secrets (+ HF accept) lead `human_next` / pipeline Next; tip/bootstrap merge follow (does not gate live); lock test extended
+- [x] Tick 344 secrets-first open_git_pr title — `suggested_open_git_pr_title` + `tip_pr_title_stale` in `docs/icml_open_git_pr.json`; secrets-first title when diamond blocked; cron prints suggested title; lock test extended
+- [x] Tick 345 tip PR title edit commands — `tip_pr_title_edit_commands` (`gh pr edit --title`) when `tip_pr_title_stale`; open_git_pr MCP does not rewrite GitHub titles on existing PRs; human_next + cron + JSON; lock test extended
+- [x] Tick 346 tip PR body-file refresh — MCP also freezes GitHub body (PR #337 still Tick 336 desc through 345); `suggested_open_git_pr_body` + `docs/icml_tip_pr_body.md`; edit cmds include `--body-file`; lock test extended
+- [x] Tick 347 tip_pr_body_stale independent of title — `gh` fetches body; `parse_tick_from_pr_body`; body-only `--body-file` paste when title already current; lock test extended
+- [x] Tick 348 open_git_pr pass description — when `tip_pr_body_stale`, `open_git_pr_pass_description` + `open_git_pr_description_file`; agents pass `description=` from `docs/icml_tip_pr_body.md` (symmetric with title=); cron prints; lock test extended
+- [x] Tick 349 open_git_pr description inline — keep `open_git_pr_description` **inline** in `docs/icml_open_git_pr.json` (Tick 348 dropped body from JSON → agents skipped file read); md file still for `gh --body-file`; lock test extended
+- [x] Tick 350 open_git_pr call JSON — write `docs/icml_open_git_pr_call.json` with exact MCP `{branch, title, description}` verbatim; cron prints path; ephemeral + lock test extended
+- [x] Tick 351 tip PR anti-churn UNKNOWN mergeable — `prefer_tip_pr_commit_branch` accepts UNKNOWN/null/empty; cron + checkout fall back to `tip_pr_head_ref`; lock test extended
+- [x] Tick 352 cloud_boot_branch open_git_pr warn — `detect_cloud_boot_branch` + call/secrets JSON `cloud_boot_branch` / `omit_branch_opens_pr_on`; cron/`human_next` warn; Cloud Agent boot ≠ tip anti-churn; lock test extended
+- [x] Tick 353 cron early boot-branch capture — `icml_cron_entry.sh` exports `ICML_CLOUD_BOOT_BRANCH` before tip recover / anti-churn (survives `ICML_CRON_REEXEC`); lock tests extended
+- [x] Tick 354 false-boot ignore + persist — `detect_cloud_boot_branch` ignores env==tip; ephemeral `docs/icml_cloud_boot_branch.txt`; cron skips capture when already on tip; lock tests extended
+- [x] Tick 355 cron no tip-boot-file clobber — preserved-env `elif` unsets `ICML_CLOUD_BOOT_BRANCH` when == tip; does not overwrite boot file with tip; lock tests extended
+- [x] Tick 356 boot-file gitignore + discard survive — `docs/icml_cloud_boot_branch.txt` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS`; tip `--apply` cannot wipe boot fallback; lock test `test_boot_file_gitignored_survives_ephemeral_discard`
+- [x] Tick 357 reject short boot poison + checkout persist — `_is_valid_cloud_boot_branch_name` rejects bare suffixes; invalid boot file unlinked; `icml_checkout_tip_pr_branch.sh` persists greenfield boot before tip switch; lock test `test_reject_short_boot_poison_and_checkout_persists`
+- [x] Tick 358 checkout refreshes open_git_pr call JSON — `refresh_open_git_pr_after_tip_checkout` after tip checkout so `cloud_boot_branch` matches just-persisted boot (not stale prior-tick); de-flaked Tick 357 live-tree assert; lock test `test_refresh_open_git_pr_after_tip_checkout_updates_boot`
+- [x] Tick 359 call-JSON gitignore + discard survive — `docs/icml_open_git_pr_call.json` gitignored + excluded from `EPHEMERAL_ICML_RELPATHS` (tip HEAD `git restore` used to re-poison `…-48b0`); cron `already_on` refreshes; lock test `test_call_json_gitignored_survives_ephemeral_discard`
+- [x] Tick 360 PRIMARY mean_final_gap — `compare_b_vs_d` emits `mean_final_b/d/gap` + `primary_final_pass`; G4 criterion (c) + G3 promising use mean gap >1pp; offline summary `primary_final_pass=true` (~6.15pp)
+- [x] Tick 361 live H2 bias-field auto-resolve — `resolve_h2_bias_field` / `compute_h2(field=None)` / G4 `score_live_h2` prefer `tool_strategy` over hard-coded `memory` (latent MECHANISM false-fail fix)
+- [x] Tick 362 offline Fig 2 primary H2 field — `_maybe_figures` + `D_h2_share` use auto-resolved `h2` (not `h2_memory`); regen Figs 1–2 at `1890–1904`
+- [x] Tick 363 live G4 paper-pack H2 field + PRIMARY gap — Fig 2 majority auto field (not `memory`); Live Table 1 `mean_final_gap`/`primary_final_pass`; H2 rows `field=`; Winner gens25/cost25
+- [x] Tick 364 H2 preferred-allele share — `compute_h2` emits `preferred_share`; `h2_skew_pass` requires preferred ≥0.5 (not mere `in_bias_share`); closes loser-dominated MECHANISM false-pass
+- [x] Tick 365 offline/gate4 preferred-share surfacing — `D_h2_share`/`Fig 2`/gate4 H2 report use preferred_share (not pool `in_bias_share`); regen `1890–1904` honest shares
+- [x] Tick 366 offline H2 preferred-pass aggregate — `compare_b_vs_d` `d_wins_h2`/`h2_preferred_pass`; brief `D_h2_pass`; gate3+Table 2 report **4/5** (seed 22 fail)
+- [x] Tick 367 live G4 H2 preferred-pass aggregate — Live Table 1/2 + gate4 report surface `d_wins_h2`/`h2_preferred_pass`; `apply_paper_pack` prefers compare aggregate when n≥5
+- [x] Tick 368 live G3 H2 + mean_final_gap — `score_pilot` returns H2; gate3 live metrics surface preferred_share + mean_final_gap / primary_final_pass / d_wins_h2 (G4 Tick 360/367 parity before G4 spend)
+- [x] Tick 369 live pipeline G3 H2 + mean_final_gap surfacing — `_load_gate3_sidecar` returns H2; pipeline G3→G4 gate surfaces mean_final_gap / d_wins_h2 / preferred_share (not binary `g3_promising` only)
+- [x] Tick 370 G3→G4 PRIMARY-only promising gate — `g3_pilot_promising` requires PRIMARY-shaped D win / mean_final_gap>1pp; H5 alone no longer auto-spends ~$14 G4 (`--force-g4` override)
+- [x] Tick 371 G2 nonzero-fitness post-run gate — `validate_g2_artifacts` requires best fitness > `SIA_G2_MIN_BEST_FITNESS` (default 0); blocks 0%/unscored G2 from auto-advancing paid G3/G4
+- [x] Tick 372 G2 resume post-run re-validation — local G2 `results.json` with 0% fitness no longer resume-skips into paid G3/G4 (`g2_resume_gates_ok` / `sync_spent_from_completed_stages`)
+- [x] Tick 373 G3 resume re-score for G4 — `load_g3_metrics_for_g4` re-scores local G3 B/D (or requires live-executed sidecar); preflight/null comparison no longer drives ~$14 G4
+- [x] Tick 374 G4 resume paper-pack refresh — `refresh_g4_paper_pack_on_resume` re-scores local G4 B/D + `apply_paper_pack` (or requires live-executed sidecar); resume-skip no longer leaves ICML_READY stuck
+- [x] Tick 375 partial G3/G4 pair resume — complete B/D runs resume-skip (not occupied blockers); incomplete dirs still refuse overwrite; budget bills remaining pairs only
+
+## Gate tracker (Section 21.5)
+
+| Gate | Status |
+|------|--------|
+| G0 mechanism unit tests | **PASS** (2026-08-03; … + Tick 265–281 env/secrets/tip/CSV/uv-pip stack) |
+| G1 dry-run Condition D | **PASS** (2026-08-04) — `run_1401` + `test_cabs_inline_dry_run.py` |
+| G2 smoke GPQA subset | **DRY-RUN PASS** (Tick 287 `run_1852` on host without pandas; Tick 296 `run_1862`); **PREFLIGHT READY** (Tick 24/25 + … + **Tick 371–375** nonzero-fitness + G2/G3/G4 resume hardening + partial pair resume + **Tick 383** ledger-skip post refresh + **Tick 384** pipeline G2→G3 post-gate); **live** G2 still BLOCKED on **API keys** + HF_TOKEN / real diamond (see `docs/ICML_HUMAN_UNBLOCK.md`) |
+| G3 pilot B vs D | Offline synthetic pilot preserved (Tick **397** post-adoption H2 `1930–1944`; gens30 **4/5**; cost30 **4/5**; H5 **5/5**; H2 preferred **5/5**; post-steer H2 on `run_1940`; Tick-396 `1910–1924` superseded); **live** G3 **PREFLIGHT READY** (Tick 26 + **Tick 368** H2/mean-gap live metrics + **Tick 369** pipeline surfacing + **Tick 370** PRIMARY-only G4 gate + **Tick 373** resume re-score + **Tick 382** ledger-skip metrics refresh + **Tick 385** prior_live_metrics preserve + **Tick 411** full-pair metrics gate); NOT STARTED (blocked on keys; run after G2) |
+| G4 5-seed + metrics | **PREFLIGHT READY** (Tick 27–28: `run_g4_multiseed.py` + full paper pack; **Tick 367** live H2 preferred-pass aggregate; **Tick 374** resume paper-pack; **Tick 375** partial pair resume; **Tick 377** direct budget hydrate; **Tick 380** ledger-stage skip; **Tick 381** ledger-skip paper-pack refresh; **Tick 386** prior_live_metrics preserve; **Tick 387** discard/tip-apply prior_live stash; **Tick 388** recover_tip prior_live stash; **Tick 389** committed prior_live evidence; **Tick 390** tip-apply blocks dirty prior_live evidence; **Tick 391** tip-apply gitignore-lag durables; **Tick 392** chicken-egg tip-apply without tip module; **Tick 393** secrets-first generic tip PR body; **Tick 394** secrets-status auto-detect synthetic GPQA; **Tick 395** cron secrets refresh after preflight; **Tick 396** steered-window H2; **Tick 397–399** post-adoption H2 + case study + judge-surface ID lock; **Tick 408** G4 never-steer refuse before READY; **Tick 409** mid-G4 never-steer abort + skip partial paper; **Tick 410** full-pair paper-pack gate; **Tick 412** full-pair sidecar trust); **live** NOT STARTED (blocked on keys; run after G3) |
+| G5 paper pack | PARTIAL (offline figs + post-adoption case study + offline PRIMARY gens30/cost30 4/5 + offline H5 5/5 + H2 preferred 5/5 + Tick 399–400 judge/operator ID locks); live pack automatable via Tick 28/29/374/381/386 pipeline but NOT STARTED |
+
+<!-- Tick 400 note: human-unblock offline ID lock; live still blocked on NEBIUS+HF -->
