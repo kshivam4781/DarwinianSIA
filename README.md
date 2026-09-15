@@ -7,7 +7,7 @@
 ## Present in 2 minutes (no API keys)
 
 ```powershell
-cd c:\Users\MSPSA\Documents\SIA2
+cd path\to\SIA2
 .\.venv\Scripts\Activate.ps1
 python scripts\finish_hackathon.py    # full verify (recommended for judges)
 python scripts\present_hackathon.py   # 2-min demo only
