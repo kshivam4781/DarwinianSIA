@@ -1,0 +1,5 @@
+{
+  "name": "DarwinianSIA ICML live",
+  "install": "curl -LsSf https://astral.sh/uv/install.sh | sh\nexport PATH=\"$HOME/.local/bin:$PATH\"\npython3 -m pip install --user -U pip setuptools wheel\npython3 -m pip install --user -e \".[dev]\"\npython3 -m pip install --user -e \"./SIA[dev]\"\npython3 -m pip install --user huggingface_hub\npython3 -m pip install --user uv\ncommand -v uv\nuv --version",
+  "start": "export PATH=\"$HOME/.local/bin:$PATH\""
+}
