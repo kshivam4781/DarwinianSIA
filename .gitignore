@@ -7,5 +7,6 @@ runs/
 *.egg-info/
 dist/
 build/
-.cursor/
+.cursor/*
+!.cursor/environment.json
 *.log
