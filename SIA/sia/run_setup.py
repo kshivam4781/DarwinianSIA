@@ -89,16 +89,28 @@ def load_task_files(
 
 
 def _create_venv(venv_dir: str, packages: list[str]) -> None:
-    """Create a virtual environment and install packages."""
+    """Create a virtual environment and install packages.
+
+    Prefers ``uv`` (works on Cursor/Debian images lacking ensurepip /
+    ``python3.12-venv``). Stdlib ``venv.create(..., with_pip=True)`` is the
+    fallback when ensurepip is available.
+    """
     if shutil.which("uv"):
         subprocess.run(["uv", "venv", venv_dir], check=True)
         subprocess.run(
             ["uv", "pip", "install", "--python", venv_python_path(venv_dir), *packages],
             check=True,
         )
-    else:
+        return
+    try:
         venv.create(venv_dir, with_pip=True)
-        subprocess.run([venv_pip_path(venv_dir), "install", *packages], check=True)
+    except Exception as exc:
+        raise RuntimeError(
+            "Failed to create SIA per-run venv via stdlib venv+ensurepip "
+            f"({type(exc).__name__}: {exc}). Install uv "
+            "(https://docs.astral.sh/uv/) or python3-venv, then retry."
+        ) from exc
+    subprocess.run([venv_pip_path(venv_dir), "install", *packages], check=True)
 
 
 def install_requirements(venv_dir: str, requirements_path: str) -> None:
