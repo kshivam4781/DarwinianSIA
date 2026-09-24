@@ -1,5 +1,43 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-24T20:05Z — Tick 415 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-d39c`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 414 recomputed H2 via `planned_n` on ledger-skip but **never refused** false `meta.h2_pass` / thin preferred-share (1/5 + 4 errors), and demoted READY only on primary+h5 — so MECHANISM could stay READY-poisoned. Pipeline resume also omitted H2 planned-n revalidation. Highest leverage without paid spend: **thin H2 MECHANISM refuse on G4 sidecar trust**.
+
+### What this tick did (ONE step)
+**Thin H2 MECHANISM refuse on G4 sidecar trust (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 414 (`f49c`); confirmed secrets absent; boot `d39c` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Ledger-skip: refuse when `meta.h2_pass` but `h2_skew_pass(..., planned_n=)` fails; demote READY unless primary+h5+h2 all recompute-pass
+3. Pipeline resume: always refuse thin H2 vs planned denominator (Tick 413 H5 / Tick 414 PRIMARY parity)
+4. Unit tests: `test_refresh_paper_pack_refuses_thin_h2_sidecar` + `test_refresh_g4_paper_pack_refuses_thin_h2_sidecar` (+ Tick 413/414 regression) — **6/6**
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 414) | After (Tick 415) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Sidecar meta.h2_pass=True, thin 1/5 preferred → READY | possible | **PASS** unit — refuse |
+| Pipeline resume H2 planned_n | omitted | **PASS** — refuse thin H2 |
+| READY demotion requires primary+h5+h2 | primary+h5 only | **PASS** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-24T18:05Z — Tick 414 (automation cron)
 
 ### Status snapshot

@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–411** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–411** live stack hardening (Tick 406: G2 delay-all skip post-checks; Tick 407: G3 gen≥3 steering positive-control; Tick 408: G4 refuse never-steer before READY; Tick 409: mid-G4 abort on first never-steer D; Tick 410: full-pair paper-pack gate; Tick 411: G3 full-pair metrics gate). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–415** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–415** live stack hardening (Tick 415: refuse thin/false `meta.h2_pass` on G4 sidecar trust; Tick 414: PRIMARY recompute; Tick 413: H5 planned-denominator; Tick 412: G4 full-pair sidecar trust; Tick 411: G3 full-pair metrics gate). No publishable **live** GPQA figures/tables yet (blocked on NEBIUS + HF/CSV; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 

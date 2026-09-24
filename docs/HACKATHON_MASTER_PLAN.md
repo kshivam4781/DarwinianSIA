@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-24 (Section 21 ICML; Tick 414 PRIMARY recompute on sidecar trust; Tick 413 H5 planned-denominator VALIDITY; Tick 412 G4 full-pair sidecar trust; …)
+**Last updated:** 2026-09-24 (Section 21 ICML; Tick 415 thin H2 MECHANISM refuse on sidecar trust; Tick 414 PRIMARY recompute; Tick 413 H5 planned-denominator; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -866,6 +866,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + pipeline resume refuse sidecar `n_pairs < planned`; ledger-skip / resume exit 4 on trust fail |
 | ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` requires ≥3/5 ρ>0.3; sidecar/resume refuse thin H5 READY poison |
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Ledger-skip + pipeline resume recompute `primary_criteria_pass(comparison)`; refuse false `meta.primary_pass`; always H2 planned_n |
+| ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Ledger-skip refuse false `meta.h2_pass` / thin preferred-share; pipeline resume always `h2_skew_pass(..., planned_n=)`; demote READY unless primary+h5+h2 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -947,6 +948,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + resume refuse `n_pairs < planned`; exit 4 on trust fail |
 | ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` ≥3/5; refuse thin H5 READY |
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Recompute PRIMARY from comparison on ledger-skip/resume; refuse false meta.primary_pass |
+| ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Refuse thin/false meta.h2_pass on ledger-skip/resume; READY needs primary+h5+h2 |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1040,7 +1042,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 full-pair sidecar trust (Tick 412) | **DONE** | Ledger-skip + resume refuse `n_pairs < planned`; exit 4 on trust fail |
 | ICML H5 planned-denominator VALIDITY (Tick 413) | **DONE** | `h5_validity_pass(..., planned_n=)` ≥3/5; refuse thin H5 READY |
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Recompute PRIMARY from comparison on ledger-skip/resume; refuse false meta.primary_pass |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–414 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Refuse thin/false meta.h2_pass on ledger-skip/resume; READY needs primary+h5+h2 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–415 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2689,3 +2692,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **H5 planned-denominator VALIDITY (Tick 413):** `h5_pass_count` skips errors, so a single ρ>0.3 among four H5 errors previously false-passed via `n_total < 5 → n_pass == n_total` and could flip `ICML_READY` READY. `h5_validity_pass(..., planned_n=)` (and `h2_skew_pass` parity) now require `n_pass ≥ 3` against planned G4 seeds; ledger-skip / pipeline resume re-validate and refuse thin H5 sidecars. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **PRIMARY recompute on sidecar trust (Tick 414):** After Tick 413, ledger-skip / pipeline resume still trusted `meta.primary_pass` from a gate4 sidecar — a stale or false True with `n_pairs=5` but no gens30/cost30/final wins could promote READY. Now PRIMARY is recomputed via `primary_criteria_pass(comparison)`; false meta claims are refused; H2 always uses `h2_skew_pass(..., planned_n=)`. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Thin H2 MECHANISM refuse on sidecar trust (Tick 415):** Tick 414 recomputed H2 on ledger-skip but did not refuse false `meta.h2_pass` / thin preferred-share (1/5 + errors), and demoted READY only on primary+h5. Pipeline resume also omitted H2 planned-n revalidation. Now ledger-skip refuses thin H2 when meta claims pass; pipeline resume always refuses thin H2 vs planned denominator; READY demotion requires primary+h5+h2. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
