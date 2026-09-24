@@ -49,6 +49,9 @@ Hard stops (never violate):
     seed count as denominator — errors/missing must not shrink ``n_total``
     so a single ρ>0.3 among four H5 errors cannot flip ``h5_pass`` /
     ``ICML_READY`` READY; sidecar trust re-validates H5/H2 vs planned
+  - Tick 414: ledger-skip / pipeline resume **recompute PRIMARY** from
+    comparison (refuse false ``meta.primary_pass``); always score H2 via
+    ``h2_skew_pass(..., planned_n=)`` (no stale ``h2_preferred_pass`` trust)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1389,6 +1392,9 @@ def refresh_paper_pack_on_ledger_skip(
     preflight; never promote READY from a bare preflight sidecar).
     Tick 408: refuse trust when ``steering_applied_gen3`` is explicitly false.
     Tick 412: refuse sidecar when ``n_pairs < planned`` (Tick 411 G3 parity).
+    Tick 413: refuse thin H5 vs planned denominator.
+    Tick 414: recompute PRIMARY from comparison (refuse false meta.primary_pass);
+    always recompute H2 vs planned_n.
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1481,19 +1487,32 @@ def refresh_paper_pack_on_ledger_skip(
             report.ready_status = "IN_PROGRESS"
             return False, note
         report.comparison = comparison
-        report.primary_pass = bool(meta.get("primary_pass"))
+        # Tick 414: recompute PRIMARY from comparison — do not trust
+        # meta.primary_pass (preflight / stale sidecar can claim True while
+        # Live Table lacks gens30/cost30/final wins → READY poison).
+        report.primary_pass = primary_criteria_pass(comparison)
         # Tick 413: re-validate H5/H2 vs planned denominator — do not trust
         # meta.h5_pass / meta.h2_pass written by pre-413 thin-denominator logic.
         report.h5_by_d_run = h5
         report.h2_by_d_run = h2
         report.h5_pass = h5_validity_pass(h5, planned_n=planned_n)
-        if (
-            int(comparison.get("n_pairs") or 0) >= 5
-            and comparison.get("h2_preferred_pass") is not None
-        ):
-            report.h2_pass = bool(comparison["h2_preferred_pass"])
-        else:
-            report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
+        # Always recompute H2 vs planned_n (do not trust comparison.h2_preferred_pass
+        # written under pre-413 thin-denominator / stale aggregate).
+        report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
+        if bool(meta.get("primary_pass")) and not report.primary_pass:
+            note = (
+                "Tick 414: trusted gate4 sidecar but PRIMARY fails recomputed "
+                f"criteria (planned={planned_n}; comparison lacks ≥3/5 "
+                "gens30/cost30 or non-trivial final gap) — refuse READY / "
+                "paper-pack trust on false meta.primary_pass"
+            )
+            report.checks.append(CheckResult("primary_recomputed", False, note))
+            report.notes.append(note)
+            report.primary_pass = False
+            report.h2_pass = False
+            report.h5_pass = False
+            report.ready_status = "IN_PROGRESS"
+            return False, note
         if bool(meta.get("h5_pass")) and not report.h5_pass:
             note = (
                 "Tick 413: trusted gate4 sidecar but H5 fails planned "
@@ -1608,14 +1627,9 @@ def apply_paper_pack(
     report.primary_pass = primary_criteria_pass(comparison)
     planned_n = len(report.plans)
     report.h5_pass = h5_validity_pass(h5, planned_n=planned_n)
-    # Tick 367: align MECHANISM with compare aggregate when n≥5 (Tick 366 key).
-    if (
-        int(comparison.get("n_pairs") or 0) >= 5
-        and comparison.get("h2_preferred_pass") is not None
-    ):
-        report.h2_pass = bool(comparison["h2_preferred_pass"])
-    else:
-        report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
+    # Tick 414: always score H2 vs planned_n (aggregate h2_preferred_pass can
+    # lag thin-denominator / preferred-allele fixes).
+    report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
 
     paper_refreshed = False
     figures: list[str] = []

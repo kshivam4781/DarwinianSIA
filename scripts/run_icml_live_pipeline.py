@@ -896,9 +896,17 @@ def refresh_g4_paper_pack_on_resume(
                 f"(planned={planned_n}) — refuse READY / paper-pack trust "
                 "on thin H5 VALIDITY"
             )
+        # Tick 414: recompute PRIMARY from comparison (false meta.primary_pass
+        # READY poison — ledger-skip / resume parity with Tick 413 H5).
+        if not g4.primary_criteria_pass(comparison):
+            return (
+                "Tick 414: gate4 sidecar PRIMARY fails recomputed criteria "
+                f"(planned={planned_n}) — refuse READY / paper-pack trust "
+                "on false meta.primary_pass"
+            )
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
-            if ready_status == "READY" and not bool(meta.get("primary_pass")):
+            if ready_status == "READY" and not g4.primary_criteria_pass(comparison):
                 ready_status = "IN_PROGRESS"
             report.icml_ready_status = ready_status
         if source == "prior_live_metrics":
