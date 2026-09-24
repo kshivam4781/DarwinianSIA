@@ -55,6 +55,11 @@ Hard stops (never violate):
   - Tick 415: refuse false ``meta.h2_pass`` / thin H2 MECHANISM on sidecar
     trust (planned denominator); demote READY unless primary+h5+h2 all
     recompute-pass (Tick 414 scored H2 but did not refuse / demote on it)
+  - Tick 416: direct G4 ledger-skip ``main`` exit 4 includes Tick 413–415
+    refuse checks (``h5_planned`` / ``primary_recomputed`` / ``h2_planned``) —
+    pre-416 only ``steering_applied_gen3`` / ``g4_full_pairs`` flipped exit 4,
+    so thin H2/H5/false PRIMARY refuse returned ``paper_refreshed=False`` with
+    ``comparison`` still set → false-green exit 0
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1400,6 +1405,8 @@ def refresh_paper_pack_on_ledger_skip(
     always recompute H2 vs planned_n.
     Tick 415: refuse false ``meta.h2_pass`` / thin H2 MECHANISM (planned
     denominator); demote READY unless primary+h5+h2 all recompute-pass.
+    Tick 416: clear comparison on Tick 413–415 refuses (Tick 412 n_pairs
+    parity) so ledger-skip ``main`` exit-4 second clause also catches them.
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1513,6 +1520,11 @@ def refresh_paper_pack_on_ledger_skip(
             )
             report.checks.append(CheckResult("primary_recomputed", False, note))
             report.notes.append(note)
+            # Tick 416: clear comparison (Tick 412 n_pairs parity) so main()
+            # exit-4 second clause catches refuse even if check-name set lags.
+            report.comparison = None
+            report.h5_by_d_run = {}
+            report.h2_by_d_run = {}
             report.primary_pass = False
             report.h2_pass = False
             report.h5_pass = False
@@ -1527,6 +1539,9 @@ def refresh_paper_pack_on_ledger_skip(
             )
             report.checks.append(CheckResult("h5_planned", False, note))
             report.notes.append(note)
+            report.comparison = None
+            report.h5_by_d_run = {}
+            report.h2_by_d_run = {}
             report.primary_pass = False
             report.h2_pass = False
             report.h5_pass = False
@@ -1544,6 +1559,9 @@ def refresh_paper_pack_on_ledger_skip(
             )
             report.checks.append(CheckResult("h2_planned", False, note))
             report.notes.append(note)
+            report.comparison = None
+            report.h5_by_d_run = {}
+            report.h2_by_d_run = {}
             report.primary_pass = False
             report.h2_pass = False
             report.h5_pass = False
@@ -2026,14 +2044,26 @@ def main(argv: list[str] | None = None) -> int:
         # missing artifacts). Local re-score may return paper_refreshed=False
         # under --skip-paper-refresh while still proving metrics — only fail
         # when comparison is absent or a refuse check fired.
+        # Tick 416: also exit 4 on Tick 413–415 refuse checks (h5_planned /
+        # primary_recomputed / h2_planned). Pre-416 left those names out, so
+        # paper_refreshed=False + comparison still set → false-green exit 0.
         trust_refused = any(
-            c.name in ("steering_applied_gen3", "g4_full_pairs") and not c.ok
+            c.name
+            in (
+                "steering_applied_gen3",
+                "g4_full_pairs",
+                "h5_planned",
+                "primary_recomputed",
+                "h2_planned",
+            )
+            and not c.ok
             for c in report.checks
         )
         if trust_refused or (not paper_refreshed and report.comparison is None):
             print(
                 "G4 ledger-skip refused READY / paper-pack trust — missing "
-                "full-pair metrics / gen≥3 Condition D steering",
+                "full-pair metrics / gen≥3 Condition D steering / "
+                "PRIMARY+H5+H2 planned recompute",
                 file=sys.stderr,
             )
             return 4

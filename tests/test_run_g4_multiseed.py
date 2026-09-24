@@ -2074,6 +2074,7 @@ def test_refresh_paper_pack_refuses_thin_h5_sidecar(
     assert "thin H5" in note or "planned" in note
     assert report.h5_pass is False
     assert report.ready_status == "IN_PROGRESS"
+    assert report.comparison is None  # Tick 416 clear on refuse
     assert any(c.name == "h5_planned" and not c.ok for c in report.checks)
 
 
@@ -2155,6 +2156,7 @@ def test_refresh_paper_pack_refuses_false_primary_sidecar(
     assert "primary" in note.lower()
     assert report.primary_pass is False
     assert report.ready_status == "IN_PROGRESS"
+    assert report.comparison is None  # Tick 416 clear on refuse
     assert any(c.name == "primary_recomputed" and not c.ok for c in report.checks)
 
 
@@ -2238,7 +2240,128 @@ def test_refresh_paper_pack_refuses_thin_h2_sidecar(
     assert "thin H2" in note or "H2" in note
     assert report.h2_pass is False
     assert report.ready_status == "IN_PROGRESS"
+    assert report.comparison is None  # Tick 416 clear on refuse
     assert any(c.name == "h2_planned" and not c.ok for c in report.checks)
+
+
+def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 416: direct --live ledger-skip must exit 4 when H2 refuse fires.
+
+    Pre-416 trust_refused only checked steering/g4_full_pairs, so thin H2
+    refuse returned paper_refreshed=False with comparison still set → exit 0.
+    """
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import CheckResult, G4PreflightReport
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("SIA_BUDGET_SPENT_USD", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    planned = list(range(1211, 1216)) + list(range(1311, 1316))
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 19.0,
+                "stages_complete": ["G2", "G3", "G4"],
+                "run_ids": [1300, 1201, 1301] + planned,
+                "detail": "full stack",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# Paper\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("STATUS: IN_PROGRESS\n", encoding="utf-8")
+    (docs / "figures").mkdir()
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "is_synthetic_smoke", lambda *_a, **_k: False)
+    monkeypatch.setattr(mod, "check_task_tree", lambda *_a, **_k: [])
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 416},
+    )
+
+    def _fake_refresh(report: G4PreflightReport, **_kw):
+        # Simulate Tick 415 refuse after thin H2 (comparison cleared — Tick 416).
+        report.comparison = None
+        report.primary_pass = False
+        report.h2_pass = False
+        report.h5_pass = False
+        report.ready_status = "IN_PROGRESS"
+        report.checks.append(
+            CheckResult(
+                "h2_planned",
+                False,
+                "Tick 415: thin H2 MECHANISM refuse",
+            )
+        )
+        return False, "Tick 415: trusted gate4 sidecar but H2 fails planned"
+
+    monkeypatch.setattr(mod, "refresh_paper_pack_on_ledger_skip", _fake_refresh)
+
+    called: list[list[str]] = []
+
+    def _fake_run(cmd, **_kwargs):
+        called.append(list(cmd))
+
+        class _P:
+            returncode = 0
+
+        return _P()
+
+    monkeypatch.setattr(g3.subprocess, "run", _fake_run)
+
+    report_path = docs / "gate4_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--seeds",
+            "1,2,3,4,5",
+            "--b-run-ids",
+            "1211,1212,1213,1214,1215",
+            "--d-run-ids",
+            "1311,1312,1313,1314,1315",
+            "--report",
+            str(report_path),
+            "--paper-artifacts",
+            str(docs / "paper_artifacts.md"),
+            "--icml-ready",
+            str(docs / "ICML_READY.md"),
+            "--figures-dir",
+            str(docs / "figures"),
+            "--cwd",
+            str(tmp_path),
+            "--allow-stale-tip",
+        ]
+    )
+    assert rc == 4
+    assert called == []
 
 
 def test_g4_full_pairs_for_paper_requires_all_plans() -> None:
