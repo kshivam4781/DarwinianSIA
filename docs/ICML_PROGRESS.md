@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-24T22:10Z — Tick 416 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub
+- Boot branch was greenfield `cursor/icml-epistemic-results-04d8`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 413–415 refuse checks (`h5_planned` / `primary_recomputed` / `h2_planned`) returned `paper_refreshed=False` but left `comparison` set, and ledger-skip `main` exit-4 only looked for `steering_applied_gen3` / `g4_full_pairs` — so thin H2/H5/false PRIMARY refuse falsely exited **0**. Highest leverage without paid spend: **ledger-skip exit 4 for Tick 413–415 refuse checks**.
+
+### What this tick did (ONE step)
+**Direct G4 ledger-skip exit 4 on Tick 413–415 refuse checks (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 415 (`f49c`); confirmed secrets absent; boot `04d8` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Expand `trust_refused` check names to include `h5_planned` / `primary_recomputed` / `h2_planned`
+3. Clear `comparison` on those refuses (Tick 412 n_pairs parity) so exit-4 second clause also catches them
+4. Unit tests: `test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse` + comparison-cleared asserts on Tick 413–415 refuse tests — **5/5**
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 415) | After (Tick 416) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Ledger-skip thin H2 refuse → exit code | **0 (false green)** | **4** |
+| Tick 413–415 refuse clears comparison | left set | **PASS** — cleared |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-24T20:05Z — Tick 415 (automation cron)
 
 ### Status snapshot
