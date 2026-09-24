@@ -2158,6 +2158,89 @@ def test_refresh_paper_pack_refuses_false_primary_sidecar(
     assert any(c.name == "primary_recomputed" and not c.ok for c in report.checks)
 
 
+def test_refresh_paper_pack_refuses_thin_h2_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 415: n_pairs=5 + meta.h2_pass but only 1/5 preferred ≥0.5 → refuse."""
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    thin_h2 = {
+        "run_1311": {
+            "preferred_share": 0.8,
+            "preferred_value": "selective",
+            "counts": {"selective": 4},
+            "total": 4,
+            "bias_values": ["selective"],
+        },
+        # Four errors — pre-415 planned_n=None would pass as 1/1; planned_n=5 fails.
+        **{f"run_{1312 + i}": {"error": "missing"} for i in range(4)},
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {
+                    "n_pairs": 5,
+                    "d_wins_final": 4,
+                    "mean_final_gap": 0.06,
+                    "primary_final_pass": True,
+                    "primary_gens30_pass": True,
+                    "h2_preferred_pass": True,
+                },
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {
+                    f"run_{1311 + i}": {"spearman_rho": 0.55 + 0.05 * i}
+                    for i in range(5)
+                },
+                "h2_by_d_run": thin_h2,
+            }
+        ),
+        encoding="utf-8",
+    )
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-24T20:10:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=docs / "ICML_READY.md",
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert ok is False
+    assert "Tick 415" in note
+    assert "thin H2" in note or "H2" in note
+    assert report.h2_pass is False
+    assert report.ready_status == "IN_PROGRESS"
+    assert any(c.name == "h2_planned" and not c.ok for c in report.checks)
+
+
 def test_g4_full_pairs_for_paper_requires_all_plans() -> None:
     """Tick 410: equal B/D counts are not enough — need len == len(plans)."""
     from run_g4_multiseed import build_g4_plans, g4_full_pairs_for_paper

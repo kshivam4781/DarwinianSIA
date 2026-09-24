@@ -68,6 +68,11 @@ Hard stops (delegated to gate runners; never violate here either):
     exits 4 when paper-pack trust fails.
   - Tick 413: G4 H5 VALIDITY + pipeline resume refuse thin H5 (ρ>0.3 on
     ``n_pass < 3`` of planned 5 — errors must not shrink the denominator).
+  - Tick 414: G4 ledger-skip + pipeline resume **recompute PRIMARY** from
+    comparison (refuse false ``meta.primary_pass``).
+  - Tick 415: G4 ledger-skip + pipeline resume refuse thin H2 MECHANISM
+    (``h2_skew_pass(..., planned_n=)``; false ``meta.h2_pass`` READY poison);
+    demote READY unless primary+h5+h2 all recompute-pass.
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -904,9 +909,22 @@ def refresh_g4_paper_pack_on_resume(
                 f"(planned={planned_n}) — refuse READY / paper-pack trust "
                 "on false meta.primary_pass"
             )
+        # Tick 415: re-validate H2 vs planned denominator (thin H2 READY poison;
+        # Tick 414 recomputed H2 on ledger-skip but pipeline resume omitted it).
+        h2_payload = _h2 if isinstance(_h2, dict) else {}
+        if not g4.h2_skew_pass(h2_payload, planned_n=planned_n):
+            return (
+                "Tick 415: gate4 sidecar H2 fails planned denominator "
+                f"(planned={planned_n}) — refuse READY / paper-pack trust "
+                "on thin H2 MECHANISM"
+            )
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
-            if ready_status == "READY" and not g4.primary_criteria_pass(comparison):
+            if ready_status == "READY" and not (
+                g4.primary_criteria_pass(comparison)
+                and g4.h5_validity_pass(h5_payload, planned_n=planned_n)
+                and g4.h2_skew_pass(h2_payload, planned_n=planned_n)
+            ):
                 ready_status = "IN_PROGRESS"
             report.icml_ready_status = ready_status
         if source == "prior_live_metrics":

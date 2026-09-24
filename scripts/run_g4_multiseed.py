@@ -52,6 +52,9 @@ Hard stops (never violate):
   - Tick 414: ledger-skip / pipeline resume **recompute PRIMARY** from
     comparison (refuse false ``meta.primary_pass``); always score H2 via
     ``h2_skew_pass(..., planned_n=)`` (no stale ``h2_preferred_pass`` trust)
+  - Tick 415: refuse false ``meta.h2_pass`` / thin H2 MECHANISM on sidecar
+    trust (planned denominator); demote READY unless primary+h5+h2 all
+    recompute-pass (Tick 414 scored H2 but did not refuse / demote on it)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -1395,6 +1398,8 @@ def refresh_paper_pack_on_ledger_skip(
     Tick 413: refuse thin H5 vs planned denominator.
     Tick 414: recompute PRIMARY from comparison (refuse false meta.primary_pass);
     always recompute H2 vs planned_n.
+    Tick 415: refuse false ``meta.h2_pass`` / thin H2 MECHANISM (planned
+    denominator); demote READY unless primary+h5+h2 all recompute-pass.
     """
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
@@ -1527,14 +1532,31 @@ def refresh_paper_pack_on_ledger_skip(
             report.h5_pass = False
             report.ready_status = "IN_PROGRESS"
             return False, note
+        # Tick 415: refuse false meta.h2_pass (thin preferred-share vs planned_n).
+        # Tick 414 recomputed H2 but only demoted on primary+h5 — READY poison
+        # when MECHANISM is 1/5 preferred while meta claims h2_pass=True.
+        if bool(meta.get("h2_pass")) and not report.h2_pass:
+            note = (
+                "Tick 415: trusted gate4 sidecar but H2 fails planned "
+                f"denominator (planned={planned_n}; "
+                f"preferred-share pass count insufficient) — refuse READY / "
+                "paper-pack trust on thin H2 MECHANISM"
+            )
+            report.checks.append(CheckResult("h2_planned", False, note))
+            report.notes.append(note)
+            report.primary_pass = False
+            report.h2_pass = False
+            report.h5_pass = False
+            report.ready_status = "IN_PROGRESS"
+            return False, note
         figs = meta.get("figures_written")
         if isinstance(figs, list):
             report.figures_written = figs
         ready_status = meta.get("ready_status")
         if isinstance(ready_status, str) and ready_status:
-            # Demote poisoned READY when recomputed validity fails.
+            # Demote poisoned READY when recomputed PRIMARY/H5/H2 fail.
             if ready_status == "READY" and not (
-                report.primary_pass and report.h5_pass
+                report.primary_pass and report.h5_pass and report.h2_pass
             ):
                 ready_status = "IN_PROGRESS"
             report.ready_status = ready_status
