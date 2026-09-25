@@ -83,6 +83,7 @@ from epistemic_results import compare_b_vs_d, compute_h5  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    commit_durable_ledgers_after_live,
     committed_g3g4_recipes_match_live_shape,
     committed_offline_bvd_matches_live_shape,
     darwinian_run_complete,
@@ -1572,6 +1573,9 @@ def main(argv: list[str] | None = None) -> int:
 
     write_gate3_report(report, args.report, executed=bool(report.comparison))
     print(f"G3 report → {args.report}")
+    # Tick 422: direct --live must commit durable ledgers (pipeline/cron parity).
+    ok_ledgers, ledger_detail = commit_durable_ledgers_after_live(REPO_ROOT)
+    print(f"durable_ledgers_after_live: ok={ok_ledgers} {ledger_detail}")
     if not g3_ok:
         return 4
     return 0

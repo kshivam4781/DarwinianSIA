@@ -2410,6 +2410,132 @@ def test_discard_ephemeral_ok_when_persist_writes_evidence(
     ), blocking
 
 
+def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
+    tmp_path: Path,
+) -> None:
+    """Tick 422: post-live budget dirt + ephemeral gate reports must still commit."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        commit_durable_ledgers_after_live,
+        is_ephemeral_icml_path,
+        porcelain_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# pre\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+
+    # Simulate post-live: durable spend + prior_live dirty; ephemeral gate dirty too.
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 3.5,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "detail": "Tick 422 post-live",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps(
+            {
+                "tick": 422,
+                "gates": {
+                    "docs/gate2_report.json": {
+                        "prior_live_post": [{"name": "cabs_inline", "ok": True}]
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "gate2_report.md").write_text("# live post\n", encoding="utf-8")
+    (docs / "gate2_report.json").write_text(
+        json.dumps({"mode": "live", "executed": True}) + "\n", encoding="utf-8"
+    )
+
+    dirty_before = porcelain_dirty_paths(repo)
+    assert ICML_BUDGET_SPENT_RELPATH in [
+        p.replace("\\", "/") for p in dirty_before
+    ]
+    assert any(is_ephemeral_icml_path(p) for p in dirty_before)
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert "422" in detail or "committed" in detail.lower()
+
+    committed_budget = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"HEAD:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=repo,
+            text=True,
+        )
+    )
+    assert committed_budget["spent_usd"] == 3.5
+    assert "G2" in committed_budget["stages_complete"]
+    committed_ev = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"HEAD:{ICML_PRIOR_LIVE_EVIDENCE_RELPATH}"],
+            cwd=repo,
+            text=True,
+        )
+    )
+    assert "docs/gate2_report.json" in committed_ev["gates"]
+
+    # Ephemeral gate dirt must remain (not part of durable commit).
+    dirty_after = [p.replace("\\", "/") for p in porcelain_dirty_paths(repo)]
+    assert "docs/gate2_report.md" in dirty_after or "docs/gate2_report.json" in dirty_after
+    assert ICML_BUDGET_SPENT_RELPATH not in dirty_after
+    assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH not in dirty_after
+
+
+def test_cron_entry_commits_durable_ledgers_after_live() -> None:
+    """Tick 422: cron run_live must call commit_durable_ledgers_after_live."""
+    text = (Path(__file__).resolve().parents[1] / "scripts" / "icml_cron_entry.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "commit_durable_ledgers_after_live" in text
+    assert "durable_ledgers_after_live" in text
+    # Must run after the live pipeline, not only at tip-recover start.
+    live_idx = text.find("run_icml_live_pipeline.py --live")
+    commit_idx = text.find("commit_durable_ledgers_after_live", live_idx)
+    assert live_idx != -1
+    assert commit_idx != -1
+    assert commit_idx > live_idx
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:

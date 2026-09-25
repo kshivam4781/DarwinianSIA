@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 421: park+commit `budget_spent` with prior_live across tip `--apply` — post-live dirty spend ledger no longer refuses Tick 420 prepare. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 422: post-live auto-commit of `budget_spent` + `prior_live_evidence` (cron/pipeline/direct gates) — closes same-tick exit without commit → next VM re-burn. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -331,6 +331,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 418 tip↔main README conflict resolve — merge `origin/main` into tip; keep Linux/cloud `python3` block + portable Windows `cd path\to\SIA2`; tip PR #337 **MERGEABLE/CLEAN**
 - [x] Tick 419 discard/tip-apply prior_live evidence race — fresh prior_live stash capture no longer fails discard or tip `--apply` on newly written evidence; pre-existing dirty evidence still blocks (Tick 390); `test_discard_ephemeral_ok_when_persist_writes_evidence`
 - [x] Tick 420 auto prepare/commit prior_live evidence — `prepare_prior_live_evidence_for_tip_apply` parks sole dirty evidence into stash before discard; `commit_prior_live_evidence_if_dirty` commits after reinject + anti-churn; wired recover_tip/cron/boot_recover; `test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip`
+- [x] Tick 421 park+commit budget_spent with prior_live — prepare parks dirty `budget_spent` + evidence into gitignored stashes; reinject + commit after tip `--apply`; focused env-check tests 7/7
+- [x] Tick 422 post-live durable ledger commit — `commit_durable_ledgers_after_live` after cron/pipeline/direct G2|G3|G4 `--live` (ephemeral gate dirt OK); closes same-tick exit without commit → next VM re-burn; focused tests 6/6
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

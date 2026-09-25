@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T10:20Z — Tick 422 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-f6da`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 421 only auto-committed durable ledgers at **tip-recover** time. After paid live G2→G4, cron/pipeline/direct gates wrote `docs/icml_budget_spent.json` + `docs/icml_prior_live_evidence.json` then **exited** — the next greenfield VM lost spend/stages (re-burn risk; `runs/` gitignored) and prior_live sidecar trust. Highest leverage without paid spend: **post-live auto-commit of durable ledgers**.
+
+### What this tick did (ONE step)
+**Tick 422 — post-live durable ledger commit (no API spend):**
+1. Recovered tip ← Tick 421 (`f49c`); confirmed secrets absent; boot `f6da` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `commit_durable_ledgers_after_live` (alias of Tick 421 commit); commit messaging → Tick 422
+3. Wired after live in `icml_cron_entry.sh` (preserves live exit code), `run_icml_live_pipeline.py`, and direct `run_g2_smoke` / `run_g3_pilot` / `run_g4_multiseed` `--live`
+4. Tests: ephemeral+budget roundtrip + cron wiring assert → focused suite **6 passed**
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 421) | After (Tick 422) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Post-live dirty ledgers → tip HEAD (same tick) | only tip-recover commit | **commit after live** (cron/pipeline/direct) |
+| Partial-fail live spend survives next VM | risk of re-burn | **committed stages/spend** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-25T08:20Z — Tick 421 (automation cron)
 
 ### Status snapshot

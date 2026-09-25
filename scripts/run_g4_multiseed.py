@@ -108,6 +108,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    commit_durable_ledgers_after_live,
     committed_g3g4_recipes_match_live_shape,
     committed_offline_bvd_matches_live_shape,
     darwinian_run_complete,
@@ -2207,6 +2208,9 @@ def main(argv: list[str] | None = None) -> int:
         f"primary_pass={report.primary_pass} h2_pass={report.h2_pass} "
         f"h5_pass={report.h5_pass} STATUS={report.ready_status}"
     )
+    # Tick 422: direct --live must commit durable ledgers (pipeline/cron parity).
+    ok_ledgers, ledger_detail = commit_durable_ledgers_after_live(REPO_ROOT)
+    print(f"durable_ledgers_after_live: ok={ok_ledgers} {ledger_detail}")
     if report.comparison is None or not steering_ok:
         return 4
     return 0

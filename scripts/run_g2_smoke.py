@@ -71,6 +71,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     collect_icml_secrets_status,
+    commit_durable_ledgers_after_live,
     darwinian_run_complete,
     default_g2_estimate_usd,
     ensure_deps_before_diamond_fetch,
@@ -1156,6 +1157,10 @@ def main(argv: list[str] | None = None) -> int:
 
     write_gate2_report(report, args.report, post=post)
     print(f"G2 report → {args.report}")
+    # Tick 422: direct --live must commit durable ledgers (pipeline/cron parity).
+    if selected == "live":
+        ok_ledgers, ledger_detail = commit_durable_ledgers_after_live(REPO_ROOT)
+        print(f"durable_ledgers_after_live: ok={ok_ledgers} {ledger_detail}")
     return 0 if g2_ok else 4
 
 

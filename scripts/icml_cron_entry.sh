@@ -584,6 +584,22 @@ PY
   fi
 }
 
+# Tick 422: after paid live (success *or* partial fail), commit dirty
+# durable ledgers onto tip HEAD. Live writes update budget_spent +
+# prior_live_evidence but cron historically exited without committing —
+# next greenfield VM then re-burned spend / lost prior_live (runs/ gitignored).
+commit_durable_ledgers_after_live() {
+  if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+    python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import commit_durable_ledgers_after_live
+ok, detail = commit_durable_ledgers_after_live()
+print(f"durable_ledgers_after_live: ok={ok} {detail}")
+PY
+  fi
+}
+
 run_live() {
   echo "=== Live G2→G3→G4 (--fetch-diamond) ==="
   if [[ ! -f scripts/run_icml_live_pipeline.py ]]; then
@@ -591,7 +607,12 @@ run_live() {
     return 1
   fi
   mapfile -t _dargs < <(_pipeline_diamond_args)
+  set +e
   python3 scripts/run_icml_live_pipeline.py --live "${_dargs[@]}"
+  local live_rc=$?
+  set -e
+  commit_durable_ledgers_after_live
+  return "${live_rc}"
 }
 
 # Tick 329: print *all* human_next lines on blocked paths (not only auto /

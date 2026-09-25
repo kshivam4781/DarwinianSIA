@@ -110,6 +110,7 @@ from icml_env_checks import (  # noqa: E402
     autowire_diamond_csv,
     budget_spent_ledger_path,
     collect_icml_secrets_status,
+    commit_durable_ledgers_after_live,
     committed_g3g4_recipes_match_live_shape,
     committed_offline_bvd_matches_live_shape,
     darwinian_run_complete,
@@ -2050,6 +2051,10 @@ def main(argv: list[str] | None = None) -> int:
     write_pipeline_report(report, args.report)
     print(f"Pipeline report → {args.report}")
     print(f"ICML_READY={report.icml_ready_status} exit={rc}")
+    # Tick 422: commit durable ledgers after live (even on nonzero rc —
+    # partial G2/G3 spend must survive the next greenfield boot).
+    ok_ledgers, ledger_detail = commit_durable_ledgers_after_live(REPO_ROOT)
+    print(f"durable_ledgers_after_live: ok={ok_ledgers} {ledger_detail}")
     return rc
 
 

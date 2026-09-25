@@ -1697,12 +1697,16 @@ def prepare_prior_live_evidence_for_tip_apply(
 def commit_prior_live_evidence_if_dirty(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420/421: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
+    """Tick 420/421/422: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
 
     Tick 420 committed only prior_live evidence. Tick 421 also commits
     ``docs/icml_budget_spent.json`` when it is dirty alongside (or instead of)
-    evidence — the post-live tip ``--apply`` case. Refuses when other
-    non-ephemeral paths are dirty. Ephemeral report dirt may remain.
+    evidence — tip ``--apply`` reinject case. Tick 422 also calls this **after
+    live G2→G4** (cron / pipeline / direct gates): live writes update the
+    ledgers but cron used to ``exit`` without committing, so the next
+    greenfield VM lost spend/stages (re-burn risk) and prior_live evidence.
+    Refuses when other non-ephemeral paths are dirty. Ephemeral report dirt
+    may remain (gate/pipeline sidecars after live).
 
     Returns ``(ok, detail)``. ``ok=True`` when durable ledgers are clean on HEAD
     (already clean or commit succeeded). ``ok=False`` on refuse / git failure.
@@ -1722,7 +1726,7 @@ def commit_prior_live_evidence_if_dirty(
         p for p in dirty if _norm_repo_relpath(p) in durable
     ]
     if not dirty_durable:
-        return True, "durable ledgers not dirty (Tick 421 commit noop)"
+        return True, "durable ledgers not dirty (Tick 422 commit noop)"
 
     other_non_ephem = [
         p
@@ -1732,7 +1736,7 @@ def commit_prior_live_evidence_if_dirty(
     if other_non_ephem:
         return (
             False,
-            "Tick 421 commit refused — non-ephemeral dirt besides durable "
+            "Tick 422 commit refused — non-ephemeral dirt besides durable "
             f"ledgers: {other_non_ephem[:8]}",
         )
 
@@ -1746,7 +1750,7 @@ def commit_prior_live_evidence_if_dirty(
     if add.returncode != 0:
         return (
             False,
-            "Tick 421 git add durable ledgers failed: "
+            "Tick 422 git add durable ledgers failed: "
             f"{(add.stderr or add.stdout or '').strip()}",
         )
 
@@ -1757,14 +1761,14 @@ def commit_prior_live_evidence_if_dirty(
         text=True,
     )
     if staged.returncode == 0 and not (staged.stdout or "").strip():
-        return True, "durable ledgers already match index (Tick 421 noop)"
+        return True, "durable ledgers already match index (Tick 422 noop)"
 
     commit = subprocess.run(
         [
             "git",
             "commit",
             "-m",
-            "ICML Tick 421: commit durable ledgers (budget_spent + prior_live).",
+            "ICML Tick 422: commit durable ledgers (budget_spent + prior_live).",
             "--",
             *to_add,
         ],
@@ -1775,10 +1779,23 @@ def commit_prior_live_evidence_if_dirty(
     if commit.returncode != 0:
         return (
             False,
-            "Tick 421 git commit durable ledgers failed: "
+            "Tick 422 git commit durable ledgers failed: "
             f"{(commit.stderr or commit.stdout or '').strip()}",
         )
-    return True, f"Tick 421: committed durable ledgers onto HEAD ({', '.join(to_add)})"
+    return True, f"Tick 422: committed durable ledgers onto HEAD ({', '.join(to_add)})"
+
+
+def commit_durable_ledgers_after_live(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 422: post-live alias for ``commit_prior_live_evidence_if_dirty``.
+
+    Call after paid G2/G3/G4 (or the unified live pipeline) so
+    ``docs/icml_budget_spent.json`` + ``docs/icml_prior_live_evidence.json``
+    land on tip HEAD before the cloud VM dies — cross-VM resume depends on
+    committed ledgers (runs/ are gitignored).
+    """
+    return commit_prior_live_evidence_if_dirty(repo_root)
 
 
 
