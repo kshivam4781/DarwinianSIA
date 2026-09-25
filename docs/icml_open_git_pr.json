@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-24T20:07:08Z",
-  "tick_note": "Tick 340\u2013352 open_git_pr anti-churn; Tick 415 thin H2 sidecar refuse. Always pass branch=; never omit. Prefer docs/icml_open_git_pr_call.json verbatim.",
+  "updated_at": "2026-09-25T02:15:11Z",
+  "tick_note": "Tick 418 tip\u2194main README conflict resolve. Always pass branch=; never omit. Prefer docs/icml_open_git_pr_call.json verbatim. Tip was CONFLICTING \u2014 write hint with tip_pr_head_ref so conflict-fix commits stay on PR #337.",
   "open_git_pr_branch": "cursor/icml-epistemic-results-f49c",
   "tip_pr_commit_branch": "cursor/icml-epistemic-results-f49c",
   "tip_pr_number": 337,
@@ -8,21 +8,21 @@
   "tip_pr_title": "ICML Tick 336: tip PR gh copy-paste merge commands",
   "tip_pr_title_tick": 336,
   "tip_pr_body_tick": 336,
-  "local_tick": 415,
+  "local_tick": 418,
   "fetch_diamond_ok": false,
   "tip_pr_title_stale": true,
   "tip_pr_body_stale": true,
-  "suggested_open_git_pr_title": "ICML Tick 415: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked",
+  "suggested_open_git_pr_title": "ICML Tick 418: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked",
   "tip_pr_body_file": "docs/icml_tip_pr_body.md",
   "open_git_pr_pass_description": true,
   "open_git_pr_description_file": "docs/icml_tip_pr_body.md",
-  "open_git_pr_description": "## Summary\n- Tick 415: live G2\u2192G4 **PRIMARY** still blocked on NEBIUS + (HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at `1930\u20131934` / `1940\u20131944` (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, H2 preferred **5/5**; floor gen\u22653 + tail=2). STATUS remains IN_PROGRESS (not READY).\n- **PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) so cron can run live G2\u2192G3\u2192G4.\n- Tip recover / chicken-egg + prior_live stack (see `docs/ICML_PROGRESS.md`); tip PR anti-churn on this PR (`cursor/icml-epistemic-results-f49c`). Tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs \u2014 Tick 345\u2013350; prefer verbatim args from `docs/icml_open_git_pr_call.json`). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title \u2026 --body-file docs/icml_tip_pr_body.md`). See `docs/ICML_PROGRESS.md` for Tick 415 detail.\n\n## Human unblock\n1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or drop `gpqa_diamond.csv`)\n2. Optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` to refresh this PR's title+body\n3. Optional: undraft+merge tip PR #337 and/or bootstrap PR #338\n\n## Test plan\n- [x] `pytest tests/test_icml_env_checks.py::test_suggested_open_git_pr_body_secrets_first_generic`\n- [x] `pytest tests/test_icml_env_checks.py::test_detect_gpqa_is_synthetic_and_secrets_auto_probe`\n- [x] `pytest tests/test_icml_env_checks.py::test_cron_refreshes_secrets_after_preflight`\n- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n",
+  "open_git_pr_description": "## Summary\n- Tick 418: live G2\u2192G4 **PRIMARY** still blocked on NEBIUS + (HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at `1930\u20131934` / `1940\u20131944` (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, H2 preferred **5/5**; floor gen\u22653 + tail=2). STATUS remains IN_PROGRESS (not READY).\n- **PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local `gpqa_diamond.csv`) so cron can run live G2\u2192G3\u2192G4.\n- Tick 418: merge `origin/main` into tip \u2014 resolve sole `README.md` path conflict (portable Windows `cd path\\to\\SIA2` + tip Linux/cloud `python3` block) so tip PR #337 can leave CONFLICTING/DIRTY.\n- Tip recover / chicken-egg + prior_live stack (see `docs/ICML_PROGRESS.md`); tip PR anti-churn on this PR (`cursor/icml-epistemic-results-f49c`). Tip PR GitHub **title and body** stay frozen when using `open_git_pr` MCP (does **not** rewrite either on existing PRs \u2014 Tick 345\u2013350; prefer verbatim args from `docs/icml_open_git_pr_call.json`). Refresh via `tip_pr_title_edit_commands` (`gh pr edit --title \u2026 --body-file docs/icml_tip_pr_body.md`). See `docs/ICML_PROGRESS.md` for Tick 418 detail.\n\n## Human unblock\n1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` or drop `gpqa_diamond.csv`)\n2. Optional: copy-paste `tip_pr_title_edit_commands` from `docs/icml_open_git_pr.json` to refresh this PR's title+body\n3. After GitHub shows MERGEABLE: undraft+merge tip PR #337 and/or bootstrap PR #338\n\n## Test plan\n- [x] Tip merge conflict resolved (`README.md` only; portable Windows path + tip Linux block)\n- [x] Tip branch contains `origin/main` merge commit\n- [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass\n",
   "open_git_pr_call_file": "docs/icml_open_git_pr_call.json",
   "tip_pr_title_edit_commands": [
-    "gh pr edit 337 --repo kshivam4781/DarwinianSIA --title 'ICML Tick 415: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked' --body-file docs/icml_tip_pr_body.md"
+    "gh pr edit 337 --repo kshivam4781/DarwinianSIA --title 'ICML Tick 418: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked' --body-file docs/icml_tip_pr_body.md"
   ],
   "never_omit_branch": true,
-  "cloud_boot_branch": "cursor/icml-epistemic-results-d39c",
-  "omit_branch_opens_pr_on": "cursor/icml-epistemic-results-d39c",
-  "warning": "NEVER call open_git_pr without branch= \u2014 omit defaults to the greenfield boot branch and opens a new tip PR. Pass branch=`cursor/icml-epistemic-results-f49c`. Tick 344: when tip_pr_title_stale, also pass title=`ICML Tick 415: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked` (secrets-first when diamond blocked). Tick 348\u2013349: when tip_pr_body_stale, also pass description= from `open_git_pr_description` in docs/icml_open_git_pr.json (or `docs/icml_tip_pr_body.md`) \u2014 MCP may still leave GitHub body frozen on existing PRs; still required call shape. Tick 350: prefer `docs/icml_open_git_pr_call.json` (branch/title/description verbatim). Tick 352: call JSON includes ``cloud_boot_branch`` / ``omit_branch_opens_pr_on`` \u2014 Cloud Agent 'correct working branch' is the greenfield boot and does **not** override tip anti-churn. Tick 345\u2013347: MCP may leave GitHub title/body unchanged \u2014 run `tip_pr_title_edit_commands` (`gh pr edit --title [--body-file docs/icml_tip_pr_body.md]`) to refresh; body staleness is independent of title (Tick 347)."
+  "cloud_boot_branch": "cursor/icml-epistemic-results-92a8",
+  "omit_branch_opens_pr_on": "cursor/icml-epistemic-results-92a8",
+  "warning": "NEVER call open_git_pr without branch= \u2014 omit defaults to greenfield boot `cursor/icml-epistemic-results-92a8`. Pass branch=`cursor/icml-epistemic-results-f49c`. Tick 418 conflict-fix: tip may still show CONFLICTING until push; still open_git_pr onto tip head_ref so PR #337 updates in place."
 }
