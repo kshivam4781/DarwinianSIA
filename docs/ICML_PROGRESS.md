@@ -9,7 +9,7 @@
 - API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
 - Budget: ~$20 ceiling; spend this tick = $0
 - `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
-- Tip PR title+body still stale: **Tick 336** on GitHub (pre-push); tip was **CONFLICTING/DIRTY** vs main
+- Tip PR title+body still stale: **Tick 336** on GitHub (open_git_pr MCP does not rewrite); tip was **CONFLICTING/DIRTY**, now **MERGEABLE/CLEAN** after conflict resolve + push
 - Boot branch was greenfield `cursor/icml-epistemic-results-92a8`; recovered tip `f49c`
 - Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
 
@@ -17,22 +17,22 @@
 Live PRIMARY still blocked on **secrets**. Separately, tip PR #337 was **CONFLICTING/DIRTY** solely on `README.md` (`cd c:\Users\…\SIA2` vs main `cd path\to\SIA2`), blocking human undraft+merge tip→main so cron inherits ICML files. Highest leverage without paid spend: **merge origin/main into tip and resolve the README conflict**.
 
 ### What this tick did (ONE step)
-**Resolve tip↔main merge conflict so tip PR #337 can leave CONFLICTING (no API spend):**
+**Resolve tip↔main merge conflict so tip PR #337 becomes MERGEABLE (no API spend):**
 1. Recovered tip ← Tick 417 (`f49c`); confirmed secrets absent; boot `92a8` vs tip `f49c`; re-filed NEBIUS+HF secrets request
 2. `git merge origin/main` — sole conflict in `README.md`
 3. Keep tip Linux/cloud `python3` block; adopt main portable Windows `cd path\to\SIA2`
-4. Merge commit on tip; STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+4. Push tip; GitHub recompute → tip PR #337 **MERGEABLE/CLEAN**; refresh secrets/open_git_pr hints; STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
 
 ### Metrics delta
 | Metric | Before (Tick 417) | After (Tick 418) |
 |--------|-------------------|------------------|
 | Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
-| Tip PR #337 vs main | **CONFLICTING/DIRTY** (README) | **merge conflict resolved on tip** (await GitHub recompute after push) |
+| Tip PR #337 vs main | **CONFLICTING/DIRTY** (README) | **MERGEABLE/CLEAN** after push |
 | Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
 | `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
 
 ### Next recommended step
-Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) after GitHub shows MERGEABLE: undraft+merge tip PR #337 (and/or bootstrap #338); optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 now (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md` (GitHub title/body still Tick 336). Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
 
 ---
 ## 2026-09-25T00:20Z — Tick 417 (automation cron)
