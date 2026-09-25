@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 427:** park/reinject paper-pack companions across tip `--apply` (closes prepare refuse after mid-tick `apply_paper_pack`).  
 **Tick 426:** co-commit G4 paper-pack companions with durable ledgers (closes post-`apply_paper_pack` refuse → spend/READY wipe).  
 **Tick 425:** tip-recover durable-ledger commit+push (closes commit-only mid-tick death after tip `--apply`).  
 **Tick 289:** `ANTHROPIC_API_KEY` is **optional** while the default meta profile is

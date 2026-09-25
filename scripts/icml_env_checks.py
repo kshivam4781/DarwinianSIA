@@ -1079,6 +1079,11 @@ ICML_PRIOR_LIVE_EVIDENCE_RELPATH = "docs/icml_prior_live_evidence.json"
 # restored ledger onto tip after reinject (cross-VM spend/stages parity).
 ICML_BUDGET_SPENT_RELPATH = "docs/icml_budget_spent.json"
 ICML_BUDGET_SPENT_STASH_RELPATH = "docs/icml_budget_spent_stash.json"
+# Tick 427: gitignored paper-pack companion stash — park dirty G4 paper-pack
+# outputs (paper_artifacts / ICML_READY / Figs 1–2) across tip --apply so
+# Tick 426 co-commit whitelist does not refuse prepare (companions counted as
+# other non-ephemeral dirt). Reinject + durable commit after tip recover.
+ICML_PAPER_PACK_STASH_RELPATH = "docs/icml_paper_pack_stash.json"
 # Tick 350/359: minimal MCP args file — gitignored (never commit; survive tip
 # --apply). Declared early so tip-apply ignore sets can reference it.
 ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
@@ -1088,11 +1093,13 @@ ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
 # Cron persists the boot file *before* tip recover; without this filter,
 # greenfield/main boots refuse ``--apply`` and never land tip files.
 # Tick 390: do NOT include committed prior_live evidence here.
+# Tick 427: also ignore paper-pack companion stash.
 TIP_APPLY_GITIGNORE_LAG_RELPATHS: frozenset[str] = frozenset(
     {
         ICML_CLOUD_BOOT_BRANCH_RELPATH,
         ICML_PRIOR_LIVE_STASH_RELPATH,
         ICML_BUDGET_SPENT_STASH_RELPATH,
+        ICML_PAPER_PACK_STASH_RELPATH,
         ICML_OPEN_GIT_PR_CALL_RELPATH,
     }
 )
@@ -1496,6 +1503,12 @@ def budget_spent_stash_path(repo_root: Path | None = None) -> Path:
     return root / ICML_BUDGET_SPENT_STASH_RELPATH
 
 
+def paper_pack_stash_path(repo_root: Path | None = None) -> Path:
+    """Tick 427: gitignored stash for dirty G4 paper-pack companions."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    return root / ICML_PAPER_PACK_STASH_RELPATH
+
+
 def _durable_ledger_relpaths() -> frozenset[str]:
     """Committed ledgers that must survive tip --apply (Tick 390/420/421)."""
     return frozenset(
@@ -1629,10 +1642,143 @@ def reinject_budget_spent_stash(
     return True, f"Tick 421: reinjected budget_spent from stash → {ICML_BUDGET_SPENT_RELPATH}"
 
 
+def _park_paper_pack_companions_to_stash(
+    repo_root: Path | None = None,
+    *,
+    dirty_companions: list[str] | None = None,
+) -> tuple[bool, str]:
+    """Tick 427: park dirty G4 paper-pack files into gitignored JSON stash.
+
+    Text/markdown stored as utf-8; binary figures as base64. Overwrites any
+    prior stash contents for the parked paths (merge with existing stash keys
+    so a partial park does not drop earlier files).
+    """
+    import base64
+    from datetime import datetime, timezone
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    companion = _post_live_companion_relpaths()
+    if dirty_companions is None:
+        to_park = [
+            _norm_repo_relpath(p)
+            for p in porcelain_dirty_paths(root)
+            if _norm_repo_relpath(p) in companion
+        ]
+    else:
+        to_park = [
+            _norm_repo_relpath(p)
+            for p in dirty_companions
+            if _norm_repo_relpath(p) in companion
+        ]
+    if not to_park:
+        return True, "paper-pack companions not dirty (park noop)"
+
+    stash_path = paper_pack_stash_path(root)
+    files: dict[str, dict[str, str]] = {}
+    if stash_path.is_file():
+        try:
+            prior = json.loads(stash_path.read_text(encoding="utf-8"))
+            prior_files = prior.get("files") if isinstance(prior, dict) else None
+            if isinstance(prior_files, dict):
+                for k, v in prior_files.items():
+                    if isinstance(v, dict) and "content" in v:
+                        files[_norm_repo_relpath(str(k))] = {
+                            "encoding": str(v.get("encoding") or "utf-8"),
+                            "content": str(v["content"]),
+                        }
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            files = {}
+
+    parked: list[str] = []
+    for rel in sorted(set(to_park)):
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            return False, f"Tick 427 paper-pack park failed reading {rel}: {exc}"
+        if rel.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+            files[rel] = {
+                "encoding": "base64",
+                "content": base64.b64encode(raw).decode("ascii"),
+            }
+        else:
+            files[rel] = {
+                "encoding": "utf-8",
+                "content": raw.decode("utf-8", errors="replace"),
+            }
+        parked.append(rel)
+
+    if not parked:
+        return True, "paper-pack companions dirty but files absent (park noop)"
+
+    stash = {
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tick": 427,
+        "tick_note": (
+            "Tick 427: paper-pack companions parked before tip --apply "
+            "(restore HEAD → reinject → durable commit on tip)"
+        ),
+        "files": files,
+    }
+    try:
+        stash_path.parent.mkdir(parents=True, exist_ok=True)
+        stash_path.write_text(json.dumps(stash, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return False, f"Tick 427 paper-pack park failed writing stash: {exc}"
+    return True, f"parked paper-pack companions → {ICML_PAPER_PACK_STASH_RELPATH} ({', '.join(parked)})"
+
+
+def reinject_paper_pack_stash(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 427: reinject parked paper-pack companions after tip --apply."""
+    import base64
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_path = paper_pack_stash_path(root)
+    if not stash_path.is_file():
+        return True, "paper-pack stash empty (Tick 427 reinject noop)"
+    try:
+        blob = json.loads(stash_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        return False, f"Tick 427 paper-pack reinject failed reading stash: {exc}"
+    files = blob.get("files") if isinstance(blob, dict) else None
+    if not isinstance(files, dict) or not files:
+        return False, "Tick 427 paper-pack reinject refused — stash missing files"
+    companion = _post_live_companion_relpaths()
+    written: list[str] = []
+    for rel, meta in files.items():
+        norm = _norm_repo_relpath(str(rel))
+        if norm not in companion:
+            continue
+        if not isinstance(meta, dict) or "content" not in meta:
+            continue
+        encoding = str(meta.get("encoding") or "utf-8")
+        content = meta["content"]
+        dest = root / norm
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if encoding == "base64":
+                dest.write_bytes(base64.b64decode(str(content)))
+            else:
+                dest.write_text(str(content), encoding="utf-8")
+        except (OSError, ValueError, TypeError) as exc:
+            return False, f"Tick 427 paper-pack reinject failed writing {norm}: {exc}"
+        written.append(norm)
+    if not written:
+        return False, "Tick 427 paper-pack reinject refused — no companion files written"
+    return (
+        True,
+        f"Tick 427: reinjected paper-pack companions from stash ({', '.join(written)})",
+    )
+
+
 def prepare_prior_live_evidence_for_tip_apply(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420/421: park dirty durable ledgers into stashes, then restore HEAD.
+    """Tick 420/421/427: park dirty durable ledgers + paper-pack companions.
 
     Tick 420 parked only ``docs/icml_prior_live_evidence.json``. After a live
     G2→G4 stack, ``docs/icml_budget_spent.json`` is almost always dirty too —
@@ -1643,6 +1789,14 @@ def prepare_prior_live_evidence_for_tip_apply(
     ``commit_prior_live_evidence_if_dirty`` (now also commits budget_spent)
     after tip-PR anti-churn.
 
+    Tick 426 co-commits G4 paper-pack companions on the *post-live* durable
+    path, but tip ``--apply`` prepare still treated dirty ``paper_artifacts`` /
+    ``ICML_READY`` / Figs as other non-ephemeral dirt — so a mid-tick crash
+    after ``apply_paper_pack`` (before durable commit) blocked tip recover and
+    wiped READY/Live Tables on hard-reset. Tick 427 parks companions into
+    ``docs/icml_paper_pack_stash.json``, restores HEAD, reinjects after tip
+    ``--apply``, then durable commit co-commits them onto tip (Tick 426).
+
     Returns ``(ok, detail)``. ``ok=False`` only when other non-ephemeral dirt
     is present (real edits) or park/restore fails.
     """
@@ -1650,6 +1804,8 @@ def prepare_prior_live_evidence_for_tip_apply(
     evidence_norm = _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
     budget_norm = _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH)
     durable = _durable_ledger_relpaths()
+    companion = _post_live_companion_relpaths()
+    allowed = durable | companion
     dirty = [
         p
         for p in porcelain_dirty_paths(root)
@@ -1657,13 +1813,16 @@ def prepare_prior_live_evidence_for_tip_apply(
     ]
     evidence_dirty = any(_norm_repo_relpath(p) == evidence_norm for p in dirty)
     budget_dirty = any(_norm_repo_relpath(p) == budget_norm for p in dirty)
-    if not evidence_dirty and not budget_dirty:
+    companion_dirty = [
+        p for p in dirty if _norm_repo_relpath(p) in companion
+    ]
+    if not evidence_dirty and not budget_dirty and not companion_dirty:
         return True, "durable ledgers not dirty (Tick 421 prepare noop)"
 
     other_non_ephem = [
         p
         for p in dirty
-        if _norm_repo_relpath(p) not in durable and not is_ephemeral_icml_path(p)
+        if _norm_repo_relpath(p) not in allowed and not is_ephemeral_icml_path(p)
     ]
     if other_non_ephem:
         return (
@@ -1710,10 +1869,22 @@ def prepare_prior_live_evidence_for_tip_apply(
             return False, f"Tick 421 prepare budget: {detail_r}"
         notes.append("budget_spent parked+restored")
 
+    if companion_dirty:
+        ok_p, detail_p = _park_paper_pack_companions_to_stash(
+            root, dirty_companions=companion_dirty
+        )
+        if not ok_p:
+            return False, detail_p
+        for rel in sorted({_norm_repo_relpath(p) for p in companion_dirty}):
+            ok_r, detail_r = _git_restore_or_unlink(root, rel, root / rel)
+            if not ok_r:
+                return False, f"Tick 427 prepare paper-pack: {detail_r}"
+        notes.append("paper-pack companions parked+restored (Tick 427)")
+
     return (
         True,
-        "Tick 421: durable ledgers parked in stash and restored to HEAD "
-        f"({', '.join(notes)}; reinject + commit after tip --apply)",
+        "Tick 421/427: durable ledgers (+ companions) parked in stash and "
+        f"restored to HEAD ({', '.join(notes)}; reinject + commit after tip --apply)",
     )
 
 
@@ -1740,6 +1911,9 @@ def commit_prior_live_evidence_if_dirty(
     ``ICML_READY``, Figs 1–2). Pre-426 treated those as blocking non-ephemeral
     dirt after ``apply_paper_pack``, so durable commit refused and
     spend/READY/Live Tables never reached ``origin``.
+    Tick 427: tip ``--apply`` prepare parks the same companions into
+    ``docs/icml_paper_pack_stash.json`` (pre-427 prepare refused companions as
+    other non-ephemeral dirt → tip recover blocked after mid-tick crash).
     Refuses when *other* non-ephemeral paths are dirty. Ephemeral report dirt
     may remain (gate/pipeline sidecars after live).
 
@@ -1809,7 +1983,7 @@ def commit_prior_live_evidence_if_dirty(
 
     msg = (
         commit_message
-        or "ICML Tick 426: commit durable ledgers + paper-pack companions."
+        or "ICML Tick 427: commit durable ledgers + paper-pack companions."
     )
     commit = subprocess.run(
         [
@@ -1832,7 +2006,7 @@ def commit_prior_live_evidence_if_dirty(
         )
     companion_note = ""
     if dirty_companion:
-        companion_note = f"; paper-pack companions co-committed (Tick 426)"
+        companion_note = f"; paper-pack companions co-committed (Tick 426/427)"
     return (
         True,
         f"Tick 422: committed durable ledgers onto HEAD ({', '.join(to_add)})"
@@ -1964,11 +2138,13 @@ def commit_durable_ledgers_after_live(
     Tick 426: also co-commits G4 paper-pack companions (``paper_artifacts``,
     ``ICML_READY``, Figs 1–2) so post-``apply_paper_pack`` dirt does not
     refuse the durable commit (pre-426 latent READY/spend wipe after paid G4).
+    Tick 427: tip-recover prepare parks those companions across tip ``--apply``
+    (pre-427 prepare refused companions → tip recover blocked mid-tick).
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 426: commit durable ledgers + paper-pack companions."
+            "ICML Tick 427: commit durable ledgers + paper-pack companions."
         ),
     )
     if not ok:

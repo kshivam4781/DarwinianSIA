@@ -33,6 +33,7 @@ from icml_env_checks import (  # noqa: E402
     discard_ephemeral_icml_dirt,
     prepare_prior_live_evidence_for_tip_apply,
     reinject_budget_spent_stash,
+    reinject_paper_pack_stash,
     reinject_prior_live_stash,
     write_icml_tip_status,
 )
@@ -93,6 +94,8 @@ def apply_tip(tip_ref: str) -> int:
         print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
         ok_b, detail_b = reinject_budget_spent_stash(REPO_ROOT)
         print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
+        ok_pp, detail_pp = reinject_paper_pack_stash(REPO_ROOT)
+        print(f"paper_pack_reinject: ok={ok_pp} {detail_pp}")
         return 3
 
     reset = _git(["reset", "--hard", tip_ref])
@@ -114,6 +117,8 @@ def apply_tip(tip_ref: str) -> int:
     print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
     ok_b, detail_b = reinject_budget_spent_stash(REPO_ROOT)
     print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
+    ok_pp, detail_pp = reinject_paper_pack_stash(REPO_ROOT)
+    print(f"paper_pack_reinject: ok={ok_pp} {detail_pp}")
 
     # Tick 339: tip PR anti-churn checkout after --apply (mirrors boot_recover).
     # Tick 338 only wired this into icml_cron_entry.sh; recover --apply alone

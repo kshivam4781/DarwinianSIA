@@ -2987,6 +2987,198 @@ def test_commit_durable_ledgers_still_refuses_unrelated_code_dirt(
     assert "icml_env_checks.py" in detail
 
 
+def test_prepare_parks_paper_pack_companions_for_tip_apply(
+    tmp_path: Path,
+) -> None:
+    """Tick 427: dirty paper-pack companions must park across tip --apply.
+
+    Pre-427: Tick 426 co-commit accepted companions on the post-live path, but
+    prepare_prior_live_evidence_for_tip_apply still refused them as other
+    non-ephemeral dirt → tip recover blocked after mid-tick apply_paper_pack
+    crash (READY/Live Tables wiped on hard-reset).
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        ICML_PAPER_PACK_STASH_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        commit_durable_ledgers_after_live,
+        porcelain_dirty_paths,
+        prepare_prior_live_evidence_for_tip_apply,
+        reinject_paper_pack_stash,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test427"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    figs = docs / "figures"
+    figs.mkdir(parents=True)
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# offline stub\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2")
+    (docs / "gate4_report.md").write_text("# pre\n", encoding="utf-8")
+    (repo / ".gitignore").write_text(
+        "docs/icml_prior_live_stash.json\n"
+        "docs/icml_budget_spent_stash.json\n"
+        "docs/icml_paper_pack_stash.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Mid-tick crash simulation: post-G4 dirt without durable commit yet.
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 17.5,
+                "stages_complete": ["G2", "G3", "G4"],
+                "run_ids": [1300, 1201, 1301],
+                "detail": "Tick 427 mid-tick",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps(
+            {
+                "tick": 427,
+                "gates": {
+                    "docs/gate4_report.json": {
+                        "prior_live_metrics": {
+                            "executed": True,
+                            "primary_pass": True,
+                            "paper_refreshed": True,
+                        }
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "# Live Table 1\n| Seed | Winner |\n| 1 | D |\n", encoding="utf-8"
+    )
+    (docs / "ICML_READY.md").write_text("**STATUS: READY**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1-LIVE")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2-LIVE")
+    (docs / "gate4_report.md").write_text("# live post\n", encoding="utf-8")
+
+    dirty_before = [p.replace("\\", "/") for p in porcelain_dirty_paths(repo)]
+    assert "docs/paper_artifacts.md" in dirty_before
+    assert "docs/ICML_READY.md" in dirty_before
+    assert ICML_BUDGET_SPENT_RELPATH in dirty_before
+
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    assert "427" in prep_detail or "paper-pack" in prep_detail.lower()
+    assert (repo / ICML_PAPER_PACK_STASH_RELPATH).is_file()
+
+    dirty_after_prep = [p.replace("\\", "/") for p in porcelain_dirty_paths(repo)]
+    assert "docs/paper_artifacts.md" not in dirty_after_prep
+    assert "docs/ICML_READY.md" not in dirty_after_prep
+    assert ICML_BUDGET_SPENT_RELPATH not in dirty_after_prep
+    assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH not in dirty_after_prep
+    # Ephemeral gate dirt may remain; must not block tip apply after prepare.
+    blocking = tip_apply_blocking_dirty_paths(repo)
+    assert not any(
+        p.replace("\\", "/").endswith(x)
+        for p in blocking
+        for x in (
+            "paper_artifacts.md",
+            "ICML_READY.md",
+            "icml_budget_spent.json",
+            "icml_prior_live_evidence.json",
+        )
+    ), blocking
+
+    # Hard-reset to tip HEAD (wipes uncommitted READY) then reinject stash.
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    assert "STATUS: IN_PROGRESS" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    ok_pp, detail_pp = reinject_paper_pack_stash(repo)
+    assert ok_pp is True, detail_pp
+    assert "STATUS: READY" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    assert "Live Table 1" in (docs / "paper_artifacts.md").read_text(encoding="utf-8")
+    assert (figs / "fig1_learning_curves.png").read_bytes() == b"PNG1-LIVE"
+
+    # Reinject budget via durable path helper used by tip recover, then commit.
+    from icml_env_checks import reinject_budget_spent_stash, reinject_prior_live_stash
+
+    ok_b, _ = reinject_budget_spent_stash(repo)
+    assert ok_b is True
+    ok_pl, _ = reinject_prior_live_stash(repo)
+    assert ok_pl is True
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert "pushed" in detail.lower()
+    committed_ready = subprocess.check_output(
+        ["git", "show", "HEAD:docs/ICML_READY.md"],
+        cwd=repo,
+        text=True,
+    )
+    assert "STATUS: READY" in committed_ready
+    remote_ready = subprocess.check_output(
+        ["git", "show", f"refs/heads/{tip_branch}:docs/ICML_READY.md"],
+        cwd=bare,
+        text=True,
+    )
+    assert "STATUS: READY" in remote_ready
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:

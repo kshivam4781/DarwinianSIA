@@ -37,3 +37,7 @@ docs/icml_prior_live_stash.json
 # so post-live spend/stages reinject after tip recover (committed
 # docs/icml_budget_spent.json is the cross-VM ledger; stash is same-VM).
 docs/icml_budget_spent_stash.json
+# Tick 427: paper-pack companion stash survives discard + tip --apply so
+# post-G4 paper_artifacts / ICML_READY / Figs park across hard-reset
+# (Tick 426 co-commits them onto tip after reinject).
+docs/icml_paper_pack_stash.json
