@@ -13,8 +13,8 @@ python3 scripts/present_hackathon.py   # 2-min demo only
 ```
 
 ```powershell
-# Windows venv
-cd c:\Users\MSPSA\Documents\SIA2
+# Windows venv (Tick 418: portable path from main; tip keeps linux/cloud block above)
+cd path\to\SIA2
 .\.venv\Scripts\Activate.ps1
 python scripts\finish_hackathon.py
 python scripts\present_hackathon.py
