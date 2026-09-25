@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T16:10Z — Tick 425 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-8033`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 423–424 only pushed durable ledgers on the **post-live** path. Tip-recover (cron / boot_recover / recover_tip) still called `commit_prior_live_evidence_if_dirty` alone (commit-only), so mid-tick death after tip `--apply` reinject left spend/prior_live unpushed on `origin`. Highest leverage without paid spend: **tip-recover commit+push**.
+
+### What this tick did (ONE step)
+**Tick 425 — tip-recover durable ledger commit+push (no API spend):**
+1. Recovered tip ← Tick 424 (`f49c`); confirmed secrets absent; boot `8033` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `commit_durable_ledgers_on_tip_recover` alias; wired cron / boot_recover / recover_tip to use it (same commit+push+ahead-retry as post-live)
+3. Tests: tip-recover wiring + prior Tick 422–424 suite → focused suite **5 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 424) | After (Tick 425) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Tip-recover durable ledgers on `origin` | commit-only (agent push at tick end) | **commit + non-force push (+ ahead retry)** |
+| Mid-tick death after tip `--apply` reinject | spend/prior_live may stay local | **pushed to tip** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-25T14:19Z — Tick 424 (automation cron)
 
 ### Status snapshot

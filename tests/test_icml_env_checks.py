@@ -2721,7 +2721,7 @@ def test_commit_durable_ledgers_after_live_pushes_when_ahead_on_noop(
 
 
 def test_cron_entry_commits_durable_ledgers_after_live() -> None:
-    """Tick 422/423/424: cron run_live must call commit_durable_ledgers_after_live."""
+    """Tick 422/423/424/425: cron run_live + tip-recover must push durable ledgers."""
     text = (Path(__file__).resolve().parents[1] / "scripts" / "icml_cron_entry.sh").read_text(
         encoding="utf-8"
     )
@@ -2733,6 +2733,33 @@ def test_cron_entry_commits_durable_ledgers_after_live() -> None:
     assert live_idx != -1
     assert commit_idx != -1
     assert commit_idx > live_idx
+    # Tick 425: tip-recover path also commit+pushes (before live).
+    tip_recover_idx = text.find("commit_durable_ledgers_on_tip_recover")
+    assert tip_recover_idx != -1
+    assert tip_recover_idx < live_idx
+
+
+def test_tip_recover_paths_push_durable_ledgers() -> None:
+    """Tick 425: tip-recover scripts must call commit_durable_ledgers_on_tip_recover."""
+    root = Path(__file__).resolve().parents[1]
+    cron = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    boot = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
+    recover = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
+    for name, text in (
+        ("icml_cron_entry.sh", cron),
+        ("icml_boot_recover.sh", boot),
+        ("icml_recover_tip.py", recover),
+    ):
+        assert "commit_durable_ledgers_on_tip_recover" in text, name
+        # Tip-recover must not call the commit-only helper alone.
+        assert "commit_prior_live_evidence_if_dirty()" not in text, name
+    from icml_env_checks import (
+        commit_durable_ledgers_after_live,
+        commit_durable_ledgers_on_tip_recover,
+    )
+
+    assert commit_durable_ledgers_on_tip_recover is commit_durable_ledgers_after_live
+
 
 
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(

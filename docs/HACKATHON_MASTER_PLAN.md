@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-25 (Section 21 ICML; Tick 424 push durable ledgers when tip ahead on commit-noop; Tick 423 post-live durable ledger commit+push; Tick 422 post-live durable ledger commit; …)
+**Last updated:** 2026-09-25 (Section 21 ICML; Tick 425 tip-recover durable ledger commit+push; Tick 424 push durable ledgers when tip ahead on commit-noop; Tick 423 post-live durable ledger commit+push; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -876,6 +876,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger commit (Tick 422) | **DONE** | After live G2→G4, cron/pipeline/direct gates auto-commit dirty `budget_spent` + `prior_live_evidence` (ephemeral gate dirt OK); closes same-tick exit without commit → next VM re-burn; focused tests 6/6 |
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
+| ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -967,6 +968,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger commit (Tick 422) | **DONE** | After live G2→G4, cron/pipeline/direct gates auto-commit dirty `budget_spent` + `prior_live_evidence` (ephemeral gate dirt OK); closes same-tick exit without commit → next VM re-burn; focused tests 6/6 |
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
+| ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1070,6 +1072,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger commit (Tick 422) | **DONE** | After live G2→G4, cron/pipeline/direct gates auto-commit dirty `budget_spent` + `prior_live_evidence` (ephemeral gate dirt OK); closes same-tick exit without commit → next VM re-burn; focused tests 6/6 |
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
+| ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–424 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2737,3 +2740,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Post-live durable ledger commit (Tick 422):** Tick 421 only auto-committed durable ledgers at tip-recover time. After paid live, cron/`run_icml_live_pipeline`/`run_g2|g3|g4 --live` wrote `docs/icml_budget_spent.json` + `docs/icml_prior_live_evidence.json` then exited — next greenfield VM lost spend/stages (re-burn) and prior_live trust. `commit_durable_ledgers_after_live` now runs after live (success or partial fail); ephemeral gate reports may stay dirty. Focused tests **6** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Post-live durable ledger push (Tick 423):** Tick 422 committed locally after live but never pushed — timeout/exit before agent `git push` still left `origin` without spend/stages. `commit_durable_ledgers_after_live` now non-force pushes tip after a successful commit (`push_tip_after_durable_ledger_commit`); push failure returns `ok=False` (no false cross-VM safety). Focused tests **4** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Push durable ledgers when tip ahead (Tick 424):** Tick 423 skipped push on commit-noop, so a mid-tick push failure left spend/prior_live unpushed forever. `tip_commits_ahead_of_origin` + `commit_durable_ledgers_after_live` retries non-force tip push when HEAD is ahead of origin after a noop commit. Focused tests **4** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Tip-recover durable ledger commit+push (Tick 425):** Tick 423–424 only pushed on the post-live path. Tip-recover (cron / boot_recover / recover_tip) still called `commit_prior_live_evidence_if_dirty` alone (commit-only), so mid-tick death after tip `--apply` reinject left spend/prior_live unpushed. Tip-recover now uses `commit_durable_ledgers_on_tip_recover` (alias of after_live: commit+push+ahead-retry). Focused tests **5** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.

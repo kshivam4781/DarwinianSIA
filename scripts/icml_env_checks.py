@@ -1899,9 +1899,10 @@ def push_tip_after_durable_ledger_commit(
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422/423/424: commit (+ push) durable ledgers after paid live.
+    """Tick 422–425: commit (+ push) durable ledgers after live **or tip recover**.
 
-    Call after paid G2/G3/G4 (or the unified live pipeline) so
+    Call after paid G2/G3/G4 (or the unified live pipeline) **and** after
+    tip-recover reinject (cron / boot_recover / recover_tip ``--apply``) so
     ``docs/icml_budget_spent.json`` + ``docs/icml_prior_live_evidence.json``
     land on tip HEAD **and** ``origin`` before the cloud VM dies — cross-VM
     resume depends on pushed ledgers (runs/ are gitignored).
@@ -1911,11 +1912,15 @@ def commit_durable_ledgers_after_live(
     Tick 424: also push when commit is a noop but tip HEAD is still ahead of
     ``origin/<tip>`` (retry after a mid-tick push failure — Tick 423 returned
     early on noop and left spend/prior_live unpushed).
+    Tick 425: tip-recover paths (cron / boot_recover / recover_tip) use this
+    same commit+push helper — pre-425 tip recover called
+    ``commit_prior_live_evidence_if_dirty`` alone (commit-only), so a mid-tick
+    death after tip ``--apply`` reinject still left spend/prior_live unpushed.
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 424: commit durable ledgers (budget_spent + prior_live)."
+            "ICML Tick 425: commit durable ledgers (budget_spent + prior_live)."
         ),
     )
     if not ok:
@@ -1933,6 +1938,10 @@ def commit_durable_ledgers_after_live(
         # retry push. Do not pretend cross-VM safety.
         return False, f"{detail}; {detail_p}"
     return True, f"{detail}; {detail_p}"
+
+
+# Tick 425 alias — tip-recover call sites; same commit+push+ahead-retry as live.
+commit_durable_ledgers_on_tip_recover = commit_durable_ledgers_after_live
 
 
 

@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
-    commit_prior_live_evidence_if_dirty,
+    commit_durable_ledgers_on_tip_recover,
     discard_ephemeral_icml_dirt,
     prepare_prior_live_evidence_for_tip_apply,
     reinject_budget_spent_stash,
@@ -144,10 +144,11 @@ def apply_tip(tip_ref: str) -> int:
                 file=sys.stderr,
             )
 
-    # Tick 420: commit reinjected prior_live evidence onto tip branch HEAD so
-    # the next fresh boot does not hit Tick 390 dirty-evidence refuse.
-    ok_ev, detail_ev = commit_prior_live_evidence_if_dirty(REPO_ROOT)
-    print(f"prior_live_evidence_commit: ok={ok_ev} {detail_ev}")
+    # Tick 420/425: commit+push reinjected durable ledgers onto tip HEAD so
+    # the next fresh boot does not hit Tick 390 dirty-evidence refuse, and a
+    # mid-tick death after tip --apply does not leave spend/prior_live unpushed.
+    ok_ev, detail_ev = commit_durable_ledgers_on_tip_recover(REPO_ROOT)
+    print(f"durable_ledgers_tip_recover: ok={ok_ev} {detail_ev}")
     return 0
 
 

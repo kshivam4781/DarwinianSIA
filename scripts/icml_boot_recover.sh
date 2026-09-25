@@ -264,15 +264,15 @@ if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]]; then
   unset _cur_branch
 fi
 
-# Tick 420: auto-commit reinjected prior_live evidence onto tip HEAD after
-# anti-churn checkout (closes Tick 390 manual-commit gap for cross-VM boots).
+# Tick 420/425: auto-commit+push reinjected durable ledgers onto tip after
+# anti-churn checkout (Tick 425 closes commit-only mid-tick death gap).
 if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
   python3 - <<'PY' || true
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import commit_prior_live_evidence_if_dirty
-ok, detail = commit_prior_live_evidence_if_dirty()
-print(f"prior_live_evidence_commit: ok={ok} {detail}")
+from icml_env_checks import commit_durable_ledgers_on_tip_recover
+ok, detail = commit_durable_ledgers_on_tip_recover()
+print(f"durable_ledgers_tip_recover: ok={ok} {detail}")
 PY
 fi
 exit 0
