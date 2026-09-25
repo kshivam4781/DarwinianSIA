@@ -1073,7 +1073,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
 | ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–424 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–425 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
