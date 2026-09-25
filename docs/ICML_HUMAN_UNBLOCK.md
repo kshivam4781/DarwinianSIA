@@ -97,6 +97,8 @@ Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 
 **Tick 394:** **secrets-status auto-detect synthetic GPQA** — cron `write_icml_secrets_status()` left `gpqa_is_synthetic=null` unless the live pipeline passed an explicit flag; Tip-393 committed secrets JSON omitted the synthetic-diamond blocker with smoke on disk. `detect_gpqa_is_synthetic` + auto-probe in `write_icml_secrets_status`; tip PR body drops frozen "through Tick 392".
 
+**Tick 423:** **post-live durable ledger push** — Tick 422 committed locally after live but never pushed; VM death still re-burned spend on the next greenfield boot. `commit_durable_ledgers_after_live` now non-force pushes tip after commit. Live still needs NEBIUS + HF/CSV.
+
 **Tick 395:** **cron secrets refresh after preflight** — Tick 394 auto-detect still left `gpqa_is_synthetic=null` on greenfield boots because secrets were written **before** G2 `ensure_smoke_layout` materializes `data/`. `icml_cron_entry.sh` now refreshes secrets after preflight and prints `human_next` afterward so the synthetic-diamond blocker surfaces.
 
 **Tick 410:** **G4 full-pair paper-pack gate** — live + `apply_paper_pack` require `len(B)==len(D)==len(plans)` before Live Table / READY (closes partial equal-pair promote after sia-exit mid-abort). Live still needs NEBIUS + HF/CSV.

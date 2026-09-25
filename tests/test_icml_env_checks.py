@@ -2413,7 +2413,7 @@ def test_discard_ephemeral_ok_when_persist_writes_evidence(
 def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
     tmp_path: Path,
 ) -> None:
-    """Tick 422: post-live budget dirt + ephemeral gate reports must still commit."""
+    """Tick 422/423: post-live dirt commits + pushes tip; ephemeral gate dirt OK."""
     import json
     import subprocess
 
@@ -2425,6 +2425,9 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
         porcelain_dirty_paths,
     )
 
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
@@ -2433,6 +2436,19 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
     )
     subprocess.run(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test423"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
     )
     docs = repo / "docs"
     docs.mkdir()
@@ -2451,6 +2467,12 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
     subprocess.run(
         ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
     )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
 
     # Simulate post-live: durable spend + prior_live dirty; ephemeral gate dirty too.
     (docs / "icml_budget_spent.json").write_text(
@@ -2459,7 +2481,7 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
                 "spent_usd": 3.5,
                 "stages_complete": ["G2"],
                 "run_ids": [1300],
-                "detail": "Tick 422 post-live",
+                "detail": "Tick 423 post-live",
             },
             indent=2,
         )
@@ -2469,7 +2491,7 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
     (docs / "icml_prior_live_evidence.json").write_text(
         json.dumps(
             {
-                "tick": 422,
+                "tick": 423,
                 "gates": {
                     "docs/gate2_report.json": {
                         "prior_live_post": [{"name": "cabs_inline", "ok": True}]
@@ -2494,7 +2516,8 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
 
     ok, detail = commit_durable_ledgers_after_live(repo)
     assert ok is True, detail
-    assert "422" in detail or "committed" in detail.lower()
+    assert "committed" in detail.lower()
+    assert "423" in detail and "pushed" in detail.lower()
 
     committed_budget = json.loads(
         subprocess.check_output(
@@ -2520,9 +2543,73 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
     assert ICML_BUDGET_SPENT_RELPATH not in dirty_after
     assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH not in dirty_after
 
+    # Tick 423: remote tip must see the durable ledger spend (cross-VM).
+    remote_budget = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"refs/heads/{tip_branch}:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=bare,
+            text=True,
+        )
+    )
+    assert remote_budget["spent_usd"] == 3.5
+
+
+def test_commit_durable_ledgers_after_live_surfaces_push_failure(
+    tmp_path: Path,
+) -> None:
+    """Tick 423: commit without origin must not pretend cross-VM safety."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        commit_durable_ledgers_after_live,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", "cursor/icml-epistemic-results-nopush"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 1.0, "stages_complete": ["G2"], "run_ids": [1]},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is False, detail
+    assert "committed" in detail.lower()
+    assert "push" in detail.lower()
+
 
 def test_cron_entry_commits_durable_ledgers_after_live() -> None:
-    """Tick 422: cron run_live must call commit_durable_ledgers_after_live."""
+    """Tick 422/423: cron run_live must call commit_durable_ledgers_after_live."""
     text = (Path(__file__).resolve().parents[1] / "scripts" / "icml_cron_entry.sh").read_text(
         encoding="utf-8"
     )

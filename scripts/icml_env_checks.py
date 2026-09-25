@@ -1696,8 +1696,10 @@ def prepare_prior_live_evidence_for_tip_apply(
 
 def commit_prior_live_evidence_if_dirty(
     repo_root: Path | None = None,
+    *,
+    commit_message: str | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420/421/422: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
+    """Tick 420/421/422/423: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
 
     Tick 420 committed only prior_live evidence. Tick 421 also commits
     ``docs/icml_budget_spent.json`` when it is dirty alongside (or instead of)
@@ -1705,6 +1707,8 @@ def commit_prior_live_evidence_if_dirty(
     live G2→G4** (cron / pipeline / direct gates): live writes update the
     ledgers but cron used to ``exit`` without committing, so the next
     greenfield VM lost spend/stages (re-burn risk) and prior_live evidence.
+    Tick 423: ``commit_durable_ledgers_after_live`` also **pushes** the tip
+    branch after a successful commit (local commit alone still died with the VM).
     Refuses when other non-ephemeral paths are dirty. Ephemeral report dirt
     may remain (gate/pipeline sidecars after live).
 
@@ -1763,12 +1767,16 @@ def commit_prior_live_evidence_if_dirty(
     if staged.returncode == 0 and not (staged.stdout or "").strip():
         return True, "durable ledgers already match index (Tick 422 noop)"
 
+    msg = (
+        commit_message
+        or "ICML Tick 422: commit durable ledgers (budget_spent + prior_live)."
+    )
     commit = subprocess.run(
         [
             "git",
             "commit",
             "-m",
-            "ICML Tick 422: commit durable ledgers (budget_spent + prior_live).",
+            msg,
             "--",
             *to_add,
         ],
@@ -1785,17 +1793,98 @@ def commit_prior_live_evidence_if_dirty(
     return True, f"Tick 422: committed durable ledgers onto HEAD ({', '.join(to_add)})"
 
 
+def resolve_push_branch_for_durable_ledgers(
+    repo_root: Path | None = None,
+) -> str | None:
+    """Resolve tip branch name for post-live durable-ledger push (Tick 423).
+
+    Prefers the current checkout when it is a tip-like ``cursor/*`` branch,
+    else ``prefer_tip_pr_commit_branch()``. Never returns ``main``/``master``.
+    """
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    branch = ""
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            branch = (proc.stdout or "").strip()
+    except OSError:
+        branch = ""
+    if branch in ("HEAD", "", "main", "master"):
+        branch = ""
+    if branch.startswith("cursor/"):
+        return branch
+    tip_branch = prefer_tip_pr_commit_branch()
+    if tip_branch and tip_branch not in ("main", "master"):
+        return tip_branch
+    return None
+
+
+def push_tip_after_durable_ledger_commit(
+    repo_root: Path | None = None,
+    *,
+    branch: str | None = None,
+) -> tuple[bool, str]:
+    """Tick 423: non-force ``git push`` tip HEAD so durable ledgers survive the VM.
+
+    Tick 422 committed locally after live, but cron/agent timeout could exit
+    before a human/agent ``git push`` — next greenfield boot still re-burned.
+    Never ``--force``. Refuses ``main``/``master``.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
+    if not target or target in ("main", "master", "HEAD"):
+        return (
+            False,
+            "Tick 423 push refused — no tip-like branch "
+            f"(got {target!r})",
+        )
+    ok, detail = _git_ok(
+        ["push", "origin", f"HEAD:refs/heads/{target}"],
+        cwd=root,
+    )
+    if not ok:
+        return False, f"Tick 423 git push failed: {detail}"
+    return True, f"Tick 423: pushed durable ledger commit to origin/{target}"
+
+
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422: post-live alias for ``commit_prior_live_evidence_if_dirty``.
+    """Tick 422/423: commit (+ push) durable ledgers after paid live.
 
     Call after paid G2/G3/G4 (or the unified live pipeline) so
     ``docs/icml_budget_spent.json`` + ``docs/icml_prior_live_evidence.json``
-    land on tip HEAD before the cloud VM dies — cross-VM resume depends on
-    committed ledgers (runs/ are gitignored).
+    land on tip HEAD **and** ``origin`` before the cloud VM dies — cross-VM
+    resume depends on pushed ledgers (runs/ are gitignored).
+
+    Tick 423: local commit alone is insufficient; auto-push tip branch
+    (non-force) when this call created a commit.
     """
-    return commit_prior_live_evidence_if_dirty(repo_root)
+    ok, detail = commit_prior_live_evidence_if_dirty(
+        repo_root,
+        commit_message=(
+            "ICML Tick 423: commit durable ledgers (budget_spent + prior_live)."
+        ),
+    )
+    if not ok:
+        return ok, detail
+    # Noop paths: nothing new to publish.
+    if "committed durable ledgers" not in detail:
+        return ok, detail
+    ok_p, detail_p = push_tip_after_durable_ledger_commit(repo_root)
+    if not ok_p:
+        # Commit landed locally; surface push failure so cron logs + agent can
+        # retry push. Do not pretend cross-VM safety.
+        return False, f"{detail}; {detail_p}"
+    return True, f"{detail}; {detail_p}"
 
 
 

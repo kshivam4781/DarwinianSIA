@@ -584,10 +584,11 @@ PY
   fi
 }
 
-# Tick 422: after paid live (success *or* partial fail), commit dirty
-# durable ledgers onto tip HEAD. Live writes update budget_spent +
-# prior_live_evidence but cron historically exited without committing —
-# next greenfield VM then re-burned spend / lost prior_live (runs/ gitignored).
+# Tick 422/423: after paid live (success *or* partial fail), commit dirty
+# durable ledgers onto tip HEAD **and push** (Tick 423). Live writes update
+# budget_spent + prior_live_evidence; Tick 422 closed exit-without-commit,
+# but a local-only commit still died with the VM — next greenfield boot
+# re-burned spend / lost prior_live (runs/ gitignored).
 commit_durable_ledgers_after_live() {
   if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
     python3 - <<'PY' || true
