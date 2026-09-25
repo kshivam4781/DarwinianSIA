@@ -14,6 +14,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
                                                # (+ Tick 339 tip PR anti-churn checkout)
                                                # (+ Tick 388 prior_live stash/reinject)
                                                # (+ Tick 390 dirty evidence blocks --apply)
+                                               # (+ Tick 420 prepare/commit prior_live evidence)
 """
 
 from __future__ import annotations
@@ -28,7 +29,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from icml_env_checks import (  # noqa: E402
+    commit_prior_live_evidence_if_dirty,
     discard_ephemeral_icml_dirt,
+    prepare_prior_live_evidence_for_tip_apply,
     reinject_prior_live_stash,
     write_icml_tip_status,
 )
@@ -53,6 +56,11 @@ def apply_tip(tip_ref: str) -> int:
     ``icml_boot_recover.sh``; agents using ``icml_recover_tip.py --apply`` still
     refused dirty trees without stashing and never reinjected after hard-reset.
     """
+    # Tick 420: park pre-existing dirty prior_live evidence into stash + restore
+    # HEAD so Tick 390 discard top-check cannot dead-end tip --apply.
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(REPO_ROOT)
+    print(f"prior_live_evidence_prepare: ok={ok_prep} {prep_detail}")
+
     # Tick 388 / Tick 286 parity: discard preflight ephemerals (stash prior_live).
     ok_discard, discard_detail = discard_ephemeral_icml_dirt(REPO_ROOT)
     print(f"ephemeral_discard: ok={ok_discard} {discard_detail}")
@@ -66,7 +74,8 @@ def apply_tip(tip_ref: str) -> int:
     # greenfield without tip .gitignore — cron persists boot before recover).
     # Tick 419: pass discard_detail so evidence written by a fresh prior_live
     # stash capture does not block --apply (stash reinjects after hard-reset;
-    # commit evidence onto tip afterward). Shared filter with cron / boot_recover.
+    # Tick 420 commits evidence onto tip after reinject + anti-churn).
+    # Shared filter with cron / boot_recover.
     from icml_env_checks import tip_apply_blocking_dirty_paths
 
     blocking = tip_apply_blocking_dirty_paths(
@@ -129,6 +138,11 @@ def apply_tip(tip_ref: str) -> int:
                 f"(continuing on {cur_branch}; do NOT open a new tip PR)",
                 file=sys.stderr,
             )
+
+    # Tick 420: commit reinjected prior_live evidence onto tip branch HEAD so
+    # the next fresh boot does not hit Tick 390 dirty-evidence refuse.
+    ok_ev, detail_ev = commit_prior_live_evidence_if_dirty(REPO_ROOT)
+    print(f"prior_live_evidence_commit: ok={ok_ev} {detail_ev}")
     return 0
 
 

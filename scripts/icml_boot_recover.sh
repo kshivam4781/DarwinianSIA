@@ -176,12 +176,16 @@ import sys
 sys.path.insert(0, "scripts")
 from icml_env_checks import (
     discard_ephemeral_icml_dirt,
+    prepare_prior_live_evidence_for_tip_apply,
     tip_apply_blocking_dirty_paths,
 )
+ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply()
+print(f"prior_live_evidence_prepare: ok={ok_prep} {prep_detail}", file=sys.stderr)
 ok, detail = discard_ephemeral_icml_dirt()
 print(f"ephemeral_discard: ok={ok} {detail}", file=sys.stderr)
 # Tick 419: pass discard_detail so evidence from a fresh prior_live stash
-# capture does not block tip --apply (stash reinjects after hard-reset).
+# capture does not block tip --apply (stash reinjects after hard-reset;
+# Tick 420 commits evidence onto tip after reinject + anti-churn).
 print("\n".join(tip_apply_blocking_dirty_paths(discard_detail=detail)))
 PY
 )"
@@ -255,5 +259,17 @@ if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]]; then
     echo "tip_pr_anti_churn_checkout=skip_or_fail (continuing on ${_cur_branch}; do NOT open a new tip PR)" >&2
   fi
   unset _cur_branch
+fi
+
+# Tick 420: auto-commit reinjected prior_live evidence onto tip HEAD after
+# anti-churn checkout (closes Tick 390 manual-commit gap for cross-VM boots).
+if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+  python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import commit_prior_live_evidence_if_dirty
+ok, detail = commit_prior_live_evidence_if_dirty()
+print(f"prior_live_evidence_commit: ok={ok} {detail}")
+PY
 fi
 exit 0
