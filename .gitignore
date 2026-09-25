@@ -33,3 +33,7 @@ docs/icml_open_git_pr_call.json
 # (same class as Tick 356/359 durable gitignored survivors). Cross-VM: use
 # committed docs/icml_prior_live_evidence.json (Tick 389).
 docs/icml_prior_live_stash.json
+# Tick 421: budget_spent stash survives discard + tip --apply hard reset
+# so post-live spend/stages reinject after tip recover (committed
+# docs/icml_budget_spent.json is the cross-VM ledger; stash is same-VM).
+docs/icml_budget_spent_stash.json

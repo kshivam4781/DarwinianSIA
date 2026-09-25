@@ -32,6 +32,7 @@ from icml_env_checks import (  # noqa: E402
     commit_prior_live_evidence_if_dirty,
     discard_ephemeral_icml_dirt,
     prepare_prior_live_evidence_for_tip_apply,
+    reinject_budget_spent_stash,
     reinject_prior_live_stash,
     write_icml_tip_status,
 )
@@ -90,6 +91,8 @@ def apply_tip(tip_ref: str) -> int:
         # Still reinject any stash captured before the refuse (parity with cron).
         ok_pl, detail_pl = reinject_prior_live_stash(REPO_ROOT)
         print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
+        ok_b, detail_b = reinject_budget_spent_stash(REPO_ROOT)
+        print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
         return 3
 
     reset = _git(["reset", "--hard", tip_ref])
@@ -109,6 +112,8 @@ def apply_tip(tip_ref: str) -> int:
     # path was cron/boot_recover only — recover_tip --apply was the hole).
     ok_pl, detail_pl = reinject_prior_live_stash(REPO_ROOT)
     print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
+    ok_b, detail_b = reinject_budget_spent_stash(REPO_ROOT)
+    print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
 
     # Tick 339: tip PR anti-churn checkout after --apply (mirrors boot_recover).
     # Tick 338 only wired this into icml_cron_entry.sh; recover --apply alone

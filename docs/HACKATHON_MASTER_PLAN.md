@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-25 (Section 21 ICML; Tick 420 auto prepare/commit prior_live evidence; Tick 419 discard/tip-apply prior_live evidence race; Tick 418 tip↔main README conflict resolve; …)
+**Last updated:** 2026-09-25 (Section 21 ICML; Tick 421 park+commit budget_spent with prior_live across tip --apply; Tick 420 auto prepare/commit prior_live evidence; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -872,6 +872,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip↔main README conflict resolve (Tick 418) | **DONE** | Merge `origin/main` into tip; sole README path conflict → portable Windows `cd path\to\SIA2` + tip Linux/`python3` block; tip PR #337 **MERGEABLE/CLEAN** |
 | ICML discard/tip-apply prior_live evidence race (Tick 419) | **DONE** | Fresh prior_live stash capture must not fail discard or tip `--apply` on newly written evidence; pre-existing dirty evidence still blocks (Tick 390); 103 env-check tests green |
 | ICML auto prepare/commit prior_live evidence (Tick 420) | **DONE** | `prepare_prior_live_evidence_for_tip_apply` + `commit_prior_live_evidence_if_dirty`; tip `--apply` parks sole dirty evidence into stash then auto-commits after reinject+anti-churn; 105 env-check tests green |
+| ICML park+commit budget_spent with prior_live (Tick 421) | **DONE** | Post-live dirty `docs/icml_budget_spent.json` no longer refuses Tick 420 prepare; parks both durable ledgers into gitignored stashes, reinjects after tip `--apply`, auto-commits onto tip; focused env-check tests 7/7 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -959,6 +960,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip↔main README conflict resolve (Tick 418) | **DONE** | Merge main into tip; README portable Windows path + tip Linux block; tip PR **MERGEABLE/CLEAN** |
 | ICML discard/tip-apply prior_live evidence race (Tick 419) | **DONE** | Fresh prior_live stash capture must not fail discard or tip `--apply` on newly written evidence; pre-existing dirty evidence still blocks (Tick 390) |
 | ICML auto prepare/commit prior_live evidence (Tick 420) | **DONE** | prepare parks sole dirty evidence → tip `--apply`; commit after reinject+anti-churn; 105 env-check tests green |
+| ICML park+commit budget_spent with prior_live (Tick 421) | **DONE** | Post-live dirty `docs/icml_budget_spent.json` no longer refuses Tick 420 prepare; parks both durable ledgers into gitignored stashes, reinjects after tip `--apply`, auto-commits onto tip; focused env-check tests 7/7 |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1058,6 +1060,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip↔main README conflict resolve (Tick 418) | **DONE** | Merge main into tip; README conflict resolved; tip PR **MERGEABLE/CLEAN** |
 | ICML discard/tip-apply prior_live evidence race (Tick 419) | **DONE** | Fresh prior_live stash capture must not fail discard or tip `--apply` on newly written evidence; pre-existing dirty evidence still blocks (Tick 390) |
 | ICML auto prepare/commit prior_live evidence (Tick 420) | **DONE** | prepare parks sole dirty evidence → tip `--apply`; commit after reinject+anti-churn |
+| ICML park+commit budget_spent with prior_live (Tick 421) | **DONE** | Post-live dirty `docs/icml_budget_spent.json` no longer refuses Tick 420 prepare; parks both durable ledgers into gitignored stashes, reinjects after tip `--apply`, auto-commits onto tip; focused env-check tests 7/7 |
 | ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–420 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
@@ -2719,3 +2722,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Discard/tip-apply prior_live evidence race (Tick 419):** Tick 389 persist writes committed `docs/icml_prior_live_evidence.json` while capturing prior_live from ephemeral gate JSON. That leftover evidence dirt made `discard_ephemeral_icml_dirt` return False and tip `--apply` refuse even after a successful Tick 387 stash. Discard now returns ok when the only non-ephemeral remainder is evidence from a fresh capture; `tip_apply_blocking_dirty_paths(discard_detail=…)` exempts that evidence for tip `--apply` (stash reinjects after hard-reset). Pre-existing dirty evidence still blocks (Tick 390). Wired through recover_tip / cron / boot_recover. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Auto prepare/commit prior_live evidence (Tick 420):** Tick 419 still left (1) pre-existing dirty evidence failing discard at the Tick 390 top-check and (2) a manual “commit evidence after tip `--apply`” step after reinject. `prepare_prior_live_evidence_for_tip_apply` parks sole dirty evidence into the gitignored stash and restores HEAD before discard; `commit_prior_live_evidence_if_dirty` auto-commits after reinject + tip-PR anti-churn (refuses when other non-ephemeral dirt exists). Wired recover_tip / cron / boot_recover. Env-check suite **105** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Park+commit budget_spent with prior_live (Tick 421):** Tick 420 still left post-live tip `--apply` blocked whenever `docs/icml_budget_spent.json` was dirty alongside evidence (prepare refused — budget counted as other non-ephemeral dirt). `prepare_prior_live_evidence_for_tip_apply` now parks both durable ledgers into gitignored stashes (`docs/icml_budget_spent_stash.json` + prior_live stash) and restores HEAD; `reinject_budget_spent_stash` + `commit_prior_live_evidence_if_dirty` reinject and auto-commit both after tip `--apply` + anti-churn. Wired recover_tip / cron / boot_recover. Focused env-check tests **7** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.

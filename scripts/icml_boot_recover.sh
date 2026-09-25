@@ -198,6 +198,7 @@ IGNORE = {
     "docs/icml_cloud_boot_branch.txt",
     "docs/icml_open_git_pr_call.json",
     "docs/icml_prior_live_stash.json",
+    "docs/icml_budget_spent_stash.json",
 }
 out = subprocess.run(
     ["git", "status", "--porcelain"],
@@ -238,9 +239,11 @@ if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; th
   python3 - <<'PY' || true
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import reinject_prior_live_stash
+from icml_env_checks import reinject_prior_live_stash, reinject_budget_spent_stash
 ok, detail = reinject_prior_live_stash()
 print(f"prior_live_reinject: ok={ok} {detail}")
+ok_b, detail_b = reinject_budget_spent_stash()
+print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
 PY
 fi
 

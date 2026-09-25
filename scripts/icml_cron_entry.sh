@@ -251,6 +251,7 @@ IGNORE = {
     "docs/icml_cloud_boot_branch.txt",
     "docs/icml_open_git_pr_call.json",
     "docs/icml_prior_live_stash.json",
+    "docs/icml_budget_spent_stash.json",
 }
 out = subprocess.run(
     ["git", "status", "--porcelain"],
@@ -282,9 +283,11 @@ PY
       python3 - <<'PY' || true
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import reinject_prior_live_stash
+from icml_env_checks import reinject_prior_live_stash, reinject_budget_spent_stash
 ok, detail = reinject_prior_live_stash()
 print(f"prior_live_reinject: ok={ok} {detail}")
+ok_b, detail_b = reinject_budget_spent_stash()
+print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
 PY
     fi
   else
@@ -294,9 +297,11 @@ PY
       python3 - <<'PY' || true
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import reinject_prior_live_stash
+from icml_env_checks import reinject_prior_live_stash, reinject_budget_spent_stash
 ok, detail = reinject_prior_live_stash()
 print(f"prior_live_reinject: ok={ok} {detail}")
+ok_b, detail_b = reinject_budget_spent_stash()
+print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
 PY
     fi
     # Re-enter this script from tip tree when we were piped from git show.
@@ -319,12 +324,16 @@ from icml_env_checks import (
     ensure_budget_spent_ledger_initialized,
     ensure_prior_live_evidence_initialized,
     reinject_prior_live_stash,
+    reinject_budget_spent_stash,
 )
 root = Path(".").resolve()
 # Tick 387: reinject even when tip recover was a no-op (stash from prior discard).
 # Tick 389: falls back to committed evidence when stash absent (fresh boots).
+# Tick 421: also reinject parked budget_spent (post-live tip --apply parity).
 ok_pl, detail_pl = reinject_prior_live_stash(root)
 print(f"prior_live_reinject: ok={ok_pl} {detail_pl}")
+ok_b, detail_b = reinject_budget_spent_stash(root)
+print(f"budget_spent_reinject: ok={ok_b} {detail_b}")
 tip = write_icml_tip_status(root / "docs" / "icml_tip_status.json", fetch=False)
 sec = write_icml_secrets_status(root / "docs" / "icml_secrets_status.json")
 ledger_path, ledger_created = ensure_budget_spent_ledger_initialized(root)

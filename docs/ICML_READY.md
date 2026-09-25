@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 420: auto prepare/commit prior_live evidence across tip `--apply` — pre-existing dirty evidence no longer dead-ends recover; reinjected evidence auto-commits onto tip after anti-churn. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 421: park+commit `budget_spent` with prior_live across tip `--apply` — post-live dirty spend ledger no longer refuses Tick 420 prepare. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

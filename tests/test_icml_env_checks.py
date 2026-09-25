@@ -2486,7 +2486,8 @@ def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
 
     ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
     assert ok_prep is True, prep_detail
-    assert "420" in prep_detail
+    # Tick 421 supersedes prepare messaging (still parks evidence; may say 421).
+    assert ("420" in prep_detail) or ("421" in prep_detail)
     stash = json.loads((repo / ICML_PRIOR_LIVE_STASH_RELPATH).read_text(encoding="utf-8"))
     assert stash["gates"]["docs/gate4_report.json"]["prior_live_metrics"][
         "comparison"
@@ -2502,7 +2503,7 @@ def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     )
     ok_commit, commit_detail = commit_prior_live_evidence_if_dirty(repo)
     assert ok_commit is True, commit_detail
-    assert "420" in commit_detail or "committed" in commit_detail.lower()
+    assert ("420" in commit_detail) or ("421" in commit_detail) or ("committed" in commit_detail.lower())
     assert tip_apply_blocking_dirty_paths(repo) == []
     committed = json.loads(
         subprocess.check_output(
@@ -2514,6 +2515,156 @@ def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     assert committed["gates"]["docs/gate4_report.json"]["prior_live_metrics"][
         "comparison"
     ]["d_wins_gens30"] == 4
+
+
+
+
+def test_prepare_and_commit_durable_ledgers_when_budget_and_evidence_dirty(
+    tmp_path: Path,
+) -> None:
+    """Tick 421: dirty budget_spent + evidence must park/restore/commit together."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        commit_prior_live_evidence_if_dirty,
+        discard_ephemeral_icml_dirt,
+        prepare_prior_live_evidence_for_tip_apply,
+        reinject_budget_spent_stash,
+        reinject_prior_live_stash,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (repo / ".gitignore").write_text(
+        "docs/icml_prior_live_stash.json\ndocs/icml_budget_spent_stash.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps(
+            {
+                "tick": 389,
+                "gates": {
+                    "docs/gate4_report.json": {
+                        "prior_live_metrics": {"executed": True, "primary_pass": True}
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 4.25,
+                "stages_complete": ["g2", "g3", "g4"],
+                "run_ids": ["1211", "1311"],
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    assert "421" in prep_detail
+    assert tip_apply_blocking_dirty_paths(repo) == []
+    ok_disc, disc_detail = discard_ephemeral_icml_dirt(repo)
+    assert ok_disc is True, disc_detail
+
+    subprocess.run(["git", "reset", "--hard"], cwd=repo, check=True, capture_output=True)
+    ok_b, b_detail = reinject_budget_spent_stash(repo)
+    ok_p, p_detail = reinject_prior_live_stash(repo)
+    assert ok_b is True, b_detail
+    assert ok_p is True, p_detail
+    ledger = json.loads((docs / "icml_budget_spent.json").read_text(encoding="utf-8"))
+    assert ledger["spent_usd"] == 4.25
+    ok_commit, commit_detail = commit_prior_live_evidence_if_dirty(repo)
+    assert ok_commit is True, commit_detail
+    assert tip_apply_blocking_dirty_paths(repo) == []
+    committed = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"HEAD:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=repo,
+            text=True,
+        )
+    )
+    assert committed["spent_usd"] == 4.25
+    assert ICML_PRIOR_LIVE_EVIDENCE_RELPATH.endswith("evidence.json")
+
+
+def test_prepare_budget_only_dirty_parks_without_evidence(
+    tmp_path: Path,
+) -> None:
+    """Tick 421: budget_spent-only dirt must also park (not prepare-noop)."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        prepare_prior_live_evidence_for_tip_apply,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": []}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (repo / ".gitignore").write_text(
+        "docs/icml_budget_spent_stash.json\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 1.5, "stages_complete": ["g2"]}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    assert "budget_spent" in prep_detail
+    assert tip_apply_blocking_dirty_paths(repo) == []
 
 
 def test_commit_prior_live_evidence_refuses_other_non_ephemeral_dirt(

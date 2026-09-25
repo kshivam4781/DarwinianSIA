@@ -1074,6 +1074,11 @@ ICML_PRIOR_LIVE_STASH_RELPATH = "docs/icml_prior_live_stash.json"
 # resume. Gitignored stash dies on fresh boots; this file is NOT gitignored and
 # NOT ephemeral so tip commits carry prior_live_* when agents push after live.
 ICML_PRIOR_LIVE_EVIDENCE_RELPATH = "docs/icml_prior_live_evidence.json"
+# Tick 421: gitignored budget_spent stash — park dirty docs/icml_budget_spent.json
+# across tip --apply (same role as prior_live stash for evidence). Commit the
+# restored ledger onto tip after reinject (cross-VM spend/stages parity).
+ICML_BUDGET_SPENT_RELPATH = "docs/icml_budget_spent.json"
+ICML_BUDGET_SPENT_STASH_RELPATH = "docs/icml_budget_spent_stash.json"
 # Tick 350/359: minimal MCP args file — gitignored (never commit; survive tip
 # --apply). Declared early so tip-apply ignore sets can reference it.
 ICML_OPEN_GIT_PR_CALL_RELPATH = "docs/icml_open_git_pr_call.json"
@@ -1087,6 +1092,7 @@ TIP_APPLY_GITIGNORE_LAG_RELPATHS: frozenset[str] = frozenset(
     {
         ICML_CLOUD_BOOT_BRANCH_RELPATH,
         ICML_PRIOR_LIVE_STASH_RELPATH,
+        ICML_BUDGET_SPENT_STASH_RELPATH,
         ICML_OPEN_GIT_PR_CALL_RELPATH,
     }
 )
@@ -1456,10 +1462,12 @@ def tip_apply_blocking_dirty_paths(
     reinjects after hard-reset; callers should still commit evidence onto the
     tip afterward. Pre-existing evidence dirt (no fresh stash) still blocks.
 
-    Tick 420: callers should run ``prepare_prior_live_evidence_for_tip_apply``
-    before discard (parks pre-existing dirty evidence into the stash) and
-    ``commit_prior_live_evidence_if_dirty`` after reinject + tip-PR anti-churn
-    so evidence lands on the tip SHA without a manual commit.
+    Tick 420/421: callers should run ``prepare_prior_live_evidence_for_tip_apply``
+    before discard (parks pre-existing dirty evidence **and** budget_spent into
+    gitignored stashes) and ``commit_prior_live_evidence_if_dirty`` after
+    reinject + tip-PR anti-churn so both durable ledgers land on the tip SHA
+    without a manual commit. Tick 421 closes the post-live case where dirty
+    budget_spent blocked Tick 420 prepare (evidence-only).
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     paths = [
@@ -1481,91 +1489,47 @@ def _norm_repo_relpath(rel_path: str) -> str:
     return rel_path.replace("\\", "/").lstrip("./")
 
 
-def prepare_prior_live_evidence_for_tip_apply(
-    repo_root: Path | None = None,
+
+def budget_spent_stash_path(repo_root: Path | None = None) -> Path:
+    """Tick 421: gitignored stash for dirty budget_spent across tip --apply."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    return root / ICML_BUDGET_SPENT_STASH_RELPATH
+
+
+def _durable_ledger_relpaths() -> frozenset[str]:
+    """Committed ledgers that must survive tip --apply (Tick 390/420/421)."""
+    return frozenset(
+        {
+            _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH),
+            _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH),
+        }
+    )
+
+
+def _git_restore_or_unlink(
+    root: Path,
+    relpath: str,
+    path: Path,
 ) -> tuple[bool, str]:
-    """Tick 420: park dirty prior_live evidence into the stash, then restore HEAD.
-
-    Pre-existing dirty ``docs/icml_prior_live_evidence.json`` fails discard at
-    the top (Tick 390) and blocks tip ``--apply`` even when stash reinject would
-    restore the gates after hard-reset. When evidence is the *only*
-    non-ephemeral dirt (ephemeral report dirt may also be present), copy its
-    gates into the gitignored stash and ``git restore`` the evidence file so
-    discard + tip ``--apply`` can proceed. Callers must run
-    ``commit_prior_live_evidence_if_dirty`` after reinject + tip-PR anti-churn
-    so the gates land on the tip SHA (cross-VM ledger parity).
-
-    Returns ``(ok, detail)``. ``ok=False`` only when other non-ephemeral dirt
-    is present (real edits) or git restore fails.
-    """
+    """Restore tracked path to HEAD, or unlink if untracked."""
     import subprocess
 
-    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    evidence_norm = _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
-    dirty = [
-        p
-        for p in porcelain_dirty_paths(root)
-        if not is_tip_apply_ignored_dirty(p)
-    ]
-    evidence_dirty = any(_norm_repo_relpath(p) == evidence_norm for p in dirty)
-    if not evidence_dirty:
-        return True, "prior_live evidence not dirty (Tick 420 prepare noop)"
-
-    other_non_ephem = [
-        p
-        for p in dirty
-        if _norm_repo_relpath(p) != evidence_norm and not is_ephemeral_icml_path(p)
-    ]
-    if other_non_ephem:
-        return (
-            False,
-            "Tick 420 prepare refused — non-ephemeral dirt besides evidence: "
-            f"{other_non_ephem[:8]}",
-        )
-
-    evidence_path = prior_live_evidence_path(root)
-    stash_path = prior_live_stash_path(root)
-    gates = _load_prior_live_gates_payload(evidence_path)
-    if gates:
-        merged = dict(_load_prior_live_gates_payload(stash_path))
-        merged.update(gates)
-        try:
-            _write_prior_live_gates_payload(
-                stash_path,
-                tick=420,
-                gates=merged,
-                tick_note=(
-                    "Tick 420: prior_live stash parked from dirty evidence before "
-                    "tip --apply (restore evidence → reinject → commit on tip)"
-                ),
-            )
-        except OSError as exc:
-            return False, f"Tick 420 prepare failed writing stash: {exc}"
-
-    # Restore tracked evidence to HEAD so Tick 390 discard top-check passes.
     tracked = subprocess.run(
-        ["git", "ls-files", "--error-unmatch", ICML_PRIOR_LIVE_EVIDENCE_RELPATH],
+        ["git", "ls-files", "--error-unmatch", relpath],
         cwd=str(root),
         capture_output=True,
         text=True,
     )
     if tracked.returncode == 0:
         restore = subprocess.run(
-            [
-                "git",
-                "restore",
-                "--worktree",
-                "--staged",
-                "--",
-                ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
-            ],
+            ["git", "restore", "--worktree", "--staged", "--", relpath],
             cwd=str(root),
             capture_output=True,
             text=True,
         )
         if restore.returncode != 0:
             restore = subprocess.run(
-                ["git", "checkout", "--", ICML_PRIOR_LIVE_EVIDENCE_RELPATH],
+                ["git", "checkout", "--", relpath],
                 cwd=str(root),
                 capture_output=True,
                 text=True,
@@ -1573,64 +1537,208 @@ def prepare_prior_live_evidence_for_tip_apply(
         if restore.returncode != 0:
             return (
                 False,
-                "Tick 420 prepare failed restoring evidence: "
+                f"failed restoring {relpath}: "
                 f"{(restore.stderr or restore.stdout or '').strip()}",
             )
-    elif evidence_path.is_file():
-        # Untracked evidence (should be rare after Tick 389 init) — remove so
-        # tip --apply is not blocked; gates already parked in stash.
+        return True, f"restored {relpath} to HEAD"
+    if path.is_file():
         try:
-            evidence_path.unlink()
+            path.unlink()
         except OSError as exc:
-            return False, f"Tick 420 prepare failed unlinking untracked evidence: {exc}"
-
-    return (
-        True,
-        "Tick 420: prior_live evidence parked in stash and restored to HEAD "
-        "(reinject + commit after tip --apply)",
-    )
+            return False, f"failed unlinking untracked {relpath}: {exc}"
+        return True, f"unlinked untracked {relpath}"
+    return True, f"{relpath} absent (noop)"
 
 
-def commit_prior_live_evidence_if_dirty(
+def _park_budget_spent_to_stash(repo_root: Path | None = None) -> tuple[bool, str]:
+    """Copy dirty budget_spent JSON into gitignored stash (Tick 421)."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    src = budget_spent_ledger_path(root)
+    if not src.is_file():
+        return True, "budget_spent absent (park noop)"
+    try:
+        payload = json.loads(src.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        return False, f"Tick 421 budget park failed reading ledger: {exc}"
+    if not isinstance(payload, dict):
+        return False, "Tick 421 budget park refused — ledger is not a JSON object"
+    stash = {
+        "updated_at": payload.get("updated_at"),
+        "tick": 421,
+        "tick_note": (
+            "Tick 421: budget_spent stash parked from dirty ledger before "
+            "tip --apply (restore ledger → reinject → commit on tip)"
+        ),
+        "ledger": payload,
+    }
+    stash_path = budget_spent_stash_path(root)
+    try:
+        stash_path.parent.mkdir(parents=True, exist_ok=True)
+        stash_path.write_text(json.dumps(stash, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return False, f"Tick 421 budget park failed writing stash: {exc}"
+    return True, f"parked budget_spent → {ICML_BUDGET_SPENT_STASH_RELPATH}"
+
+
+def reinject_budget_spent_stash(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420: auto-commit dirty prior_live evidence when sole non-ephemeral dirt.
+    """Tick 421: reinject parked budget_spent after tip --apply hard-reset."""
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    stash_path = budget_spent_stash_path(root)
+    if not stash_path.is_file():
+        return True, "budget_spent stash empty (Tick 421 reinject noop)"
+    try:
+        blob = json.loads(stash_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        return False, f"Tick 421 budget reinject failed reading stash: {exc}"
+    ledger = blob.get("ledger") if isinstance(blob, dict) else None
+    if not isinstance(ledger, dict):
+        return False, "Tick 421 budget reinject refused — stash missing ledger object"
+    dest = budget_spent_ledger_path(root)
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return False, f"Tick 421 budget reinject failed writing ledger: {exc}"
+    return True, f"Tick 421: reinjected budget_spent from stash → {ICML_BUDGET_SPENT_RELPATH}"
 
-    Intended after ``reinject_prior_live_stash`` + tip-PR anti-churn checkout so
-    the commit lands on ``tip_pr_commit_branch``. Refuses when other
-    non-ephemeral paths are dirty. Ephemeral report dirt may remain (callers
-    can discard it separately).
 
-    Returns ``(ok, detail)``. ``ok=True`` when evidence is clean on HEAD
-    (already clean or commit succeeded). ``ok=False`` on refuse / git failure.
+def prepare_prior_live_evidence_for_tip_apply(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 420/421: park dirty durable ledgers into stashes, then restore HEAD.
+
+    Tick 420 parked only ``docs/icml_prior_live_evidence.json``. After a live
+    G2→G4 stack, ``docs/icml_budget_spent.json`` is almost always dirty too —
+    Tick 420 then *refused* prepare (budget counted as other non-ephemeral
+    dirt) and tip ``--apply`` stayed blocked. Tick 421 treats both committed
+    ledgers as co-durable: park each into its gitignored stash, ``git restore``
+    both to HEAD so discard + tip ``--apply`` proceed, then reinject +
+    ``commit_prior_live_evidence_if_dirty`` (now also commits budget_spent)
+    after tip-PR anti-churn.
+
+    Returns ``(ok, detail)``. ``ok=False`` only when other non-ephemeral dirt
+    is present (real edits) or park/restore fails.
     """
-    import subprocess
-
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     evidence_norm = _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
+    budget_norm = _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH)
+    durable = _durable_ledger_relpaths()
     dirty = [
         p
         for p in porcelain_dirty_paths(root)
         if not is_tip_apply_ignored_dirty(p)
     ]
     evidence_dirty = any(_norm_repo_relpath(p) == evidence_norm for p in dirty)
-    if not evidence_dirty:
-        return True, "prior_live evidence not dirty (Tick 420 commit noop)"
+    budget_dirty = any(_norm_repo_relpath(p) == budget_norm for p in dirty)
+    if not evidence_dirty and not budget_dirty:
+        return True, "durable ledgers not dirty (Tick 421 prepare noop)"
 
     other_non_ephem = [
         p
         for p in dirty
-        if _norm_repo_relpath(p) != evidence_norm and not is_ephemeral_icml_path(p)
+        if _norm_repo_relpath(p) not in durable and not is_ephemeral_icml_path(p)
     ]
     if other_non_ephem:
         return (
             False,
-            "Tick 420 commit refused — non-ephemeral dirt besides evidence: "
-            f"{other_non_ephem[:8]}",
+            "Tick 421 prepare refused — non-ephemeral dirt besides durable "
+            f"ledgers: {other_non_ephem[:8]}",
         )
 
+    notes: list[str] = []
+    if evidence_dirty:
+        evidence_path = prior_live_evidence_path(root)
+        stash_path = prior_live_stash_path(root)
+        gates = _load_prior_live_gates_payload(evidence_path)
+        if gates:
+            merged = dict(_load_prior_live_gates_payload(stash_path))
+            merged.update(gates)
+            try:
+                _write_prior_live_gates_payload(
+                    stash_path,
+                    tick=421,
+                    gates=merged,
+                    tick_note=(
+                        "Tick 421: prior_live stash parked from dirty evidence before "
+                        "tip --apply (restore evidence → reinject → commit on tip)"
+                    ),
+                )
+            except OSError as exc:
+                return False, f"Tick 421 prepare failed writing prior_live stash: {exc}"
+        ok_r, detail_r = _git_restore_or_unlink(
+            root, ICML_PRIOR_LIVE_EVIDENCE_RELPATH, evidence_path
+        )
+        if not ok_r:
+            return False, f"Tick 421 prepare evidence: {detail_r}"
+        notes.append("evidence parked+restored")
+
+    if budget_dirty:
+        ok_p, detail_p = _park_budget_spent_to_stash(root)
+        if not ok_p:
+            return False, detail_p
+        ok_r, detail_r = _git_restore_or_unlink(
+            root, ICML_BUDGET_SPENT_RELPATH, budget_spent_ledger_path(root)
+        )
+        if not ok_r:
+            return False, f"Tick 421 prepare budget: {detail_r}"
+        notes.append("budget_spent parked+restored")
+
+    return (
+        True,
+        "Tick 421: durable ledgers parked in stash and restored to HEAD "
+        f"({', '.join(notes)}; reinject + commit after tip --apply)",
+    )
+
+
+
+
+def commit_prior_live_evidence_if_dirty(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 420/421: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
+
+    Tick 420 committed only prior_live evidence. Tick 421 also commits
+    ``docs/icml_budget_spent.json`` when it is dirty alongside (or instead of)
+    evidence — the post-live tip ``--apply`` case. Refuses when other
+    non-ephemeral paths are dirty. Ephemeral report dirt may remain.
+
+    Returns ``(ok, detail)``. ``ok=True`` when durable ledgers are clean on HEAD
+    (already clean or commit succeeded). ``ok=False`` on refuse / git failure.
+    """
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    evidence_norm = _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
+    budget_norm = _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH)
+    durable = _durable_ledger_relpaths()
+    dirty = [
+        p
+        for p in porcelain_dirty_paths(root)
+        if not is_tip_apply_ignored_dirty(p)
+    ]
+    dirty_durable = [
+        p for p in dirty if _norm_repo_relpath(p) in durable
+    ]
+    if not dirty_durable:
+        return True, "durable ledgers not dirty (Tick 421 commit noop)"
+
+    other_non_ephem = [
+        p
+        for p in dirty
+        if _norm_repo_relpath(p) not in durable and not is_ephemeral_icml_path(p)
+    ]
+    if other_non_ephem:
+        return (
+            False,
+            "Tick 421 commit refused — non-ephemeral dirt besides durable "
+            f"ledgers: {other_non_ephem[:8]}",
+        )
+
+    to_add = sorted({_norm_repo_relpath(p) for p in dirty_durable})
     add = subprocess.run(
-        ["git", "add", "--", ICML_PRIOR_LIVE_EVIDENCE_RELPATH],
+        ["git", "add", "--", *to_add],
         cwd=str(root),
         capture_output=True,
         text=True,
@@ -1638,28 +1746,27 @@ def commit_prior_live_evidence_if_dirty(
     if add.returncode != 0:
         return (
             False,
-            "Tick 420 git add evidence failed: "
+            "Tick 421 git add durable ledgers failed: "
             f"{(add.stderr or add.stdout or '').strip()}",
         )
 
-    # Nothing staged (identical to index) — treat as clean.
     staged = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--", ICML_PRIOR_LIVE_EVIDENCE_RELPATH],
+        ["git", "diff", "--cached", "--name-only", "--", *to_add],
         cwd=str(root),
         capture_output=True,
         text=True,
     )
     if staged.returncode == 0 and not (staged.stdout or "").strip():
-        return True, "prior_live evidence already matches index (Tick 420 noop)"
+        return True, "durable ledgers already match index (Tick 421 noop)"
 
     commit = subprocess.run(
         [
             "git",
             "commit",
             "-m",
-            "ICML Tick 420: commit prior_live evidence (budget-ledger parity).",
+            "ICML Tick 421: commit durable ledgers (budget_spent + prior_live).",
             "--",
-            ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+            *to_add,
         ],
         cwd=str(root),
         capture_output=True,
@@ -1668,10 +1775,11 @@ def commit_prior_live_evidence_if_dirty(
     if commit.returncode != 0:
         return (
             False,
-            "Tick 420 git commit evidence failed: "
+            "Tick 421 git commit durable ledgers failed: "
             f"{(commit.stderr or commit.stdout or '').strip()}",
         )
-    return True, "Tick 420: committed prior_live evidence onto HEAD"
+    return True, f"Tick 421: committed durable ledgers onto HEAD ({', '.join(to_add)})"
+
 
 
 def porcelain_dirty_paths(repo_root: Path | None = None) -> list[str]:
