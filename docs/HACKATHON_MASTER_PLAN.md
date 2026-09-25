@@ -952,6 +952,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Recompute PRIMARY from comparison on ledger-skip/resume; refuse false meta.primary_pass |
 | ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Refuse thin/false meta.h2_pass on ledger-skip/resume; READY needs primary+h5+h2 |
 | ICML G4 ledger-skip exit 4 on Tick 413–415 refuse (Tick 416) | **DONE** | trust_refused includes h5/primary/h2 refuse checks; clear comparison; exit 4 not 0 |
+| ICML demote ICML_READY on refuse + always-refuse (Tick 417) | **DONE** | demote_icml_ready_file + ledger-skip always-refuse on recomputed PRIMARY/H5/H2 fail |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
