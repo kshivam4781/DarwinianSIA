@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 418: merge `origin/main` into tip — resolve sole README path conflict so tip PR #337 can leave CONFLICTING/DIRTY. Tick 417 demote ICML_READY on refuse + always-refuse. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 418: merge `origin/main` into tip — resolve sole README path conflict; tip PR #337 now **MERGEABLE/CLEAN**. Tick 417 demote ICML_READY on refuse + always-refuse. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
