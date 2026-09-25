@@ -2761,6 +2761,231 @@ def test_tip_recover_paths_push_durable_ledgers() -> None:
     assert commit_durable_ledgers_on_tip_recover is commit_durable_ledgers_after_live
 
 
+def test_commit_durable_ledgers_co_commits_paper_pack_companions(
+    tmp_path: Path,
+) -> None:
+    """Tick 426: post-G4 paper-pack dirt must not refuse durable commit+push.
+
+    Pre-426: apply_paper_pack dirtied paper_artifacts / ICML_READY / Figs 1–2
+    → commit_durable_ledgers_after_live refused (non-ephemeral besides durable)
+    → spend + READY + Live Tables never reached origin after paid G4.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        commit_durable_ledgers_after_live,
+        is_ephemeral_icml_path,
+        porcelain_dirty_paths,
+    )
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test426"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    figs = docs / "figures"
+    figs.mkdir(parents=True)
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# offline stub\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2")
+    (docs / "gate4_report.md").write_text("# pre\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Simulate post-G4 live: durable spend + paper pack + ephemeral gate dirt.
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 18.0,
+                "stages_complete": ["G2", "G3", "G4"],
+                "run_ids": [1300, 1201, 1301, 1211, 1311],
+                "detail": "Tick 426 post-G4",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps(
+            {
+                "tick": 426,
+                "gates": {
+                    "docs/gate4_report.json": {
+                        "prior_live_metrics": {
+                            "executed": True,
+                            "primary_pass": True,
+                            "paper_refreshed": True,
+                        }
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text(
+        "# Live Table 1\n| Seed | Winner |\n| 1 | D |\n", encoding="utf-8"
+    )
+    (docs / "ICML_READY.md").write_text("**STATUS: READY**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1-LIVE")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2-LIVE")
+    (docs / "gate4_report.md").write_text("# live post\n", encoding="utf-8")
+
+    dirty_before = [p.replace("\\", "/") for p in porcelain_dirty_paths(repo)]
+    assert ICML_BUDGET_SPENT_RELPATH in dirty_before
+    assert "docs/paper_artifacts.md" in dirty_before
+    assert "docs/ICML_READY.md" in dirty_before
+    assert any(is_ephemeral_icml_path(p) for p in dirty_before)
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert "committed" in detail.lower()
+    assert "426" in detail or "companion" in detail.lower()
+    assert "pushed" in detail.lower()
+
+    committed_ready = subprocess.check_output(
+        ["git", "show", "HEAD:docs/ICML_READY.md"],
+        cwd=repo,
+        text=True,
+    )
+    assert "STATUS: READY" in committed_ready
+    committed_paper = subprocess.check_output(
+        ["git", "show", "HEAD:docs/paper_artifacts.md"],
+        cwd=repo,
+        text=True,
+    )
+    assert "Live Table 1" in committed_paper
+    committed_budget = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"HEAD:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=repo,
+            text=True,
+        )
+    )
+    assert committed_budget["spent_usd"] == 18.0
+    assert "G4" in committed_budget["stages_complete"]
+
+    dirty_after = [p.replace("\\", "/") for p in porcelain_dirty_paths(repo)]
+    assert "docs/gate4_report.md" in dirty_after
+    assert ICML_BUDGET_SPENT_RELPATH not in dirty_after
+    assert "docs/paper_artifacts.md" not in dirty_after
+    assert "docs/ICML_READY.md" not in dirty_after
+
+    remote_ready = subprocess.check_output(
+        ["git", "show", f"refs/heads/{tip_branch}:docs/ICML_READY.md"],
+        cwd=bare,
+        text=True,
+    )
+    assert "STATUS: READY" in remote_ready
+    remote_budget = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"refs/heads/{tip_branch}:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=bare,
+            text=True,
+        )
+    )
+    assert remote_budget["spent_usd"] == 18.0
+
+
+def test_commit_durable_ledgers_still_refuses_unrelated_code_dirt(
+    tmp_path: Path,
+) -> None:
+    """Tick 426: paper-pack companions do not open the door to code dirt."""
+    import json
+    import subprocess
+
+    from icml_env_checks import commit_durable_ledgers_after_live
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", "cursor/icml-epistemic-results-test426b"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# paper\n", encoding="utf-8")
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "icml_env_checks.py").write_text("# stub\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 1.0, "stages_complete": ["G2"], "run_ids": [1300]}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# live paper\n", encoding="utf-8")
+    (repo / "scripts" / "icml_env_checks.py").write_text("# edited\n", encoding="utf-8")
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is False
+    assert "refused" in detail.lower()
+    assert "icml_env_checks.py" in detail
+
 
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,

@@ -1506,6 +1506,31 @@ def _durable_ledger_relpaths() -> frozenset[str]:
     )
 
 
+# Tick 426: G4 ``apply_paper_pack`` dirties these alongside durable ledgers.
+# Pre-426 ``commit_durable_ledgers_after_live`` treated them as blocking
+# non-ephemeral dirt → refuse → spend/READY/Live Tables never pushed.
+ICML_LIVE_PAPER_PACK_RELPATHS: frozenset[str] = frozenset(
+    {
+        "docs/paper_artifacts.md",
+        "docs/ICML_READY.md",
+        "docs/figures/fig1_learning_curves.png",
+        "docs/figures/fig2_mechanism.png",
+    }
+)
+
+
+def _post_live_companion_relpaths() -> frozenset[str]:
+    """Paper-pack paths co-committed with durable ledgers after live (Tick 426)."""
+    return frozenset(
+        _norm_repo_relpath(p) for p in ICML_LIVE_PAPER_PACK_RELPATHS
+    )
+
+
+def is_post_live_companion_path(rel_path: str) -> bool:
+    """True when ``rel_path`` is a G4 paper-pack output (Tick 426)."""
+    return _norm_repo_relpath(rel_path) in _post_live_companion_relpaths()
+
+
 def _git_restore_or_unlink(
     root: Path,
     relpath: str,
@@ -1699,7 +1724,7 @@ def commit_prior_live_evidence_if_dirty(
     *,
     commit_message: str | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420/421/422/423: auto-commit dirty durable ledgers when sole non-ephemeral dirt.
+    """Tick 420–426: auto-commit dirty durable ledgers (+ paper-pack companions).
 
     Tick 420 committed only prior_live evidence. Tick 421 also commits
     ``docs/icml_budget_spent.json`` when it is dirty alongside (or instead of)
@@ -1711,18 +1736,23 @@ def commit_prior_live_evidence_if_dirty(
     branch after a successful commit (local commit alone still died with the VM).
     Tick 424: that push also retries when commit is a noop but tip is still
     ahead of origin (mid-tick push failure left spend unpushed).
-    Refuses when other non-ephemeral paths are dirty. Ephemeral report dirt
+    Tick 426: also co-commits G4 paper-pack outputs (``paper_artifacts``,
+    ``ICML_READY``, Figs 1–2). Pre-426 treated those as blocking non-ephemeral
+    dirt after ``apply_paper_pack``, so durable commit refused and
+    spend/READY/Live Tables never reached ``origin``.
+    Refuses when *other* non-ephemeral paths are dirty. Ephemeral report dirt
     may remain (gate/pipeline sidecars after live).
 
-    Returns ``(ok, detail)``. ``ok=True`` when durable ledgers are clean on HEAD
-    (already clean or commit succeeded). ``ok=False`` on refuse / git failure.
+    Returns ``(ok, detail)``. ``ok=True`` when durable ledgers (+ companions)
+    are clean on HEAD (already clean or commit succeeded). ``ok=False`` on
+    refuse / git failure.
     """
     import subprocess
 
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    evidence_norm = _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
-    budget_norm = _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH)
     durable = _durable_ledger_relpaths()
+    companion = _post_live_companion_relpaths()
+    allowed = durable | companion
     dirty = [
         p
         for p in porcelain_dirty_paths(root)
@@ -1731,13 +1761,16 @@ def commit_prior_live_evidence_if_dirty(
     dirty_durable = [
         p for p in dirty if _norm_repo_relpath(p) in durable
     ]
-    if not dirty_durable:
+    dirty_companion = [
+        p for p in dirty if _norm_repo_relpath(p) in companion
+    ]
+    if not dirty_durable and not dirty_companion:
         return True, "durable ledgers not dirty (Tick 422 commit noop)"
 
     other_non_ephem = [
         p
         for p in dirty
-        if _norm_repo_relpath(p) not in durable and not is_ephemeral_icml_path(p)
+        if _norm_repo_relpath(p) not in allowed and not is_ephemeral_icml_path(p)
     ]
     if other_non_ephem:
         return (
@@ -1746,7 +1779,12 @@ def commit_prior_live_evidence_if_dirty(
             f"ledgers: {other_non_ephem[:8]}",
         )
 
-    to_add = sorted({_norm_repo_relpath(p) for p in dirty_durable})
+    to_add = sorted(
+        {
+            _norm_repo_relpath(p)
+            for p in (*dirty_durable, *dirty_companion)
+        }
+    )
     add = subprocess.run(
         ["git", "add", "--", *to_add],
         cwd=str(root),
@@ -1771,7 +1809,7 @@ def commit_prior_live_evidence_if_dirty(
 
     msg = (
         commit_message
-        or "ICML Tick 422: commit durable ledgers (budget_spent + prior_live)."
+        or "ICML Tick 426: commit durable ledgers + paper-pack companions."
     )
     commit = subprocess.run(
         [
@@ -1792,7 +1830,14 @@ def commit_prior_live_evidence_if_dirty(
             "Tick 422 git commit durable ledgers failed: "
             f"{(commit.stderr or commit.stdout or '').strip()}",
         )
-    return True, f"Tick 422: committed durable ledgers onto HEAD ({', '.join(to_add)})"
+    companion_note = ""
+    if dirty_companion:
+        companion_note = f"; paper-pack companions co-committed (Tick 426)"
+    return (
+        True,
+        f"Tick 422: committed durable ledgers onto HEAD ({', '.join(to_add)})"
+        f"{companion_note}",
+    )
 
 
 def resolve_push_branch_for_durable_ledgers(
@@ -1899,7 +1944,7 @@ def push_tip_after_durable_ledger_commit(
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422–425: commit (+ push) durable ledgers after live **or tip recover**.
+    """Tick 422–426: commit (+ push) durable ledgers after live **or tip recover**.
 
     Call after paid G2/G3/G4 (or the unified live pipeline) **and** after
     tip-recover reinject (cron / boot_recover / recover_tip ``--apply``) so
@@ -1916,11 +1961,14 @@ def commit_durable_ledgers_after_live(
     same commit+push helper — pre-425 tip recover called
     ``commit_prior_live_evidence_if_dirty`` alone (commit-only), so a mid-tick
     death after tip ``--apply`` reinject still left spend/prior_live unpushed.
+    Tick 426: also co-commits G4 paper-pack companions (``paper_artifacts``,
+    ``ICML_READY``, Figs 1–2) so post-``apply_paper_pack`` dirt does not
+    refuse the durable commit (pre-426 latent READY/spend wipe after paid G4).
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 425: commit durable ledgers (budget_spent + prior_live)."
+            "ICML Tick 426: commit durable ledgers + paper-pack companions."
         ),
     )
     if not ok:

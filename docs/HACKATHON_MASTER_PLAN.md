@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-25 (Section 21 ICML; Tick 425 tip-recover durable ledger commit+push; Tick 424 push durable ledgers when tip ahead on commit-noop; Tick 423 post-live durable ledger commit+push; …)
+**Last updated:** 2026-09-25 (Section 21 ICML; Tick 426 co-commit paper-pack with durable ledgers; Tick 425 tip-recover durable ledger commit+push; Tick 424 push durable ledgers when tip ahead on commit-noop; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -877,6 +877,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
 | ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
+| ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -969,6 +970,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
 | ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
+| ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 paper-pack dirt co-committed+pushed with durable ledgers; pre-426 refuse left spend/READY unpushed; focused tests 6/6 |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1073,7 +1075,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML post-live durable ledger push (Tick 423) | **DONE** | After Tick 422 commit, non-force `git push` tip so spend/prior_live land on `origin` before VM death; surfaces push failure; focused tests 4/4 |
 | ICML push durable ledgers when tip ahead (Tick 424) | **DONE** | `tip_commits_ahead_of_origin` + commit-noop still non-force pushes when HEAD ahead of origin (retries mid-tick Tick 423 push failure); focused tests 4/4 |
 | ICML tip-recover durable ledger commit+push (Tick 425) | **DONE** | Tip-recover (cron / boot_recover / recover_tip) uses `commit_durable_ledgers_on_tip_recover` (= after_live commit+push+ahead-retry); closes commit-only mid-tick death after tip `--apply`; focused tests 5/5 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–425 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–426 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2744,3 +2747,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Push durable ledgers when tip ahead (Tick 424):** Tick 423 skipped push on commit-noop, so a mid-tick push failure left spend/prior_live unpushed forever. `tip_commits_ahead_of_origin` + `commit_durable_ledgers_after_live` retries non-force tip push when HEAD is ahead of origin after a noop commit. Focused tests **4** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Tip-recover durable ledger commit+push (Tick 425):** Tick 423–424 only pushed on the post-live path. Tip-recover (cron / boot_recover / recover_tip) still called `commit_prior_live_evidence_if_dirty` alone (commit-only), so mid-tick death after tip `--apply` reinject left spend/prior_live unpushed. Tip-recover now uses `commit_durable_ledgers_on_tip_recover` (alias of after_live: commit+push+ahead-retry). Focused tests **5** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Paper-pack companion co-commit (Tick 426):** After paid G4, `apply_paper_pack` dirties `docs/paper_artifacts.md`, `docs/ICML_READY.md`, and Figs 1–2. Pre-426 `commit_durable_ledgers_after_live` treated those as blocking non-ephemeral dirt → refuse → spend/READY/Live Tables never reached `origin`. Durable commit now co-commits the paper-pack whitelist (still refuses unrelated code dirt) and pushes. Focused tests **6** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.

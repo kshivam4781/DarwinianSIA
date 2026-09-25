@@ -411,9 +411,10 @@ if hint:
   unset _anti_branch _cur_branch
 fi
 
-# Tick 420/425: after reinject + tip-PR anti-churn, auto-commit dirty durable
-# ledgers onto tip HEAD and push (Tick 425) so mid-tick death after tip --apply
-# does not leave spend/prior_live unpushed (pre-425 was commit-only).
+# Tick 420/425/426: after reinject + tip-PR anti-churn, auto-commit dirty durable
+# ledgers (+ paper-pack companions) onto tip HEAD and push so mid-tick death
+# after tip --apply / post-G4 apply_paper_pack does not leave spend/READY
+# unpushed (pre-425 was commit-only; pre-426 refused on paper-pack dirt).
 if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
   python3 - <<'PY' || true
 import sys

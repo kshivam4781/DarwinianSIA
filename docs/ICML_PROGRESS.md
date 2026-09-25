@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T18:15Z — Tick 426 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-5801`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 422–425 commit+push durable ledgers after live / tip-recover, but post-G4 `apply_paper_pack` dirties `paper_artifacts` / `ICML_READY` / Figs 1–2 — pre-426 treated those as blocking non-ephemeral dirt → **refuse** → spend + READY + Live Tables never reached `origin` after the paid run that would flip READY. Highest leverage without paid spend: **co-commit paper-pack companions with durable ledgers**.
+
+### What this tick did (ONE step)
+**Tick 426 — paper-pack companion co-commit with durable ledgers (no API spend):**
+1. Recovered tip ← Tick 425 (`f49c`); confirmed secrets absent; boot `5801` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `ICML_LIVE_PAPER_PACK_RELPATHS` / `is_post_live_companion_path`; `commit_prior_live_evidence_if_dirty` co-commits companions; still refuses unrelated code dirt
+3. Tests: companion co-commit+push + refuse-unrelated + prior Tick 422–425 suite → focused suite **6 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 425) | After (Tick 426) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Post-G4 paper-pack + durable dirty → commit | **refused** (non-ephemeral) | **co-commit + push** |
+| READY/Live Tables survive paid G4 VM death | no (latent wipe) | **yes (on origin tip)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-25T16:10Z — Tick 425 (automation cron)
 
 ### Status snapshot
