@@ -64,10 +64,14 @@ def apply_tip(tip_ref: str) -> int:
     # gates wipeable across fresh boots).
     # Tick 391: also ignore boot file + open_git_pr call JSON (chicken-egg
     # greenfield without tip .gitignore — cron persists boot before recover).
-    # Shared filter with cron / boot_recover via tip_apply_blocking_dirty_paths.
+    # Tick 419: pass discard_detail so evidence written by a fresh prior_live
+    # stash capture does not block --apply (stash reinjects after hard-reset;
+    # commit evidence onto tip afterward). Shared filter with cron / boot_recover.
     from icml_env_checks import tip_apply_blocking_dirty_paths
 
-    blocking = tip_apply_blocking_dirty_paths(REPO_ROOT)
+    blocking = tip_apply_blocking_dirty_paths(
+        REPO_ROOT, discard_detail=discard_detail
+    )
     if blocking:
         print(
             "Working tree dirty — refuse --apply (commit/stash first):\n"

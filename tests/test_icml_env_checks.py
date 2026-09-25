@@ -2328,6 +2328,88 @@ def test_discard_ephemeral_preserves_prior_live_via_stash(
     assert after["prior_live_metrics"]["comparison"]["d_wins_gens30"] == 4
 
 
+def test_discard_ephemeral_ok_when_persist_writes_evidence(
+    tmp_path: Path,
+) -> None:
+    """Tick 419: evidence written by persist must not fail discard (387 path).
+
+    Tick 390 still blocks tip --apply on dirty evidence via
+    ``tip_apply_blocking_dirty_paths``; discard itself must return ok so cron
+    can stash prior_live and ask the operator to commit evidence.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        discard_ephemeral_icml_dirt,
+        tip_apply_blocking_dirty_paths,
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    clean_g4 = {
+        "mode": "preflight",
+        "executed": False,
+        "comparison": None,
+        "paper_refreshed": False,
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(clean_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    dirty_g4 = {
+        **clean_g4,
+        "prior_live_metrics": {
+            "comparison": {"d_wins_gens30": 3, "n_pairs": 5},
+            "executed": True,
+            "primary_pass": True,
+            "h2_pass": True,
+            "h5_pass": True,
+            "ready_status": "IN_PROGRESS",
+            "paper_refreshed": True,
+            "h5_by_d_run": {},
+            "h2_by_d_run": {},
+            "figures_written": [],
+        },
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(dirty_g4, indent=2) + "\n", encoding="utf-8"
+    )
+    ok, detail = discard_ephemeral_icml_dirt(repo)
+    assert ok is True, detail
+    assert "prior_live stashed" in detail
+    assert "Tick 390/419" in detail or "commit" in detail
+    evidence = repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH
+    assert evidence.is_file()
+    blocking = tip_apply_blocking_dirty_paths(repo)
+    assert any(
+        p.replace("\\", "/").endswith("icml_prior_live_evidence.json")
+        for p in blocking
+    ), blocking
+
+
 def test_stash_prior_live_from_live_executed_gate3() -> None:
     """Tick 387: live-executed gate3 top-level comparison becomes prior_live."""
     from icml_env_checks import _stash_prior_live_from_gate_json

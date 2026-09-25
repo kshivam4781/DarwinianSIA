@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T04:20Z — Tick 419 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-ba4c`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 389 persist writes committed `docs/icml_prior_live_evidence.json` during `discard_ephemeral_icml_dirt` when capturing prior_live from ephemeral gate JSON — that leftover evidence dirt made discard return **False** (and tip `--apply` refuse) even though the Tick 387 stash path succeeded. Highest leverage without paid spend: **fix discard + tip-apply so fresh prior_live capture does not dead-end tip recover**.
+
+### What this tick did (ONE step)
+**Tick 419 — discard/tip-apply prior_live evidence race (no API spend):**
+1. Recovered tip ← Tick 418 (`f49c`); confirmed secrets absent; boot `ba4c` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `discard_ephemeral_icml_dirt`: when the only non-ephemeral remainder after restore is evidence just written by a fresh prior_live stash capture, return **ok=True** (Tick 387 path); pre-existing dirty evidence still blocks at top (Tick 390)
+3. `tip_apply_blocking_dirty_paths(discard_detail=…)`: exempt evidence when detail contains `prior_live stashed`; wire discard_detail through `icml_recover_tip.py`, cron entry, and boot recover
+4. Regression: `test_discard_ephemeral_ok_when_persist_writes_evidence` (+ Tick 388 recover tip) + full `tests/test_icml_env_checks.py` → **103 passed**
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 418) | After (Tick 419) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| discard + prior_live capture → tip --apply | discard False / tip refuse on evidence | **discard ok + tip --apply proceeds** (stash reinject); commit evidence onto tip after |
+| Pre-existing dirty evidence | blocks tip --apply | unchanged (Tick 390) |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-25T02:20Z — Tick 418 (automation cron)
 
 ### Status snapshot

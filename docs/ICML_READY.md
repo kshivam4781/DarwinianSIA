@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 418: merge `origin/main` into tip — resolve sole README path conflict; tip PR #337 now **MERGEABLE/CLEAN**. Tick 417 demote ICML_READY on refuse + always-refuse. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 419: discard/tip-apply prior_live evidence race — fresh stash capture no longer dead-ends tip recover; Tick 390 pre-existing dirty evidence still blocks. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -328,7 +328,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 415 thin H2 MECHANISM refuse on sidecar trust — ledger-skip refuse false `meta.h2_pass` / thin preferred-share vs planned_n; pipeline resume always `h2_skew_pass(..., planned_n=)`; demote READY unless primary+h5+h2 all recompute-pass
 - [x] Tick 416 G4 ledger-skip exit 4 on Tick 413–415 refuse — `trust_refused` includes `h5_planned` / `primary_recomputed` / `h2_planned`; clear `comparison` on those refuses (Tick 412 n_pairs parity); closes false-green exit 0 after thin H2/H5/false PRIMARY refuse
 - [x] Tick 417 demote ICML_READY on refuse + ledger-skip always-refuse — `demote_icml_ready_file` rewrites disk `STATUS: IN_PROGRESS` on trust refuse; ledger-skip always refuses recomputed PRIMARY/H5/H2 fail (pipeline resume parity; pre-417 only refused when `meta.*_pass` claimed True)
-- [x] Tick 418 tip↔main README conflict resolve — merge `origin/main` into tip; keep Linux/cloud `python3` block + portable Windows `cd path\to\SIA2` so tip PR #337 can leave CONFLICTING/DIRTY
+- [x] Tick 418 tip↔main README conflict resolve — merge `origin/main` into tip; keep Linux/cloud `python3` block + portable Windows `cd path\to\SIA2`; tip PR #337 **MERGEABLE/CLEAN**
+- [x] Tick 419 discard/tip-apply prior_live evidence race — fresh prior_live stash capture no longer fails discard or tip `--apply` on newly written evidence; pre-existing dirty evidence still blocks (Tick 390); `test_discard_ephemeral_ok_when_persist_writes_evidence`
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

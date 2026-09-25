@@ -1437,8 +1437,10 @@ def reinject_prior_live_stash(
 
 def tip_apply_blocking_dirty_paths(
     repo_root: Path | None = None,
+    *,
+    discard_detail: str | None = None,
 ) -> list[str]:
-    """Dirty paths that should block tip ``--apply`` (Tick 389–391).
+    """Dirty paths that should block tip ``--apply`` (Tick 389–391 / 419).
 
     Excludes ``TIP_APPLY_GITIGNORE_LAG_RELPATHS`` (boot file, open_git_pr call
     JSON, prior_live stash) so chicken-egg greenfield boots without tip
@@ -1448,13 +1450,26 @@ def tip_apply_blocking_dirty_paths(
     be committed before tip ``--apply`` (true budget-ledger parity). Tick 389
     filtered evidence so hard-reset could proceed and rely on same-VM stash
     reinject; that left uncommitted evidence wipeable across fresh boots.
+
+    Tick 419: when ``discard_detail`` shows a fresh ``prior_live stashed``
+    capture, exclude evidence dirt written by that discard. Same-VM stash
+    reinjects after hard-reset; callers should still commit evidence onto the
+    tip afterward. Pre-existing evidence dirt (no fresh stash) still blocks.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    return [
+    paths = [
         p
         for p in porcelain_dirty_paths(root)
         if not is_tip_apply_ignored_dirty(p)
     ]
+    if discard_detail and "prior_live stashed" in discard_detail:
+        evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
+        paths = [
+            p
+            for p in paths
+            if p.replace("\\", "/").lstrip("./") != evidence_norm
+        ]
+    return paths
 
 
 def porcelain_dirty_paths(repo_root: Path | None = None) -> list[str]:
@@ -1516,8 +1531,16 @@ def discard_ephemeral_icml_dirt(
     Fixes Tick 390 ``evidence_norm`` NameError in the post-discard remaining
     check (undefined after Tick 390 removed the evidence filter).
 
-    Returns ``(ok_for_tip_apply, detail)``. ``ok_for_tip_apply`` is True when
-    the tree is clean after this call (or was already clean).
+    Tick 419: when persist captures prior_live from ephemeral gate JSON, the
+    newly written committed evidence file is the *only* non-ephemeral remainder
+    and must **not** fail discard (Tick 387 stash path). Tip ``--apply`` still
+    blocks on that dirty evidence via ``tip_apply_blocking_dirty_paths`` until
+    it is committed (Tick 390). Pre-existing dirty evidence still fails discard
+    at the top of this function.
+
+    Returns ``(ok, detail)``. ``ok`` is True when ephemeral dirt was cleared (or
+    the tree was already clean). Tip ``--apply`` callers must still consult
+    ``tip_apply_blocking_dirty_paths`` (dirty evidence / budget ledger).
     """
     import subprocess
 
@@ -1587,6 +1610,26 @@ def discard_ephemeral_icml_dirt(
     ]
     if remaining:
         non_ephem = [p for p in remaining if not is_ephemeral_icml_path(p)]
+        # Tick 419: persist_prior_live_stash_from_working_tree writes committed
+        # evidence (Tick 389) while capturing prior_live from ephemeral gate
+        # JSON. That dirt is intentional ledger parity and must be committed
+        # before tip --apply (Tick 390) — but it must not fail discard itself
+        # when it is the *only* non-ephemeral remainder and we just captured
+        # from gates (Tick 387 stash path). Pre-existing dirty evidence still
+        # blocks at the top of this function (Tick 390).
+        evidence_norm = ICML_PRIOR_LIVE_EVIDENCE_RELPATH.replace("\\", "/")
+        if (
+            stash_info.get("captured")
+            and non_ephem
+            and all(
+                p.replace("\\", "/").lstrip("./") == evidence_norm for p in non_ephem
+            )
+        ):
+            return (
+                True,
+                f"discarded ephemeral dirt: {restored}{stash_note}; "
+                f"commit {evidence_norm} before tip --apply (Tick 390/419)",
+            )
         if non_ephem:
             return (
                 False,

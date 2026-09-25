@@ -221,30 +221,22 @@ else
 fi
 
 if [[ "$need_recover" -eq 1 ]]; then
-  if [[ -n "$(git status --porcelain 2>/dev/null || true)" ]]; then
-    # Tick 286: discard preflight-only dirt before refusing tip apply.
-    if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
-      python3 - <<'PY' || true
-import sys
-sys.path.insert(0, "scripts")
-from icml_env_checks import discard_ephemeral_icml_dirt
-ok, detail = discard_ephemeral_icml_dirt()
-print(f"ephemeral_discard: ok={ok} {detail}")
-raise SystemExit(0 if ok else 1)
-PY
-    fi
-  fi
-  # Tick 389: ignore stash + committed evidence dirt for tip --apply gate.
-  # Tick 391/392: also ignore gitignore-lag durables (boot/call/stash). When
-  # scripts/icml_env_checks.py is absent (chicken-egg main/greenfield), inline
-  # the same IGNORE set — otherwise porcelain ?? boot file skips tip --apply.
+  # Tick 286/419: discard preflight dirt then compute tip-apply blockers in one
+  # Python pass so discard_detail (fresh prior_live stash) can exempt evidence.
   blocking=""
   if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
     blocking="$(python3 - <<'PY'
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import tip_apply_blocking_dirty_paths
-print("\n".join(tip_apply_blocking_dirty_paths()))
+from icml_env_checks import (
+    discard_ephemeral_icml_dirt,
+    tip_apply_blocking_dirty_paths,
+)
+ok, detail = discard_ephemeral_icml_dirt()
+print(f"ephemeral_discard: ok={ok} {detail}", file=sys.stderr)
+# Tick 419: pass discard_detail so evidence written by a fresh prior_live
+# stash capture does not block tip --apply (stash reinjects after hard-reset).
+print("\n".join(tip_apply_blocking_dirty_paths(discard_detail=detail)))
 PY
 )"
   elif command -v python3 >/dev/null 2>&1; then

@@ -163,39 +163,26 @@ if [[ -z "$best_ref" ]]; then
   exit 5
 fi
 
-dirty="$(git status --porcelain 2>/dev/null || true)"
-if [[ -n "$dirty" ]]; then
-  # Tick 286: preflight dirties gate/pipeline/secrets/tip reports — discard
-  # those ephemerals so tip --apply is not stuck on a stale Tick.
-  if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
-    if python3 - <<'PY'
-import sys
-sys.path.insert(0, "scripts")
-from icml_env_checks import discard_ephemeral_icml_dirt
-ok, detail = discard_ephemeral_icml_dirt()
-print(detail)
-raise SystemExit(0 if ok else 1)
-PY
-    then
-      dirty="$(git status --porcelain 2>/dev/null || true)"
-    else
-      echo "Ephemeral discard failed or non-ephemeral dirt remains" >&2
-    fi
-  fi
-fi
-# Tick 389: stash + committed evidence may remain as ?? / M after persist;
-# they must not block tip --apply (reinject rewrites evidence after hard-reset).
+# Tick 286/419: discard preflight dirt + tip-apply blockers in one Python pass
+# so discard_detail (fresh prior_live stash) can exempt evidence (Tick 419).
 # Tick 391: tip tree uses tip_apply_blocking_dirty_paths (gitignore-lag set).
-# Tick 392: chicken-egg greenfield has no scripts/icml_env_checks.py yet — Tick 391
-# Python filter never ran, so porcelain ?? boot file still refused --apply.
-# Inline the same IGNORE set (no tip-module import) so
-# `git show tip:…/icml_boot_recover.sh | bash -s -- --apply` can land tip.
+# Tick 392: chicken-egg greenfield has no scripts/icml_env_checks.py yet — inline
+# the same IGNORE set so `git show tip:…/icml_boot_recover.sh | bash -s -- --apply`
+# can land tip.
+dirty="$(git status --porcelain 2>/dev/null || true)"
 if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
   blocking="$(python3 - <<'PY'
 import sys
 sys.path.insert(0, "scripts")
-from icml_env_checks import tip_apply_blocking_dirty_paths
-print("\n".join(tip_apply_blocking_dirty_paths()))
+from icml_env_checks import (
+    discard_ephemeral_icml_dirt,
+    tip_apply_blocking_dirty_paths,
+)
+ok, detail = discard_ephemeral_icml_dirt()
+print(f"ephemeral_discard: ok={ok} {detail}", file=sys.stderr)
+# Tick 419: pass discard_detail so evidence from a fresh prior_live stash
+# capture does not block tip --apply (stash reinjects after hard-reset).
+print("\n".join(tip_apply_blocking_dirty_paths(discard_detail=detail)))
 PY
 )"
   dirty="$blocking"
