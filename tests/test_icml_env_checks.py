@@ -2608,8 +2608,120 @@ def test_commit_durable_ledgers_after_live_surfaces_push_failure(
     assert "push" in detail.lower()
 
 
+def test_commit_durable_ledgers_after_live_pushes_when_ahead_on_noop(
+    tmp_path: Path,
+) -> None:
+    """Tick 424: commit-noop still pushes when tip HEAD is ahead of origin.
+
+    Simulates Tick 423 mid-tick push failure: durable ledgers already committed
+    locally (clean tree) but never reached origin — next call must not skip push.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        commit_durable_ledgers_after_live,
+        tip_commits_ahead_of_origin,
+    )
+
+    bare = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    tip_branch = "cursor/icml-epistemic-results-ahead"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": [], "detail": "init"},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 424, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    # Publish baseline to origin so ahead-count is meaningful.
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Local-only durable ledger commit (simulates Tick 423 push failure).
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 4.25,
+                "stages_complete": ["G2", "G3"],
+                "run_ids": [1300, 1301],
+                "detail": "Tick 424 unpushed",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", "--", ICML_BUDGET_SPENT_RELPATH],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "local durable only"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    assert tip_commits_ahead_of_origin(repo) == 1
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert "noop" in detail.lower() or "not dirty" in detail.lower()
+    assert "424" in detail and "pushed" in detail.lower()
+    assert tip_commits_ahead_of_origin(repo) == 0
+
+    remote_budget = json.loads(
+        subprocess.check_output(
+            ["git", "show", f"refs/heads/{tip_branch}:{ICML_BUDGET_SPENT_RELPATH}"],
+            cwd=bare,
+            text=True,
+        )
+    )
+    assert remote_budget["spent_usd"] == 4.25
+    assert "G3" in remote_budget["stages_complete"]
+
+
 def test_cron_entry_commits_durable_ledgers_after_live() -> None:
-    """Tick 422/423: cron run_live must call commit_durable_ledgers_after_live."""
+    """Tick 422/423/424: cron run_live must call commit_durable_ledgers_after_live."""
     text = (Path(__file__).resolve().parents[1] / "scripts" / "icml_cron_entry.sh").read_text(
         encoding="utf-8"
     )

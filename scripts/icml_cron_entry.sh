@@ -585,8 +585,9 @@ PY
 }
 
 # Tick 422/423: after paid live (success *or* partial fail), commit dirty
-# durable ledgers onto tip HEAD **and push** (Tick 423). Live writes update
+# durable ledgers onto tip HEAD **and push** (Tick 423/424). Live writes update
 # budget_spent + prior_live_evidence; Tick 422 closed exit-without-commit,
+# Tick 424 retries push when commit is noop but tip is still ahead of origin;
 # but a local-only commit still died with the VM — next greenfield boot
 # re-burned spend / lost prior_live (runs/ gitignored).
 commit_durable_ledgers_after_live() {

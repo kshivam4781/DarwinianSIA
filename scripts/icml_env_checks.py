@@ -1709,6 +1709,8 @@ def commit_prior_live_evidence_if_dirty(
     greenfield VM lost spend/stages (re-burn risk) and prior_live evidence.
     Tick 423: ``commit_durable_ledgers_after_live`` also **pushes** the tip
     branch after a successful commit (local commit alone still died with the VM).
+    Tick 424: that push also retries when commit is a noop but tip is still
+    ahead of origin (mid-tick push failure left spend unpushed).
     Refuses when other non-ephemeral paths are dirty. Ephemeral report dirt
     may remain (gate/pipeline sidecars after live).
 
@@ -1827,6 +1829,45 @@ def resolve_push_branch_for_durable_ledgers(
     return None
 
 
+def tip_commits_ahead_of_origin(
+    repo_root: Path | None = None,
+    *,
+    branch: str | None = None,
+) -> int:
+    """Tick 424: how many local tip commits are not yet on ``origin/<branch>``.
+
+    Returns ``0`` when equal/behind/unknown (missing remote, detached HEAD,
+    non-tip branch). Used to retry durable-ledger push after a commit-noop
+    when a prior Tick 423 push failed mid-tick.
+    """
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
+    if not target or target in ("main", "master", "HEAD"):
+        return 0
+    # Prefer tracking ref when present; else origin/<branch> after fetch/push.
+    for remote_ref in (f"origin/{target}", f"refs/remotes/origin/{target}"):
+        try:
+            proc = subprocess.run(
+                ["git", "rev-list", "--count", f"{remote_ref}..HEAD"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            continue
+        if proc.returncode != 0:
+            continue
+        raw = (proc.stdout or "").strip()
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 0
+    return 0
+
+
 def push_tip_after_durable_ledger_commit(
     repo_root: Path | None = None,
     *,
@@ -1858,7 +1899,7 @@ def push_tip_after_durable_ledger_commit(
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422/423: commit (+ push) durable ledgers after paid live.
+    """Tick 422/423/424: commit (+ push) durable ledgers after paid live.
 
     Call after paid G2/G3/G4 (or the unified live pipeline) so
     ``docs/icml_budget_spent.json`` + ``docs/icml_prior_live_evidence.json``
@@ -1867,18 +1908,25 @@ def commit_durable_ledgers_after_live(
 
     Tick 423: local commit alone is insufficient; auto-push tip branch
     (non-force) when this call created a commit.
+    Tick 424: also push when commit is a noop but tip HEAD is still ahead of
+    ``origin/<tip>`` (retry after a mid-tick push failure — Tick 423 returned
+    early on noop and left spend/prior_live unpushed).
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 423: commit durable ledgers (budget_spent + prior_live)."
+            "ICML Tick 424: commit durable ledgers (budget_spent + prior_live)."
         ),
     )
     if not ok:
         return ok, detail
-    # Noop paths: nothing new to publish.
-    if "committed durable ledgers" not in detail:
-        return ok, detail
+    need_push = "committed durable ledgers" in detail
+    if not need_push:
+        ahead = tip_commits_ahead_of_origin(repo_root)
+        if ahead <= 0:
+            return ok, detail
+        detail = f"{detail}; tip ahead of origin by {ahead} (Tick 424 push retry)"
+        need_push = True
     ok_p, detail_p = push_tip_after_durable_ledger_commit(repo_root)
     if not ok_p:
         # Commit landed locally; surface push failure so cron logs + agent can

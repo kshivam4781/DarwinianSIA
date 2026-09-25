@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 424:** tip-ahead durable-ledger push retry lands on tip (mid-tick Tick 423 push-failure recovery).  
 **Tick 289:** `ANTHROPIC_API_KEY` is **optional** while the default meta profile is
 `kimi-nebius-pydantic-meta` (Nebius). Set `ICML_META_AGENT_PROFILE=default-meta`
 only if you intentionally want Claude meta (then Anthropic becomes required again).
