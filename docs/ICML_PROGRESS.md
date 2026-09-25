@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T22:15Z — Tick 428 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-8d58`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 427 park/reinject left gitignored paper-pack / budget / prior_live **stashes on disk after successful durable commit+push**. A later tip `--apply` could reinject **stale** mid-tick READY/spend over a newer tip HEAD (e.g. honest demotion to IN_PROGRESS). Highest leverage without paid spend: **consume durable stashes after successful push**.
+
+### What this tick did (ONE step)
+**Tick 428 — consume durable stashes after successful tip push (no API spend):**
+1. Recovered tip ← Tick 427 (`f49c`); confirmed secrets absent; boot `8d58` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Added `consume_durable_stashes_after_commit`; wired into `commit_durable_ledgers_after_live` **after** successful push (or commit-noop with tip not ahead). Keep stashes when push fails so tip `--apply` hard-reset to origin can still reinject
+3. Tests: `test_durable_commit_consumes_stashes_prevents_stale_reinject` + Tick 426–427 suite → focused **20 passed** (durable/tip-apply filter)
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 427) | After (Tick 428) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Stashes after durable commit+push | **survived** (stale reinject risk) | **consumed** |
+| Demoted tip HEAD vs leftover READY stash | poison on next tip `--apply` | **demotion preserved** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-25T20:15Z — Tick 427 (automation cron)
 
 ### Status snapshot

@@ -3177,6 +3177,191 @@ def test_prepare_parks_paper_pack_companions_for_tip_apply(
         text=True,
     )
     assert "STATUS: READY" in remote_ready
+    # Tick 428: stashes must be consumed after successful durable commit.
+    assert not (repo / ICML_PAPER_PACK_STASH_RELPATH).is_file()
+    assert "428" in detail or "consumed" in detail.lower()
+
+
+def test_durable_commit_consumes_stashes_prevents_stale_reinject(
+    tmp_path: Path,
+) -> None:
+    """Tick 428: leftover stashes must not reinject stale READY over tip HEAD.
+
+    Pre-428: after reinject+commit, paper-pack stash survived. A later tip
+    ``--apply`` reinjected mid-tick READY over a newer demoted IN_PROGRESS tip.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_BUDGET_SPENT_RELPATH,
+        ICML_BUDGET_SPENT_STASH_RELPATH,
+        ICML_PAPER_PACK_STASH_RELPATH,
+        ICML_PRIOR_LIVE_EVIDENCE_RELPATH,
+        ICML_PRIOR_LIVE_STASH_RELPATH,
+        commit_durable_ledgers_after_live,
+        prepare_prior_live_evidence_for_tip_apply,
+        reinject_budget_spent_stash,
+        reinject_paper_pack_stash,
+        reinject_prior_live_stash,
+    )
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test428"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    figs = docs / "figures"
+    figs.mkdir(parents=True)
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# offline stub\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2")
+    (repo / ".gitignore").write_text(
+        "docs/icml_prior_live_stash.json\n"
+        "docs/icml_budget_spent_stash.json\n"
+        "docs/icml_paper_pack_stash.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Mid-tick READY + spend dirt → park → reinject → durable commit.
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 12.0,
+                "stages_complete": ["G2", "G3", "G4"],
+                "run_ids": [1211, 1311],
+                "detail": "Tick 428 mid-tick",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps(
+            {
+                "tick": 428,
+                "gates": {
+                    "docs/gate4_report.json": {
+                        "prior_live_metrics": {
+                            "executed": True,
+                            "primary_pass": True,
+                            "paper_refreshed": True,
+                        }
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# Live Table 1\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: READY**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1-LIVE")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2-LIVE")
+
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    assert (repo / ICML_PAPER_PACK_STASH_RELPATH).is_file()
+    assert (repo / ICML_BUDGET_SPENT_STASH_RELPATH).is_file()
+
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    assert reinject_paper_pack_stash(repo)[0] is True
+    assert reinject_budget_spent_stash(repo)[0] is True
+    assert reinject_prior_live_stash(repo)[0] is True
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert "consumed" in detail.lower() or "428" in detail
+    assert not (repo / ICML_PAPER_PACK_STASH_RELPATH).is_file()
+    assert not (repo / ICML_BUDGET_SPENT_STASH_RELPATH).is_file()
+    assert not (repo / ICML_PRIOR_LIVE_STASH_RELPATH).is_file()
+
+    # Honest demotion on tip after durable commit (criteria revalidation fail).
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (docs / "paper_artifacts.md").write_text("# demoted offline stub\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "add", "docs/ICML_READY.md", "docs/paper_artifacts.md"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "demote READY"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Later tip --apply reinject must be a noop (stashes consumed) — keep demotion.
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    ok_pp, detail_pp = reinject_paper_pack_stash(repo)
+    assert ok_pp is True, detail_pp
+    assert "empty" in detail_pp.lower() or "noop" in detail_pp.lower()
+    assert "STATUS: IN_PROGRESS" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    assert "demoted" in (docs / "paper_artifacts.md").read_text(encoding="utf-8")
+    # Evidence still available via committed file (Tick 389 fallback).
+    assert (repo / ICML_PRIOR_LIVE_EVIDENCE_RELPATH).is_file()
+    assert (repo / ICML_BUDGET_SPENT_RELPATH).is_file()
 
 
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(

@@ -1775,6 +1775,40 @@ def reinject_paper_pack_stash(
     )
 
 
+def consume_durable_stashes_after_commit(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 428: unlink gitignored durable stashes once tip HEAD is authoritative.
+
+    Pre-428: paper-pack / budget_spent / prior_live stashes survived successful
+    reinject + durable commit. A later tip ``--apply`` then reinjected **stale**
+    mid-tick READY / spend over a newer tip HEAD (e.g. honest demotion to
+    IN_PROGRESS, or a fresher live ledger) — latent READY/spend poison.
+
+    Call only after ``commit_prior_live_evidence_if_dirty`` returns ``ok=True``
+    (committed or already clean on HEAD). Keep stashes when commit refuses so a
+    blocked tip recover can retry reinject. Evidence file stays committed.
+    """
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    targets = (
+        (ICML_PAPER_PACK_STASH_RELPATH, paper_pack_stash_path(root)),
+        (ICML_BUDGET_SPENT_STASH_RELPATH, budget_spent_stash_path(root)),
+        (ICML_PRIOR_LIVE_STASH_RELPATH, prior_live_stash_path(root)),
+    )
+    removed: list[str] = []
+    for rel, path in targets:
+        if not path.is_file():
+            continue
+        try:
+            path.unlink()
+        except OSError as exc:
+            return False, f"Tick 428 stash consume failed unlinking {rel}: {exc}"
+        removed.append(rel)
+    if not removed:
+        return True, "durable stashes absent (Tick 428 consume noop)"
+    return True, f"Tick 428: consumed durable stashes ({', '.join(removed)})"
+
+
 def prepare_prior_live_evidence_for_tip_apply(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
@@ -1895,7 +1929,7 @@ def commit_prior_live_evidence_if_dirty(
     *,
     commit_message: str | None = None,
 ) -> tuple[bool, str]:
-    """Tick 420–426: auto-commit dirty durable ledgers (+ paper-pack companions).
+    """Tick 420–427: auto-commit dirty durable ledgers (+ paper-pack companions).
 
     Tick 420 committed only prior_live evidence. Tick 421 also commits
     ``docs/icml_budget_spent.json`` when it is dirty alongside (or instead of)
@@ -1914,6 +1948,10 @@ def commit_prior_live_evidence_if_dirty(
     Tick 427: tip ``--apply`` prepare parks the same companions into
     ``docs/icml_paper_pack_stash.json`` (pre-427 prepare refused companions as
     other non-ephemeral dirt → tip recover blocked after mid-tick crash).
+    Tick 428 stash **consume** lives in ``commit_durable_ledgers_after_live``
+    after a successful push (not here) — consuming after local-only commit
+    would drop reinject safety if push fails and tip ``--apply`` hard-resets
+    to origin.
     Refuses when *other* non-ephemeral paths are dirty. Ephemeral report dirt
     may remain (gate/pipeline sidecars after live).
 
@@ -1983,7 +2021,7 @@ def commit_prior_live_evidence_if_dirty(
 
     msg = (
         commit_message
-        or "ICML Tick 427: commit durable ledgers + paper-pack companions."
+        or "ICML Tick 428: commit durable ledgers + paper-pack companions."
     )
     commit = subprocess.run(
         [
@@ -2118,7 +2156,7 @@ def push_tip_after_durable_ledger_commit(
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422–426: commit (+ push) durable ledgers after live **or tip recover**.
+    """Tick 422–428: commit (+ push) durable ledgers after live **or tip recover**.
 
     Call after paid G2/G3/G4 (or the unified live pipeline) **and** after
     tip-recover reinject (cron / boot_recover / recover_tip ``--apply``) so
@@ -2140,11 +2178,16 @@ def commit_durable_ledgers_after_live(
     refuse the durable commit (pre-426 latent READY/spend wipe after paid G4).
     Tick 427: tip-recover prepare parks those companions across tip ``--apply``
     (pre-427 prepare refused companions → tip recover blocked mid-tick).
+    Tick 428: after durable state is on ``origin`` (successful push, or commit
+    noop with tip not ahead), **consume** gitignored stashes so a later tip
+    ``--apply`` cannot reinject stale mid-tick READY/spend over a newer tip
+    HEAD. Keep stashes when push fails so tip ``--apply`` hard-reset to origin
+    can still reinject.
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 427: commit durable ledgers + paper-pack companions."
+            "ICML Tick 428: commit durable ledgers + paper-pack companions."
         ),
     )
     if not ok:
@@ -2153,15 +2196,27 @@ def commit_durable_ledgers_after_live(
     if not need_push:
         ahead = tip_commits_ahead_of_origin(repo_root)
         if ahead <= 0:
+            # Tip matches origin (or no remote) — safe to drop reinject stashes.
+            ok_c, detail_c = consume_durable_stashes_after_commit(repo_root)
+            if not ok_c:
+                return False, f"{detail}; {detail_c}"
+            if "consume noop" not in detail_c:
+                detail = f"{detail}; {detail_c}"
             return ok, detail
         detail = f"{detail}; tip ahead of origin by {ahead} (Tick 424 push retry)"
         need_push = True
     ok_p, detail_p = push_tip_after_durable_ledger_commit(repo_root)
     if not ok_p:
-        # Commit landed locally; surface push failure so cron logs + agent can
-        # retry push. Do not pretend cross-VM safety.
+        # Commit landed locally; keep stashes so tip --apply hard-reset to
+        # origin can still reinject if the unpushed commit is lost (Tick 428).
         return False, f"{detail}; {detail_p}"
-    return True, f"{detail}; {detail_p}"
+    detail = f"{detail}; {detail_p}"
+    ok_c, detail_c = consume_durable_stashes_after_commit(repo_root)
+    if not ok_c:
+        return False, f"{detail}; {detail_c}"
+    if "consume noop" not in detail_c:
+        detail = f"{detail}; {detail_c}"
+    return True, detail
 
 
 # Tick 425 alias — tip-recover call sites; same commit+push+ahead-retry as live.
