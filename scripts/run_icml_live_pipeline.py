@@ -73,6 +73,9 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 415: G4 ledger-skip + pipeline resume refuse thin H2 MECHANISM
     (``h2_skew_pass(..., planned_n=)``; false ``meta.h2_pass`` READY poison);
     demote READY unless primary+h5+h2 all recompute-pass.
+  - Tick 417: ledger-skip always-refuse on recomputed PRIMARY/H5/H2 fail
+    (pipeline resume parity) + ``demote_icml_ready_file`` so disk READY
+    cannot survive sidecar trust refuse (report-only demotion left STATUS poisoned).
 
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
@@ -851,10 +854,15 @@ def refresh_g4_paper_pack_on_resume(
             )
             report.icml_ready_status = g4_report.ready_status
             if not steering_ok:
-                return (
+                note = (
                     "Tick 408: G4 resume paper pack refused — Condition D gen≥3 "
                     f"steering FAILED (ICML_READY={g4_report.ready_status})"
                 )
+                g4.demote_icml_ready_file(
+                    ready_path, reason=note, timestamp=_utc_now()
+                )
+                report.icml_ready_status = "IN_PROGRESS"
+                return note
             return (
                 "Tick 374: re-scored G4 from local B/D + refreshed paper pack "
                 f"(primary={g4_report.primary_pass}; h2={g4_report.h2_pass}; "
@@ -876,8 +884,16 @@ def refresh_g4_paper_pack_on_resume(
             prior_steering = prior.get("steering_applied_gen3")
         elif "steering_applied_gen3" in data:
             prior_steering = data.get("steering_applied_gen3")
+
+        def _resume_refuse(note: str) -> str:
+            g4.demote_icml_ready_file(
+                ready_path, reason=note, timestamp=_utc_now()
+            )
+            report.icml_ready_status = "IN_PROGRESS"
+            return note
+
         if prior_steering is False:
-            return (
+            return _resume_refuse(
                 "Tick 408: gate4 sidecar steering_applied_gen3=false — "
                 "refuse READY / paper-pack trust on never-steer Condition D"
             )
@@ -888,7 +904,7 @@ def refresh_g4_paper_pack_on_resume(
         except (TypeError, ValueError):
             scored_n = 0
         if planned_n and scored_n < planned_n:
-            return (
+            return _resume_refuse(
                 "Tick 412: gate4 sidecar n_pairs="
                 f"{scored_n} < planned={planned_n} — refuse READY / "
                 "paper-pack trust on partial G4 Live Table"
@@ -896,7 +912,7 @@ def refresh_g4_paper_pack_on_resume(
         # Tick 413: re-validate H5 vs planned denominator (thin H5 READY poison).
         h5_payload = _h5 if isinstance(_h5, dict) else {}
         if not g4.h5_validity_pass(h5_payload, planned_n=planned_n):
-            return (
+            return _resume_refuse(
                 "Tick 413: gate4 sidecar H5 fails planned denominator "
                 f"(planned={planned_n}) — refuse READY / paper-pack trust "
                 "on thin H5 VALIDITY"
@@ -904,16 +920,16 @@ def refresh_g4_paper_pack_on_resume(
         # Tick 414: recompute PRIMARY from comparison (false meta.primary_pass
         # READY poison — ledger-skip / resume parity with Tick 413 H5).
         if not g4.primary_criteria_pass(comparison):
-            return (
+            return _resume_refuse(
                 "Tick 414: gate4 sidecar PRIMARY fails recomputed criteria "
                 f"(planned={planned_n}) — refuse READY / paper-pack trust "
-                "on false meta.primary_pass"
+                "on failed PRIMARY recompute"
             )
         # Tick 415: re-validate H2 vs planned denominator (thin H2 READY poison;
         # Tick 414 recomputed H2 on ledger-skip but pipeline resume omitted it).
         h2_payload = _h2 if isinstance(_h2, dict) else {}
         if not g4.h2_skew_pass(h2_payload, planned_n=planned_n):
-            return (
+            return _resume_refuse(
                 "Tick 415: gate4 sidecar H2 fails planned denominator "
                 f"(planned={planned_n}) — refuse READY / paper-pack trust "
                 "on thin H2 MECHANISM"
@@ -926,6 +942,11 @@ def refresh_g4_paper_pack_on_resume(
                 and g4.h2_skew_pass(h2_payload, planned_n=planned_n)
             ):
                 ready_status = "IN_PROGRESS"
+                g4.demote_icml_ready_file(
+                    ready_path,
+                    reason="recomputed PRIMARY/H5/H2 incomplete",
+                    timestamp=_utc_now(),
+                )
             report.icml_ready_status = ready_status
         if source == "prior_live_metrics":
             note = (

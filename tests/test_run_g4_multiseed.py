@@ -2244,6 +2244,103 @@ def test_refresh_paper_pack_refuses_thin_h2_sidecar(
     assert any(c.name == "h2_planned" and not c.ok for c in report.checks)
 
 
+def test_refresh_paper_pack_refuses_honest_thin_h5_and_demotes_ready_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 417: honest meta.h5_pass=False + thin H5 still refuses + demotes disk.
+
+    Pre-417 only refused when meta claimed True, so an honest-fail sidecar with
+    disk STATUS: READY stayed READY (report demotion only).
+    """
+    import run_g4_multiseed as mod
+    import run_g3_pilot as g3
+    from run_g4_multiseed import G4PreflightReport
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g3, "_runs_dir", lambda: tmp_path / "runs")
+    monkeypatch.setattr(g3, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
+    (tmp_path / "runs").mkdir(parents=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    ready = docs / "ICML_READY.md"
+    ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n**STATUS: READY**\n\n"
+        "Do not set STATUS: READY until criteria pass.\n",
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {
+                    "n_pairs": 5,
+                    "primary_gens30_pass": True,
+                    "h2_preferred_pass": True,
+                },
+                # Honest fail — pre-417 skipped refuse when meta already False.
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": False,
+                "ready_status": "READY",
+                "h5_by_d_run": {
+                    "run_1311": {"spearman_rho": 0.9},
+                    "run_1312": {"error": "missing"},
+                    "run_1313": {"error": "missing"},
+                    "run_1314": {"error": "missing"},
+                    "run_1315": {"error": "missing"},
+                },
+                "h2_by_d_run": {
+                    f"run_{1311 + i}": {
+                        "preferred_share": 0.8,
+                        "in_bias_share": 1.0,
+                        "preferred_value": "selective",
+                        "counts": {"selective": 4},
+                        "total": 4,
+                        "bias_values": ["selective"],
+                    }
+                    for i in range(5)
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = G4PreflightReport(
+        timestamp="2026-09-25T00:20:00Z",
+        mode="live",
+        plans=plans,
+        ready_for_live=True,
+        ledger_skip=True,
+    )
+    ok, note = mod.refresh_paper_pack_on_ledger_skip(
+        report,
+        paper_artifacts=docs / "paper_artifacts.md",
+        ready_path=ready,
+        figures_dir=docs / "figures",
+        gate4_report_md=docs / "gate4_report.md",
+        allow_ready=True,
+    )
+    assert ok is False
+    assert "Tick 413" in note
+    assert report.h5_pass is False
+    assert report.ready_status == "IN_PROGRESS"
+    assert report.comparison is None
+    assert any(c.name == "h5_planned" and not c.ok for c in report.checks)
+    disk = ready.read_text(encoding="utf-8")
+    assert "**STATUS: READY**" not in disk
+    assert "**STATUS: IN_PROGRESS**" in disk
+    assert "Tick 417 demote" in disk
+
+
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

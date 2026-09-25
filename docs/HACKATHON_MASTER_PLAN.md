@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-24 (Section 21 ICML; Tick 416 G4 ledger-skip exit 4 on Tick 413–415 refuse; Tick 415 thin H2 MECHANISM refuse; Tick 414 PRIMARY recompute; …)
+**Last updated:** 2026-09-25 (Section 21 ICML; Tick 417 demote ICML_READY on refuse + ledger-skip always-refuse; Tick 416 G4 ledger-skip exit 4 on Tick 413–415 refuse; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -868,6 +868,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Ledger-skip + pipeline resume recompute `primary_criteria_pass(comparison)`; refuse false `meta.primary_pass`; always H2 planned_n |
 | ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Ledger-skip refuse false `meta.h2_pass` / thin preferred-share; pipeline resume always `h2_skew_pass(..., planned_n=)`; demote READY unless primary+h5+h2 |
 | ICML G4 ledger-skip exit 4 on Tick 413–415 refuse (Tick 416) | **DONE** | `trust_refused` includes h5_planned/primary_recomputed/h2_planned; clear comparison on refuse; closes false-green exit 0 |
+| ICML demote ICML_READY on refuse + always-refuse (Tick 417) | **DONE** | `demote_icml_ready_file`; ledger-skip always refuses recomputed PRIMARY/H5/H2 fail (pipeline parity); disk READY cannot survive trust refuse |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -1046,7 +1047,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML PRIMARY recompute on sidecar trust (Tick 414) | **DONE** | Recompute PRIMARY from comparison on ledger-skip/resume; refuse false meta.primary_pass |
 | ICML thin H2 MECHANISM refuse on sidecar trust (Tick 415) | **DONE** | Refuse thin/false meta.h2_pass on ledger-skip/resume; READY needs primary+h5+h2 |
 | ICML G4 ledger-skip exit 4 on Tick 413–415 refuse (Tick 416) | **DONE** | trust_refused includes h5/primary/h2 refuse checks; clear comparison; exit 4 not 0 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–416 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML demote ICML_READY on refuse + always-refuse (Tick 417) | **DONE** | demote_icml_ready_file + ledger-skip always-refuse on recomputed PRIMARY/H5/H2 fail |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–417 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2699,3 +2701,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Thin H2 MECHANISM refuse on sidecar trust (Tick 415):** Tick 414 recomputed H2 on ledger-skip but did not refuse false `meta.h2_pass` / thin preferred-share (1/5 + errors), and demoted READY only on primary+h5. Pipeline resume also omitted H2 planned-n revalidation. Now ledger-skip refuses thin H2 when meta claims pass; pipeline resume always refuses thin H2 vs planned denominator; READY demotion requires primary+h5+h2. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
 
 **G4 ledger-skip exit 4 on Tick 413–415 refuse (Tick 416):** Tick 413–415 refuse checks returned `paper_refreshed=False` but left `comparison` set, and ledger-skip `main` exit-4 only looked for `steering_applied_gen3` / `g4_full_pairs` — thin H2/H5/false PRIMARY refuse falsely exited 0. Now `trust_refused` includes `h5_planned` / `primary_recomputed` / `h2_planned`, and those refuses clear `comparison` (Tick 412 n_pairs parity). Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.
+
+**Demote ICML_READY on refuse + always-refuse (Tick 417):** Tick 413–416 demoted `report.ready_status` / exited 4, but ledger-skip only refused when `meta.*_pass` claimed True (honest-fail meta + disk READY survived), and refuse paths never rewrote `docs/ICML_READY.md`. Added `demote_icml_ready_file`; ledger-skip now always refuses when recomputed PRIMARY/H5/H2 fail (pipeline resume parity); resume refuse paths demote disk READY. Live still blocked on NEBIUS + HF/CSV. STATUS remains IN_PROGRESS.

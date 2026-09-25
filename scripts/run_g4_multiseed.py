@@ -60,6 +60,11 @@ Hard stops (never violate):
     pre-416 only ``steering_applied_gen3`` / ``g4_full_pairs`` flipped exit 4,
     so thin H2/H5/false PRIMARY refuse returned ``paper_refreshed=False`` with
     ``comparison`` still set → false-green exit 0
+  - Tick 417: ledger-skip sidecar trust **always** refuses when recomputed
+    PRIMARY/H5/H2 fail (pipeline resume parity — pre-417 only refused when
+    ``meta.*_pass`` claimed True, so honest-fail meta + disk ``STATUS: READY``
+    stayed READY); refuse paths call ``demote_icml_ready_file`` so
+    ``docs/ICML_READY.md`` cannot keep a poisoned READY
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -960,6 +965,51 @@ def refresh_paper_artifacts_live(
     return True
 
 
+def demote_icml_ready_file(
+    ready_path: Path,
+    *,
+    reason: str,
+    timestamp: str | None = None,
+) -> bool:
+    """Tick 417: force ``STATUS: IN_PROGRESS`` when disk says READY.
+
+    Sidecar trust refuse / demote previously only mutated ``report.ready_status``
+    and left a poisoned ``docs/ICML_READY.md`` READY on disk. Returns True when
+    the file was rewritten.
+    """
+    if not ready_path.is_file():
+        return False
+    text = ready_path.read_text(encoding="utf-8")
+    if "**STATUS: READY**" not in text and not any(
+        line.startswith("**STATUS: READY") for line in text.splitlines()
+    ):
+        return False
+    ts = timestamp or ""
+    audit = (
+        f"_Tick 417 demote: {ts}; refused READY on disk — {reason}_"
+        if ts
+        else f"_Tick 417 demote: refused READY on disk — {reason}_"
+    )
+    out_lines: list[str] = []
+    inserted_audit = False
+    for line in text.splitlines():
+        if line.startswith("**STATUS:"):
+            out_lines.append("**STATUS: IN_PROGRESS**")
+            out_lines.append("")
+            out_lines.append(audit)
+            inserted_audit = True
+            continue
+        if line.startswith("_Tick 417 demote:") or line.startswith(
+            "_Last G4 pack refresh:"
+        ):
+            continue
+        out_lines.append(line)
+    if not inserted_audit:
+        return False
+    ready_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    return True
+
+
 def update_icml_ready_from_g4(
     *,
     ready_path: Path,
@@ -1407,7 +1457,26 @@ def refresh_paper_pack_on_ledger_skip(
     denominator); demote READY unless primary+h5+h2 all recompute-pass.
     Tick 416: clear comparison on Tick 413–415 refuses (Tick 412 n_pairs
     parity) so ledger-skip ``main`` exit-4 second clause also catches them.
+    Tick 417: **always** refuse when recomputed PRIMARY/H5/H2 fail (pipeline
+    resume parity — pre-417 only refused when ``meta.*_pass`` claimed True);
+    call ``demote_icml_ready_file`` so disk ``ICML_READY`` cannot keep READY.
     """
+
+    def _refuse(note: str, check_name: str) -> tuple[bool, str]:
+        report.checks.append(CheckResult(check_name, False, note))
+        report.notes.append(note)
+        report.comparison = None
+        report.h5_by_d_run = {}
+        report.h2_by_d_run = {}
+        report.primary_pass = False
+        report.h2_pass = False
+        report.h5_pass = False
+        report.ready_status = "IN_PROGRESS"
+        demote_icml_ready_file(
+            ready_path, reason=note, timestamp=report.timestamp
+        )
+        return False, note
+
     b_ids = [p.b_run_id for p in report.plans]
     d_ids = [p.d_run_id for p in report.plans]
     b_dirs: list[Path] = []
@@ -1445,6 +1514,9 @@ def refresh_paper_pack_on_ledger_skip(
                 "steering FAILED — refuse paper-pack READY trust"
             )
             report.notes.append(note)
+            demote_icml_ready_file(
+                ready_path, reason=note, timestamp=report.timestamp
+            )
             return False, note
         return (
             paper_refreshed,
@@ -1473,6 +1545,9 @@ def refresh_paper_pack_on_ledger_skip(
                 CheckResult("steering_applied_gen3", False, note)
             )
             report.notes.append(note)
+            demote_icml_ready_file(
+                ready_path, reason=note, timestamp=report.timestamp
+            )
             return False, note
         # Tick 412: refuse partial-pilot sidecar vs planned pairs (Tick 411 G3).
         planned_n = len(b_ids)
@@ -1486,22 +1561,10 @@ def refresh_paper_pack_on_ledger_skip(
                 f"{scored_n} < planned={planned_n} — refuse READY / "
                 "paper-pack trust on partial G4 Live Table"
             )
-            report.checks.append(
-                CheckResult("g4_full_pairs", False, note)
-            )
-            report.notes.append(note)
-            report.comparison = None
-            report.h5_by_d_run = {}
-            report.h2_by_d_run = {}
-            report.primary_pass = False
-            report.h2_pass = False
-            report.h5_pass = False
-            report.ready_status = "IN_PROGRESS"
-            return False, note
+            return _refuse(note, "g4_full_pairs")
         report.comparison = comparison
-        # Tick 414: recompute PRIMARY from comparison — do not trust
-        # meta.primary_pass (preflight / stale sidecar can claim True while
-        # Live Table lacks gens30/cost30/final wins → READY poison).
+        # Tick 414/417: recompute PRIMARY — always refuse when it fails
+        # (pipeline resume parity; pre-417 only refused false meta.primary_pass).
         report.primary_pass = primary_criteria_pass(comparison)
         # Tick 413: re-validate H5/H2 vs planned denominator — do not trust
         # meta.h5_pass / meta.h2_pass written by pre-413 thin-denominator logic.
@@ -1511,62 +1574,32 @@ def refresh_paper_pack_on_ledger_skip(
         # Always recompute H2 vs planned_n (do not trust comparison.h2_preferred_pass
         # written under pre-413 thin-denominator / stale aggregate).
         report.h2_pass = h2_skew_pass(h2, planned_n=planned_n)
-        if bool(meta.get("primary_pass")) and not report.primary_pass:
+        if not report.primary_pass:
             note = (
                 "Tick 414: trusted gate4 sidecar but PRIMARY fails recomputed "
                 f"criteria (planned={planned_n}; comparison lacks ≥3/5 "
                 "gens30/cost30 or non-trivial final gap) — refuse READY / "
-                "paper-pack trust on false meta.primary_pass"
+                "paper-pack trust on failed PRIMARY recompute"
             )
-            report.checks.append(CheckResult("primary_recomputed", False, note))
-            report.notes.append(note)
-            # Tick 416: clear comparison (Tick 412 n_pairs parity) so main()
-            # exit-4 second clause catches refuse even if check-name set lags.
-            report.comparison = None
-            report.h5_by_d_run = {}
-            report.h2_by_d_run = {}
-            report.primary_pass = False
-            report.h2_pass = False
-            report.h5_pass = False
-            report.ready_status = "IN_PROGRESS"
-            return False, note
-        if bool(meta.get("h5_pass")) and not report.h5_pass:
+            return _refuse(note, "primary_recomputed")
+        if not report.h5_pass:
             note = (
                 "Tick 413: trusted gate4 sidecar but H5 fails planned "
                 f"denominator (planned={planned_n}; "
                 f"ρ>0.3 pass count insufficient) — refuse READY / "
                 "paper-pack trust on thin H5 VALIDITY"
             )
-            report.checks.append(CheckResult("h5_planned", False, note))
-            report.notes.append(note)
-            report.comparison = None
-            report.h5_by_d_run = {}
-            report.h2_by_d_run = {}
-            report.primary_pass = False
-            report.h2_pass = False
-            report.h5_pass = False
-            report.ready_status = "IN_PROGRESS"
-            return False, note
-        # Tick 415: refuse false meta.h2_pass (thin preferred-share vs planned_n).
-        # Tick 414 recomputed H2 but only demoted on primary+h5 — READY poison
-        # when MECHANISM is 1/5 preferred while meta claims h2_pass=True.
-        if bool(meta.get("h2_pass")) and not report.h2_pass:
+            return _refuse(note, "h5_planned")
+        # Tick 415/417: always refuse thin H2 vs planned_n (pipeline resume
+        # parity; pre-417 only refused when meta.h2_pass claimed True).
+        if not report.h2_pass:
             note = (
                 "Tick 415: trusted gate4 sidecar but H2 fails planned "
                 f"denominator (planned={planned_n}; "
                 f"preferred-share pass count insufficient) — refuse READY / "
                 "paper-pack trust on thin H2 MECHANISM"
             )
-            report.checks.append(CheckResult("h2_planned", False, note))
-            report.notes.append(note)
-            report.comparison = None
-            report.h5_by_d_run = {}
-            report.h2_by_d_run = {}
-            report.primary_pass = False
-            report.h2_pass = False
-            report.h5_pass = False
-            report.ready_status = "IN_PROGRESS"
-            return False, note
+            return _refuse(note, "h2_planned")
         figs = meta.get("figures_written")
         if isinstance(figs, list):
             report.figures_written = figs
@@ -1577,6 +1610,11 @@ def refresh_paper_pack_on_ledger_skip(
                 report.primary_pass and report.h5_pass and report.h2_pass
             ):
                 ready_status = "IN_PROGRESS"
+                demote_icml_ready_file(
+                    ready_path,
+                    reason="recomputed PRIMARY/H5/H2 incomplete",
+                    timestamp=report.timestamp,
+                )
             report.ready_status = ready_status
         if source == "prior_live_metrics":
             note = (

@@ -1520,6 +1520,79 @@ def test_refresh_g4_paper_pack_refuses_thin_h2_sidecar(
     assert report.icml_ready_status != "READY"
 
 
+def test_refresh_g4_paper_pack_on_resume_demotes_ready_file_on_thin_h2(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 417: pipeline resume refuse must demote disk ICML_READY READY."""
+    import run_icml_live_pipeline as pipe
+    from run_icml_live_pipeline import PipelineReport, refresh_g4_paper_pack_on_resume
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    ready = docs / "ICML_READY.md"
+    ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n**STATUS: READY**\n\n"
+        "Do not set STATUS: READY until criteria pass.\n",
+        encoding="utf-8",
+    )
+    thin_h2 = {
+        "run_1311": {
+            "preferred_share": 0.9,
+            "preferred_value": "selective",
+            "counts": {"selective": 4},
+            "total": 4,
+            "bias_values": ["selective"],
+        },
+        **{f"run_{1312 + i}": {"error": "missing"} for i in range(4)},
+    }
+    (docs / "gate4_report.json").write_text(
+        json.dumps(
+            {
+                "mode": "live",
+                "executed": True,
+                "paper_refreshed": True,
+                "steering_applied_gen3": True,
+                "comparison": {
+                    "n_pairs": 5,
+                    "d_wins_final": 4,
+                    "mean_final_gap": 0.06,
+                    "primary_final_pass": True,
+                    "primary_gens30_pass": True,
+                },
+                "primary_pass": True,
+                "h2_pass": True,
+                "h5_pass": True,
+                "ready_status": "READY",
+                "h5_by_d_run": {
+                    f"run_{1311 + i}": {"spearman_rho": 0.6} for i in range(5)
+                },
+                "h2_by_d_run": thin_h2,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (docs / "gate4_report.md").write_text("# Gate 4\n", encoding="utf-8")
+    monkeypatch.setattr(pipe, "stage_runs_complete", lambda ids: False)
+
+    report = PipelineReport(timestamp="2026-09-25T00:20:00Z", mode="live")
+    note = refresh_g4_paper_pack_on_resume(
+        g4_seeds="1,2,3,4,5",
+        g4_b_ids=[1211, 1212, 1213, 1214, 1215],
+        g4_d_ids=[1311, 1312, 1313, 1314, 1315],
+        report=report,
+        gate4_report_md=docs / "gate4_report.md",
+        ready_path=ready,
+    )
+    assert "Tick 415" in note
+    assert "refuse" in note.lower()
+    assert report.icml_ready_status == "IN_PROGRESS"
+    disk = ready.read_text(encoding="utf-8")
+    assert "**STATUS: READY**" not in disk
+    assert "**STATUS: IN_PROGRESS**" in disk
+    assert "Tick 417 demote" in disk
+
+
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

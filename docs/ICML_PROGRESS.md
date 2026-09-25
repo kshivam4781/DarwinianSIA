@@ -1,5 +1,43 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-25T00:20Z — Tick 417 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR title+body still stale: **Tick 336** on GitHub; tip PR mergeable **CONFLICTING/DIRTY**
+- Boot branch was greenfield `cursor/icml-epistemic-results-093d`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 413–416 demoted `report.ready_status` / exited 4 on refuse, but (1) ledger-skip only refused when `meta.*_pass` claimed True (honest-fail meta + disk READY survived), and (2) refuse paths never rewrote `docs/ICML_READY.md` — poisoned disk READY could persist. Highest leverage without paid spend: **demote ICML_READY on refuse + always-refuse parity**.
+
+### What this tick did (ONE step)
+**Demote `ICML_READY.md` on G4 trust refuse + ledger-skip always-refuse (no API spend; tip PR #337 updated in place):**
+1. Recovered tip ← Tick 416 (`f49c`); confirmed secrets absent; boot `093d` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Add `demote_icml_ready_file` — force disk `STATUS: IN_PROGRESS` when READY
+3. Ledger-skip: always refuse when recomputed PRIMARY/H5/H2 fail (pipeline resume parity); call demote on refuse
+4. Pipeline resume: demote disk READY on Tick 408/412–415 refuse notes
+5. Unit tests: honest thin H5 + resume thin H2 demote — **6/6** with regressions
+6. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 416) | After (Tick 417) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Honest meta.h5_pass=False + thin H5 + disk READY | trust / exit 0 / disk READY | **refuse + demote disk** |
+| Pipeline resume refuse demotes disk READY | report-only | **PASS** — demote file |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) optional: refresh tip PR #337 title/body via `tip_pr_title_edit_commands` and/or merge #337/#338 (tip is CONFLICTING — may need rebase/merge-main). Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass. After live, **commit** `docs/icml_prior_live_evidence.json` with the tip before tip `--apply` (Tick 390–391).
+
+---
 ## 2026-09-24T22:10Z — Tick 416 (automation cron)
 
 ### Status snapshot
