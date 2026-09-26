@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-25 (Section 21 ICML; Tick 428 consume durable stashes after push; Tick 427 tip-apply paper-pack companion park/reinject; Tick 426 co-commit paper-pack with durable ledgers; …)
+**Last updated:** 2026-09-26 (Section 21 ICML; Tick 429 consume only redundant durable stashes; Tick 428 consume after push; Tick 427 tip-apply paper-pack park/reinject; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -880,6 +880,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6 |
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
+| ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
 | GPQA smoke fixture script | **DONE** | Tick 21: `scripts/prepare_gpqa_smoke_data.py` writes gitignored `sia/tasks/gpqa/data/{public,private}/`; Tick 24: `is_synthetic_smoke()` |
@@ -975,6 +976,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 paper-pack dirt co-committed+pushed with durable ledgers; pre-426 refuse left spend/READY unpushed; focused tests 6/6 |
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions across tip `--apply`; reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | Consume paper-pack/budget/prior_live stashes after successful tip push; keep on push fail; focused durable/tip tests 20/20 |
+| ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | ICML finish/present judge demos (Tick 320) | **DONE** | `finish_hackathon.py` / `present_hackathon.py` ICML-honest: status + offline Bvd + cron; no false READY FOR SUBMISSION; lock test |
 | ICML finish pytest bootstrap (Tick 321) | **DONE** | Cold-cloud `finish_hackathon` bootstraps/SKIPs missing pytest; always prints ICML STATUS footer; lock test |
 | ICML python3-safe judge entrypoints (Tick 322) | **DONE** | README/SUBMISSION/PRESENTATION + finish/present print `python3` / `sys.executable` (cold Linux has no bare `python`); lock test |
@@ -1082,7 +1084,8 @@ Computed in `cabs/belief_engine.py`:
 | ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6 |
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–428 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–429 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
@@ -2759,3 +2762,5 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Tip-apply paper-pack companion park/reinject (Tick 427):** Tick 426 fixed the post-live commit path, but tip `--apply` **prepare** still refused dirty paper-pack companions as other non-ephemeral dirt — a mid-tick crash after `apply_paper_pack` blocked tip recover and wiped READY/Live Tables on hard-reset. `prepare_prior_live_evidence_for_tip_apply` now parks companions into gitignored `docs/icml_paper_pack_stash.json`; `reinject_paper_pack_stash` + durable commit restore them onto tip after `--apply`. Wired recover_tip / cron / boot_recover. Focused tests **9** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Consume durable stashes after push (Tick 428):** Tick 427 left paper-pack / budget / prior_live stashes on disk after successful reinject+commit+push. A later tip `--apply` could reinject **stale** mid-tick READY/spend over a newer tip HEAD (e.g. honest demotion). `consume_durable_stashes_after_commit` now runs after durable state is on `origin` (successful push, or commit-noop with tip not ahead); stashes are **kept** when push fails so tip `--apply` hard-reset to origin can still reinject. Focused durable/tip tests **20** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Consume only redundant durable stashes (Tick 429):** Tick 428 also wiped unique mid-tick paper-pack/budget/prior_live stashes on tip-synced commit-noop after **failed** reinject — READY/Figs parked for tip `--apply` recovery were lost. Consume now unlinks a stash only when its payload already matches (or is unusable relative to) HEAD working-tree durables; non-redundant stashes stay for reinject retry. Focused durable/tip tests **16** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.

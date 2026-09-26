@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 428: consume durable stashes after successful tip push (closes stale READY/spend reinject over demoted tip HEAD). Tick 427 park/reinject + Tick 426 co-commit remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 429: consume only durable stashes redundant with HEAD (closes Tick 428 wipe of unique mid-tick READY after failed reinject). Tick 428 consume-after-push + Tick 427 park/reinject remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -339,6 +339,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 426 paper-pack companion co-commit — post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6
 - [x] Tick 427 tip-apply paper-pack companion park/reinject — prepare parks companions into gitignored `docs/icml_paper_pack_stash.json` (pre-427 refused as other non-ephemeral dirt → tip recover blocked mid-tick); reinject + durable commit after tip `--apply`; focused tests 9/9
 - [x] Tick 428 consume durable stashes after successful push — `consume_durable_stashes_after_commit` unlinks paper-pack / budget / prior_live stashes after tip is on `origin` (keep on push fail); prevents stale READY reinject over demoted tip; focused durable/tip tests 20/20
+- [x] Tick 429 consume only redundant durable stashes — keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards**; live GPQA still pending (**API keys** + HF token / CSV; Portal Save optional for warm boots; **Tick 332** HUMAN_UNBLOCK chicken-egg also scans `cursor/bc-*`; **Tick 394** secrets-status auto-detect synthetic GPQA)
 

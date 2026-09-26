@@ -1775,15 +1775,106 @@ def reinject_paper_pack_stash(
     )
 
 
+def _paper_pack_stash_redundant_with_head(
+    repo_root: Path, stash_path: Path
+) -> bool:
+    """True when paper-pack stash is absent, unusable, or matches HEAD files.
+
+    Tick 429: a stash that still holds mid-tick READY/Figs differing from HEAD
+    (failed reinject, or reinject never ran) is **not** redundant — keep it.
+    """
+    import base64
+
+    if not stash_path.is_file():
+        return True
+    try:
+        blob = json.loads(stash_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return True  # unusable — safe to drop
+    files = blob.get("files") if isinstance(blob, dict) else None
+    if not isinstance(files, dict) or not files:
+        return True  # nothing recoverable
+    companion = _post_live_companion_relpaths()
+    comparable = 0
+    for rel, meta in files.items():
+        norm = _norm_repo_relpath(str(rel))
+        if norm not in companion:
+            continue
+        if not isinstance(meta, dict) or "content" not in meta:
+            continue
+        comparable += 1
+        dest = repo_root / norm
+        encoding = str(meta.get("encoding") or "utf-8")
+        content = meta["content"]
+        try:
+            if encoding == "base64":
+                expected = base64.b64decode(str(content))
+                if not dest.is_file() or dest.read_bytes() != expected:
+                    return False
+            else:
+                expected_txt = str(content)
+                if not dest.is_file() or dest.read_text(encoding="utf-8") != expected_txt:
+                    return False
+        except (OSError, ValueError, TypeError):
+            return False
+    return True if comparable else True
+
+
+def _budget_spent_stash_redundant_with_head(
+    repo_root: Path, stash_path: Path
+) -> bool:
+    """True when budget stash is absent, unusable, or matches the ledger on HEAD."""
+    if not stash_path.is_file():
+        return True
+    try:
+        blob = json.loads(stash_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return True
+    ledger = blob.get("ledger") if isinstance(blob, dict) else None
+    if not isinstance(ledger, dict):
+        return True  # unusable
+    dest = budget_spent_ledger_path(repo_root)
+    if not dest.is_file():
+        return False
+    try:
+        current = json.loads(dest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return False
+    return current == ledger
+
+
+def _prior_live_stash_redundant_with_head(
+    repo_root: Path, stash_path: Path
+) -> bool:
+    """True when prior_live stash is absent, empty, or ⊆ committed evidence."""
+    if not stash_path.is_file():
+        return True
+    stash_gates = _load_prior_live_gates_payload(stash_path)
+    if not stash_gates:
+        return True
+    evidence_gates = _load_prior_live_gates_payload(
+        prior_live_evidence_path(repo_root)
+    )
+    for key, val in stash_gates.items():
+        if evidence_gates.get(key) != val:
+            return False
+    return True
+
+
 def consume_durable_stashes_after_commit(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 428: unlink gitignored durable stashes once tip HEAD is authoritative.
+    """Tick 428/429: unlink durable stashes that are redundant with tip HEAD.
 
     Pre-428: paper-pack / budget_spent / prior_live stashes survived successful
     reinject + durable commit. A later tip ``--apply`` then reinjected **stale**
     mid-tick READY / spend over a newer tip HEAD (e.g. honest demotion to
     IN_PROGRESS, or a fresher live ledger) — latent READY/spend poison.
+
+    Tick 429: Pre-429 Tick 428 also consumed on commit-noop when tip matched
+    origin — even after **failed** reinject — wiping unique mid-tick READY /
+    spend that never landed on HEAD. Only unlink a stash when its payload
+    already matches (or is unusable relative to) HEAD working-tree durables.
 
     Call only after ``commit_prior_live_evidence_if_dirty`` returns ``ok=True``
     (committed or already clean on HEAD). Keep stashes when commit refuses so a
@@ -1791,22 +1882,51 @@ def consume_durable_stashes_after_commit(
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     targets = (
-        (ICML_PAPER_PACK_STASH_RELPATH, paper_pack_stash_path(root)),
-        (ICML_BUDGET_SPENT_STASH_RELPATH, budget_spent_stash_path(root)),
-        (ICML_PRIOR_LIVE_STASH_RELPATH, prior_live_stash_path(root)),
+        (
+            ICML_PAPER_PACK_STASH_RELPATH,
+            paper_pack_stash_path(root),
+            _paper_pack_stash_redundant_with_head,
+        ),
+        (
+            ICML_BUDGET_SPENT_STASH_RELPATH,
+            budget_spent_stash_path(root),
+            _budget_spent_stash_redundant_with_head,
+        ),
+        (
+            ICML_PRIOR_LIVE_STASH_RELPATH,
+            prior_live_stash_path(root),
+            _prior_live_stash_redundant_with_head,
+        ),
     )
     removed: list[str] = []
-    for rel, path in targets:
+    kept: list[str] = []
+    for rel, path, is_redundant in targets:
         if not path.is_file():
+            continue
+        try:
+            redundant = bool(is_redundant(root, path))
+        except Exception as exc:  # noqa: BLE001 — never wipe on checker bugs
+            return False, f"Tick 429 stash redundancy check failed for {rel}: {exc}"
+        if not redundant:
+            kept.append(rel)
             continue
         try:
             path.unlink()
         except OSError as exc:
             return False, f"Tick 428 stash consume failed unlinking {rel}: {exc}"
         removed.append(rel)
-    if not removed:
+    if not removed and not kept:
         return True, "durable stashes absent (Tick 428 consume noop)"
-    return True, f"Tick 428: consumed durable stashes ({', '.join(removed)})"
+    if kept and not removed:
+        return (
+            True,
+            "Tick 429: kept non-redundant durable stashes "
+            f"({', '.join(kept)}; reinject retry)",
+        )
+    detail = f"Tick 428: consumed durable stashes ({', '.join(removed)})"
+    if kept:
+        detail += f"; Tick 429 kept non-redundant ({', '.join(kept)})"
+    return True, detail
 
 
 def prepare_prior_live_evidence_for_tip_apply(
@@ -2183,11 +2303,13 @@ def commit_durable_ledgers_after_live(
     ``--apply`` cannot reinject stale mid-tick READY/spend over a newer tip
     HEAD. Keep stashes when push fails so tip ``--apply`` hard-reset to origin
     can still reinject.
+    Tick 429: consume only stashes **redundant with HEAD** — pre-429 also wiped
+    unique mid-tick READY/spend after failed reinject on commit-noop.
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 428: commit durable ledgers + paper-pack companions."
+            "ICML Tick 429: commit durable ledgers + paper-pack companions."
         ),
     )
     if not ok:

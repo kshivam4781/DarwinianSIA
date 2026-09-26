@@ -3364,6 +3364,123 @@ def test_durable_commit_consumes_stashes_prevents_stale_reinject(
     assert (repo / ICML_BUDGET_SPENT_RELPATH).is_file()
 
 
+def test_consume_keeps_non_redundant_stash_after_failed_reinject(
+    tmp_path: Path,
+) -> None:
+    """Tick 429: commit-noop must not wipe unique mid-tick paper-pack stash.
+
+    Pre-429 Tick 428 consumed on tip-synced commit-noop even when reinject
+    failed — mid-tick READY/Figs parked in stash were lost forever.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PAPER_PACK_STASH_RELPATH,
+        commit_durable_ledgers_after_live,
+        prepare_prior_live_evidence_for_tip_apply,
+        reinject_paper_pack_stash,
+    )
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test429"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    figs = docs / "figures"
+    figs.mkdir(parents=True)
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# offline stub\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2")
+    (repo / ".gitignore").write_text(
+        "docs/icml_prior_live_stash.json\n"
+        "docs/icml_budget_spent_stash.json\n"
+        "docs/icml_paper_pack_stash.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Mid-tick READY → park → hard-reset (tip --apply).
+    (docs / "ICML_READY.md").write_text("**STATUS: READY**\n", encoding="utf-8")
+    (docs / "paper_artifacts.md").write_text("# Live Table 1\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1-LIVE")
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    stash_path = repo / ICML_PAPER_PACK_STASH_RELPATH
+    assert stash_path.is_file()
+    # Preserve unique mid-tick payload, then break reinject (empty files).
+    good_stash = json.loads(stash_path.read_text(encoding="utf-8"))
+    assert good_stash.get("files")
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    assert "IN_PROGRESS" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    # Restore good payload then corrupt only the reinject path: write empty files
+    # into a *copy* used by reinject fail — actually corrupt in place then restore
+    # unique payload after proving reinject refuse, so commit-noop sees unique stash.
+    stash_path.write_text(
+        json.dumps({**good_stash, "files": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    ok_r, detail_r = reinject_paper_pack_stash(repo)
+    assert ok_r is False, detail_r
+    # Put the unique mid-tick stash back (simulates reinject failure that left
+    # the original parked payload intact — e.g. write error mid-loop).
+    stash_path.write_text(json.dumps(good_stash, indent=2) + "\n", encoding="utf-8")
+
+    ok, detail = commit_durable_ledgers_after_live(repo)
+    assert ok is True, detail
+    assert stash_path.is_file(), f"Tick 429 must keep unique stash; detail={detail}"
+    assert "429" in detail or "non-redundant" in detail.lower() or "kept" in detail.lower()
+    # HEAD still demoted / offline — stash still has READY for retry.
+    assert "IN_PROGRESS" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    kept = json.loads(stash_path.read_text(encoding="utf-8"))
+    assert "READY" in kept["files"]["docs/ICML_READY.md"]["content"]
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:
