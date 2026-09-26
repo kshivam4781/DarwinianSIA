@@ -2332,6 +2332,42 @@ def _restore_preserved_bytes(root: Path, preserved: dict[str, bytes]) -> None:
             continue
 
 
+def fetch_origin_tip_for_durable_ledgers(
+    tip_branch: str,
+    *,
+    cwd: Path,
+) -> tuple[bool, str]:
+    """Tick 436: refresh ``origin/<tip>`` before Tick 435 ahead / Tick 434 checkout.
+
+    Pre-436 ``ensure_local_tip_branch_for_durable_ledgers`` only inspected the
+    local remote-tracking ref. After a long live gate (or when G2/G3/G4 call
+    durable commit without a fresh cron fetch), ``origin/<tip>`` can lag the
+    real tip on ``origin`` — Tick 435 then skips FF, durable commit lands on a
+    stale tip base, and ``git push`` is non-fast-forward rejected.
+
+    Fetch is best-effort: failure returns ``(False, detail)`` so callers can
+    still attempt sync with stale refs rather than hard-failing ledger commit.
+    Prefer an exact tip refspec (avoids wildcard miss on minimal remotes);
+    fall back to lineage wildcards only when the exact tip ref is absent.
+    """
+    name = (tip_branch or "").strip()
+    if not name or name in ("main", "master", "HEAD"):
+        return True, "Tick 436: no tip branch — skip tip fetch"
+    exact = f"+refs/heads/{name}:refs/remotes/origin/{name}"
+    ok, detail = _git_ok(["fetch", "origin", exact], cwd=cwd)
+    if ok:
+        return True, f"Tick 436: fetched origin/{name}"
+    # Exact ref missing (renamed tip / first push) — try lineage wildcards.
+    ok2, detail2 = _git_ok(["fetch", "origin", *_TIP_FETCH_REFSPECS], cwd=cwd)
+    if ok2:
+        return True, f"Tick 436: fetched tip lineage (exact miss: {detail[:120]})"
+    return (
+        False,
+        f"Tick 436 tip fetch failed: exact={detail[:160]}; "
+        f"lineage={detail2[:160]}",
+    )
+
+
 def _origin_tip_strictly_ahead_of_head(
     tip_branch: str,
     *,
@@ -2343,6 +2379,10 @@ def _origin_tip_strictly_ahead_of_head(
     (or mid-tick tip push) advanced ``origin/<tip>`` past the local tip SHA —
     otherwise durable commit lands on a stale tip base and tip push is
     non-fast-forward rejected.
+
+    Tick 436: callers must refresh ``origin/<tip>`` via
+    ``fetch_origin_tip_for_durable_ledgers`` first — otherwise this check sees
+    a stale remote-tracking SHA and never FF.
     """
     import subprocess
 
@@ -2416,7 +2456,7 @@ def _checkout_tip_preserving_durable_dirt(
 def ensure_local_tip_branch_for_durable_ledgers(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 433/434/435: point local tip PR branch at tip-lineage before durable commit/push.
+    """Tick 433/434/435/436: point local tip PR branch at tip-lineage before durable commit/push.
 
     Tick 432 pushes ``HEAD:refs/heads/<tip>``, but when the durable commit lands
     while still checked out on a greenfield **boot** branch name, the local
@@ -2441,6 +2481,11 @@ def ensure_local_tip_branch_for_durable_ledgers(
     strictly ahead of HEAD (concurrent tip push / stale local tip SHA),
     fast-forward tip ← origin (preserve durable dirt) before durable commit —
     pre-435 early-returned "already on tip" then NF-rejected the tip push.
+
+    Tick 436: **fetch** ``origin/<tip>`` before the Tick 435 ahead check /
+    Tick 434 checkout — pre-436 inspected a possibly stale remote-tracking
+    ref after long live gates (or direct G2/G3/G4 durable commit without a
+    fresh cron fetch), so Tick 435 never saw the concurrent tip advance.
     """
     import subprocess
 
@@ -2448,6 +2493,12 @@ def ensure_local_tip_branch_for_durable_ledgers(
     tip_branch = (prefer_tip_pr_commit_branch() or "").strip()
     if not tip_branch or tip_branch in ("main", "master", "HEAD"):
         return True, "Tick 433: no tip_pr_commit_branch — skip local tip sync"
+
+    # Tick 436: refresh origin/<tip> before ahead/checkout decisions.
+    ok_fetch, detail_fetch = fetch_origin_tip_for_durable_ledgers(
+        tip_branch, cwd=root
+    )
+    fetch_note = detail_fetch if ok_fetch else f"{detail_fetch} (continuing with stale refs)"
 
     head_branch = ""
     try:
@@ -2466,7 +2517,7 @@ def ensure_local_tip_branch_for_durable_ledgers(
         # Tick 435: already-on-tip still FF when origin/tip advanced past HEAD.
         ahead_ref = _origin_tip_strictly_ahead_of_head(tip_branch, cwd=root)
         if ahead_ref:
-            return _checkout_tip_preserving_durable_dirt(
+            ok, detail = _checkout_tip_preserving_durable_dirt(
                 root,
                 tip_branch,
                 ahead_ref,
@@ -2475,7 +2526,10 @@ def ensure_local_tip_branch_for_durable_ledgers(
                     f"was already on tip {tip_branch} but behind {ahead_ref}"
                 ),
             )
-        return True, f"Tick 433: already on tip branch {tip_branch}"
+            if ok:
+                detail = f"{fetch_note}; {detail}"
+            return ok, detail
+        return True, f"{fetch_note}; Tick 433: already on tip branch {tip_branch}"
 
     # Resolve tip tipish: local branch, else origin/<tip>.
     tip_ref = ""
@@ -2511,7 +2565,7 @@ def ensure_local_tip_branch_for_durable_ledgers(
             if proc.returncode == 0 and (proc.stdout or "").strip():
                 checkout_target = prefer
                 break
-        return _checkout_tip_preserving_durable_dirt(
+        ok, detail = _checkout_tip_preserving_durable_dirt(
             root,
             tip_branch,
             checkout_target,
@@ -2520,6 +2574,9 @@ def ensure_local_tip_branch_for_durable_ledgers(
                 f"was {head_branch or 'detached'} not tip descendant"
             ),
         )
+        if ok:
+            detail = f"{fetch_note}; {detail}"
+        return ok, detail
 
     # Move/create local tip ref to current HEAD, then check it out.
     ok, detail = _git_ok(["branch", "-f", tip_branch, "HEAD"], cwd=root)
@@ -2530,7 +2587,7 @@ def ensure_local_tip_branch_for_durable_ledgers(
         return False, f"Tick 433 git checkout {tip_branch} failed: {detail}"
     return (
         True,
-        f"Tick 433: synced local tip {tip_branch} ← HEAD "
+        f"{fetch_note}; Tick 433: synced local tip {tip_branch} ← HEAD "
         f"(was {head_branch or 'detached'})",
     )
 
@@ -2662,6 +2719,9 @@ def commit_durable_ledgers_after_live(
     Tick 435: when already on tip but ``origin/<tip>`` is strictly ahead of
     HEAD, FF tip ← origin (preserve durable dirt) before commit — pre-435
     early-returned then NF-rejected tip push on a stale tip base.
+    Tick 436: fetch ``origin/<tip>`` before Tick 435 ahead / Tick 434 checkout
+    — pre-436 used a stale remote-tracking ref after long live gates, so
+    Tick 435 never FF'd and tip push was still NF-rejected.
     """
     ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
     if not ok_sync:
@@ -2669,12 +2729,14 @@ def commit_durable_ledgers_after_live(
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 435: commit durable ledgers + paper-pack companions."
+            "ICML Tick 436: commit durable ledgers + paper-pack companions."
         ),
     )
     if (
         "synced local tip" in detail_sync
         or "checked out tip" in detail_sync
+        or "Tick 436" in detail_sync
+        or "fetched origin" in detail_sync
     ):
         detail = f"{detail_sync}; {detail}"
     if not ok:
