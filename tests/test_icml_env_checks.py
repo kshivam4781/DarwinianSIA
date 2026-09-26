@@ -4880,6 +4880,235 @@ def test_push_tip_rebases_after_nf_when_diverged_from_origin(
     assert tip_commits_ahead_of_origin(stale) == 0
 
 
+def test_merge_budget_spent_dict_unions_stages_and_max_spend() -> None:
+    """Tick 438: concurrent budget ledgers keep max spend + union stages/ids."""
+    from icml_env_checks import merge_budget_spent_dict
+
+    merged = merge_budget_spent_dict(
+        {
+            "spent_usd": 2.1,
+            "stages_complete": ["G2"],
+            "run_ids": [1300],
+            "updated_at": "2026-09-26T10:00:00Z",
+            "detail": "g2 only",
+        },
+        {
+            "spent_usd": 7.37,
+            "stages_complete": ["G2", "G3"],
+            "run_ids": [1300, 1201],
+            "updated_at": "2026-09-26T12:00:00Z",
+            "detail": "g2+g3",
+        },
+    )
+    assert merged["spent_usd"] == 7.37
+    assert merged["stages_complete"] == ["G2", "G3"]
+    assert merged["run_ids"] == [1300, 1201]
+    assert merged["updated_at"] == "2026-09-26T12:00:00Z"
+
+
+def test_rebase_tip_merges_durable_budget_conflict(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 438: concurrent budget_spent edits must merge+continue (not abort).
+
+    Pre-438 Tick 437 aborted on any rebase conflict. Two tip VMs that both
+    write ``docs/icml_budget_spent.json`` then left the higher spend
+    local-only after NF push. Tick 438 unions spend/stages and continues.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        commit_durable_ledgers_after_live,
+        tip_commits_ahead_of_origin,
+    )
+    import icml_env_checks as m
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    tip_branch = "cursor/icml-epistemic-results-tip438"
+
+    tip_repo = tmp_path / "tip"
+    tip_repo.mkdir()
+    subprocess.run(["git", "init"], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = tip_repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 0, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "base"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    stale = tmp_path / "stale"
+    subprocess.run(
+        ["git", "clone", str(bare), str(stale)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-B", tip_branch, f"origin/{tip_branch}"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+
+    # Local durable: higher spend + G3.
+    (stale / "docs" / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 7.37,
+                "stages_complete": ["G2", "G3"],
+                "run_ids": [1300, 1201],
+                "updated_at": "2026-09-26T12:00:00Z",
+                "detail": "local g3",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", "docs/icml_budget_spent.json"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "local durable spend"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+
+    # Concurrent tip also edits budget_spent (lower spend) + READY — conflict.
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {
+                "spent_usd": 2.1,
+                "stages_complete": ["G2"],
+                "run_ids": [1300],
+                "updated_at": "2026-09-26T10:00:00Z",
+                "detail": "tip g2",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "ICML_READY.md").write_text("STATUS: IN_PROGRESS\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "tip ahead concurrent budget"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    tip_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    subprocess.run(
+        ["git", "fetch", "origin", f"+refs/heads/{tip_branch}:refs/remotes/origin/{tip_branch}"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+    ok, detail = commit_durable_ledgers_after_live(stale)
+    assert ok is True, detail
+    assert "438" in detail or "durable conflict" in detail.lower(), detail
+
+    assert (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", tip_sha, "HEAD"],
+            cwd=stale,
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 0
+    ), f"HEAD must contain concurrent tip; detail={detail}"
+
+    origin_spent = json.loads(
+        subprocess.run(
+            ["git", "show", f"origin/{tip_branch}:docs/icml_budget_spent.json"],
+            cwd=stale,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    )
+    assert origin_spent["spent_usd"] == 7.37
+    assert "G3" in origin_spent["stages_complete"]
+    assert 1201 in origin_spent["run_ids"]
+    assert tip_commits_ahead_of_origin(stale) == 0
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:

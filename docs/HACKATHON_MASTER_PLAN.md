@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-26 (Section 21 ICML; Tick 437 NF tip push rebase+retry; Tick 436 fetch tip before Tick 435 FF; Tick 435 FF tip when already-on-tip behind origin; Tick 434 checkout tip when boot behind; …)
+**Last updated:** 2026-09-26 (Section 21 ICML; Tick 438 durable rebase conflict merge; Tick 437 NF tip push rebase+retry; Tick 436 fetch tip before Tick 435 FF; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -888,6 +888,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML FF tip when already-on-tip behind origin (Tick 435) | **DONE** | When already on tip but `origin/<tip>` strictly ahead of HEAD, FF tip ← origin (preserve durable dirt) before durable commit; closes stale-base commit + NF tip push; focused durable/tip tests 9/9 |
 | ICML fetch tip before Tick 435 FF (Tick 436) | **DONE** | `fetch_origin_tip_for_durable_ledgers` refreshes `origin/<tip>` before Tick 435 ahead / Tick 434 checkout; closes stale remote-tracking skip-FF + NF tip push after long live gates; focused durable/tip tests 11/11 |
 | ICML NF tip push rebase+retry (Tick 437) | **DONE** | On non-fast-forward tip push, fetch + rebase onto `origin/<tip>` + retry once (never force); closes concurrent tip advance / diverged unique durable commits Tick 435/436 cannot FF; focused durable/tip tests 14/14 |
+| ICML durable rebase conflict merge (Tick 438) | **DONE** | On Tick 437 rebase, auto-merge durable/paper-pack-only conflicts (union `budget_spent` spend/stages; merge `prior_live` gates; demote READY) + `rebase --continue`; closes concurrent tip VMs both writing spend → abort → local-only; focused durable/tip tests 16/16 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -2784,6 +2785,8 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Fetch tip before Tick 435 FF (Tick 436):** Tick 435 only inspected the local remote-tracking `origin/<tip>`. After a long live gate (or direct G2/G3/G4 durable commit without a fresh cron fetch), that tracking ref can lag the real tip — Tick 435 skipped FF and tip push was still NF-rejected. `fetch_origin_tip_for_durable_ledgers` now refreshes the tip ref (exact refspec, lineage wildcards on miss) before ahead/checkout. Focused durable/tip tests **11** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **NF tip push rebase+retry (Tick 437):** Tick 435/436 only FF when `origin/<tip>` is a strict descendant of HEAD. Unique local durable commits on a stale tip base (or concurrent tip advance after the Tick 436 fetch) still NF-rejected tip push and left spend local-only. `push_tip_after_durable_ledger_commit` now detects NF, rebases onto `origin/<tip>` (preserve durable dirt; abort on conflict), and retries push once — never force. Focused durable/tip tests **14** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Durable rebase conflict merge (Tick 438):** Tick 437 aborted on *any* rebase conflict. Concurrent tip VMs that both write `docs/icml_budget_spent.json` (or prior_live / paper-pack companions) then left paid spend local-only after NF push. `resolve_durable_rebase_conflicts` now unions spend/stages, merges prior_live gates, demotes READY when either side is IN_PROGRESS, and `rebase --continue`s when conflicts are durable/paper-pack-only — still abort on any other path. Focused durable/tip tests **16** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Durable push always→tip PR head (Tick 432):** Tick 431 still kept any `cursor/*` with an existing `origin/<boot>` when cloud-boot capture was missing — so after `open_git_pr` omitted `branch=` (MCP default → boot), a later durable push re-parked spend/READY off tip PR #337. When `prefer_tip_pr_commit_branch()` is set, durable push now **always** targets tip PR head. Focused durable/push tests **10** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 

@@ -2655,16 +2655,249 @@ def _git_push_looks_non_fast_forward(detail: str) -> bool:
     return any(n in text for n in needles)
 
 
+def _git_unmerged_relpaths(cwd: Path) -> list[str]:
+    """Return unmerged (conflicted) paths during an in-progress rebase/merge."""
+    ok, out = _git_ok(["diff", "--name-only", "--diff-filter=U"], cwd=cwd)
+    if not ok:
+        return []
+    return [p.strip().replace("\\", "/") for p in out.splitlines() if p.strip()]
+
+
+def _git_show_stage_bytes(
+    cwd: Path, stage: int, relpath: str
+) -> bytes | None:
+    """Read conflict stage blob (1=base, 2=ours/onto, 3=theirs/replayed)."""
+    try:
+        proc = subprocess.run(
+            ["git", "show", f":{int(stage)}:{relpath}"],
+            cwd=str(cwd),
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout if proc.stdout is not None else b""
+
+
+def merge_budget_spent_dict(ours: dict, theirs: dict) -> dict:
+    """Union spend ledgers across concurrent tip VMs (Tick 438).
+
+    Keep the higher ``spent_usd``, union ``stages_complete`` / ``run_ids``,
+    and prefer the fresher ``updated_at`` / non-empty ``detail``.
+    """
+    stages: list[str] = []
+    for name in list(ours.get("stages_complete") or []) + list(
+        theirs.get("stages_complete") or []
+    ):
+        if name and name not in stages:
+            stages.append(str(name))
+    run_ids: list[int] = []
+    for rid in list(ours.get("run_ids") or []) + list(theirs.get("run_ids") or []):
+        try:
+            iv = int(rid)
+        except (TypeError, ValueError):
+            continue
+        if iv not in run_ids:
+            run_ids.append(iv)
+    try:
+        spent_o = float(ours.get("spent_usd") or 0.0)
+    except (TypeError, ValueError):
+        spent_o = 0.0
+    try:
+        spent_t = float(theirs.get("spent_usd") or 0.0)
+    except (TypeError, ValueError):
+        spent_t = 0.0
+    updated_o = str(ours.get("updated_at") or "")
+    updated_t = str(theirs.get("updated_at") or "")
+    updated = max(updated_o, updated_t) if (updated_o or updated_t) else (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
+    detail_o = str(ours.get("detail") or "")
+    detail_t = str(theirs.get("detail") or "")
+    detail = detail_t if len(detail_t) >= len(detail_o) else detail_o
+    tick_note = (
+        str(theirs.get("tick_note") or "")
+        or str(ours.get("tick_note") or "")
+        or "Tick 438: merged concurrent durable budget ledgers"
+    )
+    return {
+        "updated_at": updated,
+        "tick_note": tick_note,
+        "spent_usd": round(max(spent_o, spent_t), 4),
+        "stages_complete": stages,
+        "run_ids": run_ids,
+        "detail": detail,
+    }
+
+
+def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
+    """Merge prior_live evidence gates across concurrent tip VMs (Tick 438)."""
+    gates: dict[str, Any] = {}
+    for src in (ours, theirs):
+        raw = src.get("gates") if isinstance(src, dict) else None
+        if not isinstance(raw, dict):
+            continue
+        for key, val in raw.items():
+            if key not in gates or gates[key] in (None, {}, [], ""):
+                gates[key] = val
+            elif val not in (None, {}, [], ""):
+                # Prefer non-empty; when both set, prefer theirs (replayed local).
+                gates[key] = val
+    try:
+        tick = max(int(ours.get("tick") or 0), int(theirs.get("tick") or 0))
+    except (TypeError, ValueError):
+        tick = 0
+    updated_o = str(ours.get("updated_at") or "")
+    updated_t = str(theirs.get("updated_at") or "")
+    updated = max(updated_o, updated_t) if (updated_o or updated_t) else (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
+    note = (
+        str(theirs.get("tick_note") or "")
+        or str(ours.get("tick_note") or "")
+        or "Tick 438: merged concurrent prior_live evidence"
+    )
+    return {
+        "updated_at": updated,
+        "tick": tick,
+        "tick_note": note,
+        "gates": gates,
+    }
+
+
+def merge_icml_ready_text(ours: str, theirs: str) -> str:
+    """Prefer IN_PROGRESS when either side demotes; else keep local (theirs)."""
+    o = ours or ""
+    t = theirs or ""
+    if "STATUS: IN_PROGRESS" in o or "STATUS: IN_PROGRESS" in t:
+        body = t if len(t) >= len(o) else o
+        if "STATUS: READY" in body and "STATUS: IN_PROGRESS" not in body:
+            body = body.replace("STATUS: READY", "STATUS: IN_PROGRESS", 1)
+        elif "STATUS: IN_PROGRESS" not in body:
+            body = "STATUS: IN_PROGRESS\n\n" + body.lstrip()
+        return body
+    return t if t.strip() else o
+
+
+def _merge_durable_conflict_bytes(
+    relpath: str, ours: bytes | None, theirs: bytes | None
+) -> bytes | None:
+    """Merge one durable/companion conflict; None → refuse auto-resolve."""
+    norm = _norm_repo_relpath(relpath)
+    o = ours if ours is not None else b""
+    t = theirs if theirs is not None else b""
+    if norm == _norm_repo_relpath(ICML_BUDGET_SPENT_RELPATH):
+        try:
+            od = json.loads(o.decode("utf-8") or "{}")
+            td = json.loads(t.decode("utf-8") or "{}")
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(od, dict):
+            od = {}
+        if not isinstance(td, dict):
+            td = {}
+        merged = merge_budget_spent_dict(od, td)
+        return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
+    if norm == _norm_repo_relpath(ICML_PRIOR_LIVE_EVIDENCE_RELPATH):
+        try:
+            od = json.loads(o.decode("utf-8") or "{}")
+            td = json.loads(t.decode("utf-8") or "{}")
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(od, dict):
+            od = {}
+        if not isinstance(td, dict):
+            td = {}
+        merged = merge_prior_live_evidence_dict(od, td)
+        return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
+    if norm == _norm_repo_relpath("docs/ICML_READY.md"):
+        try:
+            return merge_icml_ready_text(
+                o.decode("utf-8"), t.decode("utf-8")
+            ).encode("utf-8")
+        except UnicodeDecodeError:
+            return None
+    if norm == _norm_repo_relpath("docs/paper_artifacts.md"):
+        # Prefer local (replayed) when it carries Live Table / longer pack.
+        try:
+            os_ = o.decode("utf-8")
+            ts_ = t.decode("utf-8")
+        except UnicodeDecodeError:
+            return t or o
+        if "Live Table" in ts_ or "live GPQA" in ts_.lower():
+            return ts_.encode("utf-8")
+        if "Live Table" in os_:
+            return os_.encode("utf-8")
+        return (ts_ if len(ts_) >= len(os_) else os_).encode("utf-8")
+    if norm.startswith("docs/figures/") and norm.endswith(".png"):
+        # Prefer non-empty local fig; else onto.
+        return t if t else o
+    return None
+
+
+def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
+    """Tick 438: auto-merge durable/paper-pack-only rebase conflicts.
+
+    Pre-438 ``rebase_tip_onto_origin_for_durable_push`` aborted on *any*
+    conflict. Concurrent tip VMs that both update ``icml_budget_spent.json``
+    (or prior_live / paper-pack companions) then left paid spend local-only
+    after an NF push. When **every** unmerged path is a durable ledger or
+    paper-pack companion, merge JSON/text/figs and ``git add`` them so
+    ``rebase --continue`` can finish. Any other conflict still refuses.
+    """
+    allowed = _durable_ledger_relpaths() | _post_live_companion_relpaths()
+    unmerged = _git_unmerged_relpaths(cwd)
+    if not unmerged:
+        return True, "Tick 438: no unmerged paths"
+    bad = [p for p in unmerged if _norm_repo_relpath(p) not in allowed]
+    if bad:
+        return (
+            False,
+            f"Tick 438: non-durable conflicts refuse auto-merge: {bad[:6]}",
+        )
+    resolved: list[str] = []
+    for rel in unmerged:
+        ours = _git_show_stage_bytes(cwd, 2, rel)
+        theirs = _git_show_stage_bytes(cwd, 3, rel)
+        if ours is None and theirs is None:
+            return False, f"Tick 438: missing both stages for {rel}"
+        merged = _merge_durable_conflict_bytes(rel, ours, theirs)
+        if merged is None:
+            return False, f"Tick 438: cannot merge durable conflict {rel}"
+        dest = cwd / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(merged)
+        except OSError as exc:
+            return False, f"Tick 438: write {rel} failed: {exc}"
+        ok_add, detail_add = _git_ok(["add", "--", rel], cwd=cwd)
+        if not ok_add:
+            return False, f"Tick 438: git add {rel} failed: {detail_add}"
+        resolved.append(rel)
+    return (
+        True,
+        f"Tick 438: auto-merged durable conflicts {resolved}",
+    )
+
+
 def rebase_tip_onto_origin_for_durable_push(
     tip_branch: str,
     *,
     cwd: Path,
 ) -> tuple[bool, str]:
-    """Tick 437: rebase local tip onto ``origin/<tip>`` after an NF push reject.
+    """Tick 437/438: rebase local tip onto ``origin/<tip>`` after an NF push reject.
 
-    Never ``--force``. Aborts an in-progress rebase on conflict and leaves the
-    pre-rebase HEAD so stashes / local durable commits remain recoverable.
-    Preserves dirty durable + paper-pack companion bytes across the rebase.
+    Never ``--force``. Preserves dirty durable + paper-pack companion bytes
+    across the rebase.
+
+    Tick 437: on conflict, aborted and left pre-rebase HEAD recoverable.
+
+    Tick 438: when conflicts are **only** durable ledgers / paper-pack
+    companions (concurrent tip VMs both writing ``budget_spent`` /
+    ``prior_live`` / READY/figs), auto-merge those paths and
+    ``rebase --continue``. Still abort on any non-durable conflict.
     """
     name = (tip_branch or "").strip()
     if not name or name in ("main", "master", "HEAD"):
@@ -2690,13 +2923,52 @@ def rebase_tip_onto_origin_for_durable_push(
         _git_restore_or_unlink(cwd, rel, cwd / rel)
     ok_rb, detail_rb = _git_ok(["rebase", remote_ref], cwd=cwd)
     if not ok_rb:
+        merge_notes: list[str] = []
+        env = os.environ.copy()
+        env["GIT_EDITOR"] = "true"
+        env["GIT_SEQUENCE_EDITOR"] = "true"
+        continued = False
+        for _round in range(2):
+            ok_res, detail_res = resolve_durable_rebase_conflicts(cwd)
+            merge_notes.append(detail_res)
+            if not ok_res or _git_unmerged_relpaths(cwd):
+                break
+            try:
+                proc = subprocess.run(
+                    ["git", "rebase", "--continue"],
+                    cwd=str(cwd),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    env=env,
+                    timeout=120,
+                )
+            except (subprocess.TimeoutExpired, OSError) as exc:
+                merge_notes.append(f"continue {type(exc).__name__}: {exc}")
+                break
+            if proc.returncode == 0:
+                continued = True
+                break
+            merge_notes.append(
+                (proc.stderr or proc.stdout or f"exit {proc.returncode}").strip()[
+                    :160
+                ]
+            )
+            # Another conflict round may remain — loop once more.
+        if continued:
+            _restore_preserved_bytes(cwd, preserved)
+            return (
+                True,
+                f"{fetch_note}; Tick 438: rebased onto {remote_ref} after "
+                f"durable conflict merge ({'; '.join(merge_notes)})",
+            )
         # Best-effort abort so the tree is not left mid-rebase.
         _git_ok(["rebase", "--abort"], cwd=cwd)
         _restore_preserved_bytes(cwd, preserved)
         return (
             False,
-            f"Tick 437 rebase onto {remote_ref} failed: {detail_rb[:240]} "
-            f"({fetch_note})",
+            f"Tick 437 rebase onto {remote_ref} failed: {detail_rb[:200]}; "
+            f"{'; '.join(merge_notes)} ({fetch_note})",
         )
     _restore_preserved_bytes(cwd, preserved)
     return (
@@ -2722,6 +2994,10 @@ def push_tip_after_durable_ledger_commit(
     commits on a stale tip base that Tick 435 cannot FF), fetch ``origin/<tip>``,
     rebase local HEAD onto it (preserve durable dirt), and retry the push
     **once**. Still never force-pushes.
+
+    Tick 438: rebase auto-merges durable/paper-pack-only conflicts (concurrent
+    ``budget_spent`` / ``prior_live`` / READY edits) before the retry push —
+    pre-438 aborted and left paid spend local-only.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
@@ -2820,6 +3096,9 @@ def commit_durable_ledgers_after_live(
     the Tick 436 fetch, or unique local durable commits on a stale tip base
     that Tick 435 cannot FF), rebase onto ``origin/<tip>`` and retry push
     once — never force.
+    Tick 438: durable/paper-pack-only rebase conflicts auto-merge (union spend
+    / gates; demote READY) so concurrent tip VMs do not abort and leave paid
+    spend local-only.
     """
     ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
     if not ok_sync:
@@ -2827,7 +3106,7 @@ def commit_durable_ledgers_after_live(
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 437: commit durable ledgers + paper-pack companions."
+            "ICML Tick 438: commit durable ledgers + paper-pack companions."
         ),
     )
     if (
