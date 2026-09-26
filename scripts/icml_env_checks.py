@@ -2291,28 +2291,69 @@ def resolve_push_branch_for_durable_ledgers(
     return None
 
 
-def tip_commits_ahead_of_origin(
-    repo_root: Path | None = None,
-    *,
-    branch: str | None = None,
-) -> int:
-    """Tick 424: how many local tip commits are not yet on ``origin/<branch>``.
+def _git_is_ancestor(ancestor: str, descendant: str, *, cwd: Path) -> bool:
+    """True when ``ancestor`` is an ancestor of ``descendant`` (inclusive)."""
+    import subprocess
 
-    Returns ``0`` when equal/behind/unknown (missing remote, detached HEAD,
-    non-tip branch). Used to retry durable-ledger push after a commit-noop
-    when a prior Tick 423 push failed mid-tick.
+    try:
+        proc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return proc.returncode == 0
+
+
+def ensure_local_tip_branch_for_durable_ledgers(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """Tick 433: point local tip PR branch at HEAD before durable commit/push.
+
+    Tick 432 pushes ``HEAD:refs/heads/<tip>``, but when the durable commit lands
+    while still checked out on a greenfield **boot** branch name, the local
+    ``tip_pr_commit_branch`` ref can stay at the pre-commit tip SHA. A later
+    ``git checkout <tip>`` (anti-churn) then drops the unpushed spend/READY
+    commit; ``tip_commits_ahead_of_origin`` from that old tip HEAD returns 0 and
+    Tick 428/429 consume can wipe reinject stashes — losing paid ledger state
+    even though the commit still exists only on the boot ref.
+
+    Fast-forward (never rewind) the local tip ref to HEAD when HEAD is a
+    descendant of tip, then check out tip so commit / ahead / push / consume
+    all operate on the tip PR branch name.
     """
     import subprocess
 
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
-    target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
-    if not target or target in ("main", "master", "HEAD"):
-        return 0
-    # Prefer tracking ref when present; else origin/<branch> after fetch/push.
-    for remote_ref in (f"origin/{target}", f"refs/remotes/origin/{target}"):
+    tip_branch = (prefer_tip_pr_commit_branch() or "").strip()
+    if not tip_branch or tip_branch in ("main", "master", "HEAD"):
+        return True, "Tick 433: no tip_pr_commit_branch — skip local tip sync"
+
+    head_branch = ""
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode == 0:
+            head_branch = (proc.stdout or "").strip()
+    except OSError:
+        head_branch = ""
+    if head_branch == tip_branch:
+        return True, f"Tick 433: already on tip branch {tip_branch}"
+
+    # Resolve tip tipish: local branch, else origin/<tip>.
+    tip_ref = ""
+    for cand in (tip_branch, f"refs/heads/{tip_branch}", f"origin/{tip_branch}"):
         try:
             proc = subprocess.run(
-                ["git", "rev-list", "--count", f"{remote_ref}..HEAD"],
+                ["git", "rev-parse", "--verify", cand],
                 cwd=str(root),
                 capture_output=True,
                 text=True,
@@ -2320,14 +2361,78 @@ def tip_commits_ahead_of_origin(
             )
         except OSError:
             continue
-        if proc.returncode != 0:
-            continue
-        raw = (proc.stdout or "").strip()
-        try:
-            return max(0, int(raw))
-        except ValueError:
-            return 0
-    return 0
+        if proc.returncode == 0 and (proc.stdout or "").strip():
+            tip_ref = cand
+            break
+    if tip_ref:
+        # Never rewind tip onto an older boot SHA (main-equivalent greenfield).
+        if not _git_is_ancestor(tip_ref, "HEAD", cwd=root):
+            return (
+                True,
+                f"Tick 433: HEAD not descendant of {tip_ref} — skip tip sync "
+                f"(stay on {head_branch or 'HEAD'})",
+            )
+
+    # Move/create local tip ref to current HEAD, then check it out.
+    ok, detail = _git_ok(["branch", "-f", tip_branch, "HEAD"], cwd=root)
+    if not ok:
+        return False, f"Tick 433 git branch -f failed: {detail}"
+    ok, detail = _git_ok(["checkout", tip_branch], cwd=root)
+    if not ok:
+        return False, f"Tick 433 git checkout {tip_branch} failed: {detail}"
+    return (
+        True,
+        f"Tick 433: synced local tip {tip_branch} ← HEAD "
+        f"(was {head_branch or 'detached'})",
+    )
+
+
+def tip_commits_ahead_of_origin(
+    repo_root: Path | None = None,
+    *,
+    branch: str | None = None,
+) -> int:
+    """Tick 424/433: how many local tip commits are not yet on ``origin/<branch>``.
+
+    Returns ``0`` when equal/behind/unknown (missing remote, detached HEAD,
+    non-tip branch). Used to retry durable-ledger push after a commit-noop
+    when a prior Tick 423 push failed mid-tick.
+
+    Tick 433: take the max of ``origin/<tip>..HEAD`` and ``origin/<tip>..<tip>``
+    so an unpushed durable commit that only advanced the local tip ref (or only
+    HEAD on a boot name before sync) still counts as ahead.
+    """
+    import subprocess
+
+    root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
+    target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
+    if not target or target in ("main", "master", "HEAD"):
+        return 0
+    best = 0
+    local_tips = ("HEAD", target, f"refs/heads/{target}")
+    # Prefer tracking ref when present; else origin/<branch> after fetch/push.
+    for remote_ref in (f"origin/{target}", f"refs/remotes/origin/{target}"):
+        for local in local_tips:
+            try:
+                proc = subprocess.run(
+                    ["git", "rev-list", "--count", f"{remote_ref}..{local}"],
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except OSError:
+                continue
+            if proc.returncode != 0:
+                continue
+            raw = (proc.stdout or "").strip()
+            try:
+                best = max(best, max(0, int(raw)))
+            except ValueError:
+                continue
+        if best:
+            return best
+    return best
 
 
 def push_tip_after_durable_ledger_commit(
@@ -2361,7 +2466,7 @@ def push_tip_after_durable_ledger_commit(
 def commit_durable_ledgers_after_live(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 422–428: commit (+ push) durable ledgers after live **or tip recover**.
+    """Tick 422–428 + 433: commit (+ push) durable ledgers after live **or tip recover**.
 
     Call after paid G2/G3/G4 (or the unified live pipeline) **and** after
     tip-recover reinject (cron / boot_recover / recover_tip ``--apply``) so
@@ -2399,13 +2504,22 @@ def commit_durable_ledgers_after_live(
     Tick 432: when tip PR head is known, durable push **always** targets
     ``tip_pr_commit_branch`` (even if ``origin/<boot>`` already exists and
     cloud-boot capture is missing) — closes re-park after accidental boot push.
+    Tick 433: before commit/push, fast-forward local ``tip_pr_commit_branch``
+    onto HEAD when HEAD is a tip descendant and check out tip — closes stale
+    local tip ref after durable commit on a boot branch name (ahead=0 consume
+    wipe / anti-churn checkout drop).
     """
+    ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
+    if not ok_sync:
+        return False, detail_sync
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 432: commit durable ledgers + paper-pack companions."
+            "ICML Tick 433: commit durable ledgers + paper-pack companions."
         ),
     )
+    if "synced local tip" in detail_sync:
+        detail = f"{detail_sync}; {detail}"
     if not ok:
         return ok, detail
     need_push = "committed durable ledgers" in detail

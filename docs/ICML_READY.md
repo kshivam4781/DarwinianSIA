@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 432: when tip PR head is known, durable-ledger push **always** targets `tip_pr_commit_branch` — even if `origin/<boot>` already exists and cloud-boot capture is missing (closes re-park after accidental boot push). Tick 431 unpushed-boot redirect + Tick 430 HEAD-blob redundancy + Tick 429 redundant-only consume + Tick 428 consume-after-push remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 433: before durable commit/push, fast-forward local `tip_pr_commit_branch` onto HEAD (when HEAD is a tip descendant) and checkout tip — closes stale local tip ref after durable commit on a boot branch name (ahead=0 consume wipe / anti-churn checkout drop). Tick 432 always→tip PR head + Tick 431–430 stash stack remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
