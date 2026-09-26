@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-26 (Section 21 ICML; Tick 429 consume only redundant durable stashes; Tick 428 consume after push; Tick 427 tip-apply paper-pack park/reinject; …)
+**Last updated:** 2026-09-26 (Section 21 ICML; Tick 430 durable-stash redundancy vs committed HEAD; Tick 429 consume only redundant; Tick 428 consume after push; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -880,6 +880,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML paper-pack companion co-commit (Tick 426) | **DONE** | Post-G4 `apply_paper_pack` dirt (`paper_artifacts` / `ICML_READY` / Figs 1–2) co-committed+pushed with durable ledgers; pre-426 refused → spend/READY never reached origin; focused tests 6/6 |
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
+| ICML durable-stash redundancy vs committed HEAD (Tick 430) | **DONE** | Compare paper-pack/budget/prior_live stash redundancy to `git show HEAD:<path>` (not WT); reinject+commit-noop cannot wipe unique READY; focused durable/tip tests 26/26 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -2762,5 +2763,7 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Tip-apply paper-pack companion park/reinject (Tick 427):** Tick 426 fixed the post-live commit path, but tip `--apply` **prepare** still refused dirty paper-pack companions as other non-ephemeral dirt — a mid-tick crash after `apply_paper_pack` blocked tip recover and wiped READY/Live Tables on hard-reset. `prepare_prior_live_evidence_for_tip_apply` now parks companions into gitignored `docs/icml_paper_pack_stash.json`; `reinject_paper_pack_stash` + durable commit restore them onto tip after `--apply`. Wired recover_tip / cron / boot_recover. Focused tests **9** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Consume durable stashes after push (Tick 428):** Tick 427 left paper-pack / budget / prior_live stashes on disk after successful reinject+commit+push. A later tip `--apply` could reinject **stale** mid-tick READY/spend over a newer tip HEAD (e.g. honest demotion). `consume_durable_stashes_after_commit` now runs after durable state is on `origin` (successful push, or commit-noop with tip not ahead); stashes are **kept** when push fails so tip `--apply` hard-reset to origin can still reinject. Focused durable/tip tests **20** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Durable-stash redundancy vs committed HEAD (Tick 430):** Tick 429 still compared stash payloads to the **working tree**. After successful reinject (WT==stash) with commit-noop / staged-only (HEAD demoted), consume wiped unique mid-tick READY/Figs. Redundancy now uses `git show HEAD:<path>`. Focused durable/tip tests **26** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Consume only redundant durable stashes (Tick 429):** Tick 428 also wiped unique mid-tick paper-pack/budget/prior_live stashes on tip-synced commit-noop after **failed** reinject — READY/Figs parked for tip `--apply` recovery were lost. Consume now unlinks a stash only when its payload already matches (or is unusable relative to) HEAD working-tree durables; non-redundant stashes stay for reinject retry. Focused durable/tip tests **16** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.

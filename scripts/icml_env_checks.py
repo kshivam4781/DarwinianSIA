@@ -1775,13 +1775,49 @@ def reinject_paper_pack_stash(
     )
 
 
+def _git_show_head_bytes(repo_root: Path, relpath: str) -> bytes | None:
+    """Return ``git show HEAD:<relpath>`` bytes, or None if absent/unreadable.
+
+    Tick 430: durable-stash redundancy must compare against **committed tip
+    HEAD**, not the working tree. Reinject can make WT match a unique stash
+    while HEAD still lacks READY/spend (e.g. staged-only / commit-noop); a WT
+    comparison would falsely mark the stash redundant and wipe it.
+    """
+    import subprocess
+
+    norm = _norm_repo_relpath(relpath)
+    proc = subprocess.run(
+        ["git", "show", f"HEAD:{norm}"],
+        cwd=str(repo_root),
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def _load_prior_live_gates_from_bytes(raw: bytes | None) -> dict:
+    """Parse prior_live gates map from committed HEAD blob bytes."""
+    if not raw:
+        return {}
+    try:
+        blob = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+        return {}
+    if isinstance(blob, dict) and isinstance(blob.get("gates"), dict):
+        return dict(blob["gates"])
+    return {}
+
+
 def _paper_pack_stash_redundant_with_head(
     repo_root: Path, stash_path: Path
 ) -> bool:
-    """True when paper-pack stash is absent, unusable, or matches HEAD files.
+    """True when paper-pack stash is absent, unusable, or matches **git HEAD**.
 
     Tick 429: a stash that still holds mid-tick READY/Figs differing from HEAD
     (failed reinject, or reinject never ran) is **not** redundant — keep it.
+    Tick 430: compare to ``git show HEAD:<path>`` (committed tip), **not** the
+    working tree — reinject/staged-only WT match must not wipe a unique stash.
     """
     import base64
 
@@ -1803,19 +1839,21 @@ def _paper_pack_stash_redundant_with_head(
         if not isinstance(meta, dict) or "content" not in meta:
             continue
         comparable += 1
-        dest = repo_root / norm
         encoding = str(meta.get("encoding") or "utf-8")
         content = meta["content"]
+        head_bytes = _git_show_head_bytes(repo_root, norm)
+        if head_bytes is None:
+            return False  # not on HEAD — stash still unique
         try:
             if encoding == "base64":
                 expected = base64.b64decode(str(content))
-                if not dest.is_file() or dest.read_bytes() != expected:
+                if head_bytes != expected:
                     return False
             else:
                 expected_txt = str(content)
-                if not dest.is_file() or dest.read_text(encoding="utf-8") != expected_txt:
+                if head_bytes.decode("utf-8") != expected_txt:
                     return False
-        except (OSError, ValueError, TypeError):
+        except (UnicodeDecodeError, ValueError, TypeError):
             return False
     return True if comparable else True
 
@@ -1823,7 +1861,10 @@ def _paper_pack_stash_redundant_with_head(
 def _budget_spent_stash_redundant_with_head(
     repo_root: Path, stash_path: Path
 ) -> bool:
-    """True when budget stash is absent, unusable, or matches the ledger on HEAD."""
+    """True when budget stash is absent, unusable, or matches the ledger on **git HEAD**.
+
+    Tick 430: read committed HEAD blob (not working-tree ledger).
+    """
     if not stash_path.is_file():
         return True
     try:
@@ -1833,12 +1874,12 @@ def _budget_spent_stash_redundant_with_head(
     ledger = blob.get("ledger") if isinstance(blob, dict) else None
     if not isinstance(ledger, dict):
         return True  # unusable
-    dest = budget_spent_ledger_path(repo_root)
-    if not dest.is_file():
+    head_bytes = _git_show_head_bytes(repo_root, ICML_BUDGET_SPENT_RELPATH)
+    if head_bytes is None:
         return False
     try:
-        current = json.loads(dest.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        current = json.loads(head_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
         return False
     return current == ledger
 
@@ -1846,15 +1887,17 @@ def _budget_spent_stash_redundant_with_head(
 def _prior_live_stash_redundant_with_head(
     repo_root: Path, stash_path: Path
 ) -> bool:
-    """True when prior_live stash is absent, empty, or ⊆ committed evidence."""
+    """True when prior_live stash is absent, empty, or ⊆ **git HEAD** evidence.
+
+    Tick 430: compare gates to committed HEAD evidence blob (not working tree).
+    """
     if not stash_path.is_file():
         return True
     stash_gates = _load_prior_live_gates_payload(stash_path)
     if not stash_gates:
         return True
-    evidence_gates = _load_prior_live_gates_payload(
-        prior_live_evidence_path(repo_root)
-    )
+    head_bytes = _git_show_head_bytes(repo_root, ICML_PRIOR_LIVE_EVIDENCE_RELPATH)
+    evidence_gates = _load_prior_live_gates_from_bytes(head_bytes)
     for key, val in stash_gates.items():
         if evidence_gates.get(key) != val:
             return False
@@ -1864,7 +1907,7 @@ def _prior_live_stash_redundant_with_head(
 def consume_durable_stashes_after_commit(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 428/429: unlink durable stashes that are redundant with tip HEAD.
+    """Tick 428/429/430: unlink durable stashes redundant with **committed** tip HEAD.
 
     Pre-428: paper-pack / budget_spent / prior_live stashes survived successful
     reinject + durable commit. A later tip ``--apply`` then reinjected **stale**
@@ -1874,7 +1917,12 @@ def consume_durable_stashes_after_commit(
     Tick 429: Pre-429 Tick 428 also consumed on commit-noop when tip matched
     origin — even after **failed** reinject — wiping unique mid-tick READY /
     spend that never landed on HEAD. Only unlink a stash when its payload
-    already matches (or is unusable relative to) HEAD working-tree durables.
+    already matches (or is unusable relative to) HEAD.
+
+    Tick 430: redundancy compares to ``git show HEAD:<path>``, **not** the
+    working tree. Pre-430 WT comparison wiped unique stashes after reinject
+    made WT match stash while commit was a staged-only / index-noop (HEAD still
+    lacked READY/spend).
 
     Call only after ``commit_prior_live_evidence_if_dirty`` returns ``ok=True``
     (committed or already clean on HEAD). Keep stashes when commit refuses so a
@@ -1906,7 +1954,7 @@ def consume_durable_stashes_after_commit(
         try:
             redundant = bool(is_redundant(root, path))
         except Exception as exc:  # noqa: BLE001 — never wipe on checker bugs
-            return False, f"Tick 429 stash redundancy check failed for {rel}: {exc}"
+            return False, f"Tick 430 stash redundancy check failed for {rel}: {exc}"
         if not redundant:
             kept.append(rel)
             continue
@@ -1920,12 +1968,12 @@ def consume_durable_stashes_after_commit(
     if kept and not removed:
         return (
             True,
-            "Tick 429: kept non-redundant durable stashes "
+            "Tick 429/430: kept non-redundant durable stashes "
             f"({', '.join(kept)}; reinject retry)",
         )
     detail = f"Tick 428: consumed durable stashes ({', '.join(removed)})"
     if kept:
-        detail += f"; Tick 429 kept non-redundant ({', '.join(kept)})"
+        detail += f"; Tick 429/430 kept non-redundant ({', '.join(kept)})"
     return True, detail
 
 
@@ -2141,7 +2189,7 @@ def commit_prior_live_evidence_if_dirty(
 
     msg = (
         commit_message
-        or "ICML Tick 429: commit durable ledgers + paper-pack companions."
+        or "ICML Tick 430: commit durable ledgers + paper-pack companions."
     )
     commit = subprocess.run(
         [
@@ -2305,6 +2353,8 @@ def commit_durable_ledgers_after_live(
     can still reinject.
     Tick 429: consume only stashes **redundant with HEAD** — pre-429 also wiped
     unique mid-tick READY/spend after failed reinject on commit-noop.
+    Tick 430: redundancy uses committed ``git show HEAD:<path>`` (not WT) so
+    reinject/staged-only WT match cannot wipe a unique stash on commit-noop.
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,

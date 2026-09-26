@@ -3481,6 +3481,140 @@ def test_consume_keeps_non_redundant_stash_after_failed_reinject(
     assert "READY" in kept["files"]["docs/ICML_READY.md"]["content"]
 
 
+
+
+def test_consume_keeps_stash_when_wt_matches_but_head_differs(
+    tmp_path: Path,
+) -> None:
+    """Tick 430: reinject WT==stash must not wipe unique stash vs committed HEAD.
+
+    Pre-430 redundancy compared stash to the working tree. After a successful
+    reinject (WT matches stash) with commit-noop / staged-only (HEAD still
+    demoted), consume wiped the unique mid-tick READY/Figs forever.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_PAPER_PACK_STASH_RELPATH,
+        commit_durable_ledgers_after_live,
+        consume_durable_stashes_after_commit,
+        prepare_prior_live_evidence_for_tip_apply,
+        reinject_paper_pack_stash,
+    )
+    import icml_env_checks as m
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
+    )
+    tip_branch = "cursor/icml-epistemic-results-test430"
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = repo / "docs"
+    figs = docs / "figures"
+    figs.mkdir(parents=True)
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "paper_artifacts.md").write_text("# offline stub\n", encoding="utf-8")
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1")
+    (figs / "fig2_mechanism.png").write_bytes(b"PNG2")
+    (repo / ".gitignore").write_text(
+        "docs/icml_prior_live_stash.json\n"
+        "docs/icml_budget_spent_stash.json\n"
+        "docs/icml_paper_pack_stash.json\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Mid-tick READY → park → hard-reset (tip --apply).
+    (docs / "ICML_READY.md").write_text("**STATUS: READY**\n", encoding="utf-8")
+    (docs / "paper_artifacts.md").write_text("# Live Table 1\n", encoding="utf-8")
+    (figs / "fig1_learning_curves.png").write_bytes(b"PNG1-LIVE")
+    ok_prep, prep_detail = prepare_prior_live_evidence_for_tip_apply(repo)
+    assert ok_prep is True, prep_detail
+    stash_path = repo / ICML_PAPER_PACK_STASH_RELPATH
+    assert stash_path.is_file()
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    assert "IN_PROGRESS" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+
+    # Successful reinject: WT matches unique stash; committed HEAD still demoted.
+    ok_r, detail_r = reinject_paper_pack_stash(repo)
+    assert ok_r is True, detail_r
+    assert "READY" in (docs / "ICML_READY.md").read_text(encoding="utf-8")
+    assert stash_path.is_file()
+
+    # Direct consume (pre-430 WT compare would wipe here).
+    ok_c, detail_c = consume_durable_stashes_after_commit(repo)
+    assert ok_c is True, detail_c
+    assert stash_path.is_file(), f"Tick 430 must keep unique stash; detail={detail_c}"
+    assert "430" in detail_c or "429" in detail_c or "kept" in detail_c.lower()
+
+    # Integration: commit-noop while WT still matches stash.
+    def _noop_commit(repo_root=None, *, commit_message=None):
+        return True, "durable ledgers not dirty (Tick 422 commit noop)"
+
+    orig = m.commit_prior_live_evidence_if_dirty
+    m.commit_prior_live_evidence_if_dirty = _noop_commit
+    try:
+        ok, detail = commit_durable_ledgers_after_live(repo)
+    finally:
+        m.commit_prior_live_evidence_if_dirty = orig
+    assert ok is True, detail
+    assert stash_path.is_file(), f"Tick 430 commit-noop must keep stash; detail={detail}"
+    kept = json.loads(stash_path.read_text(encoding="utf-8"))
+    assert "READY" in kept["files"]["docs/ICML_READY.md"]["content"]
+    head_ready = subprocess.run(
+        ["git", "show", "HEAD:docs/ICML_READY.md"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "IN_PROGRESS" in head_ready
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:
