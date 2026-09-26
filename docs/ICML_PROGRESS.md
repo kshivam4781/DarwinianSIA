@@ -1,5 +1,42 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-26T22:10Z — Tick 440 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-298b` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 438/439 durable rebase merge for `docs/paper_artifacts.md` treated any mention of `Live Table` / `live GPQA` as decisive and always preferred the replayed local. The committed offline stub already contains those phrases (empty Live Table 1 + `### Live GPQA`), so a thin local stub could wipe onto's post-G4 auto-filled Live Table / PRIMARY flags during NF rebase — paid paper-pack evidence lost even though the conflict "merged". Highest leverage without paid spend: **prefer-richer paper_artifacts (+ larger figs) merge**.
+
+### What this tick did (ONE step)
+**Tick 440 — prefer-richer paper_artifacts merge on durable rebase (no API spend):**
+1. Recovered tip ← Tick 439 (`f49c`); confirmed secrets absent; boot `298b` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_paper_artifacts_richness` + `prefer_richer_paper_artifacts` (auto-fill / PRIMARY flags / live seed rows / H2·H5 lines / Table2 markers / size); `_merge_durable_conflict_bytes` uses it instead of phrase-match
+3. `prefer_richer_figure_bytes` keeps larger non-empty PNG (not always replayed local)
+4. Tests: `test_merge_paper_artifacts_prefers_richer_live_over_thin_stub` + durable/tip filter → focused **19 passed** (incl. Tick 433–439)
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 439) | After (Tick 440) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Durable rebase `paper_artifacts` same-key conflict | **phrase-match → thin stub can wipe onto Live Table** | **prefer richer (auto-fill / live rows / PRIMARY flags)** |
+| Durable rebase Figs 1–2 | always non-empty local | **prefer larger non-empty** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-26T20:15Z — Tick 439 (automation cron)
 
 ### Status snapshot

@@ -2844,6 +2844,96 @@ def merge_icml_ready_text(ours: str, theirs: str) -> str:
     return t if t.strip() else o
 
 
+def _paper_artifacts_richness(text: str) -> tuple:
+    """Tick 440: score ``docs/paper_artifacts.md`` (higher = richer live pack).
+
+    Pre-440 durable merge treated any mention of ``Live Table`` / ``live GPQA``
+    as decisive and always preferred the replayed local. The committed offline
+    stub already contains those phrases (empty Live Table 1 + ``### Live GPQA``),
+    so a thin local stub could wipe onto's post-G4 auto-filled Live Table during
+    durable rebase — paid PRIMARY evidence lost even though Tick 438 "merged".
+    """
+    t = text or ""
+    if not t.strip():
+        return (0, 0, 0, 0, 0, 0, 0)
+    low = t.lower()
+    auto_filled = 1 if "auto-filled by" in low and "run_g4_multiseed" in low else 0
+    primary_flags = 1 if "primary flags:" in low else 0
+    # Count Live Table 1 data rows whose first cell is a digit seed (not stub "—").
+    live_rows = 0
+    marker = "### Live GPQA"
+    end_marker = "## Table 2"
+    start = t.find(marker)
+    end = t.find(end_marker)
+    block = t[start:end] if start != -1 and end > start else ""
+    for line in block.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if not cells:
+            continue
+        seed = cells[0]
+        if seed.isdigit() or (
+            seed.replace(".", "", 1).isdigit() and seed.count(".") <= 1
+        ):
+            live_rows += 1
+        elif seed.lower() in ("seed", "------", "---"):
+            continue
+    h2_live = 1 if "h2 live dna skew" in low else 0
+    h5_live = 1 if "h5 ρ>0.3 on live" in low or "h5 rho>0.3 on live" in low else 0
+    # Table 2 live marker rows that are not stub dashes.
+    table2_live = 0
+    if "<!-- LIVE_TABLE2_H2_START -->" in t:
+        i0 = t.find("<!-- LIVE_TABLE2_H2_START -->")
+        i1 = t.find("<!-- LIVE_TABLE2_H2_END -->")
+        chunk = t[i0:i1] if i0 != -1 and i1 > i0 else ""
+        if "yes" in chunk.lower() or "preferred_share=" in chunk.lower():
+            table2_live += 1
+    if "<!-- LIVE_TABLE2_H5_START -->" in t:
+        i0 = t.find("<!-- LIVE_TABLE2_H5_START -->")
+        i1 = t.find("<!-- LIVE_TABLE2_H5_END -->")
+        chunk = t[i0:i1] if i0 != -1 and i1 > i0 else ""
+        if "yes" in chunk.lower() or "spearman" in chunk.lower():
+            table2_live += 1
+    # Order: payload → auto-fill → PRIMARY flags → live rows → H2/H5 lines → T2 → size
+    return (
+        1,
+        auto_filled,
+        primary_flags,
+        live_rows,
+        h2_live + h5_live,
+        table2_live,
+        len(t),
+    )
+
+
+def prefer_richer_paper_artifacts(a: str, b: str) -> str:
+    """Tick 440: keep the richer paper_artifacts text (ties → ``b``)."""
+    a = a or ""
+    b = b or ""
+    if not a.strip() and b.strip():
+        return b
+    if not b.strip() and a.strip():
+        return a
+    if _paper_artifacts_richness(b) >= _paper_artifacts_richness(a):
+        return b
+    return a
+
+
+def prefer_richer_figure_bytes(a: bytes | None, b: bytes | None) -> bytes:
+    """Tick 440: keep the larger non-empty figure PNG (ties → ``b``)."""
+    ao = a if a is not None else b""
+    bo = b if b is not None else b""
+    if not ao and bo:
+        return bo
+    if not bo and ao:
+        return ao
+    if len(bo) >= len(ao):
+        return bo
+    return ao
+
+
 def _merge_durable_conflict_bytes(
     relpath: str, ours: bytes | None, theirs: bytes | None
 ) -> bytes | None:
@@ -2883,25 +2973,21 @@ def _merge_durable_conflict_bytes(
         except UnicodeDecodeError:
             return None
     if norm == _norm_repo_relpath("docs/paper_artifacts.md"):
-        # Prefer local (replayed) when it carries Live Table / longer pack.
+        # Tick 440: prefer richer live pack (not mere "Live Table" phrase).
         try:
             os_ = o.decode("utf-8")
             ts_ = t.decode("utf-8")
         except UnicodeDecodeError:
             return t or o
-        if "Live Table" in ts_ or "live GPQA" in ts_.lower():
-            return ts_.encode("utf-8")
-        if "Live Table" in os_:
-            return os_.encode("utf-8")
-        return (ts_ if len(ts_) >= len(os_) else os_).encode("utf-8")
+        return prefer_richer_paper_artifacts(os_, ts_).encode("utf-8")
     if norm.startswith("docs/figures/") and norm.endswith(".png"):
-        # Prefer non-empty local fig; else onto.
-        return t if t else o
+        # Tick 440: prefer larger non-empty fig (not always replayed local).
+        return prefer_richer_figure_bytes(o, t)
     return None
 
 
 def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
-    """Tick 438: auto-merge durable/paper-pack-only rebase conflicts.
+    """Tick 438/440: auto-merge durable/paper-pack-only rebase conflicts.
 
     Pre-438 ``rebase_tip_onto_origin_for_durable_push`` aborted on *any*
     conflict. Concurrent tip VMs that both update ``icml_budget_spent.json``
@@ -2909,6 +2995,10 @@ def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
     after an NF push. When **every** unmerged path is a durable ledger or
     paper-pack companion, merge JSON/text/figs and ``git add`` them so
     ``rebase --continue`` can finish. Any other conflict still refuses.
+
+    Tick 440: ``paper_artifacts.md`` / Figs prefer **richer** live payloads
+    (not mere ``Live Table`` phrase / non-empty local bytes) so thin offline
+    stubs cannot wipe post-G4 PRIMARY tables during durable rebase.
     """
     allowed = _durable_ledger_relpaths() | _post_live_companion_relpaths()
     unmerged = _git_unmerged_relpaths(cwd)

@@ -4973,6 +4973,90 @@ def test_merge_prior_live_prefers_richer_onto_g4_over_thin_local() -> None:
     assert g4b["comparison"]["n_pairs"] == 5
 
 
+def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
+    """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
+
+    Pre-440 durable merge always preferred replayed local when it contained
+    ``Live Table`` / ``live GPQA``. The committed offline stub already has those
+    phrases (empty Live Table 1), so concurrent tip rebase could drop onto's
+    post-G4 auto-filled PRIMARY table.
+    """
+    from icml_env_checks import (
+        _merge_durable_conflict_bytes,
+        prefer_richer_figure_bytes,
+        prefer_richer_paper_artifacts,
+    )
+
+    thin_stub = (
+        "# ICML paper artifacts\n\n"
+        "### Live GPQA\n\n"
+        "| Seed | B final acc | D final acc | Winner |\n"
+        "|------|-------------|-------------|--------|\n"
+        "| — | — | — | — |\n\n"
+        "_Live Table 1 columns match G4 stub empty until live G4._\n\n"
+        "## Table 2 — Mechanism / validity\n\n"
+        "<!-- LIVE_TABLE2_H2_START -->\n"
+        "| H2 trait skew (live API) | — | — |\n"
+        "<!-- LIVE_TABLE2_H2_END -->\n"
+    )
+    rich_live = (
+        "# ICML paper artifacts\n\n"
+        "### Live GPQA\n\n"
+        "_Auto-filled by `scripts/run_g4_multiseed.py` at 2026-09-26T22:00Z_\n\n"
+        "| Seed | B final acc | D final acc | B gens@30% | D gens@30% | Winner |\n"
+        "|------|-------------|-------------|------------|------------|--------|\n"
+        "| 1 | 0.20 | 0.32 | — | 4 | D |\n"
+        "| 2 | 0.22 | 0.31 | — | 5 | D |\n"
+        "| 3 | 0.25 | 0.33 | 3 | 3 | D |\n"
+        "| 4 | 0.21 | 0.30 | — | 4 | D |\n"
+        "| 5 | 0.24 | 0.34 | — | 4 | D |\n\n"
+        "PRIMARY flags: gens30=True cost30=True gens25=False cost25=False; "
+        "primary_final_pass=True mean_final_gap=0.096; D final wins=5/5. "
+        "Run IDs B=[1211, 1212, 1213, 1214, 1215] D=[1311, 1312, 1313, 1314, 1315].\n"
+        "H5 ρ>0.3 on live D runs: **5/5**.\n"
+        "H2 live DNA skew: **PASS** (d_wins_h2=5/5 h2_preferred_pass=True).\n\n"
+        "## Table 2 — Mechanism / validity\n\n"
+        "<!-- LIVE_TABLE2_H2_START -->\n"
+        "| H2 trait skew (live API) | d_wins_h2=5/5 preferred_share=0.75; "
+        "skew_pass=True | yes |\n"
+        "<!-- LIVE_TABLE2_H2_END -->\n"
+        "<!-- LIVE_TABLE2_H5_START -->\n"
+        "| H5 Spearman ρ (live) | 5/5 ρ>0.3 | yes |\n"
+        "<!-- LIVE_TABLE2_H5_END -->\n"
+    )
+    # onto (ours) = rich live; replayed local (theirs) = thin stub with Live Table phrase
+    merged = prefer_richer_paper_artifacts(rich_live, thin_stub)
+    assert "Auto-filled by" in merged
+    assert "primary_final_pass=True" in merged
+    assert "| 1 | 0.20 | 0.32 |" in merged
+    assert merged.count("| 1 |") == 1
+
+    # Symmetric: rich local beats thin onto.
+    merged2 = prefer_richer_paper_artifacts(thin_stub, rich_live)
+    assert "Auto-filled by" in merged2
+    assert "D final wins=5/5" in merged2
+
+    # Durable conflict bytes path (ours=stage2 onto, theirs=stage3 local).
+    out = _merge_durable_conflict_bytes(
+        "docs/paper_artifacts.md",
+        rich_live.encode("utf-8"),
+        thin_stub.encode("utf-8"),
+    )
+    assert out is not None
+    assert b"Auto-filled by" in out
+    assert b"primary_final_pass=True" in out
+
+    # Figures: larger non-empty wins over tiny local.
+    big = b"\x89PNG" + (b"X" * 200)
+    tiny = b"\x89PNG" + (b"y" * 10)
+    assert prefer_richer_figure_bytes(big, tiny) == big
+    assert prefer_richer_figure_bytes(tiny, big) == big
+    fig = _merge_durable_conflict_bytes(
+        "docs/figures/fig1_learning_curves.png", big, tiny
+    )
+    assert fig == big
+
+
 def test_rebase_tip_merges_durable_budget_conflict(
     tmp_path: Path, monkeypatch
 ) -> None:
