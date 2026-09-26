@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-26T20:15Z — Tick 439 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/bc-68de052b-2592-4255-88c9-4c30d9e82e6a-c3dc` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 438 durable rebase conflict merge always preferred the **replayed local** prior_live gate when both sides set the same key. A thinner local capture (preflight wipe / partial G3) could overwrite onto's executed G4 `prior_live_metrics` during NF rebase — paid evidence lost even though the conflict "merged". Highest leverage without paid spend: **prefer-richer prior_live gate merge**.
+
+### What this tick did (ONE step)
+**Tick 439 — prefer-richer prior_live gate merge on durable rebase (no API spend):**
+1. Recovered tip ← Tick 438 (`f49c`); confirmed secrets absent; boot `bc-68de…` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_prior_live_gate_richness` + `prefer_richer_prior_live_gate`; `merge_prior_live_evidence_dict` keeps richer payload per key (executed / n_pairs / pass flags / size) instead of always theirs
+3. Union of unique gate keys unchanged; Tick 438 budget_spent union + READY demote unchanged
+4. Tests: `test_merge_prior_live_prefers_richer_onto_g4_over_thin_local` + durable/tip filter → focused **22 passed** (incl. Tick 433–438)
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 438) | After (Tick 439) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Durable rebase prior_live same-key conflict | **always prefer replayed local (thin can wipe onto G4)** | **prefer richer (executed / n_pairs / passes)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-26T18:15Z — Tick 438 (automation cron)
 
 ### Status snapshot

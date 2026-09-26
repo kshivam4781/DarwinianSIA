@@ -2732,8 +2732,70 @@ def merge_budget_spent_dict(ours: dict, theirs: dict) -> dict:
     }
 
 
+def _prior_live_gate_richness(val: Any) -> tuple:
+    """Tick 439: score a single prior_live gate payload (higher = richer).
+
+    Pre-439 ``merge_prior_live_evidence_dict`` always preferred the replayed
+    local (stage 3) when both sides set the same gate key. A thinner local
+    capture (preflight wipe / partial G3) could then overwrite onto's executed
+    G4 ``prior_live_metrics`` during durable rebase — paid evidence lost even
+    though Tick 438 "merged" the conflict.
+    """
+    if val in (None, {}, [], ""):
+        return (0, 0, 0, 0, 0, 0, 0)
+    if not isinstance(val, dict):
+        try:
+            return (1, 0, 0, 0, 0, 0, len(json.dumps(val)))
+        except (TypeError, ValueError):
+            return (1, 0, 0, 0, 0, 0, 0)
+    post = val.get("prior_live_post")
+    metrics = val.get("prior_live_metrics")
+    has_post = 1 if post not in (None, {}, [], "") else 0
+    has_metrics = 1 if isinstance(metrics, dict) and metrics else 0
+    executed = 0
+    n_pairs = 0
+    pass_bits = 0
+    paper = 0
+    if isinstance(metrics, dict):
+        executed = 1 if metrics.get("executed") else 0
+        comparison = metrics.get("comparison")
+        if isinstance(comparison, dict):
+            try:
+                n_pairs = int(comparison.get("n_pairs") or 0)
+            except (TypeError, ValueError):
+                n_pairs = 0
+        for flag in ("primary_pass", "h2_pass", "h5_pass", "paper_refreshed"):
+            if metrics.get(flag):
+                pass_bits += 1
+        if metrics.get("paper_refreshed"):
+            paper = 1
+    try:
+        size = len(json.dumps(val, sort_keys=True))
+    except (TypeError, ValueError):
+        size = 0
+    # Order: any payload → metrics → executed → n_pairs → pass flags → paper → size
+    return (1, has_metrics, executed, n_pairs, pass_bits + has_post, paper, size)
+
+
+def prefer_richer_prior_live_gate(a: Any, b: Any) -> Any:
+    """Tick 439: keep the richer prior_live gate payload (ties → ``b``)."""
+    if a in (None, {}, [], "") and b not in (None, {}, [], ""):
+        return b
+    if b in (None, {}, [], "") and a not in (None, {}, [], ""):
+        return a
+    if _prior_live_gate_richness(b) >= _prior_live_gate_richness(a):
+        return b
+    return a
+
+
 def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
-    """Merge prior_live evidence gates across concurrent tip VMs (Tick 438)."""
+    """Merge prior_live evidence gates across concurrent tip VMs (Tick 438/439).
+
+    Tick 438: union gate keys across onto (ours) + replayed local (theirs).
+    Tick 439: when the same gate key is set on both sides, keep the **richer**
+    payload (executed metrics / larger ``n_pairs`` / pass flags) instead of
+    always preferring theirs — closes thinner-local wipe of onto G4 evidence.
+    """
     gates: dict[str, Any] = {}
     for src in (ours, theirs):
         raw = src.get("gates") if isinstance(src, dict) else None
@@ -2743,8 +2805,7 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
             if key not in gates or gates[key] in (None, {}, [], ""):
                 gates[key] = val
             elif val not in (None, {}, [], ""):
-                # Prefer non-empty; when both set, prefer theirs (replayed local).
-                gates[key] = val
+                gates[key] = prefer_richer_prior_live_gate(gates[key], val)
     try:
         tick = max(int(ours.get("tick") or 0), int(theirs.get("tick") or 0))
     except (TypeError, ValueError):
@@ -2757,8 +2818,10 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
     note = (
         str(theirs.get("tick_note") or "")
         or str(ours.get("tick_note") or "")
-        or "Tick 438: merged concurrent prior_live evidence"
+        or "Tick 439: merged concurrent prior_live evidence (prefer richer gates)"
     )
+    if "439" not in note and "Tick 438" in note:
+        note = note.replace("Tick 438", "Tick 439", 1)
     return {
         "updated_at": updated,
         "tick": tick,
@@ -2998,6 +3061,8 @@ def push_tip_after_durable_ledger_commit(
     Tick 438: rebase auto-merges durable/paper-pack-only conflicts (concurrent
     ``budget_spent`` / ``prior_live`` / READY edits) before the retry push —
     pre-438 aborted and left paid spend local-only.
+    Tick 439: prior_live conflict merge prefers richer gate payloads (not
+    blindly the replayed local) so onto's executed G4 evidence survives.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
@@ -3099,6 +3164,9 @@ def commit_durable_ledgers_after_live(
     Tick 438: durable/paper-pack-only rebase conflicts auto-merge (union spend
     / gates; demote READY) so concurrent tip VMs do not abort and leave paid
     spend local-only.
+    Tick 439: prior_live gate merge keeps the **richer** payload per key
+    (executed / n_pairs / pass flags) so a thinner replayed local cannot wipe
+    onto's G4 ``prior_live_metrics`` during that durable conflict merge.
     """
     ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
     if not ok_sync:
@@ -3106,7 +3174,7 @@ def commit_durable_ledgers_after_live(
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 438: commit durable ledgers + paper-pack companions."
+            "ICML Tick 439: commit durable ledgers + paper-pack companions."
         ),
     )
     if (

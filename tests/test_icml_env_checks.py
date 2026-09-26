@@ -4906,6 +4906,73 @@ def test_merge_budget_spent_dict_unions_stages_and_max_spend() -> None:
     assert merged["updated_at"] == "2026-09-26T12:00:00Z"
 
 
+def test_merge_prior_live_prefers_richer_onto_g4_over_thin_local() -> None:
+    """Tick 439: thinner replayed local must not wipe onto executed G4 metrics.
+
+    Pre-439 always preferred theirs (replayed local) when both sides set the
+    same gate key — a partial/preflight local capture could drop onto's
+    executed G4 ``prior_live_metrics`` during durable rebase conflict merge.
+    """
+    from icml_env_checks import merge_prior_live_evidence_dict
+
+    rich_g4 = {
+        "prior_live_metrics": {
+            "comparison": {"d_wins_gens30": 4, "n_pairs": 5},
+            "executed": True,
+            "primary_pass": True,
+            "h2_pass": True,
+            "h5_pass": True,
+            "paper_refreshed": True,
+        }
+    }
+    thin_g4 = {
+        "prior_live_metrics": {
+            "comparison": {"n_pairs": 1},
+            "executed": False,
+            "primary_pass": False,
+        }
+    }
+    # onto (ours) = rich G4; replayed local (theirs) = thin G4
+    merged = merge_prior_live_evidence_dict(
+        {
+            "tick": 438,
+            "updated_at": "2026-09-26T12:00:00Z",
+            "gates": {
+                "docs/gate4_report.json": rich_g4,
+                "docs/gate3_report.json": {
+                    "prior_live_metrics": {"executed": True, "comparison": {"n_pairs": 1}}
+                },
+            },
+        },
+        {
+            "tick": 439,
+            "updated_at": "2026-09-26T13:00:00Z",
+            "gates": {
+                "docs/gate4_report.json": thin_g4,
+                "docs/gate2_report.json": {"prior_live_post": [{"name": "ok"}]},
+            },
+        },
+    )
+    assert merged["tick"] == 439
+    g4 = merged["gates"]["docs/gate4_report.json"]["prior_live_metrics"]
+    assert g4["executed"] is True
+    assert g4["comparison"]["n_pairs"] == 5
+    assert g4["primary_pass"] is True
+    assert g4["paper_refreshed"] is True
+    # Union preserves unique keys from both sides.
+    assert "docs/gate3_report.json" in merged["gates"]
+    assert "docs/gate2_report.json" in merged["gates"]
+
+    # Symmetric: rich local beats thin onto.
+    merged2 = merge_prior_live_evidence_dict(
+        {"gates": {"docs/gate4_report.json": thin_g4}},
+        {"gates": {"docs/gate4_report.json": rich_g4}},
+    )
+    g4b = merged2["gates"]["docs/gate4_report.json"]["prior_live_metrics"]
+    assert g4b["executed"] is True
+    assert g4b["comparison"]["n_pairs"] == 5
+
+
 def test_rebase_tip_merges_durable_budget_conflict(
     tmp_path: Path, monkeypatch
 ) -> None:
