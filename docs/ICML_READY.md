@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 436: fetch ``origin/<tip>`` before Tick 435 ahead / Tick 434 checkout — pre-436 inspected a stale remote-tracking ref after long live gates (or direct G2/G3/G4 durable commit without a fresh cron fetch), so Tick 435 skipped FF and tip push was still NF-rejected. Tick 435 FF-when-already-on-tip-behind + Tick 434 checkout-when-boot-behind + Tick 433 tip←HEAD sync remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 437: on NF tip push, fetch + rebase onto ``origin/<tip>`` + retry once (never force) — closes concurrent tip advance / diverged unique durable commits that Tick 435/436 cannot FF. Tick 436 fetch-before-FF + Tick 435 FF-when-already-on-tip-behind + Tick 434 checkout-when-boot-behind + Tick 433 tip←HEAD sync remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

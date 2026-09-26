@@ -2640,16 +2640,88 @@ def tip_commits_ahead_of_origin(
     return best
 
 
+def _git_push_looks_non_fast_forward(detail: str) -> bool:
+    """True when a tip push failure looks like non-fast-forward / rejected update."""
+    text = (detail or "").lower()
+    needles = (
+        "non-fast-forward",
+        "non fast forward",
+        "fetch first",
+        "failed to push some refs",
+        "[rejected]",
+        "updates were rejected",
+        "tip of your current branch is behind",
+    )
+    return any(n in text for n in needles)
+
+
+def rebase_tip_onto_origin_for_durable_push(
+    tip_branch: str,
+    *,
+    cwd: Path,
+) -> tuple[bool, str]:
+    """Tick 437: rebase local tip onto ``origin/<tip>`` after an NF push reject.
+
+    Never ``--force``. Aborts an in-progress rebase on conflict and leaves the
+    pre-rebase HEAD so stashes / local durable commits remain recoverable.
+    Preserves dirty durable + paper-pack companion bytes across the rebase.
+    """
+    name = (tip_branch or "").strip()
+    if not name or name in ("main", "master", "HEAD"):
+        return False, "Tick 437: refuse rebase — no tip branch"
+    ok_fetch, detail_fetch = fetch_origin_tip_for_durable_ledgers(name, cwd=cwd)
+    fetch_note = detail_fetch if ok_fetch else f"{detail_fetch} (continuing)"
+    remote_ref = None
+    for prefer in (f"origin/{name}", f"refs/remotes/origin/{name}"):
+        ok_ref, _ = _git_ok(["rev-parse", "--verify", prefer], cwd=cwd)
+        if ok_ref:
+            remote_ref = prefer
+            break
+    if remote_ref is None:
+        return False, f"Tick 437: no origin/{name} after fetch ({fetch_note})"
+    # Already contains origin tip → rebase would be a no-op; treat as ok.
+    if _git_is_ancestor(remote_ref, "HEAD", cwd=cwd):
+        return (
+            True,
+            f"{fetch_note}; Tick 437: HEAD already contains {remote_ref} — skip rebase",
+        )
+    preserved = _preserve_post_live_dirty_bytes(cwd)
+    for rel in preserved:
+        _git_restore_or_unlink(cwd, rel, cwd / rel)
+    ok_rb, detail_rb = _git_ok(["rebase", remote_ref], cwd=cwd)
+    if not ok_rb:
+        # Best-effort abort so the tree is not left mid-rebase.
+        _git_ok(["rebase", "--abort"], cwd=cwd)
+        _restore_preserved_bytes(cwd, preserved)
+        return (
+            False,
+            f"Tick 437 rebase onto {remote_ref} failed: {detail_rb[:240]} "
+            f"({fetch_note})",
+        )
+    _restore_preserved_bytes(cwd, preserved)
+    return (
+        True,
+        f"{fetch_note}; Tick 437: rebased HEAD onto {remote_ref} "
+        f"(preserved {len(preserved)} durable paths)",
+    )
+
+
 def push_tip_after_durable_ledger_commit(
     repo_root: Path | None = None,
     *,
     branch: str | None = None,
 ) -> tuple[bool, str]:
-    """Tick 423: non-force ``git push`` tip HEAD so durable ledgers survive the VM.
+    """Tick 423/437: non-force ``git push`` tip HEAD so durable ledgers survive the VM.
 
     Tick 422 committed locally after live, but cron/agent timeout could exit
     before a human/agent ``git push`` — next greenfield boot still re-burned.
     Never ``--force``. Refuses ``main``/``master``.
+
+    Tick 437: when the tip push is non-fast-forward rejected (concurrent tip
+    advance after Tick 436 fetch / mid-tick race, or unique local durable
+    commits on a stale tip base that Tick 435 cannot FF), fetch ``origin/<tip>``,
+    rebase local HEAD onto it (preserve durable dirt), and retry the push
+    **once**. Still never force-pushes.
     """
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     target = (branch or resolve_push_branch_for_durable_ledgers(root) or "").strip()
@@ -2663,9 +2735,31 @@ def push_tip_after_durable_ledger_commit(
         ["push", "origin", f"HEAD:refs/heads/{target}"],
         cwd=root,
     )
-    if not ok:
+    if ok:
+        return True, f"Tick 423: pushed durable ledger commit to origin/{target}"
+    if not _git_push_looks_non_fast_forward(detail):
         return False, f"Tick 423 git push failed: {detail}"
-    return True, f"Tick 423: pushed durable ledger commit to origin/{target}"
+    ok_rb, detail_rb = rebase_tip_onto_origin_for_durable_push(target, cwd=root)
+    if not ok_rb:
+        return (
+            False,
+            f"Tick 423 git push failed (NF): {detail}; {detail_rb}",
+        )
+    ok2, detail2 = _git_ok(
+        ["push", "origin", f"HEAD:refs/heads/{target}"],
+        cwd=root,
+    )
+    if not ok2:
+        return (
+            False,
+            f"Tick 437 push retry failed after rebase: {detail2} "
+            f"(first NF: {detail[:160]}; {detail_rb})",
+        )
+    return (
+        True,
+        f"Tick 437: rebased onto origin/{target} after NF push then pushed "
+        f"({detail_rb})",
+    )
 
 
 def commit_durable_ledgers_after_live(
@@ -2722,6 +2816,10 @@ def commit_durable_ledgers_after_live(
     Tick 436: fetch ``origin/<tip>`` before Tick 435 ahead / Tick 434 checkout
     — pre-436 used a stale remote-tracking ref after long live gates, so
     Tick 435 never FF'd and tip push was still NF-rejected.
+    Tick 437: when tip push is still NF-rejected (concurrent tip advance after
+    the Tick 436 fetch, or unique local durable commits on a stale tip base
+    that Tick 435 cannot FF), rebase onto ``origin/<tip>`` and retry push
+    once — never force.
     """
     ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
     if not ok_sync:
@@ -2729,13 +2827,14 @@ def commit_durable_ledgers_after_live(
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 436: commit durable ledgers + paper-pack companions."
+            "ICML Tick 437: commit durable ledgers + paper-pack companions."
         ),
     )
     if (
         "synced local tip" in detail_sync
         or "checked out tip" in detail_sync
         or "Tick 436" in detail_sync
+        or "Tick 437" in detail_sync
         or "fetched origin" in detail_sync
     ):
         detail = f"{detail_sync}; {detail}"

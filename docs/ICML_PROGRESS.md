@@ -1,5 +1,41 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-26T16:06Z — Tick 437 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-64b2` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 435/436 only FF when `origin/<tip>` is a **strict descendant** of HEAD. When durable spend is already committed on a stale tip base and origin tip advances concurrently (mid-tick race after Tick 436 fetch, or diverged unique commits), tip push is still non-fast-forward rejected and spend stays local-only. Highest leverage without paid spend: **on NF tip push → fetch + rebase onto origin/<tip> + retry push once (never force)**.
+
+### What this tick did (ONE step)
+**Tick 437 — NF tip push rebase+retry (no API spend):**
+1. Recovered tip ← Tick 436 (`f49c`); confirmed secrets absent; boot `64b2` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `rebase_tip_onto_origin_for_durable_push` + `_git_push_looks_non_fast_forward`; `push_tip_after_durable_ledger_commit` retries once after rebase
+3. Preserve durable + paper-pack dirt across rebase; abort rebase on conflict (keep local HEAD / stashes)
+4. Test: `test_push_tip_rebases_after_nf_when_diverged_from_origin` + durable/tip filter → focused **14 passed** (incl. Tick 433–436)
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 436) | After (Tick 437) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Tip push after concurrent tip advance + unique local durable | **NF reject → spend local-only** | **rebase onto origin/<tip> → retry push → spend on tip** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-26T14:05Z — Tick 436 (automation cron)
 
 ### Status snapshot
