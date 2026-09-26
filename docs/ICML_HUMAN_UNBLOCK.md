@@ -1,6 +1,11 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 432:** durable-ledger push always targets tip PR head when known (closes re-park after accidental `origin/<boot>`).  
+**Tick 431:** durable-ledger push redirects greenfield boot → tip PR head.  
+**Tick 430:** durable-stash redundancy vs committed HEAD (not WT).  
+**Tick 429:** consume only stashes redundant with HEAD.  
+**Tick 428:** consume durable stashes after successful tip push.  
 **Tick 427:** park/reinject paper-pack companions across tip `--apply` (closes prepare refuse after mid-tick `apply_paper_pack`).  
 **Tick 426:** co-commit G4 paper-pack companions with durable ledgers (closes post-`apply_paper_pack` refuse → spend/READY wipe).  
 **Tick 425:** tip-recover durable-ledger commit+push (closes commit-only mid-tick death after tip `--apply`).  

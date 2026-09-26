@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 431: durable-ledger push redirects greenfield boot `cursor/*` (no `origin/<boot>`, or matching cloud-boot env/persisted) to `tip_pr_commit_branch` so spend/READY land on tip PR #337 — not an invisible boot ref. Tick 430 HEAD-blob redundancy + Tick 429 redundant-only consume + Tick 428 consume-after-push remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 432: when tip PR head is known, durable-ledger push **always** targets `tip_pr_commit_branch` — even if `origin/<boot>` already exists and cloud-boot capture is missing (closes re-park after accidental boot push). Tick 431 unpushed-boot redirect + Tick 430 HEAD-blob redundancy + Tick 429 redundant-only consume + Tick 428 consume-after-push remain. Tip PR #337 remains **MERGEABLE/CLEAN**. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

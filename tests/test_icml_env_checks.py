@@ -2411,7 +2411,7 @@ def test_discard_ephemeral_ok_when_persist_writes_evidence(
 
 
 def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch
 ) -> None:
     """Tick 422/423: post-live dirt commits + pushes tip; ephemeral gate dirt OK."""
     import json
@@ -2424,6 +2424,7 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
         is_ephemeral_icml_path,
         porcelain_dirty_paths,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -2438,6 +2439,7 @@ def test_commit_durable_ledgers_after_live_with_ephemeral_dirt(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test423"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -2609,7 +2611,7 @@ def test_commit_durable_ledgers_after_live_surfaces_push_failure(
 
 
 def test_commit_durable_ledgers_after_live_pushes_when_ahead_on_noop(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch
 ) -> None:
     """Tick 424: commit-noop still pushes when tip HEAD is ahead of origin.
 
@@ -2624,11 +2626,13 @@ def test_commit_durable_ledgers_after_live_pushes_when_ahead_on_noop(
         commit_durable_ledgers_after_live,
         tip_commits_ahead_of_origin,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "remote.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
 
     tip_branch = "cursor/icml-epistemic-results-ahead"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
@@ -2762,8 +2766,7 @@ def test_tip_recover_paths_push_durable_ledgers() -> None:
 
 
 def test_commit_durable_ledgers_co_commits_paper_pack_companions(
-    tmp_path: Path,
-) -> None:
+    tmp_path: Path, monkeypatch) -> None:
     """Tick 426: post-G4 paper-pack dirt must not refuse durable commit+push.
 
     Pre-426: apply_paper_pack dirtied paper_artifacts / ICML_READY / Figs 1–2
@@ -2780,6 +2783,7 @@ def test_commit_durable_ledgers_co_commits_paper_pack_companions(
         is_ephemeral_icml_path,
         porcelain_dirty_paths,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -2794,6 +2798,7 @@ def test_commit_durable_ledgers_co_commits_paper_pack_companions(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test426"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -2988,8 +2993,7 @@ def test_commit_durable_ledgers_still_refuses_unrelated_code_dirt(
 
 
 def test_prepare_parks_paper_pack_companions_for_tip_apply(
-    tmp_path: Path,
-) -> None:
+    tmp_path: Path, monkeypatch) -> None:
     """Tick 427: dirty paper-pack companions must park across tip --apply.
 
     Pre-427: Tick 426 co-commit accepted companions on the post-live path, but
@@ -3010,6 +3014,7 @@ def test_prepare_parks_paper_pack_companions_for_tip_apply(
         reinject_paper_pack_stash,
         tip_apply_blocking_dirty_paths,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -3024,6 +3029,7 @@ def test_prepare_parks_paper_pack_companions_for_tip_apply(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test427"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -3183,8 +3189,7 @@ def test_prepare_parks_paper_pack_companions_for_tip_apply(
 
 
 def test_durable_commit_consumes_stashes_prevents_stale_reinject(
-    tmp_path: Path,
-) -> None:
+    tmp_path: Path, monkeypatch) -> None:
     """Tick 428: leftover stashes must not reinject stale READY over tip HEAD.
 
     Pre-428: after reinject+commit, paper-pack stash survived. A later tip
@@ -3205,6 +3210,7 @@ def test_durable_commit_consumes_stashes_prevents_stale_reinject(
         reinject_paper_pack_stash,
         reinject_prior_live_stash,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -3219,6 +3225,7 @@ def test_durable_commit_consumes_stashes_prevents_stale_reinject(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test428"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -3365,8 +3372,7 @@ def test_durable_commit_consumes_stashes_prevents_stale_reinject(
 
 
 def test_consume_keeps_non_redundant_stash_after_failed_reinject(
-    tmp_path: Path,
-) -> None:
+    tmp_path: Path, monkeypatch) -> None:
     """Tick 429: commit-noop must not wipe unique mid-tick paper-pack stash.
 
     Pre-429 Tick 428 consumed on tip-synced commit-noop even when reinject
@@ -3381,6 +3387,7 @@ def test_consume_keeps_non_redundant_stash_after_failed_reinject(
         prepare_prior_live_evidence_for_tip_apply,
         reinject_paper_pack_stash,
     )
+    import icml_env_checks as m
 
     bare = tmp_path / "bare.git"
     subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
@@ -3395,6 +3402,7 @@ def test_consume_keeps_non_redundant_stash_after_failed_reinject(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test429"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -3484,8 +3492,7 @@ def test_consume_keeps_non_redundant_stash_after_failed_reinject(
 
 
 def test_consume_keeps_stash_when_wt_matches_but_head_differs(
-    tmp_path: Path,
-) -> None:
+    tmp_path: Path, monkeypatch) -> None:
     """Tick 430: reinject WT==stash must not wipe unique stash vs committed HEAD.
 
     Pre-430 redundancy compared stash to the working tree. After a successful
@@ -3517,6 +3524,7 @@ def test_consume_keeps_stash_when_wt_matches_but_head_differs(
         ["git", "config", "user.name", "icml"], cwd=repo, check=True, capture_output=True
     )
     tip_branch = "cursor/icml-epistemic-results-test430"
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
     subprocess.run(
         ["git", "checkout", "-b", tip_branch],
         cwd=repo,
@@ -3777,6 +3785,120 @@ def test_resolve_push_branch_redirects_greenfield_boot_to_tip_pr(
         capture_output=True,
     )
     monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot_branch)
+    assert resolve_push_branch_for_durable_ledgers(boot) == tip_branch
+
+
+def test_resolve_push_branch_redirects_even_when_origin_boot_exists_without_capture(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 432: origin/<boot> alone must not keep durable push on boot.
+
+    Pre-432 kept any ``cursor/*`` with an origin ref as an "alternate tip-like"
+    branch when cloud-boot env/persisted capture was missing. After
+    ``open_git_pr`` omitted ``branch=`` (MCP default → boot), a later live
+    durable push re-parked spend/READY on ``origin/<boot>`` off tip PR head.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import resolve_push_branch_for_durable_ledgers
+    import icml_env_checks as m
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    tip_branch = "cursor/icml-epistemic-results-tip432"
+    boot_branch = "cursor/icml-epistemic-results-boot432"
+
+    tip_repo = tmp_path / "tip"
+    tip_repo.mkdir()
+    subprocess.run(["git", "init"], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = tip_repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "tip init"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    boot = tmp_path / "boot"
+    subprocess.run(
+        ["git", "clone", str(bare), str(boot)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-B", tip_branch, f"origin/{tip_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", boot_branch],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    # Accidental boot push (open_git_pr omitted branch=).
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{boot_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "fetch", "origin", f"+refs/heads/{boot_branch}:refs/remotes/origin/{boot_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    assert m._origin_branch_exists(boot, tip_branch)
+    assert m._origin_branch_exists(boot, boot_branch)
+
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
+    # No env / persisted capture — Pre-432 would have kept boot.
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    boot_file = boot / "docs" / "icml_cloud_boot_branch.txt"
+    if boot_file.exists():
+        boot_file.unlink()
+
     assert resolve_push_branch_for_durable_ledgers(boot) == tip_branch
 
 
