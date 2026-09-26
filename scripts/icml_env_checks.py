@@ -2141,7 +2141,7 @@ def commit_prior_live_evidence_if_dirty(
 
     msg = (
         commit_message
-        or "ICML Tick 428: commit durable ledgers + paper-pack companions."
+        or "ICML Tick 429: commit durable ledgers + paper-pack companions."
     )
     commit = subprocess.run(
         [
