@@ -2220,13 +2220,45 @@ def commit_prior_live_evidence_if_dirty(
     )
 
 
+def _origin_branch_exists(repo_root: Path, branch: str) -> bool:
+    """True when ``refs/remotes/origin/<branch>`` (or tip SHA) is resolvable."""
+    import subprocess
+
+    name = (branch or "").strip()
+    if not name:
+        return False
+    for ref in (f"refs/remotes/origin/{name}", f"origin/{name}"):
+        try:
+            proc = subprocess.run(
+                ["git", "rev-parse", "--verify", ref],
+                cwd=str(repo_root),
+                capture_output=True,
+                check=False,
+            )
+        except OSError:
+            continue
+        if proc.returncode == 0:
+            return True
+    return False
+
+
 def resolve_push_branch_for_durable_ledgers(
     repo_root: Path | None = None,
 ) -> str | None:
-    """Resolve tip branch name for post-live durable-ledger push (Tick 423).
+    """Resolve tip branch name for post-live durable-ledger push (Tick 423/431).
 
     Prefers the current checkout when it is a tip-like ``cursor/*`` branch,
     else ``prefer_tip_pr_commit_branch()``. Never returns ``main``/``master``.
+
+    Tick 431: greenfield cron boots stay on ``cursor/icml-epistemic-results-*``
+    names that are **never** pushed to origin. Pre-431 returned that boot
+    name whenever ``HEAD`` started with ``cursor/``, so
+    ``commit_durable_ledgers_after_live`` pushed spend/READY/prior_live to
+    ``origin/<boot>`` (invisible to tip PR #337 / next tip ``--apply``) instead
+    of ``tip_pr_commit_branch``. When ``prefer_tip_pr_commit_branch()`` is set
+    and the current ``cursor/*`` checkout has **no** ``origin/<boot>`` while
+    the tip PR head **does** exist on origin — or the checkout matches the
+    captured/persisted cloud boot name — push to the tip PR head.
     """
     import subprocess
 
@@ -2246,11 +2278,28 @@ def resolve_push_branch_for_durable_ledgers(
         branch = ""
     if branch in ("HEAD", "", "main", "master"):
         branch = ""
-    if branch.startswith("cursor/"):
-        return branch
     tip_branch = prefer_tip_pr_commit_branch()
     if tip_branch and tip_branch not in ("main", "master"):
+        if branch == tip_branch:
+            return tip_branch
+        if branch.startswith("cursor/"):
+            # Explicit boot capture (cron env / persisted file) wins.
+            env_boot = (os.environ.get("ICML_CLOUD_BOOT_BRANCH") or "").strip()
+            persisted = _read_persisted_cloud_boot_branch(
+                tip_commit_branch=tip_branch, repo_root=root
+            )
+            if branch in {env_boot, persisted}:
+                return tip_branch
+            # Greenfield boot: never pushed; tip PR head exists on origin.
+            if not _origin_branch_exists(root, branch) and _origin_branch_exists(
+                root, tip_branch
+            ):
+                return tip_branch
+            # Alternate tip-like local branch (tests / intentional) — keep it.
+            return branch
         return tip_branch
+    if branch.startswith("cursor/"):
+        return branch
     return None
 
 
@@ -2355,11 +2404,15 @@ def commit_durable_ledgers_after_live(
     unique mid-tick READY/spend after failed reinject on commit-noop.
     Tick 430: redundancy uses committed ``git show HEAD:<path>`` (not WT) so
     reinject/staged-only WT match cannot wipe a unique stash on commit-noop.
+    Tick 431: ``resolve_push_branch_for_durable_ledgers`` redirects greenfield
+    boot ``cursor/*`` checkouts (no ``origin/<boot>``, or matching cloud-boot
+    env/persisted name) to ``tip_pr_commit_branch`` so spend/READY land on the
+    tip PR head — not an invisible boot ref.
     """
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 429: commit durable ledgers + paper-pack companions."
+            "ICML Tick 431: commit durable ledgers + paper-pack companions."
         ),
     )
     if not ok:

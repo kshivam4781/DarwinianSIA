@@ -3615,6 +3615,171 @@ def test_consume_keeps_stash_when_wt_matches_but_head_differs(
     assert "IN_PROGRESS" in head_ready
 
 
+def test_resolve_push_branch_redirects_greenfield_boot_to_tip_pr(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 431: durable push must target tip PR head, not unpushed boot branch.
+
+    Pre-431 ``resolve_push_branch_for_durable_ledgers`` returned any ``cursor/*``
+    HEAD name. Greenfield cron boots never exist on origin, so post-live
+    ``git push origin HEAD:refs/heads/<boot>`` parked spend/READY off the tip
+    PR head — next tip ``--apply`` recovered an empty ledger.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        commit_durable_ledgers_after_live,
+        resolve_push_branch_for_durable_ledgers,
+        tip_commits_ahead_of_origin,
+    )
+    import icml_env_checks as m
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    tip_branch = "cursor/icml-epistemic-results-tip431"
+    boot_branch = "cursor/icml-epistemic-results-boot431"
+
+    tip_repo = tmp_path / "tip"
+    tip_repo.mkdir()
+    subprocess.run(["git", "init"], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = tip_repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 389, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "tip init"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+
+    # Greenfield boot: same SHA as tip, branch name never on origin.
+    boot = tmp_path / "boot"
+    subprocess.run(
+        ["git", "clone", str(bare), str(boot)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-B", tip_branch, f"origin/{tip_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", boot_branch],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    # Ensure tip remote-tracking ref is present; boot ref must stay absent.
+    subprocess.run(
+        ["git", "fetch", "origin", f"+refs/heads/{tip_branch}:refs/remotes/origin/{tip_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    assert m._origin_branch_exists(boot, tip_branch)
+    assert not m._origin_branch_exists(boot, boot_branch)
+
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+    assert resolve_push_branch_for_durable_ledgers(boot) == tip_branch
+
+    # Dirty ledger on boot → commit + push must land on origin/<tip>, not boot.
+    (boot / "docs" / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 2.5, "stages_complete": ["G2"], "run_ids": [1300]},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    assert tip_commits_ahead_of_origin(boot) >= 0  # resolves against tip
+    ok, detail = commit_durable_ledgers_after_live(boot)
+    assert ok is True, detail
+    assert "pushed" in detail.lower() or "Tick 423" in detail
+
+    # Tip remote has the spend; boot ref still absent on origin.
+    tip_spent = subprocess.run(
+        ["git", "show", f"origin/{tip_branch}:docs/icml_budget_spent.json"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "2.5" in tip_spent
+    assert not m._origin_branch_exists(boot, boot_branch)
+
+    # Env-captured boot with origin/<boot> still redirects (anti-churn).
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{boot_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "fetch", "origin", f"+refs/heads/{boot_branch}:refs/remotes/origin/{boot_branch}"],
+        cwd=boot,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot_branch)
+    assert resolve_push_branch_for_durable_ledgers(boot) == tip_branch
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:

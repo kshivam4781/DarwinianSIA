@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-26T04:06Z — Tick 431 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-b2d2`; recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 430 closed HEAD-vs-WT stash compare, but `resolve_push_branch_for_durable_ledgers` still returned **any** `cursor/*` checkout name. Greenfield boots never exist on `origin`, so post-live `git push origin HEAD:refs/heads/<boot>` could park spend/READY/prior_live off tip PR #337 — next tip `--apply` recovered an empty ledger. Highest leverage without paid spend: **redirect durable push from unpushed boot → tip_pr_commit_branch**.
+
+### What this tick did (ONE step)
+**Tick 431 — durable-ledger push prefers tip PR head over greenfield boot (no API spend):**
+1. Recovered tip ← Tick 430 (`f49c`); confirmed secrets absent; boot `b2d2` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `resolve_push_branch_for_durable_ledgers`: when tip PR head is known, redirect if current `cursor/*` matches cloud-boot env/persisted name **or** `origin/<boot>` is missing while `origin/<tip>` exists; keep intentional alternate tip-like locals (tests)
+3. Tests: `test_resolve_push_branch_redirects_greenfield_boot_to_tip_pr` + durable/push filter → focused **13 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 430) | After (Tick 431) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Durable push from greenfield boot | **origin/`<boot>`** (invisible to tip) | **origin/`tip_pr_commit_branch`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-26T02:15Z — Tick 430 (automation cron)
 
 ### Status snapshot
