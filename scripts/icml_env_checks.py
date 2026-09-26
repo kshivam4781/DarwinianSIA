@@ -2308,10 +2308,34 @@ def _git_is_ancestor(ancestor: str, descendant: str, *, cwd: Path) -> bool:
     return proc.returncode == 0
 
 
+def _preserve_post_live_dirty_bytes(root: Path) -> dict[str, bytes]:
+    """Snapshot durable + paper-pack WT bytes before a tip checkout (Tick 434)."""
+    preserved: dict[str, bytes] = {}
+    for rel in sorted(_durable_ledger_relpaths() | _post_live_companion_relpaths()):
+        path = root / rel
+        if path.is_file():
+            try:
+                preserved[rel] = path.read_bytes()
+            except OSError:
+                continue
+    return preserved
+
+
+def _restore_preserved_bytes(root: Path, preserved: dict[str, bytes]) -> None:
+    """Write Tick 434 preserved durable/companion bytes back onto WT."""
+    for rel, data in preserved.items():
+        dest = root / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(data)
+        except OSError:
+            continue
+
+
 def ensure_local_tip_branch_for_durable_ledgers(
     repo_root: Path | None = None,
 ) -> tuple[bool, str]:
-    """Tick 433: point local tip PR branch at HEAD before durable commit/push.
+    """Tick 433/434: point local tip PR branch at a tip-lineage HEAD before durable commit/push.
 
     Tick 432 pushes ``HEAD:refs/heads/<tip>``, but when the durable commit lands
     while still checked out on a greenfield **boot** branch name, the local
@@ -2321,9 +2345,16 @@ def ensure_local_tip_branch_for_durable_ledgers(
     Tick 428/429 consume can wipe reinject stashes — losing paid ledger state
     even though the commit still exists only on the boot ref.
 
-    Fast-forward (never rewind) the local tip ref to HEAD when HEAD is a
-    descendant of tip, then check out tip so commit / ahead / push / consume
+    Tick 433: fast-forward (never rewind) the local tip ref to HEAD when HEAD is
+    a descendant of tip, then check out tip so commit / ahead / push / consume
     all operate on the tip PR branch name.
+
+    Tick 434: when HEAD is **not** a tip descendant (greenfield boot still at
+    main / pre-tip-recover SHA while ``origin/<tip>`` is ahead), do **not**
+    skip and commit on boot — that yields a non-fast-forward tip push reject
+    and leaves spend only on an invisible boot ref. Instead checkout tip
+    (prefer ``origin/<tip>``), preserving dirty durable + paper-pack companion
+    bytes across the switch, then commit on tip.
     """
     import subprocess
 
@@ -2364,14 +2395,46 @@ def ensure_local_tip_branch_for_durable_ledgers(
         if proc.returncode == 0 and (proc.stdout or "").strip():
             tip_ref = cand
             break
-    if tip_ref:
-        # Never rewind tip onto an older boot SHA (main-equivalent greenfield).
-        if not _git_is_ancestor(tip_ref, "HEAD", cwd=root):
+    if tip_ref and not _git_is_ancestor(tip_ref, "HEAD", cwd=root):
+        # Tick 434: HEAD behind/diverged from tip — checkout tip (never rewind
+        # tip onto older boot). Prefer origin/<tip> when present.
+        checkout_target = tip_ref
+        for prefer in (f"origin/{tip_branch}", f"refs/remotes/origin/{tip_branch}"):
+            try:
+                proc = subprocess.run(
+                    ["git", "rev-parse", "--verify", prefer],
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except OSError:
+                continue
+            if proc.returncode == 0 and (proc.stdout or "").strip():
+                checkout_target = prefer
+                break
+        preserved = _preserve_post_live_dirty_bytes(root)
+        # Clear preserved paths so checkout is not blocked by durable dirt.
+        for rel in preserved:
+            _git_restore_or_unlink(root, rel, root / rel)
+        ok, detail = _git_ok(
+            ["checkout", "-B", tip_branch, checkout_target],
+            cwd=root,
+        )
+        if not ok:
+            _restore_preserved_bytes(root, preserved)
             return (
-                True,
-                f"Tick 433: HEAD not descendant of {tip_ref} — skip tip sync "
-                f"(stay on {head_branch or 'HEAD'})",
+                False,
+                f"Tick 434 git checkout tip failed (HEAD not tip descendant; "
+                f"was {head_branch or 'HEAD'}): {detail}",
             )
+        _restore_preserved_bytes(root, preserved)
+        return (
+            True,
+            f"Tick 434: checked out tip {tip_branch} ← {checkout_target} "
+            f"(preserved {len(preserved)} durable paths; was "
+            f"{head_branch or 'detached'} not tip descendant)",
+        )
 
     # Move/create local tip ref to current HEAD, then check it out.
     ok, detail = _git_ok(["branch", "-f", tip_branch, "HEAD"], cwd=root)
@@ -2508,6 +2571,9 @@ def commit_durable_ledgers_after_live(
     onto HEAD when HEAD is a tip descendant and check out tip — closes stale
     local tip ref after durable commit on a boot branch name (ahead=0 consume
     wipe / anti-churn checkout drop).
+    Tick 434: when HEAD is **not** a tip descendant (greenfield boot behind
+    ``origin/<tip>``), checkout tip (preserving durable/companion dirt) instead
+    of skipping — pre-434 committed on boot then non-FF rejected tip push.
     """
     ok_sync, detail_sync = ensure_local_tip_branch_for_durable_ledgers(repo_root)
     if not ok_sync:
@@ -2515,10 +2581,13 @@ def commit_durable_ledgers_after_live(
     ok, detail = commit_prior_live_evidence_if_dirty(
         repo_root,
         commit_message=(
-            "ICML Tick 433: commit durable ledgers + paper-pack companions."
+            "ICML Tick 434: commit durable ledgers + paper-pack companions."
         ),
     )
-    if "synced local tip" in detail_sync:
+    if (
+        "synced local tip" in detail_sync
+        or "checked out tip" in detail_sync
+    ):
         detail = f"{detail_sync}; {detail}"
     if not ok:
         return ok, detail

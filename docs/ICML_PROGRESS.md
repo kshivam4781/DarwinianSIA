@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-26T10:15Z — Tick 434 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-e9f5` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 433 skipped tip sync when HEAD was **not** a tip descendant (greenfield boot still at main while `origin/<tip>` ahead), then committed durable ledgers onto boot and `git push HEAD:tip` was non-fast-forward rejected — spend stayed only on an invisible boot ref. Highest leverage without paid spend: **checkout tip (preserve durable dirt) when boot is behind tip**.
+
+### What this tick did (ONE step)
+**Tick 434 — checkout tip when boot behind tip (no API spend):**
+1. Recovered tip ← Tick 433 (`f49c`); confirmed secrets absent; boot `e9f5` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `ensure_local_tip_branch_for_durable_ledgers`: when HEAD is not a tip descendant, checkout tip (prefer `origin/<tip>`), preserving dirty durable + paper-pack companion bytes across the switch — never skip→boot-commit→NF push
+3. Test: `test_ensure_local_tip_checkouts_tip_when_boot_behind` + durable/tip filter → focused **12 passed** (incl. Tick 431–433)
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 433) | After (Tick 434) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Durable commit with boot behind tip | **skip sync → boot commit → NF tip push reject** | **checkout tip + preserve dirt → FF push** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-26T08:15Z — Tick 433 (automation cron)
 
 ### Status snapshot

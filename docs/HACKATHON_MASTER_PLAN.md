@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-26 (Section 21 ICML; Tick 433 local tip ref sync before durable commit; Tick 432 durable push always→tip PR head; Tick 431 durable push boot→tip PR head; …)
+**Last updated:** 2026-09-26 (Section 21 ICML; Tick 434 checkout tip when boot behind; Tick 433 local tip ref sync; Tick 432 durable push always→tip PR head; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -884,6 +884,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML durable push boot→tip PR head (Tick 431) | **DONE** | `resolve_push_branch_for_durable_ledgers` redirects unpushed greenfield boot / cloud-boot env to `tip_pr_commit_branch`; spend/READY no longer park on invisible `origin/<boot>`; focused durable/push tests 13/13 |
 | ICML durable push always→tip PR head (Tick 432) | **DONE** | When tip PR head known, durable push **always** targets `tip_pr_commit_branch` (even if `origin/<boot>` exists without capture); closes re-park after accidental boot push; focused durable/push tests 10/10 |
 | ICML local tip ref sync before durable commit (Tick 433) | **DONE** | `ensure_local_tip_branch_for_durable_ledgers` fast-forwards tip ← HEAD + checkout tip before commit/push; ahead counts tip ref too; closes boot-name durable commit → stale tip checkout / consume wipe; focused durable/tip tests 14/14 |
+| ICML checkout tip when boot behind (Tick 434) | **DONE** | When HEAD is not a tip descendant, checkout tip (preserve durable/companion dirt) instead of skip→boot commit→non-FF tip push reject; focused durable/tip tests 12/12 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -2772,6 +2773,8 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Durable push boot→tip PR head (Tick 431):** Pre-431 `resolve_push_branch_for_durable_ledgers` returned any `cursor/*` HEAD name. Greenfield boots never exist on `origin`, so post-live push could park spend/READY on invisible `origin/<boot>` instead of tip PR #337. Redirect when tip PR head is known and current matches cloud-boot env/persisted **or** `origin/<boot>` is missing while `origin/<tip>` exists. Focused durable/push tests **13** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Durable local tip ref sync (Tick 433):** Tick 432 pushes `HEAD:refs/heads/<tip>`, but a durable commit while still on a greenfield **boot** branch name could leave the local tip ref at the pre-commit tip SHA — later `git checkout <tip>` dropped unpushed spend/READY; ahead from that old tip HEAD was 0 → consume wiped reinject stashes. `ensure_local_tip_branch_for_durable_ledgers` now fast-forwards tip ← HEAD (never rewind) + checkouts tip before commit/push; `tip_commits_ahead_of_origin` also counts the tip ref. Focused durable/tip tests **14** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Checkout tip when boot behind (Tick 434):** Tick 433 skipped tip sync when HEAD was **not** a tip descendant (greenfield boot still at main while `origin/<tip>` ahead), then committed durable ledgers onto boot and `git push HEAD:tip` was non-fast-forward rejected — spend stayed only on an invisible boot ref. Now checkout tip (prefer `origin/<tip>`), preserving dirty durable + paper-pack companion bytes across the switch. Focused durable/tip tests **12** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Durable push always→tip PR head (Tick 432):** Tick 431 still kept any `cursor/*` with an existing `origin/<boot>` when cloud-boot capture was missing — so after `open_git_pr` omitted `branch=` (MCP default → boot), a later durable push re-parked spend/READY off tip PR #337. When `prefer_tip_pr_commit_branch()` is set, durable push now **always** targets tip PR head. Focused durable/push tests **10** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 

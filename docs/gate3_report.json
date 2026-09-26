@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-25T04:04:10Z",
+  "timestamp": "2026-09-26T10:02:56Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -93,7 +93,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 418 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 433 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "commands": [
