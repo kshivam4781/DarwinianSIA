@@ -4288,6 +4288,203 @@ def test_ensure_local_tip_checkouts_tip_when_boot_behind(
     assert "IN_PROGRESS" in ready
 
 
+def test_ensure_local_tip_ffs_when_already_on_tip_behind_origin(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 435: already-on-tip behind origin/tip must FF (preserve durable dirt).
+
+    Pre-435 early-returned ``already on tip branch`` when HEAD name matched tip
+    even if ``origin/<tip>`` had advanced (concurrent cron / stale tip SHA).
+    Durable commit then landed on the stale tip base and ``git push`` tip was
+    non-fast-forward rejected — spend stayed only local / invisible.
+    """
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        commit_durable_ledgers_after_live,
+        tip_commits_ahead_of_origin,
+    )
+    import icml_env_checks as m
+
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "--bare", str(bare)], check=True, capture_output=True)
+
+    tip_branch = "cursor/icml-epistemic-results-tip435"
+
+    tip_repo = tmp_path / "tip"
+    tip_repo.mkdir()
+    subprocess.run(["git", "init"], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip_branch],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(bare)],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    docs = tip_repo / "docs"
+    docs.mkdir()
+    (docs / "icml_budget_spent.json").write_text(
+        json.dumps({"spent_usd": 0.0, "stages_complete": [], "run_ids": []}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_prior_live_evidence.json").write_text(
+        json.dumps({"tick": 0, "gates": {}}, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "base"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "-u", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    # Tip advances ahead of the SHA the stale local tip still sits on.
+    (docs / "ICML_READY.md").write_text("STATUS: IN_PROGRESS\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=tip_repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "tip ahead"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "push", "origin", f"HEAD:refs/heads/{tip_branch}"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+    )
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD~1"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    tip_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tip_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    stale = tmp_path / "stale"
+    subprocess.run(
+        ["git", "clone", str(bare), str(stale)],
+        check=True,
+        capture_output=True,
+    )
+    # Already on tip *name*, but reset to the behind-origin base SHA.
+    subprocess.run(
+        ["git", "checkout", "-B", tip_branch, base_sha],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "fetch", "origin"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setattr(m, "prefer_tip_pr_commit_branch", lambda pr=None: tip_branch)
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+
+    (stale / "docs" / "icml_budget_spent.json").write_text(
+        json.dumps(
+            {"spent_usd": 4.35, "stages_complete": ["G2"], "run_ids": [1300]},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ok, detail = commit_durable_ledgers_after_live(stale)
+    assert ok is True, detail
+    assert "Tick 435" in detail or "checked out tip" in detail
+    assert "behind" in detail or "4.35" in detail or "committed durable" in detail
+
+    head_branch = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert head_branch == tip_branch
+
+    head_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert head_sha != base_sha
+    assert (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", tip_sha, "HEAD"],
+            cwd=stale,
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+
+    origin_spent = subprocess.run(
+        ["git", "show", f"origin/{tip_branch}:docs/icml_budget_spent.json"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "4.35" in origin_spent
+    assert tip_commits_ahead_of_origin(stale) == 0
+    ready = subprocess.run(
+        ["git", "show", f"origin/{tip_branch}:docs/ICML_READY.md"],
+        cwd=stale,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "IN_PROGRESS" in ready
+
+
 def test_prepare_and_commit_prior_live_evidence_tip_apply_roundtrip(
     tmp_path: Path,
 ) -> None:
