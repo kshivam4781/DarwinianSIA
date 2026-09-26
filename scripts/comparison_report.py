@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -193,7 +194,10 @@ def format_markdown(report: dict[str, Any]) -> str:
                 f"| {event['generation']} | {event['type']} | {event.get('topic') or '-'} | {event.get('summary', '')} |"
             )
     else:
-        lines.append("_No CABS timeline events yet. Run a multi-generation CABS job or `python scripts/present_hackathon.py`._")
+        lines.append(
+            "_No CABS timeline events yet. Run a multi-generation CABS job or "
+            f"`{Path(sys.executable).name} scripts/present_hackathon.py`._"
+        )
 
     lines.extend(
         [
