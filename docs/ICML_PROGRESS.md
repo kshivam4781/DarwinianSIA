@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-27T02:15Z — Tick 442 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: **MERGEABLE/CLEAN** (title+body still Tick 336 on GitHub)
+- Boot branch was greenfield `cursor/icml-epistemic-results-8c89` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 441 prefer-richer `ICML_READY` merge still demoted STATUS via whole-body substring checks for `STATUS: IN_PROGRESS`. Tick notes / G4 audit prose that mention that phrase made `_demote_icml_ready_status` no-op and left a poisoned `**STATUS: READY**` header after durable conflict merge with a thin IN_PROGRESS side (or zeroed richness on a true READY header). Highest leverage without paid spend: **header-only STATUS parse for demote / merge / richness**.
+
+### What this tick did (ONE step)
+**Tick 442 — ICML_READY STATUS header-only demote (no API spend):**
+1. Recovered tip ← Tick 441 (`f49c`); confirmed secrets absent; boot `8c89` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_icml_ready_status_header` reads only `**STATUS:` lines; `_demote_icml_ready_status` / `merge_icml_ready_text` / `_icml_ready_richness` use it (prose mentions no longer poison demote or richness)
+3. Tests: `test_merge_icml_ready_demotes_header_despite_prose_status_mention` + Tick 441 header asserts + durable merge filter → focused **6 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 441) | After (Tick 442) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Durable rebase `ICML_READY` demote with prose `STATUS: IN_PROGRESS` | **no-op → poisoned READY header** | **header rewritten to IN_PROGRESS; checklist kept** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 (**MERGEABLE/CLEAN**) and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-27T00:06Z — Tick 441 (automation cron)
 
 ### Status snapshot

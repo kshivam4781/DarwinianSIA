@@ -5032,8 +5032,12 @@ def test_merge_icml_ready_prefers_richer_live_checklist_over_long_thin() -> None
 
     # Conflict merge: demote STATUS but keep live checkmarks (onto=rich, local=thin).
     merged = merge_icml_ready_text(rich_live, thin_long)
-    assert "STATUS: IN_PROGRESS" in merged
-    assert "STATUS: READY" not in merged or "STATUS: IN_PROGRESS" in merged
+    from icml_env_checks import _icml_ready_status_header
+
+    assert _icml_ready_status_header(merged) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("**STATUS: READY") for ln in merged.splitlines()
+    )
     assert "- [x] D beats B on ≥3/5 seeds for gens-to-threshold" in merged
     assert "- [x] Spearman ρ" in merged
     assert "- [x] Reproducible **live** run IDs" in merged
@@ -5042,7 +5046,7 @@ def test_merge_icml_ready_prefers_richer_live_checklist_over_long_thin() -> None
 
     # Symmetric: rich local beats thin onto.
     merged2 = merge_icml_ready_text(thin_long, rich_live)
-    assert "STATUS: IN_PROGRESS" in merged2
+    assert _icml_ready_status_header(merged2) == "IN_PROGRESS"
     assert "- [x] Live API-run H2" in merged2
 
     out = _merge_durable_conflict_bytes(
@@ -5052,7 +5056,76 @@ def test_merge_icml_ready_prefers_richer_live_checklist_over_long_thin() -> None
     )
     assert out is not None
     text = out.decode("utf-8")
-    assert "STATUS: IN_PROGRESS" in text
+    assert _icml_ready_status_header(text) == "IN_PROGRESS"
+    assert "- [x] Table 1 (primary metrics by seed)" in text
+
+
+def test_merge_icml_ready_demotes_header_despite_prose_status_mention() -> None:
+    """Tick 442: Tick-note prose ``STATUS: IN_PROGRESS`` must not poison demote.
+
+    Pre-442 whole-body substring checks made ``_demote_icml_ready_status`` no-op
+    when audit/Tick prose mentioned ``STATUS: IN_PROGRESS``, leaving a poisoned
+    ``**STATUS: READY**`` header after durable conflict merge with a thin
+    IN_PROGRESS side. Richness also zeroed ``status_ready`` on true READY.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _merge_durable_conflict_bytes,
+        merge_icml_ready_text,
+    )
+
+    rich_ready = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: READY**\n\n"
+        "_Last G4 pack refresh: 2026-09-27; PRIMARY=True; allow_ready=True_\n"
+        "_Note: do not leave STATUS: IN_PROGRESS after live criteria pass._\n\n"
+        "## Criteria\n\n"
+        "- [x] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [x] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [x] Non-trivial mean final accuracy gap (not ~1pp noise)\n"
+        "- [x] Live API-run H2 DNA trait skew under contradiction bias\n"
+        "- [x] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live\n"
+        "- [x] Table 1 (primary metrics by seed) — live filled\n"
+        "- [x] Table 2 (H2/H5 / cost) — live filled\n"
+        "- [x] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n"
+    )
+    thin = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: IN_PROGRESS**\n\n"
+        "_Tick pad: " + ("y" * 200) + "_\n\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+    )
+
+    assert "STATUS: IN_PROGRESS" in rich_ready  # prose only
+    assert _icml_ready_status_header(rich_ready) == "READY"
+    assert _icml_ready_richness(rich_ready)[2] == 1  # status_ready bit
+
+    demoted = _demote_icml_ready_status(rich_ready)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("**STATUS: READY") for ln in demoted.splitlines()
+    )
+    assert "- [x] Live API-run H2" in demoted
+    assert "do not leave STATUS: IN_PROGRESS" in demoted  # prose preserved
+
+    merged = merge_icml_ready_text(rich_ready, thin)
+    assert _icml_ready_status_header(merged) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("**STATUS: READY") for ln in merged.splitlines()
+    )
+    assert "- [x] D beats B on ≥3/5 seeds for gens-to-threshold" in merged
+    assert "- [x] Reproducible **live** run IDs" in merged
+
+    out = _merge_durable_conflict_bytes(
+        "docs/ICML_READY.md",
+        rich_ready.encode("utf-8"),
+        thin.encode("utf-8"),
+    )
+    assert out is not None
+    text = out.decode("utf-8")
+    assert _icml_ready_status_header(text) == "IN_PROGRESS"
     assert "- [x] Table 1 (primary metrics by seed)" in text
 
 

@@ -2830,14 +2830,39 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
     }
 
 
+def _icml_ready_status_header(text: str) -> str | None:
+    """Tick 442: read STATUS from the ``**STATUS:…**`` header line only.
+
+    Pre-442 demote / richness / merge used whole-body substring checks for
+    ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
+    often mention those phrases (e.g. ``do not leave STATUS: IN_PROGRESS``),
+    which made ``_demote_icml_ready_status`` no-op and left a poisoned
+    ``**STATUS: READY**`` header after durable conflict merge — or zeroed the
+    richness ``status_ready`` bit on a true READY header.
+    """
+    for line in (text or "").splitlines():
+        s = line.strip()
+        if not s.startswith("**STATUS:"):
+            continue
+        # Prefer explicit IN_PROGRESS before READY (header is one token).
+        if "IN_PROGRESS" in s:
+            return "IN_PROGRESS"
+        if "READY" in s:
+            return "READY"
+        return None
+    return None
+
+
 def _icml_ready_richness(text: str) -> tuple:
-    """Tick 441: score ``docs/ICML_READY.md`` (higher = richer live checklist).
+    """Tick 441/442: score ``docs/ICML_READY.md`` (higher = richer live checklist).
 
     Pre-441 ``merge_icml_ready_text`` picked the longer body when either side
     was ``IN_PROGRESS``. A thin local stub padded with a long Tick note could
     wipe onto's post-G4 checklist where PRIMARY / live H2 / H5 / Table rows
     were already ``[x]`` — paid READY evidence lost even though Tick 438
     "merged" the conflict (STATUS demotion is still correct; the body is not).
+
+    Tick 442: ``status_ready`` uses the header line only (not prose substrings).
     """
     t = text or ""
     if not t.strip():
@@ -2857,7 +2882,7 @@ def _icml_ready_richness(text: str) -> tuple:
     ):
         if needle in t:
             live_checks += 1
-    status_ready = 1 if "STATUS: READY" in t and "STATUS: IN_PROGRESS" not in t else 0
+    status_ready = 1 if _icml_ready_status_header(t) == "READY" else 0
     checked = t.count("- [x]")
     low = t.lower()
     live_phrase = 1 if ("live gpqa" in low or "live api" in low) else 0
@@ -2878,26 +2903,50 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force STATUS: IN_PROGRESS while preserving checklist body (Tick 438/441)."""
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442).
+
+    Tick 442: rewrite only lines that start with ``**STATUS:`` so Tick-note /
+    audit prose mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and
+    leave a poisoned ``**STATUS: READY**`` header after durable conflict merge.
+    """
     body = body or ""
-    if "STATUS: READY" in body and "STATUS: IN_PROGRESS" not in body:
+    lines = body.splitlines()
+    out: list[str] = []
+    found_header = False
+    for line in lines:
+        if line.strip().startswith("**STATUS:"):
+            out.append("**STATUS: IN_PROGRESS**")
+            found_header = True
+        else:
+            out.append(line)
+    if found_header:
+        ended = body.endswith("\n")
+        return "\n".join(out) + ("\n" if ended else "")
+    # No markdown STATUS header — prepend a demoted marker (legacy / stub).
+    if _icml_ready_status_header(body) is None and "STATUS: READY" in body:
+        # Bare ``STATUS: READY`` without ``**`` (rare stubs).
         return body.replace("STATUS: READY", "STATUS: IN_PROGRESS", 1)
-    if "STATUS: IN_PROGRESS" not in body:
-        return "STATUS: IN_PROGRESS\n\n" + body.lstrip()
-    return body
+    if not body.strip():
+        return "**STATUS: IN_PROGRESS**\n"
+    return "**STATUS: IN_PROGRESS**\n\n" + body.lstrip()
 
 
 def merge_icml_ready_text(ours: str, theirs: str) -> str:
-    """Tick 438/441: prefer richer checklist; demote READY when either side is IN_PROGRESS.
+    """Tick 438/441/442: prefer richer checklist; demote READY on header conflict.
 
     Tick 438: prefer IN_PROGRESS when either side demotes (conflict safety).
     Tick 441: choose the **richer** checklist body (live ``[x]`` criteria) instead
     of length-only, so a padded thin stub cannot wipe post-G4 checkmarks.
+    Tick 442: STATUS detection uses the ``**STATUS:`` header only — prose that
+    mentions ``STATUS: IN_PROGRESS`` must not skip demote (READY poison) or
+    zero richness on a true READY header.
     """
     o = ours or ""
     t = theirs or ""
     body = prefer_richer_icml_ready(o, t)
-    if "STATUS: IN_PROGRESS" in o or "STATUS: IN_PROGRESS" in t:
+    o_status = _icml_ready_status_header(o)
+    t_status = _icml_ready_status_header(t)
+    if o_status == "IN_PROGRESS" or t_status == "IN_PROGRESS":
         return _demote_icml_ready_status(body)
     return body if body.strip() else (t if t.strip() else o)
 
@@ -3061,6 +3110,10 @@ def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
 
     Tick 441: ``ICML_READY.md`` prefers richer live ``[x]`` criteria over
     length-only (still demotes STATUS when either side is IN_PROGRESS).
+
+    Tick 442: ICML_READY STATUS demote / merge use the ``**STATUS:`` header
+    only — Tick-note prose mentioning ``STATUS: IN_PROGRESS`` must not no-op
+    demote (poisoned READY) or zero richness on a true READY header.
     """
     allowed = _durable_ledger_relpaths() | _post_live_companion_relpaths()
     unmerged = _git_unmerged_relpaths(cwd)
