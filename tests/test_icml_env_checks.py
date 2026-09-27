@@ -6596,6 +6596,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "_offline_evidence_ids_blurb" in present
     assert "IDs 1890-1904" not in present and "IDs 1890–1904" not in present
     assert "ICML finish/present judge demos (Tick 320)" in master
+    # Tick 445: finish/present STATUS read must be header-only (Tick 442/444 parity).
+    assert "_icml_ready_status_header" in finish and "_icml_ready_status_header" in present
+    assert r're.search(r"\*\*STATUS:' not in finish
+    assert r're.search(r"\*\*STATUS:' not in present
+    assert "ICML judge STATUS header-only (Tick 445)" in master
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish
     assert "_print_icml_footer" in finish

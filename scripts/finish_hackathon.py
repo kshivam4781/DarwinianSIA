@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -14,9 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 _SIA_CANDIDATES = (ROOT / "SIA", ROOT.parent / "SIA")
 SIA_ROOT = next((p for p in _SIA_CANDIDATES if p.is_dir()), _SIA_CANDIDATES[0])
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from cabs.belief_engine import BeliefEngine  # noqa: E402
 from cabs.prompt_injection import agenda_snapshot  # noqa: E402
+from icml_env_checks import _icml_ready_status_header  # noqa: E402
 
 
 def _run(cmd: list[str], cwd: Path | None = None) -> int:
@@ -29,12 +30,15 @@ def _banner(title: str) -> None:
 
 
 def _icml_status_line() -> str:
+    """Tick 445: header-only STATUS (Tick 442/444 parity — no prose false READY)."""
     ready = ROOT / "docs" / "ICML_READY.md"
     if not ready.is_file():
         return "UNKNOWN (docs/ICML_READY.md missing)"
     text = ready.read_text(encoding="utf-8")
-    m = re.search(r"\*\*STATUS:\s*([A-Z_]+)\*\*", text)
-    return m.group(1) if m else "UNKNOWN"
+    # Pre-445 ``re.search(r"**STATUS:…")`` matched mid-line Tick-note /
+    # audit prose mentioning ``**STATUS: READY**`` *before* the real header
+    # and falsely printed READY on judge demos (finish/present).
+    return _icml_ready_status_header(text) or "UNKNOWN"
 
 
 def _offline_bvd_blurb() -> str:
