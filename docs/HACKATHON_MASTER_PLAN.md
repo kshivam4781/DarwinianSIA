@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-27 (Section 21 ICML; Tick 446 STATUS header token parse; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
+**Last updated:** 2026-09-27 (Section 21 ICML; Tick 447 plain STATUS header; Tick 446 STATUS header token parse; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -897,6 +897,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML G4 demote header-only STATUS (Tick 443) | **DONE** | `demote_icml_ready_file` / `update_icml_ready_from_g4` use Tick 442 header-only `**STATUS:` + `strip()` — prose `**STATUS: READY**` no false-trigger; indented READY still demotes/updates; focused G4 demote tests 4/4 |
 | ICML judge STATUS header-only (Tick 445) | **DONE** | `finish_hackathon` / `present_hackathon` `_icml_status_line` use `_icml_ready_status_header` (not whole-file `re.search`) — prose `**STATUS: READY**` before header no false READY on judge demos; focused judge STATUS tests 5/5 |
 | ICML STATUS header token parse (Tick 446) | **DONE** | `_icml_ready_status_header` parses token after `**STATUS:` (not trailing IN_PROGRESS substring) — READY+note still demotes; closes G4 demote no-op / richness zero; focused token + G4 demote tests |
+| ICML plain STATUS header (Tick 447) | **DONE** | `_icml_ready_status_header` / demote / G4 pack accept bare `STATUS:` (no `**`) — closes demote no-op + pack miss on plain READY/IN_PROGRESS stubs; focused plain + G4 demote/update tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -2809,6 +2810,10 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Pipeline STATUS read header-only (Tick 444):** Tick 442/443 fixed demote/merge/update, but pipeline `_read_icml_ready_status` still used whole-file `re.search(r"\*\*STATUS:…")`. Mid-line Tick-note / audit prose mentioning `**STATUS: READY**` *before* the real header poisoned `report.icml_ready_status` / pipeline logs as READY while the header stayed IN_PROGRESS. Now uses `_icml_ready_status_header`. Focused pipeline+G4 demote tests **2** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Judge STATUS header-only (Tick 445):** Tick 442–444 fixed pipeline/G4/durable-merge STATUS reads, but judge demos `finish_hackathon.py` / `present_hackathon.py` still used whole-file `re.search(r"\*\*STATUS:…")`. Mid-line prose mentioning `**STATUS: READY**` *before* the real header falsely printed READY on judge surfaces. Both `_icml_status_line` helpers now call `_icml_ready_status_header`. Focused judge STATUS tests **5** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**STATUS header token parse (Tick 446):** Tick 442–445 made STATUS reads header-only, but `_icml_ready_status_header` still preferred the substring `IN_PROGRESS` anywhere on the `**STATUS:` line. A true READY header with a trailing note (`**STATUS: READY** — was IN_PROGRESS`) was misread as IN_PROGRESS — `demote_icml_ready_file` then no-op'd and left poisoned READY after trust refuse; richness also zeroed `status_ready`. Now parses the token after `**STATUS:` only. Focused token + G4 demote tests green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Plain STATUS header (Tick 447):** Tick 442–446 still required markdown-bold `**STATUS:`. Bare `STATUS: READY|IN_PROGRESS` stubs (thin durable merges / fixtures) made demote no-op, G4 pack return READY while leaving plain IN_PROGRESS on disk, and the old whole-body `str.replace("STATUS: READY", …)` fallback could hit prose (`Do not set STATUS: READY`) before the real header. `_ICML_READY_STATUS_HEADER_RE` now accepts optional `**`; demote/update rewrite both forms (normalize to `**STATUS:…**`). Focused plain + G4 demote/update tests green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Durable push always→tip PR head (Tick 432):** Tick 431 still kept any `cursor/*` with an existing `origin/<boot>` when cloud-boot capture was missing — so after `open_git_pr` omitted `branch=` (MCP default → boot), a later durable push re-parked spend/READY off tip PR #337. When `prefer_tip_pr_commit_branch()` is set, durable push now **always** targets tip PR head. Focused durable/push tests **10** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 

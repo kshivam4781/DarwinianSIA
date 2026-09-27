@@ -112,6 +112,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
 )
 from icml_env_checks import (  # noqa: E402
     _icml_ready_status_header,
+    _icml_ready_status_line_match,
     autowire_diamond_csv,
     collect_icml_secrets_status,
     commit_durable_ledgers_after_live,
@@ -984,8 +985,8 @@ def demote_icml_ready_file(
     and left a poisoned ``docs/ICML_READY.md`` READY on disk. Returns True when
     the file was rewritten.
 
-    Tick 443: detect READY via ``_icml_ready_status_header`` (``**STATUS:``
-    header line only, with ``strip()``) — Tick-note / audit prose mentioning
+    Tick 443: detect READY via ``_icml_ready_status_header`` (STATUS header
+    line only, with ``strip()``) — Tick-note / audit prose mentioning
     ``**STATUS: READY**`` must not false-trigger, and an indented READY header
     must still demote. Pre-443 whole-body ``"**STATUS: READY**" in text`` plus
     unstripped ``startswith`` could skip the rewrite loop (``inserted_audit``
@@ -993,11 +994,14 @@ def demote_icml_ready_file(
 
     Tick 446: header token parse (not trailing ``IN_PROGRESS`` substring) so
     ``**STATUS: READY** — was IN_PROGRESS`` still demotes.
+
+    Tick 447: also demote bare ``STATUS: READY`` (no ``**``) — pre-447
+    ``**STATUS:``-only rewrite left plain READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1009,7 +1013,7 @@ def demote_icml_ready_file(
     out_lines: list[str] = []
     inserted_audit = False
     for line in text.splitlines():
-        if line.strip().startswith("**STATUS:"):
+        if _icml_ready_status_line_match(line):
             out_lines.append("**STATUS: IN_PROGRESS**")
             out_lines.append("")
             out_lines.append(audit)
@@ -1109,19 +1113,24 @@ def update_icml_ready_from_g4(
     )
 
     out_lines: list[str] = []
+    saw_status = False
     for line in text.splitlines():
-        # Tick 443: strip() so indented ``**STATUS:`` headers still update.
-        if line.strip().startswith("**STATUS:"):
+        # Tick 443/447: strip() + plain STATUS so indented / bare headers update.
+        if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
+            saw_status = True
             continue
         if line.strip().startswith("_Last G4 pack refresh:"):
             continue
         out_lines.append(line)
+    if not saw_status:
+        # No header line — prepend so live READY cannot stay invisible on disk.
+        out_lines = [f"**STATUS: {status}**", ""] + out_lines
     # Insert audit immediately after STATUS line.
     final: list[str] = []
     for line in out_lines:
         final.append(line)
-        if line.strip().startswith("**STATUS:"):
+        if _icml_ready_status_line_match(line):
             final.append("")
             final.append(audit)
     ready_path.write_text("\n".join(final) + "\n", encoding="utf-8")

@@ -2830,17 +2830,26 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
     }
 
 
-# Tick 446: parse the status *token* after ``**STATUS:`` — not any substring
-# later on the same line (READY headers that mention IN_PROGRESS in a trailing
-# note must still read READY so G4 demote / richness / judge stay honest).
+# Tick 446/447: parse the status *token* after optional ``**`` + ``STATUS:`` —
+# not any substring later on the same line (READY headers that mention
+# IN_PROGRESS in a trailing note must still read READY so G4 demote /
+# richness / judge stay honest). Tick 447 also accepts bare ``STATUS:``
+# (no markdown bold) so ledger-skip demote / G4 pack / pipeline read cannot
+# miss a plain READY header that pre-447 ``**STATUS:``-only matching left
+# poisoned, or fail to rewrite plain ``STATUS: IN_PROGRESS`` up to READY.
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    r"^\*\*STATUS:\s*(READY|IN_PROGRESS)\b",
+    r"^(?:\*\*)?STATUS:\s*(READY|IN_PROGRESS)\b",
     re.IGNORECASE,
 )
 
 
+def _icml_ready_status_line_match(line: str):
+    """Tick 447: match a STATUS header line (bold or plain) after strip."""
+    return _ICML_READY_STATUS_HEADER_RE.match((line or "").strip())
+
+
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446: read STATUS from the ``**STATUS:…**`` header line only.
+    """Tick 442/446/447: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2855,10 +2864,18 @@ def _icml_ready_status_header(text: str) -> str | None:
     header with a trailing note (``**STATUS: READY** — was IN_PROGRESS``) was
     misread as IN_PROGRESS — ``demote_icml_ready_file`` then no-op'd and left
     poisoned READY on disk after trust refuse; richness zeroed ``status_ready``.
+
+    Tick 447: accept bare ``STATUS: READY|IN_PROGRESS`` (no ``**``) as the
+    header line too. Pre-447 required ``**STATUS:`` only, so plain
+    ``STATUS: READY`` stubs (common in tests / thin durable merges) made
+    ``demote_icml_ready_file`` / pipeline read / richness miss READY, and
+    ``update_icml_ready_from_g4`` failed to rewrite plain IN_PROGRESS up to
+    READY after live criteria pass. Mid-line prose (``Do not set STATUS:
+    READY``) still does not match because the line must *start* with
+    optional ``**`` + ``STATUS:``.
     """
     for line in (text or "").splitlines():
-        s = line.strip()
-        m = _ICML_READY_STATUS_HEADER_RE.match(s)
+        m = _icml_ready_status_line_match(line)
         if not m:
             continue
         token = m.group(1).upper()
@@ -2920,18 +2937,24 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447).
 
-    Tick 442: rewrite only lines that start with ``**STATUS:`` so Tick-note /
-    audit prose mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and
-    leave a poisoned ``**STATUS: READY**`` header after durable conflict merge.
+    Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
+    mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
+    poisoned ``**STATUS: READY**`` header after durable conflict merge.
+
+    Tick 447: also rewrite bare ``STATUS: READY|IN_PROGRESS`` header lines
+    (normalize to ``**STATUS: IN_PROGRESS**``). Pre-447 fell through to a
+    whole-body ``str.replace("STATUS: READY", …)`` that could hit prose
+    (``Do not set STATUS: READY``) *before* the real plain header and leave
+    poisoned READY on disk.
     """
     body = body or ""
     lines = body.splitlines()
     out: list[str] = []
     found_header = False
     for line in lines:
-        if line.strip().startswith("**STATUS:"):
+        if _icml_ready_status_line_match(line):
             out.append("**STATUS: IN_PROGRESS**")
             found_header = True
         else:
@@ -2939,10 +2962,7 @@ def _demote_icml_ready_status(body: str) -> str:
     if found_header:
         ended = body.endswith("\n")
         return "\n".join(out) + ("\n" if ended else "")
-    # No markdown STATUS header — prepend a demoted marker (legacy / stub).
-    if _icml_ready_status_header(body) is None and "STATUS: READY" in body:
-        # Bare ``STATUS: READY`` without ``**`` (rare stubs).
-        return body.replace("STATUS: READY", "STATUS: IN_PROGRESS", 1)
+    # No STATUS header line — prepend a demoted marker (legacy / stub).
     if not body.strip():
         return "**STATUS: IN_PROGRESS**\n"
     return "**STATUS: IN_PROGRESS**\n\n" + body.lstrip()
