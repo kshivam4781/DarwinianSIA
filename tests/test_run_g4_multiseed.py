@@ -21,6 +21,7 @@ from run_g4_multiseed import (  # noqa: E402
     TABLE2_LIVE_H5_END,
     TABLE2_LIVE_H5_MARKER,
     build_g4_plans,
+    demote_icml_ready_file,
     h2_skew_pass,
     h5_pass_count,
     h5_validity_pass,
@@ -2339,6 +2340,94 @@ def test_refresh_paper_pack_refuses_honest_thin_h5_and_demotes_ready_file(
     assert "**STATUS: READY**" not in disk
     assert "**STATUS: IN_PROGRESS**" in disk
     assert "Tick 417 demote" in disk
+
+
+def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) -> None:
+    """Tick 443: G4 demote uses header-only STATUS (Tick 442 durable parity).
+
+    Pre-443 whole-body ``"**STATUS: READY**" in text`` + unstripped
+    ``startswith`` could (a) false-trigger on Tick-note prose mentioning
+    ``**STATUS: READY**`` when the header is IN_PROGRESS, or (b) enter demote
+    but miss an indented READY header and return False — poisoned READY stays.
+    """
+    from icml_env_checks import _icml_ready_status_header
+
+    # (a) Prose mentions **STATUS: READY** but header is IN_PROGRESS → no-op.
+    prose_only = tmp_path / "prose_only.md"
+    prose_only.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: IN_PROGRESS**\n\n"
+        "_Note: never set **STATUS: READY** from offline / trust refuse alone._\n",
+        encoding="utf-8",
+    )
+    assert demote_icml_ready_file(prose_only, reason="unit") is False
+    assert _icml_ready_status_header(prose_only.read_text(encoding="utf-8")) == (
+        "IN_PROGRESS"
+    )
+    assert "Tick 417 demote" not in prose_only.read_text(encoding="utf-8")
+
+    # (b) Indented READY header must demote (pre-443 unstripped startswith miss).
+    indented = tmp_path / "indented.md"
+    indented.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "  **STATUS: READY**\n\n"
+        "_Note: do not leave STATUS: IN_PROGRESS after live criteria pass._\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(indented.read_text(encoding="utf-8")) == "READY"
+    assert demote_icml_ready_file(indented, reason="indented READY", timestamp="t") is True
+    demoted = indented.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("**STATUS: READY") for ln in demoted.splitlines()
+    )
+    assert "Tick 417 demote" in demoted
+    assert "- [x] Table 1 (primary metrics by seed)" in demoted
+    assert "do not leave STATUS: IN_PROGRESS" in demoted  # prose preserved
+
+    # (c) update_icml_ready_from_g4 must rewrite indented STATUS headers too.
+    ready = tmp_path / "update_indent.md"
+    ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "  **STATUS: IN_PROGRESS**\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status = update_icml_ready_from_g4(
+        ready_path=ready,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-27T04:00:00Z",
+        allow_ready=True,
+    )
+    assert status == "READY"
+    updated = ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(updated) == "READY"
+    assert any(ln.strip() == "**STATUS: READY**" for ln in updated.splitlines())
 
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(

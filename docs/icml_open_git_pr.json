@@ -12,7 +12,7 @@
   "fetch_diamond_ok": false,
   "tip_pr_title_stale": true,
   "tip_pr_body_stale": true,
-  "suggested_open_git_pr_title": "ICML Tick 442: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked",
+  "suggested_open_git_pr_title": "ICML Tick 443: G4 demote header-only STATUS (secrets-first live still blocked)",
   "tip_pr_body_file": "docs/icml_tip_pr_body.md",
   "open_git_pr_pass_description": true,
   "open_git_pr_description_file": "docs/icml_tip_pr_body.md",
@@ -22,7 +22,7 @@
     "gh pr edit 337 --repo kshivam4781/DarwinianSIA --title 'ICML Tick 442: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked' --body-file docs/icml_tip_pr_body.md"
   ],
   "never_omit_branch": true,
-  "cloud_boot_branch": "cursor/icml-epistemic-results-8c89",
+  "cloud_boot_branch": "cursor/icml-epistemic-results-dff9",
   "omit_branch_opens_pr_on": "cursor/icml-epistemic-results-8c89",
   "warning": "NEVER call open_git_pr without branch= \u2014 omit defaults to the greenfield boot branch and opens a new tip PR. Pass branch=`cursor/icml-epistemic-results-f49c`. Tick 344: when tip_pr_title_stale, also pass title=`ICML Tick 442: add NEBIUS+HF secrets \u2014 live G2\u2192G4 still blocked` (secrets-first when diamond blocked). Tick 348\u2013349: when tip_pr_body_stale, also pass description= from `open_git_pr_description` in docs/icml_open_git_pr.json (or `docs/icml_tip_pr_body.md`) \u2014 MCP may still leave GitHub body frozen on existing PRs; still required call shape. Tick 350: prefer `docs/icml_open_git_pr_call.json` (branch/title/description verbatim). Tick 352: call JSON includes ``cloud_boot_branch`` / ``omit_branch_opens_pr_on`` \u2014 Cloud Agent 'correct working branch' is the greenfield boot and does **not** override tip anti-churn. Tick 345\u2013347: MCP may leave GitHub title/body unchanged \u2014 run `tip_pr_title_edit_commands` (`gh pr edit --title [--body-file docs/icml_tip_pr_body.md]`) to refresh; body staleness is independent of title (Tick 347)."
 }

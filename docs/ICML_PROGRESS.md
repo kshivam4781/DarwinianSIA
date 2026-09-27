@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-27T04:15Z — Tick 443 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (mergeable may show UNKNOWN until GitHub refreshes)
+- Boot branch was greenfield `cursor/icml-epistemic-results-dff9` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 442 fixed durable-merge STATUS demote to header-only, but G4 trust-refuse `demote_icml_ready_file` / `update_icml_ready_from_g4` still used whole-body `"**STATUS: READY**" in text` plus unstripped `startswith`. Prose mentioning `**STATUS: READY**` could false-trigger; an indented READY header could enter demote then miss the rewrite (`inserted_audit` False) and leave poisoned READY after trust refuse. Highest leverage without paid spend: **G4 demote/update header-only STATUS (Tick 442 parity)**.
+
+### What this tick did (ONE step)
+**Tick 443 — G4 demote header-only STATUS (no API spend):**
+1. Recovered tip ← Tick 442 (`f49c`); confirmed secrets absent; boot `dff9` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `demote_icml_ready_file` uses `_icml_ready_status_header` + `strip()`; `update_icml_ready_from_g4` STATUS rewrite also strips
+3. Tests: `test_demote_icml_ready_header_only_despite_prose_and_indent` + Tick 417 demote + update READY + Tick 442 merge → focused **4 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 442) | After (Tick 443) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| G4 `demote_icml_ready_file` on indented READY / prose READY | **unstripped miss / whole-body false-trigger** | **header-only demote; prose no-op** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-27T02:15Z — Tick 442 (automation cron)
 
 ### Status snapshot

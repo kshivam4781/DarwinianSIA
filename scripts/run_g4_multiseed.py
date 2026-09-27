@@ -65,6 +65,11 @@ Hard stops (never violate):
     ``meta.*_pass`` claimed True, so honest-fail meta + disk ``STATUS: READY``
     stayed READY); refuse paths call ``demote_icml_ready_file`` so
     ``docs/ICML_READY.md`` cannot keep a poisoned READY
+  - Tick 443: ``demote_icml_ready_file`` / ``update_icml_ready_from_g4`` use
+    Tick 442 header-only ``**STATUS:`` detection (``strip()``) — prose
+    ``**STATUS: READY**`` must not false-trigger demote, and indented READY
+    headers must still demote / update (pre-443 whole-body + unstripped
+    ``startswith`` could no-op demote and leave poisoned READY on disk)
   - respects ``SIA_BUDGET_SPENT_USD`` / ``SIA_BUDGET_CEILING_USD`` (~$20)
   - projects spend: ``SIA_G4_PAIR_ESTIMATE_USD`` × remaining pairs ≤ budget
 
@@ -106,6 +111,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
     materialize_from_hf,
 )
 from icml_env_checks import (  # noqa: E402
+    _icml_ready_status_header,
     autowire_diamond_csv,
     collect_icml_secrets_status,
     commit_durable_ledgers_after_live,
@@ -972,18 +978,24 @@ def demote_icml_ready_file(
     reason: str,
     timestamp: str | None = None,
 ) -> bool:
-    """Tick 417: force ``STATUS: IN_PROGRESS`` when disk says READY.
+    """Tick 417/443: force header ``STATUS: IN_PROGRESS`` when disk says READY.
 
     Sidecar trust refuse / demote previously only mutated ``report.ready_status``
     and left a poisoned ``docs/ICML_READY.md`` READY on disk. Returns True when
     the file was rewritten.
+
+    Tick 443: detect READY via ``_icml_ready_status_header`` (``**STATUS:``
+    header line only, with ``strip()``) — Tick-note / audit prose mentioning
+    ``**STATUS: READY**`` must not false-trigger, and an indented READY header
+    must still demote. Pre-443 whole-body ``"**STATUS: READY**" in text`` plus
+    unstripped ``startswith`` could skip the rewrite loop (``inserted_audit``
+    stays False) and leave a poisoned READY on disk after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    if "**STATUS: READY**" not in text and not any(
-        line.startswith("**STATUS: READY") for line in text.splitlines()
-    ):
+    # Tick 443: header-only (parity with Tick 442 durable merge demote).
+    if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
     audit = (
@@ -994,13 +1006,14 @@ def demote_icml_ready_file(
     out_lines: list[str] = []
     inserted_audit = False
     for line in text.splitlines():
-        if line.startswith("**STATUS:"):
+        if line.strip().startswith("**STATUS:"):
             out_lines.append("**STATUS: IN_PROGRESS**")
             out_lines.append("")
             out_lines.append(audit)
             inserted_audit = True
             continue
-        if line.startswith("_Tick 417 demote:") or line.startswith(
+        stripped = line.strip()
+        if stripped.startswith("_Tick 417 demote:") or stripped.startswith(
             "_Last G4 pack refresh:"
         ):
             continue
@@ -1094,20 +1107,18 @@ def update_icml_ready_from_g4(
 
     out_lines: list[str] = []
     for line in text.splitlines():
-        if line.startswith("**STATUS:"):
+        # Tick 443: strip() so indented ``**STATUS:`` headers still update.
+        if line.strip().startswith("**STATUS:"):
             out_lines.append(f"**STATUS: {status}**")
             continue
-        if line.startswith("_Last G4 pack refresh:"):
+        if line.strip().startswith("_Last G4 pack refresh:"):
             continue
         out_lines.append(line)
-        if line.startswith("**STATUS:"):
-            # unreachable — handled above; keep structure simple
-            pass
     # Insert audit immediately after STATUS line.
     final: list[str] = []
     for line in out_lines:
         final.append(line)
-        if line.startswith("**STATUS:"):
+        if line.strip().startswith("**STATUS:"):
             final.append("")
             final.append(audit)
     ready_path.write_text("\n".join(final) + "\n", encoding="utf-8")
