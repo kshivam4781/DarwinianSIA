@@ -2846,21 +2846,35 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # Tick 451 also accepts blockquote / unordered / ordered list container
 # prefixes (``> **STATUS: READY**`` / ``- STATUS: READY`` / ``1. **STATUS:** READY``)
 # and strips a leading UTF-8 BOM so demote / pack cannot miss those stubs.
+# Tick 452 also accepts italic / underscore emphasis wrappers
+# (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_``) that Tick 451
+# intentionally left unmatched (single ``*`` without ``\\s+`` is italic, not a list).
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)\b",
+    r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
+    r"(?:"
+    r"(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
+    r"|"
+    r"\*STATUS\*?:\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
+    r"|"
+    r"_STATUS_?:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
+    r")"
+    r"(READY|IN_PROGRESS)"
+    # Optional trailing close emphasis. Do not use \\b before ``_`` closers —
+    # underscore is a word char, so ``READY_`` has no boundary (Tick 452).
+    r"(?:\*\*|\*|_)?(?!\w)",
     re.IGNORECASE,
 )
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–451: match a STATUS header line (bold/plain/ATX/label/colon-out/container) after strip."""
+    """Tick 447–452: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(
         (line or "").lstrip("\ufeff").strip()
     )
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2910,8 +2924,15 @@ def _icml_ready_status_header(text: str) -> str | None:
     Pre-451 required a bare / heading / bold start after strip, so quoted or
     listed READY stubs (and BOM-prefixed first lines from Windows editors)
     made demote no-op / G4 pack miss the same way prior STATUS variants did.
-    Italic ``*STATUS*: READY`` (no space after ``*``) still does not match a
-    list marker (list markers require ``\\s+`` after ``*``/``-``/``+``).
+
+    Tick 452: also accept italic / underscore emphasis wrappers
+    (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_`` /
+    ``_STATUS_: IN_PROGRESS``). Pre-452 treated single ``*``/``_`` without
+    following whitespace as non-headers (Tick 451 left italic ignored so it
+    would not collide with list markers), so emphasis stubs made demote no-op
+    / G4 pack miss READY the same way prior STATUS variants did. List markers
+    still require ``\\s+`` after ``*``/``-``/``+`` (``* STATUS: READY`` stays
+    a list line matched via the plain STATUS alt).
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -2976,7 +2997,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–451).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–452).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -3000,6 +3021,10 @@ def _demote_icml_ready_status(body: str) -> str:
     Tick 451: also rewrite blockquote / list container STATUS lines
     (``> **STATUS: READY**`` / ``- STATUS: READY`` / ``1. **STATUS:** READY``)
     and BOM-prefixed headers to the same normalized header.
+
+    Tick 452: also rewrite italic / underscore emphasis STATUS lines
+    (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_``) to the
+    same normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

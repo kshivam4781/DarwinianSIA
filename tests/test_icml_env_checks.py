@@ -5382,9 +5382,7 @@ def test_icml_ready_status_header_accepts_blockquote_list_bom_status() -> None:
     assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
     assert _icml_ready_status_header("**STATUS:** READY\n") == "READY"
     assert _icml_ready_status_header("**STATUS**: READY\n") == "READY"
-    # Italic STATUS (no space after *) is not a list marker — still ignored.
-    assert _icml_ready_status_header("*STATUS*: READY\n") is None
-    assert _icml_ready_status_header("*STATUS:* READY\n") is None
+    # Tick 451 left italic ignored; Tick 452 accepts it (see italic test).
     # Non-token value after blockquote STATUS must not count as header.
     assert (
         _icml_ready_status_header(
@@ -5406,6 +5404,58 @@ def test_icml_ready_status_header_accepts_blockquote_list_bom_status() -> None:
     assert not any(
         "> **STATUS: READY**" in ln for ln in demoted.splitlines()
     )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
+def test_icml_ready_status_header_accepts_italic_underscore_status() -> None:
+    """Tick 452: italic / underscore STATUS headers must parse.
+
+    Pre-452 (Tick 451) left ``*STATUS*: READY`` / ``*STATUS: READY*`` /
+    ``_STATUS: READY_`` unmatched so demote no-op'd / G4 pack missed READY
+    on emphasis stubs. List ``* STATUS: …`` (space after ``*``) must still
+    parse via the list+plain path; mid-line prose must not match.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+    )
+
+    assert _icml_ready_status_header("*STATUS*: READY\n") == "READY"
+    assert _icml_ready_status_header("*STATUS:* READY\n") == "READY"
+    assert _icml_ready_status_header("*STATUS: READY*\n") == "READY"
+    assert _icml_ready_status_header("*STATUS: IN_PROGRESS*\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("_STATUS: READY_\n") == "READY"
+    assert _icml_ready_status_header("_STATUS_: IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("_STATUS:_ READY\n") == "READY"
+    # Containers + italic still work.
+    assert _icml_ready_status_header("> *STATUS*: READY\n") == "READY"
+    assert _icml_ready_status_header("# *STATUS: IN_PROGRESS*\n") == "IN_PROGRESS"
+    # List marker (space after *) still matches via list+plain alt.
+    assert _icml_ready_status_header("* STATUS: READY\n") == "READY"
+    # Prior bold / plain / colon-out forms unchanged.
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("**STATUS**: READY\n") == "READY"
+    assert _icml_ready_status_header("STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    # Non-token italic STATUS must not count as header.
+    assert (
+        _icml_ready_status_header(
+            "*STATUS*: Live G2→G3→G4 is blocked on NEBIUS.\n\n"
+            "*STATUS*: IN_PROGRESS\n"
+        )
+        == "IN_PROGRESS"
+    )
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "*STATUS*: READY\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any("*STATUS*: READY" in ln for ln in demoted.splitlines())
     assert _icml_ready_richness(prose)[2] == 1
 
 
@@ -6904,14 +6954,18 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "#{1,6}" in env_checks or r"#{1,6}" in env_checks
     assert "ICML ATX heading STATUS header (Tick 448)" in master
     # Tick 449: bold-closed label ``**STATUS:** READY`` (token outside bold).
-    # Tick 450 evolved colon placement; still require optional ``**`` after ``:``
-    # so ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` / same-span forms match.
+    # Tick 450 evolved colon placement; Tick 452 split alts so the READY token
+    # may sit after a shared group — still require optional ``**`` after ``:``
+    # on the bold/plain STATUS arm.
     assert (
         r"STATUS:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)" in env_checks
         or "STATUS:\\s*(?:\\*\\*)?\\s*(READY|IN_PROGRESS)" in env_checks
         or r"STATUS(?:\*\*)?:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)" in env_checks
         or "STATUS(?:\\*\\*)?:\\s*(?:\\*\\*)?\\s*(READY|IN_PROGRESS)" in env_checks
+        or r"STATUS(?:\*\*)?:\s*(?:\*\*)?\s*" in env_checks
+        or "STATUS(?:\\*\\*)?:\\s*(?:\\*\\*)?\\s*" in env_checks
     )
+    assert "(READY|IN_PROGRESS)" in env_checks
     assert "ICML bold-closed label STATUS header (Tick 449)" in master
     assert "test_icml_ready_status_header_accepts_bold_closed_label_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
@@ -6928,6 +6982,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "\\ufeff" in env_checks or "\ufeff" in env_checks
     assert "ICML blockquote/list/BOM STATUS header (Tick 451)" in master
     assert "test_icml_ready_status_header_accepts_blockquote_list_bom_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 452: italic / underscore emphasis STATUS headers.
+    assert r"\*STATUS\*?" in env_checks or "\\*STATUS\\*?" in env_checks
+    assert "_STATUS_?" in env_checks
+    assert "(?!\\w)" in env_checks or r"(?!\w)" in env_checks
+    assert "ICML italic/underscore STATUS header (Tick 452)" in master
+    assert "test_icml_ready_status_header_accepts_italic_underscore_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
