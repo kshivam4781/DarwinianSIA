@@ -5252,6 +5252,54 @@ def test_icml_ready_status_header_accepts_atx_heading_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_bold_closed_label_status() -> None:
+    """Tick 449: ``**STATUS:** READY`` (bold label, value outside) must parse.
+
+    Pre-449 required the token inside the same bold span (``**STATUS: READY**``),
+    so the common markdown ``**Label:** value`` shape made demote no-op / G4 pack
+    miss READY (header=None) and left ``**STATUS:** READY`` poisoned on disk.
+    ``**STATUS:** Live …`` prose (HUMAN_UNBLOCK) must still not match.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+    )
+
+    assert _icml_ready_status_header("**STATUS:** READY\n") == "READY"
+    assert _icml_ready_status_header("**STATUS:** IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(
+        "**STATUS:** READY — was IN_PROGRESS before pack\n"
+    ) == "READY"
+    assert _icml_ready_status_header("  **STATUS:** READY  \n") == "READY"
+    assert _icml_ready_status_header("## **STATUS:** READY\n") == "READY"
+    assert _icml_ready_status_header("# **STATUS:** IN_PROGRESS\n") == "IN_PROGRESS"
+    # Same-span bold form still works (Tick 446/447/448).
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+    # HUMAN_UNBLOCK-style label with non-token value must not count as header.
+    assert (
+        _icml_ready_status_header(
+            "**STATUS:** Live G2→G3→G4 is blocked on NEBIUS.\n\n"
+            "**STATUS: IN_PROGRESS**\n"
+        )
+        == "IN_PROGRESS"
+    )
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "**STATUS:** READY\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        ln.strip().startswith("**STATUS:** READY") for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -6739,6 +6787,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # Tick 448: ATX heading STATUS (``# STATUS:`` / ``## **STATUS:**``).
     assert "#{1,6}" in env_checks or r"#{1,6}" in env_checks
     assert "ICML ATX heading STATUS header (Tick 448)" in master
+    # Tick 449: bold-closed label ``**STATUS:** READY`` (token outside bold).
+    assert r"STATUS:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)" in env_checks or (
+        "STATUS:\\s*(?:\\*\\*)?\\s*(READY|IN_PROGRESS)" in env_checks
+    )
+    assert "ICML bold-closed label STATUS header (Tick 449)" in master
+    assert "test_icml_ready_status_header_accepts_bold_closed_label_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish
     assert "_print_icml_footer" in finish
