@@ -5349,6 +5349,66 @@ def test_icml_ready_status_header_accepts_colon_outside_bold_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_blockquote_list_bom_status() -> None:
+    """Tick 451: blockquote / list / BOM STATUS headers must parse.
+
+    Pre-451 required a bare / heading / bold start after strip, so
+    ``> **STATUS: READY**`` / ``- STATUS: READY`` / BOM-prefixed first lines
+    made demote no-op / G4 pack miss READY (header=None) and left poisoned
+    READY on disk. Italic ``*STATUS*: READY`` (no space after ``*``) must
+    still not match as a list marker.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+    )
+
+    assert _icml_ready_status_header("> **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("> **STATUS: IN_PROGRESS**\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("> **STATUS:** READY\n") == "READY"
+    assert _icml_ready_status_header("> **STATUS**: READY\n") == "READY"
+    assert _icml_ready_status_header("- **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("* STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("+ **STATUS:** READY\n") == "READY"
+    assert _icml_ready_status_header("1. **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("2) STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("> - **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("> # STATUS: READY\n") == "READY"
+    # UTF-8 BOM on file or line must not hide a READY header.
+    assert _icml_ready_status_header("\ufeff**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("\ufeffSTATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    # Prior Tick 446–450 forms still work.
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("**STATUS:** READY\n") == "READY"
+    assert _icml_ready_status_header("**STATUS**: READY\n") == "READY"
+    # Italic STATUS (no space after *) is not a list marker — still ignored.
+    assert _icml_ready_status_header("*STATUS*: READY\n") is None
+    assert _icml_ready_status_header("*STATUS:* READY\n") is None
+    # Non-token value after blockquote STATUS must not count as header.
+    assert (
+        _icml_ready_status_header(
+            "> **STATUS:** Live G2→G3→G4 is blocked on NEBIUS.\n\n"
+            "**STATUS: IN_PROGRESS**\n"
+        )
+        == "IN_PROGRESS"
+    )
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "> **STATUS: READY**\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "> **STATUS: READY**" in ln for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -6860,6 +6920,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert r"STATUS(?:\*\*)?:" in env_checks or "STATUS(?:\\*\\*)?:" in env_checks
     assert "ICML colon-outside-bold STATUS header (Tick 450)" in master
     assert "test_icml_ready_status_header_accepts_colon_outside_bold_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 451: blockquote / list container + BOM STATUS headers.
+    assert r"(?:>\s*)?" in env_checks or "(?:>\\s*)?" in env_checks
+    assert r"[-*+]\s+" in env_checks or "[-*+]\\s+" in env_checks
+    assert "\\ufeff" in env_checks or "\ufeff" in env_checks
+    assert "ICML blockquote/list/BOM STATUS header (Tick 451)" in master
+    assert "test_icml_ready_status_header_accepts_blockquote_list_bom_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

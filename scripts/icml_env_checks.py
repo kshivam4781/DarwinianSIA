@@ -2843,19 +2843,24 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # common markdown ``**Label:** value`` — so demote / pack cannot miss those.
 # Tick 450 also accepts colon-outside-bold forms (``**STATUS**: READY``) —
 # bold closes before the colon — so demote / pack cannot miss that variant.
+# Tick 451 also accepts blockquote / unordered / ordered list container
+# prefixes (``> **STATUS: READY**`` / ``- STATUS: READY`` / ``1. **STATUS:** READY``)
+# and strips a leading UTF-8 BOM so demote / pack cannot miss those stubs.
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    r"^(?:#{1,6}\s+)?(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)\b",
+    r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)\b",
     re.IGNORECASE,
 )
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–450: match a STATUS header line (bold/plain/ATX/label/colon-out) after strip."""
-    return _ICML_READY_STATUS_HEADER_RE.match((line or "").strip())
+    """Tick 447–451: match a STATUS header line (bold/plain/ATX/label/colon-out/container) after strip."""
+    return _ICML_READY_STATUS_HEADER_RE.match(
+        (line or "").lstrip("\ufeff").strip()
+    )
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2898,8 +2903,17 @@ def _icml_ready_status_header(text: str) -> str | None:
     bold span (``**STATUS:**`` or ``**STATUS: TOKEN**``), so bold-label +
     colon-outside (``**STATUS**: TOKEN``) made demote no-op / G4 pack miss
     the same way Tick 449's ``**STATUS:**`` stubs did.
+
+    Tick 451: also accept blockquote / list container prefixes
+    (``> **STATUS: READY**`` / ``- **STATUS: IN_PROGRESS**`` /
+    ``1. STATUS: READY``) and strip a leading UTF-8 BOM on the file or line.
+    Pre-451 required a bare / heading / bold start after strip, so quoted or
+    listed READY stubs (and BOM-prefixed first lines from Windows editors)
+    made demote no-op / G4 pack miss the same way prior STATUS variants did.
+    Italic ``*STATUS*: READY`` (no space after ``*``) still does not match a
+    list marker (list markers require ``\\s+`` after ``*``/``-``/``+``).
     """
-    for line in (text or "").splitlines():
+    for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
         if not m:
             continue
@@ -2962,7 +2976,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–450).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–451).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -2982,8 +2996,12 @@ def _demote_icml_ready_status(body: str) -> str:
 
     Tick 450: also rewrite colon-outside-bold forms (``**STATUS**: READY`` /
     ``## **STATUS**: IN_PROGRESS``) to the same normalized header.
+
+    Tick 451: also rewrite blockquote / list container STATUS lines
+    (``> **STATUS: READY**`` / ``- STATUS: READY`` / ``1. **STATUS:** READY``)
+    and BOM-prefixed headers to the same normalized header.
     """
-    body = body or ""
+    body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()
     out: list[str] = []
     found_header = False
