@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 450:** colon-outside-bold `**STATUS**: READY` headers parse + demote/update like label/same-span/plain/ATX — closes G4 demote no-op / pack miss on bold-label + colon-outside STATUS stubs.  
 **Tick 449:** bold-closed label `**STATUS:** READY` headers parse + demote/update like same-span/plain/ATX — closes G4 demote no-op / pack miss on `**Label:** value` STATUS stubs.  
 **Tick 448:** ATX heading `# STATUS:` / `## **STATUS:**` headers parse + demote/update like bold/plain — closes G4 demote no-op / pack miss on heading STATUS stubs.  
 **Tick 447:** plain (no `**`) `STATUS:` headers parse + demote/update like bold ones — closes G4 demote no-op / pack miss on bare STATUS stubs.  

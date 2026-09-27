@@ -2841,19 +2841,21 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # so promoted heading stubs cannot poison demote / pack the same way.
 # Tick 449 also accepts bold-closed label forms (``**STATUS:** READY``) —
 # common markdown ``**Label:** value`` — so demote / pack cannot miss those.
+# Tick 450 also accepts colon-outside-bold forms (``**STATUS**: READY``) —
+# bold closes before the colon — so demote / pack cannot miss that variant.
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    r"^(?:#{1,6}\s+)?(?:\*\*)?STATUS:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)\b",
+    r"^(?:#{1,6}\s+)?(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*(READY|IN_PROGRESS)\b",
     re.IGNORECASE,
 )
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–449: match a STATUS header line (bold/plain/ATX/label) after strip."""
+    """Tick 447–450: match a STATUS header line (bold/plain/ATX/label/colon-out) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match((line or "").strip())
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2890,6 +2892,12 @@ def _icml_ready_status_header(text: str) -> str | None:
     markdown ``**Label:** value`` shape made demote no-op / G4 pack miss —
     ``demote_icml_ready_file`` saw header=None (!= READY) and left
     ``**STATUS:** READY`` poisoned on disk after trust refuse.
+
+    Tick 450: also accept colon-outside-bold forms (``**STATUS**: READY`` /
+    ``## **STATUS**: IN_PROGRESS``). Pre-450 required the colon inside the
+    bold span (``**STATUS:**`` or ``**STATUS: TOKEN**``), so bold-label +
+    colon-outside (``**STATUS**: TOKEN``) made demote no-op / G4 pack miss
+    the same way Tick 449's ``**STATUS:**`` stubs did.
     """
     for line in (text or "").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -2954,7 +2962,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–449).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–450).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -2971,6 +2979,9 @@ def _demote_icml_ready_status(body: str) -> str:
 
     Tick 449: also rewrite bold-closed label forms (``**STATUS:** READY`` /
     ``## **STATUS:** IN_PROGRESS``) to the same normalized header.
+
+    Tick 450: also rewrite colon-outside-bold forms (``**STATUS**: READY`` /
+    ``## **STATUS**: IN_PROGRESS``) to the same normalized header.
     """
     body = body or ""
     lines = body.splitlines()

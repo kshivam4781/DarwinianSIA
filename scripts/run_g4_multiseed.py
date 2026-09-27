@@ -1004,11 +1004,15 @@ def demote_icml_ready_file(
     Tick 449: also demote bold-closed label STATUS (``**STATUS:** READY`` /
     ``## **STATUS:** READY``) — pre-449 required the token inside the same
     bold span, so ``**Label:** value`` stubs left READY poisoned after refuse.
+
+    Tick 450: also demote colon-outside-bold STATUS (``**STATUS**: READY`` /
+    ``## **STATUS**: READY``) — pre-450 required the colon inside the bold
+    span, so ``**STATUS**: TOKEN`` stubs left READY poisoned after refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–449: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–450: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1122,9 +1126,9 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–449: strip() + plain/ATX/bold-label STATUS so indented /
-        # bare / heading / ``**STATUS:** TOKEN`` headers update (normalize to
-        # ``**STATUS:…**``).
+        # Tick 443/447–450: strip() + plain/ATX/bold-label/colon-out STATUS so
+        # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN``
+        # headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

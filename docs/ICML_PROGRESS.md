@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-27T18:15Z — Tick 450 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-203f` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 449 accepted `**STATUS:** READY` (colon inside bold), but the sibling markdown variant `**STATUS**: READY` (bold closes *before* the colon) still made `_icml_ready_status_header` return None: `demote_icml_ready_file` no-op'd (`!= READY`) and left poisoned colon-out READY on disk after trust refuse; `update_icml_ready_from_g4` could return READY while leaving `**STATUS**: IN_PROGRESS` on disk. Highest leverage without paid spend: **colon-outside-bold STATUS header parse + demote/update rewrite**.
+
+### What this tick did (ONE step)
+**Tick 450 — colon-outside-bold STATUS (no API spend):**
+1. Recovered tip ← Tick 449 (`f49c`); confirmed secrets absent; boot `203f` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_ICML_READY_STATUS_HEADER_RE` accepts optional `**` between `STATUS` and `:` (`STATUS(?:\*\*)?:`); demote/update rewrite colon-out forms (normalize to `**STATUS:…**`); prior label/same-span/plain/ATX forms unchanged
+3. Tests: `test_icml_ready_status_header_accepts_colon_outside_bold_status` + G4 demote/update colon-out cases + Tick 449/448/447/446 locks → focused suite below
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 449) | After (Tick 450) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `**STATUS**: READY` demote / G4 pack rewrite | **miss / no-op / report≠disk** | **header-only demote + normalize to `**STATUS:**`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-27T16:15Z — Tick 449 (automation cron)
 
 ### Status snapshot
