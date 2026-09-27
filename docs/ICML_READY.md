@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 447: plain (no `**`) `STATUS: READY|IN_PROGRESS` headers now parse + demote/update like bold ones — closes G4 demote no-op / pack miss / richness zero on bare STATUS stubs; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 448: ATX heading `# STATUS:` / `## **STATUS:**` headers now parse + demote/update like bold/plain ones — closes G4 demote no-op / pack miss on heading STATUS stubs; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

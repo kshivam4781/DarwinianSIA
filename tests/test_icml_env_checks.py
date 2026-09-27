@@ -5207,6 +5207,51 @@ def test_icml_ready_status_header_accepts_plain_status() -> None:
     assert _icml_ready_richness(plain_ready)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_atx_heading_status() -> None:
+    """Tick 448: ATX heading ``# STATUS:`` / ``## **STATUS:**`` must parse like bold.
+
+    Pre-448 required a non-heading start, so promoted heading stubs made demote
+    no-op / G4 pack miss READY (or leave heading IN_PROGRESS on disk while the
+    updater returned READY). Document titles without ``STATUS:`` must not match.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+    )
+
+    assert _icml_ready_status_header("# STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("## STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("# **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header(
+        "## **STATUS: READY** — was IN_PROGRESS before pack\n"
+    ) == "READY"
+    assert _icml_ready_status_header("  ### STATUS: READY  \n") == "READY"
+    # Document title without STATUS must not count as the header.
+    title_only = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "**STATUS: IN_PROGRESS**\n"
+    )
+    assert _icml_ready_status_header(title_only) == "IN_PROGRESS"
+    # Mid-line prose still ignored; ATX READY still found.
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "# STATUS: READY\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "STATUS: READY" in ln and _icml_ready_status_header(ln + "\n") == "READY"
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -6691,6 +6736,9 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     g4_src = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
     assert "_icml_ready_status_line_match" in g4_src
     assert "ICML plain STATUS header (Tick 447)" in master
+    # Tick 448: ATX heading STATUS (``# STATUS:`` / ``## **STATUS:**``).
+    assert "#{1,6}" in env_checks or r"#{1,6}" in env_checks
+    assert "ICML ATX heading STATUS header (Tick 448)" in master
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish
     assert "_print_icml_footer" in finish

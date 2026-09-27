@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 448:** ATX heading `# STATUS:` / `## **STATUS:**` headers parse + demote/update like bold/plain — closes G4 demote no-op / pack miss on heading STATUS stubs.  
 **Tick 447:** plain (no `**`) `STATUS:` headers parse + demote/update like bold ones — closes G4 demote no-op / pack miss on bare STATUS stubs.  
 **Tick 446:** `_icml_ready_status_header` token parse after `**STATUS:` (not trailing IN_PROGRESS substring).  
 **Tick 444:** pipeline `_read_icml_ready_status` header-only (Tick 442/443 parity) — whole-file `re.search` no longer false-READY from prose before the header.  

@@ -997,11 +997,14 @@ def demote_icml_ready_file(
 
     Tick 447: also demote bare ``STATUS: READY`` (no ``**``) — pre-447
     ``**STATUS:``-only rewrite left plain READY poisoned after trust refuse.
+
+    Tick 448: also demote ATX heading STATUS (``# STATUS: READY`` /
+    ``## **STATUS: READY**``) — pre-448 left heading READY poisoned the same way.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447/448: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1115,7 +1118,8 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447: strip() + plain STATUS so indented / bare headers update.
+        # Tick 443/447/448: strip() + plain/ATX STATUS so indented / bare /
+        # heading headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True
