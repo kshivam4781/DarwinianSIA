@@ -2830,18 +2830,76 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
     }
 
 
+def _icml_ready_richness(text: str) -> tuple:
+    """Tick 441: score ``docs/ICML_READY.md`` (higher = richer live checklist).
+
+    Pre-441 ``merge_icml_ready_text`` picked the longer body when either side
+    was ``IN_PROGRESS``. A thin local stub padded with a long Tick note could
+    wipe onto's post-G4 checklist where PRIMARY / live H2 / H5 / Table rows
+    were already ``[x]`` — paid READY evidence lost even though Tick 438
+    "merged" the conflict (STATUS demotion is still correct; the body is not).
+    """
+    t = text or ""
+    if not t.strip():
+        return (0, 0, 0, 0, 0, 0)
+    # Count publishable end-goal checkboxes that are marked done.
+    live_checks = 0
+    for needle in (
+        "- [x] D beats B on ≥3/5 seeds for gens-to-threshold",
+        "- [x] D beats B on ≥3/5 seeds for cost-to-threshold",
+        "- [x] Non-trivial mean final accuracy gap",
+        "- [x] Live API-run H2",
+        "- [x] Spearman ρ",
+        "- [x] Table 1 (primary metrics by seed)",
+        "- [x] Table 2 (H2/H5 / cost)",
+        "- [x] Reproducible **live** run IDs",
+        "- [x] Reproducible live run IDs",
+    ):
+        if needle in t:
+            live_checks += 1
+    status_ready = 1 if "STATUS: READY" in t and "STATUS: IN_PROGRESS" not in t else 0
+    checked = t.count("- [x]")
+    low = t.lower()
+    live_phrase = 1 if ("live gpqa" in low or "live api" in low) else 0
+    return (1, live_checks, status_ready, checked, live_phrase, len(t))
+
+
+def prefer_richer_icml_ready(a: str, b: str) -> str:
+    """Tick 441: keep the richer ICML_READY body (ties → ``b``)."""
+    a = a or ""
+    b = b or ""
+    if not a.strip() and b.strip():
+        return b
+    if not b.strip() and a.strip():
+        return a
+    if _icml_ready_richness(b) >= _icml_ready_richness(a):
+        return b
+    return a
+
+
+def _demote_icml_ready_status(body: str) -> str:
+    """Force STATUS: IN_PROGRESS while preserving checklist body (Tick 438/441)."""
+    body = body or ""
+    if "STATUS: READY" in body and "STATUS: IN_PROGRESS" not in body:
+        return body.replace("STATUS: READY", "STATUS: IN_PROGRESS", 1)
+    if "STATUS: IN_PROGRESS" not in body:
+        return "STATUS: IN_PROGRESS\n\n" + body.lstrip()
+    return body
+
+
 def merge_icml_ready_text(ours: str, theirs: str) -> str:
-    """Prefer IN_PROGRESS when either side demotes; else keep local (theirs)."""
+    """Tick 438/441: prefer richer checklist; demote READY when either side is IN_PROGRESS.
+
+    Tick 438: prefer IN_PROGRESS when either side demotes (conflict safety).
+    Tick 441: choose the **richer** checklist body (live ``[x]`` criteria) instead
+    of length-only, so a padded thin stub cannot wipe post-G4 checkmarks.
+    """
     o = ours or ""
     t = theirs or ""
+    body = prefer_richer_icml_ready(o, t)
     if "STATUS: IN_PROGRESS" in o or "STATUS: IN_PROGRESS" in t:
-        body = t if len(t) >= len(o) else o
-        if "STATUS: READY" in body and "STATUS: IN_PROGRESS" not in body:
-            body = body.replace("STATUS: READY", "STATUS: IN_PROGRESS", 1)
-        elif "STATUS: IN_PROGRESS" not in body:
-            body = "STATUS: IN_PROGRESS\n\n" + body.lstrip()
-        return body
-    return t if t.strip() else o
+        return _demote_icml_ready_status(body)
+    return body if body.strip() else (t if t.strip() else o)
 
 
 def _paper_artifacts_richness(text: str) -> tuple:
@@ -2966,6 +3024,7 @@ def _merge_durable_conflict_bytes(
         merged = merge_prior_live_evidence_dict(od, td)
         return (json.dumps(merged, indent=2) + "\n").encode("utf-8")
     if norm == _norm_repo_relpath("docs/ICML_READY.md"):
+        # Tick 441: prefer richer live checklist (not length-only).
         try:
             return merge_icml_ready_text(
                 o.decode("utf-8"), t.decode("utf-8")
@@ -2987,7 +3046,7 @@ def _merge_durable_conflict_bytes(
 
 
 def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
-    """Tick 438/440: auto-merge durable/paper-pack-only rebase conflicts.
+    """Tick 438/441: auto-merge durable/paper-pack-only rebase conflicts.
 
     Pre-438 ``rebase_tip_onto_origin_for_durable_push`` aborted on *any*
     conflict. Concurrent tip VMs that both update ``icml_budget_spent.json``
@@ -2999,6 +3058,9 @@ def resolve_durable_rebase_conflicts(cwd: Path) -> tuple[bool, str]:
     Tick 440: ``paper_artifacts.md`` / Figs prefer **richer** live payloads
     (not mere ``Live Table`` phrase / non-empty local bytes) so thin offline
     stubs cannot wipe post-G4 PRIMARY tables during durable rebase.
+
+    Tick 441: ``ICML_READY.md`` prefers richer live ``[x]`` criteria over
+    length-only (still demotes STATUS when either side is IN_PROGRESS).
     """
     allowed = _durable_ledger_relpaths() | _post_live_companion_relpaths()
     unmerged = _git_unmerged_relpaths(cwd)

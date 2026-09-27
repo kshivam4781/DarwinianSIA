@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-26 (Section 21 ICML; Tick 440 prefer-richer paper_artifacts merge; Tick 439 prefer-richer prior_live gate merge; Tick 438 durable rebase conflict merge; Tick 437 NF tip push rebase+retry; …)
+**Last updated:** 2026-09-27 (Section 21 ICML; Tick 441 prefer-richer ICML_READY merge; Tick 440 prefer-richer paper_artifacts merge; Tick 439 prefer-richer prior_live gate merge; Tick 438 durable rebase conflict merge; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -891,6 +891,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML durable rebase conflict merge (Tick 438) | **DONE** | On Tick 437 rebase, auto-merge durable/paper-pack-only conflicts (union `budget_spent` spend/stages; merge `prior_live` gates; demote READY) + `rebase --continue`; closes concurrent tip VMs both writing spend → abort → local-only; focused durable/tip tests 16/16 |
 | ICML prefer-richer prior_live gate merge (Tick 439) | **DONE** | Tick 438 prior_live same-key merge kept richer payload (executed / n_pairs / pass flags) instead of always replayed local — closes thin-local wipe of onto G4 `prior_live_metrics` during durable rebase; focused durable/tip tests 22/22 |
 | ICML prefer-richer paper_artifacts merge (Tick 440) | **DONE** | Durable rebase `paper_artifacts` / Figs prefer richer live pack (auto-fill / PRIMARY flags / live seed rows / larger PNG) instead of phrase-match / always-local — closes offline stub wipe of onto post-G4 Live Table; focused durable/tip tests 19/19 |
+| ICML prefer-richer ICML_READY merge (Tick 441) | **DONE** | Durable rebase `ICML_READY` prefers richer live `[x]` criteria over length-padded thin IN_PROGRESS (still demotes STATUS) — closes thin-local wipe of onto post-G4 checklist; focused durable/tip tests 17/17 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -2793,6 +2794,8 @@ sia run --task gpqa --darwinian --population_size 4 --elite_count 2 \
 **Prefer-richer prior_live gate merge (Tick 439):** Tick 438 same-key prior_live merge always preferred replayed local. A thinner local capture (preflight wipe / partial G3) could overwrite onto's executed G4 `prior_live_metrics`. Merge now keeps the richer payload (executed / n_pairs / pass flags). Focused durable/tip tests **22** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Prefer-richer paper_artifacts merge (Tick 440):** Tick 438/439 `paper_artifacts.md` merge treated any `Live Table` / `live GPQA` phrase as decisive and preferred replayed local. The committed offline stub already contains those phrases (empty Live Table 1), so thin local could wipe onto's post-G4 auto-filled Live Table / PRIMARY flags. Merge now scores auto-fill / PRIMARY flags / live seed rows / H2·H5 lines / Table2 markers / size; Figs prefer larger non-empty PNG. Focused durable/tip tests **19** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
+
+**Prefer-richer ICML_READY merge (Tick 441):** Tick 438 `merge_icml_ready_text` picked the longer body when either side was `IN_PROGRESS`. A thin local stub padded with a long Tick note could wipe onto's post-G4 checklist where PRIMARY / live H2 / H5 / Tables were already `[x]`. Merge now scores live end-goal checkmarks (still demotes STATUS when either side is IN_PROGRESS). Focused durable/tip tests **17** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 
 **Durable push always→tip PR head (Tick 432):** Tick 431 still kept any `cursor/*` with an existing `origin/<boot>` when cloud-boot capture was missing — so after `open_git_pr` omitted `branch=` (MCP default → boot), a later durable push re-parked spend/READY off tip PR #337. When `prefer_tip_pr_commit_branch()` is set, durable push now **always** targets tip PR head. Focused durable/push tests **10** green. Live still blocked on secrets. STATUS remains IN_PROGRESS.
 

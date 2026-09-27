@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 441:** prefer-richer `ICML_READY` merge on durable rebase — length-padded thin IN_PROGRESS no longer wipes onto post-G4 live `[x]` criteria (STATUS still demoted).  
+**Tick 440:** prefer-richer `paper_artifacts` (+ larger Figs) merge on durable rebase.  
 **Tick 436:** fetch `origin/<tip>` before Tick 435 ahead / Tick 434 checkout — closes stale remote-tracking skip-FF + NF tip push after long live gates.  
 **Tick 435:** when already on tip but `origin/<tip>` ahead, FF tip ← origin (preserve durable dirt) — closes stale-base commit + NF tip push.  
 **Tick 434:** when HEAD is behind tip, checkout tip (preserve durable dirt) — closes boot commit + non-FF tip push reject.  

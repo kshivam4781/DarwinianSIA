@@ -4973,6 +4973,89 @@ def test_merge_prior_live_prefers_richer_onto_g4_over_thin_local() -> None:
     assert g4b["comparison"]["n_pairs"] == 5
 
 
+def test_merge_icml_ready_prefers_richer_live_checklist_over_long_thin() -> None:
+    """Tick 441: length-padded thin IN_PROGRESS must not wipe live [x] criteria.
+
+    Pre-441 ``merge_icml_ready_text`` chose the longer body when either side was
+    IN_PROGRESS. A concurrent docs tick with a long note could overwrite onto's
+    post-G4 checklist (PRIMARY / H2 / H5 / Tables checked) while demoting
+    STATUS — paid READY evidence lost even though Tick 438 "merged".
+    """
+    from icml_env_checks import (
+        _merge_durable_conflict_bytes,
+        merge_icml_ready_text,
+        prefer_richer_icml_ready,
+    )
+
+    rich_live = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: READY**\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [x] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [x] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [x] Non-trivial mean final accuracy gap (not ~1pp noise)\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Live API-run H2 DNA trait skew under contradiction bias\n"
+        "### 3. VALIDITY — H5\n"
+        "- [x] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live\n"
+        "### 4. PAPER\n"
+        "- [x] Table 1 (primary metrics by seed) — live filled\n"
+        "- [x] Table 2 (H2/H5 / cost) — live filled\n"
+        "- [x] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n"
+    )
+    # Longer than rich_live but zero live end-goal checks (pre-441 length trap).
+    thin_long = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: IN_PROGRESS**\n\n"
+        "_Tick 440 note: " + ("x" * 400) + "_\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live\n"
+        "### 4. PAPER\n"
+        "- [ ] Table 1 (primary metrics by seed) — live empty\n"
+        "- [ ] Table 2 (H2/H5 / cost) — live empty\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n"
+    )
+    assert len(thin_long) > len(rich_live)
+
+    # Prefer richer body even when thin is longer.
+    preferred = prefer_richer_icml_ready(rich_live, thin_long)
+    assert "- [x] D beats B on ≥3/5 seeds for gens-to-threshold" in preferred
+    assert "- [x] Live API-run H2" in preferred
+
+    # Conflict merge: demote STATUS but keep live checkmarks (onto=rich, local=thin).
+    merged = merge_icml_ready_text(rich_live, thin_long)
+    assert "STATUS: IN_PROGRESS" in merged
+    assert "STATUS: READY" not in merged or "STATUS: IN_PROGRESS" in merged
+    assert "- [x] D beats B on ≥3/5 seeds for gens-to-threshold" in merged
+    assert "- [x] Spearman ρ" in merged
+    assert "- [x] Reproducible **live** run IDs" in merged
+    # Must not keep the thin unchecked PRIMARY line as the winner.
+    assert "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold" not in merged
+
+    # Symmetric: rich local beats thin onto.
+    merged2 = merge_icml_ready_text(thin_long, rich_live)
+    assert "STATUS: IN_PROGRESS" in merged2
+    assert "- [x] Live API-run H2" in merged2
+
+    out = _merge_durable_conflict_bytes(
+        "docs/ICML_READY.md",
+        rich_live.encode("utf-8"),
+        thin_long.encode("utf-8"),
+    )
+    assert out is not None
+    text = out.decode("utf-8")
+    assert "STATUS: IN_PROGRESS" in text
+    assert "- [x] Table 1 (primary metrics by seed)" in text
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
