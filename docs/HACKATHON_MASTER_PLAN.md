@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-27 (Section 21 ICML; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
+**Last updated:** 2026-09-27 (Section 21 ICML; Tick 446 STATUS header token parse; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -896,6 +896,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML pipeline STATUS read header-only (Tick 444) | **DONE** | `_read_icml_ready_status` uses `_icml_ready_status_header` (not whole-file `re.search`) — prose `**STATUS: READY**` before header no false READY; focused pipeline+G4 demote tests 2/2 |
 | ICML G4 demote header-only STATUS (Tick 443) | **DONE** | `demote_icml_ready_file` / `update_icml_ready_from_g4` use Tick 442 header-only `**STATUS:` + `strip()` — prose `**STATUS: READY**` no false-trigger; indented READY still demotes/updates; focused G4 demote tests 4/4 |
 | ICML judge STATUS header-only (Tick 445) | **DONE** | `finish_hackathon` / `present_hackathon` `_icml_status_line` use `_icml_ready_status_header` (not whole-file `re.search`) — prose `**STATUS: READY**` before header no false READY on judge demos; focused judge STATUS tests 5/5 |
+| ICML STATUS header token parse (Tick 446) | **DONE** | `_icml_ready_status_header` parses token after `**STATUS:` (not trailing IN_PROGRESS substring) — READY+note still demotes; closes G4 demote no-op / richness zero; focused token + G4 demote tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |

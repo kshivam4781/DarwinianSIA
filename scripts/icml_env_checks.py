@@ -2830,8 +2830,17 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
     }
 
 
+# Tick 446: parse the status *token* after ``**STATUS:`` — not any substring
+# later on the same line (READY headers that mention IN_PROGRESS in a trailing
+# note must still read READY so G4 demote / richness / judge stay honest).
+_ICML_READY_STATUS_HEADER_RE = re.compile(
+    r"^\*\*STATUS:\s*(READY|IN_PROGRESS)\b",
+    re.IGNORECASE,
+)
+
+
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442: read STATUS from the ``**STATUS:…**`` header line only.
+    """Tick 442/446: read STATUS from the ``**STATUS:…**`` header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2839,15 +2848,23 @@ def _icml_ready_status_header(text: str) -> str | None:
     which made ``_demote_icml_ready_status`` no-op and left a poisoned
     ``**STATUS: READY**`` header after durable conflict merge — or zeroed the
     richness ``status_ready`` bit on a true READY header.
+
+    Tick 446: also parse the token immediately after ``**STATUS:`` instead of
+    scanning the whole header line for ``IN_PROGRESS`` / ``READY`` substrings.
+    Pre-446 preferred ``IN_PROGRESS`` anywhere on the line, so a true READY
+    header with a trailing note (``**STATUS: READY** — was IN_PROGRESS``) was
+    misread as IN_PROGRESS — ``demote_icml_ready_file`` then no-op'd and left
+    poisoned READY on disk after trust refuse; richness zeroed ``status_ready``.
     """
     for line in (text or "").splitlines():
         s = line.strip()
-        if not s.startswith("**STATUS:"):
+        m = _ICML_READY_STATUS_HEADER_RE.match(s)
+        if not m:
             continue
-        # Prefer explicit IN_PROGRESS before READY (header is one token).
-        if "IN_PROGRESS" in s:
+        token = m.group(1).upper()
+        if token == "IN_PROGRESS":
             return "IN_PROGRESS"
-        if "READY" in s:
+        if token == "READY":
             return "READY"
         return None
     return None

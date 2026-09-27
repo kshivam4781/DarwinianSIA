@@ -2386,7 +2386,25 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     assert "- [x] Table 1 (primary metrics by seed)" in demoted
     assert "do not leave STATUS: IN_PROGRESS" in demoted  # prose preserved
 
-    # (c) update_icml_ready_from_g4 must rewrite indented STATUS headers too.
+    # (c) Tick 446: READY header with trailing IN_PROGRESS note must still demote
+    # (pre-446 substring scan misread as IN_PROGRESS → demote no-op → READY stays).
+    trailed = tmp_path / "trailed.md"
+    trailed.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: READY** — was IN_PROGRESS before G4 pack\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(trailed.read_text(encoding="utf-8")) == "READY"
+    assert demote_icml_ready_file(trailed, reason="trailing IN_PROGRESS", timestamp="t") is True
+    trailed_text = trailed.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(trailed_text) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("**STATUS: READY") for ln in trailed_text.splitlines()
+    )
+    assert "Tick 417 demote" in trailed_text
+
+    # (d) update_icml_ready_from_g4 must rewrite indented STATUS headers too.
     ready = tmp_path / "update_indent.md"
     ready.write_text(
         "# ICML Thesis 1 — Ready checklist\n\n"

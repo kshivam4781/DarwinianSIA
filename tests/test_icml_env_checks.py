@@ -5129,6 +5129,39 @@ def test_merge_icml_ready_demotes_header_despite_prose_status_mention() -> None:
     assert "- [x] Table 1 (primary metrics by seed)" in text
 
 
+def test_icml_ready_status_header_parses_token_not_trailing_substring() -> None:
+    """Tick 446: READY header with trailing IN_PROGRESS note must still read READY.
+
+    Pre-446 preferred ``IN_PROGRESS`` anywhere on the ``**STATUS:`` line, so
+    ``**STATUS: READY** — was IN_PROGRESS`` was misread as IN_PROGRESS —
+    ``demote_icml_ready_file`` then no-op'd (gate ``!= READY``) and left
+    poisoned READY on disk after trust refuse; richness zeroed ``status_ready``.
+    """
+    from icml_env_checks import _icml_ready_richness, _icml_ready_status_header
+
+    ready_trail = "**STATUS: READY** — was IN_PROGRESS; demote must still see READY\n"
+    assert _icml_ready_status_header(ready_trail) == "READY"
+    assert _icml_ready_status_header("**STATUS: READY** (not IN_PROGRESS yet)") == "READY"
+    assert _icml_ready_status_header("**STATUS: IN_PROGRESS** (not READY)") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("  **STATUS: READY**  ") == "READY"
+    # Mid-line prose must still be ignored (Tick 442/445).
+    prose = (
+        "_Note: never set **STATUS: READY** from offline._\n\n"
+        "**STATUS: IN_PROGRESS**\n"
+    )
+    assert _icml_ready_status_header(prose) == "IN_PROGRESS"
+    # Richness status_ready bit must stay 1 for true READY + trailing note.
+    rich = (
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "**STATUS: READY** — was IN_PROGRESS before G4 pack\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n"
+    )
+    assert _icml_ready_status_header(rich) == "READY"
+    assert _icml_ready_richness(rich)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -6601,6 +6634,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert r're.search(r"\*\*STATUS:' not in finish
     assert r're.search(r"\*\*STATUS:' not in present
     assert "ICML judge STATUS header-only (Tick 445)" in master
+    # Tick 446: STATUS header token parse (READY + trailing IN_PROGRESS note).
+    assert "_ICML_READY_STATUS_HEADER_RE" in (
+        (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    assert "ICML STATUS header token parse (Tick 446)" in master
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish
     assert "_print_icml_footer" in finish

@@ -990,6 +990,9 @@ def demote_icml_ready_file(
     must still demote. Pre-443 whole-body ``"**STATUS: READY**" in text`` plus
     unstripped ``startswith`` could skip the rewrite loop (``inserted_audit``
     stays False) and leave a poisoned READY on disk after trust refuse.
+
+    Tick 446: header token parse (not trailing ``IN_PROGRESS`` substring) so
+    ``**STATUS: READY** — was IN_PROGRESS`` still demotes.
     """
     if not ready_path.is_file():
         return False
