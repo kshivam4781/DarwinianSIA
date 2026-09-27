@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 443: G4 `demote_icml_ready_file` / `update_icml_ready_from_g4` use Tick 442 header-only `**STATUS:` detection (`strip()`) — prose mentioning `**STATUS: READY**` no longer false-triggers demote, and indented READY headers still demote/update after trust refuse. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 444: pipeline `_read_icml_ready_status` uses Tick 442 `_icml_ready_status_header` (not whole-file `re.search`) — prose mentioning `**STATUS: READY**` before the real header no longer poisons pipeline `ICML_READY=READY` logs. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

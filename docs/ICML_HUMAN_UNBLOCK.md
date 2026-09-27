@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 444:** pipeline `_read_icml_ready_status` header-only (Tick 442/443 parity) — whole-file `re.search` no longer false-READY from prose before the header.  
+**Tick 443:** G4 demote/update header-only STATUS (Tick 442 durable parity).  
 **Tick 441:** prefer-richer `ICML_READY` merge on durable rebase — length-padded thin IN_PROGRESS no longer wipes onto post-G4 live `[x]` criteria (STATUS still demoted).  
 **Tick 440:** prefer-richer `paper_artifacts` (+ larger Figs) merge on durable rebase.  
 **Tick 436:** fetch `origin/<tip>` before Tick 435 ahead / Tick 434 checkout — closes stale remote-tracking skip-FF + NF tip push after long live gates.  

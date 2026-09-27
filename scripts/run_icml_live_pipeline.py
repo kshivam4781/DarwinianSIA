@@ -106,6 +106,7 @@ import run_g2_smoke as g2  # noqa: E402
 import run_g3_pilot as g3  # noqa: E402
 import run_g4_multiseed as g4  # noqa: E402
 from icml_env_checks import (  # noqa: E402
+    _icml_ready_status_header,
     apply_persisted_spent_to_env,
     autowire_diamond_csv,
     budget_spent_ledger_path,
@@ -572,11 +573,19 @@ def g3_pilot_promising(comparison: dict[str, Any] | None, h5_by_d_run: dict[str,
 
 
 def _read_icml_ready_status(path: Path) -> str | None:
+    """Tick 444: header-only STATUS (parity with Tick 442/443 demote).
+
+    Pre-444 ``re.search(r"\\*\\*STATUS:…")`` matched the first ``**STATUS:**``
+    *anywhere* in the file — including mid-line Tick-note / audit prose that
+    mentions ``**STATUS: READY**`` *before* the real header. Pipeline refuse /
+    preflight paths then reported poisoned ``ICML_READY=READY`` while the
+    header stayed ``IN_PROGRESS``. Use ``_icml_ready_status_header`` (line that
+    ``strip()``-starts with ``**STATUS:``) only.
+    """
     if not path.is_file():
         return None
     text = path.read_text(encoding="utf-8")
-    m = re.search(r"\*\*STATUS:\s*([A-Z_]+)\*\*", text)
-    return m.group(1) if m else None
+    return _icml_ready_status_header(text)
 
 
 def _load_gate3_sidecar(

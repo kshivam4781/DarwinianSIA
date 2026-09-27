@@ -1593,6 +1593,41 @@ def test_refresh_g4_paper_pack_on_resume_demotes_ready_file_on_thin_h2(
     assert "Tick 417 demote" in disk
 
 
+def test_read_icml_ready_status_header_only_despite_prose_before_header(
+    tmp_path: Path,
+) -> None:
+    """Tick 444: pipeline STATUS read must ignore prose ``**STATUS:**`` matches.
+
+    Pre-444 ``re.search`` matched the first ``**STATUS:…**`` anywhere — mid-line
+    notes mentioning ``**STATUS: READY**`` *before* the real header poisoned
+    ``report.icml_ready_status`` / pipeline logs as READY while the header
+    stayed IN_PROGRESS.
+    """
+    from run_icml_live_pipeline import _read_icml_ready_status
+
+    ready = tmp_path / "ICML_READY.md"
+    ready.write_text(
+        "_Note: never set **STATUS: READY** from offline / trust refuse alone._\n\n"
+        "**STATUS: IN_PROGRESS**\n\n"
+        "- [ ] PRIMARY\n"
+        "_Also mentions **STATUS: READY** in footer._\n",
+        encoding="utf-8",
+    )
+    assert _read_icml_ready_status(ready) == "IN_PROGRESS"
+
+    indented = tmp_path / "ICML_READY_indent.md"
+    indented.write_text(
+        "_Prose **STATUS: IN_PROGRESS** mention before header._\n\n"
+        "  **STATUS: READY**\n\n"
+        "- [x] PRIMARY\n",
+        encoding="utf-8",
+    )
+    assert _read_icml_ready_status(indented) == "READY"
+
+    missing = tmp_path / "nope.md"
+    assert _read_icml_ready_status(missing) is None
+
+
 def test_preflight_stack_not_ready_without_keys(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

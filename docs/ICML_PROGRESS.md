@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-27T06:15Z — Tick 444 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub title+body may still be Tick 336)
+- Boot branch was greenfield `cursor/icml-epistemic-results-e793` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 442/443 made demote/merge/update header-only for `**STATUS:`**, but pipeline `_read_icml_ready_status` still used whole-file `re.search(r"\*\*STATUS:…")`. Mid-line Tick-note / audit prose mentioning `**STATUS: READY**` *before* the real header poisoned `report.icml_ready_status` / pipeline logs as READY while the header stayed IN_PROGRESS. Highest leverage without paid spend: **pipeline STATUS read header-only (Tick 442/443 parity)**.
+
+### What this tick did (ONE step)
+**Tick 444 — pipeline `_read_icml_ready_status` header-only (no API spend):**
+1. Recovered tip ← Tick 443 (`f49c`); confirmed secrets absent; boot `e793` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_read_icml_ready_status` now calls `_icml_ready_status_header` (line that `strip()`-starts with `**STATUS:`) — prose before header no longer false-READY
+3. Test: `test_read_icml_ready_status_header_only_despite_prose_before_header` + Tick 443 demote → focused **2 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 443) | After (Tick 444) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Pipeline `_read_icml_ready_status` with prose READY before header | **re.search → false READY** | **header-only IN_PROGRESS** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-27T04:15Z — Tick 443 (automation cron)
 
 ### Status snapshot
