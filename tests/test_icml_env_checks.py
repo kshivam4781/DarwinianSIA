@@ -5805,11 +5805,12 @@ def test_icml_ready_status_header_accepts_html_heading_and_md_wrap_status() -> N
         "<table>STATUS: READY</table>"
     )
     assert _strip_icml_status_md_wrappers("`STATUS: READY`") == "STATUS: READY"
-    assert _strip_icml_status_md_wrappers("`**STATUS: READY**`") == "**STATUS: READY**"
+    # Tick 458: iterative unwrap peels backtick then outer ``**``.
+    assert _strip_icml_status_md_wrappers("`**STATUS: READY**`") == "STATUS: READY"
     assert _strip_icml_status_md_wrappers("~~STATUS: READY~~") == "STATUS: READY"
     assert _strip_icml_status_md_wrappers("STATUS: READY") == "STATUS: READY"
     assert _strip_icml_status_line_noise("<h1>STATUS: READY</h1>") == "STATUS: READY"
-    assert _strip_icml_status_line_noise("`**STATUS: READY**`") == "**STATUS: READY**"
+    assert _strip_icml_status_line_noise("`**STATUS: READY**`") == "STATUS: READY"
     assert _icml_ready_status_header("<h1>STATUS: READY</h1>\n") == "READY"
     assert _icml_ready_status_header("<h2>**STATUS: IN_PROGRESS**</h2>\n") == (
         "IN_PROGRESS"
@@ -5851,6 +5852,92 @@ def test_icml_ready_status_header_accepts_html_heading_and_md_wrap_status() -> N
     assert not any(
         ln.strip().startswith("`") and "STATUS: READY" in ln
         for ln in demoted_bt.splitlines()
+    )
+
+
+def test_icml_ready_status_header_accepts_html_container_and_obsidian_status() -> None:
+    """Tick 458: HTML list/blockquote containers + Obsidian == STATUS must parse.
+
+    Pre-458 Tick 451 matched markdown ``>`` / ``-`` prefixes and Tick 457
+    stripped headings/backticks/~~, but Notion HTML exports
+    ``<blockquote>STATUS: READY</blockquote>`` / ``<li>STATUS: READY</li>``
+    and Obsidian ``==STATUS: READY==`` / nested ``**~~STATUS: READY~~**``
+    still missed — demote no-op'd / G4 pack missed READY.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_html_tags,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    assert _strip_icml_status_html_tags(
+        "<blockquote>STATUS: READY</blockquote>"
+    ) == "STATUS: READY"
+    assert _strip_icml_status_html_tags("<li>**STATUS: IN_PROGRESS**</li>") == (
+        "**STATUS: IN_PROGRESS**"
+    )
+    assert _strip_icml_status_html_tags("<ul><li>STATUS: READY</li></ul>") == (
+        "STATUS: READY"
+    )
+    assert _strip_icml_status_html_tags("<pre>STATUS: READY</pre>") == "STATUS: READY"
+    # Non-allowlisted tags still left alone.
+    assert _strip_icml_status_html_tags("<table>STATUS: READY</table>") == (
+        "<table>STATUS: READY</table>"
+    )
+    assert _strip_icml_status_md_wrappers("==STATUS: READY==") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("==**STATUS: READY**==") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("**~~STATUS: READY~~**") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("~~**STATUS: READY**~~") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("`STATUS: READY`") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("STATUS: READY") == "STATUS: READY"
+    assert _strip_icml_status_line_noise(
+        "<blockquote>STATUS: READY</blockquote>"
+    ) == "STATUS: READY"
+    assert _strip_icml_status_line_noise("==**STATUS: READY**==") == "STATUS: READY"
+    assert _icml_ready_status_header(
+        "<blockquote>STATUS: READY</blockquote>\n"
+    ) == "READY"
+    assert _icml_ready_status_header("<li>**STATUS: IN_PROGRESS**</li>\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("==STATUS: READY==\n") == "READY"
+    assert _icml_ready_status_header("==**STATUS: READY**==\n") == "READY"
+    assert _icml_ready_status_header("**~~STATUS: READY~~**\n") == "READY"
+    assert _icml_ready_status_header("<h1>STATUS: READY</h1>\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_bq = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<blockquote>STATUS: READY</blockquote>\n"
+    )
+    assert _icml_ready_status_header(prose_bq) == "READY"
+    demoted_bq = _demote_icml_ready_status(prose_bq)
+    assert _icml_ready_status_header(demoted_bq) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_bq
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_bq.splitlines()
+    )
+    assert not any(
+        "<blockquote>" in ln and "STATUS: READY" in ln
+        for ln in demoted_bq.splitlines()
+    )
+    assert _icml_ready_richness(prose_bq)[2] == 1
+
+    prose_eq = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "==STATUS: READY==\n"
+    )
+    assert _icml_ready_status_header(prose_eq) == "READY"
+    demoted_eq = _demote_icml_ready_status(prose_eq)
+    assert _icml_ready_status_header(demoted_eq) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("==") and "STATUS: READY" in ln
+        for ln in demoted_eq.splitlines()
     )
 
 
@@ -7426,6 +7513,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "_ICML_STATUS_MD_WRAP_RE" in env_checks
     assert "ICML HTML-heading + markdown-wrap STATUS header (Tick 457)" in master
     assert "test_icml_ready_status_header_accepts_html_heading_and_md_wrap_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 458: HTML container tags + Obsidian == / nested md wrappers.
+    assert "blockquote|li|ul|ol" in env_checks
+    assert r"(?:==)(.*?)(?:==)" in env_checks or "(?:==)(.*?)(?:==)" in env_checks
+    assert "ICML HTML-container + Obsidian STATUS header (Tick 458)" in master
+    assert "test_icml_ready_status_header_accepts_html_container_and_obsidian_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

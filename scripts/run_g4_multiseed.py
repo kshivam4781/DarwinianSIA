@@ -1040,11 +1040,17 @@ def demote_icml_ready_file(
     STATUS (``<h1>STATUS: READY</h1>`` / `` `STATUS: READY` `` /
     ``~~STATUS: READY~~``) — pre-457 left Notion HTML heading export and
     chat/code-paste READY poisoned after trust refuse.
+
+    Tick 458: also demote HTML container + Obsidian highlight / nested md
+    STATUS (``<blockquote>STATUS: READY</blockquote>`` /
+    ``<li>STATUS: READY</li>`` / ``==STATUS: READY==`` /
+    ``**~~STATUS: READY~~**``) — pre-458 left Notion HTML list/blockquote
+    export and Obsidian highlight READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–457: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–458: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""

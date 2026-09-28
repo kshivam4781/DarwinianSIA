@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 458:** HTML-container + Obsidian STATUS headers (`<blockquote>STATUS: READY</blockquote>` / `<li>STATUS:…</li>` / `==STATUS: READY==` / `**~~STATUS: READY~~**`) strip + demote/update — closes G4 demote no-op / pack miss on Notion HTML list/blockquote export + Obsidian highlight (Tick 451 markdown `>`/`-` already worked).  
+**Tick 457:** HTML-heading + markdown-wrap STATUS headers (`<h1>STATUS: READY</h1>` / `` `STATUS: READY` `` / `~~STATUS: READY~~`) strip + demote/update — closes G4 demote no-op / pack miss on Notion HTML heading export + chat/code paste.  
 **Tick 456:** HTML-tag-wrapped STATUS headers (`<strong>STATUS: READY</strong>` / `<p><b>**STATUS:…**</b></p>` / `<span style="…">**STATUS: READY**</span>`) strip + demote/update — closes G4 demote no-op / pack miss on Notion/Docs rich-paste / partial HTML→Markdown.  
 **Tick 455:** HTML-entity ZWSP/nbsp STATUS headers (`&#8203;**STATUS: READY**` / `&ZeroWidthSpace;**STATUS:…**` / `**STATUS:&nbsp;READY**`) decode + demote/update — closes G4 demote no-op / pack miss on Notion/Docs HTML→Markdown exports.  
 **Tick 454:** ZWSP-prefixed + nested bold↔dunder STATUS headers (`\u200b**STATUS: READY**` / `**__STATUS: READY__**` / `__**STATUS: READY**__`) parse + demote/update — closes G4 demote no-op / pack miss on Notion/Docs paste ZWSP and mixed-editor nested stubs.  
