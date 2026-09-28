@@ -1025,11 +1025,16 @@ def demote_icml_ready_file(
     (``\\u200b**STATUS: READY**`` / ``**__STATUS: READY__**`` /
     ``__**STATUS: READY**__``) — pre-454 left those READY poisoned after
     trust refuse.
+
+    Tick 455: also demote HTML-entity ZWSP / nbsp STATUS
+    (``&#8203;**STATUS: READY**`` / ``&ZeroWidthSpace;**STATUS:…**`` /
+    ``**STATUS:&nbsp;READY**``) — pre-455 left HTML-export READY poisoned
+    after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–454: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–455: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1143,13 +1148,14 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–454: strip() + plain/ATX/bold-label/colon-out/container/
-        # italic / __ / *** / ZWSP / nested bold↔dunder STATUS so indented /
-        # bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
+        # Tick 443/447–455: strip() + plain/ATX/bold-label/colon-out/container/
+        # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity STATUS so
+        # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
         # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
         # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
-        # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__``
-        # headers update (normalize to ``**STATUS:…**``).
+        # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
+        # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` headers update
+        # (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

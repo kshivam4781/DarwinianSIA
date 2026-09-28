@@ -5593,6 +5593,93 @@ def test_icml_ready_status_header_accepts_zwsp_nested_bold_dunder_status() -> No
     )
 
 
+def test_icml_ready_status_header_accepts_html_entity_zwsp_nbsp_status() -> None:
+    """Tick 455: HTML-entity ZWSP / nbsp STATUS headers must parse + demote.
+
+    Pre-455 Unicode-only strip left ``&#8203;**STATUS: READY**`` /
+    ``&ZeroWidthSpace;**STATUS:…**`` / ``**STATUS:&nbsp;READY**`` unmatched so
+    demote no-op'd / G4 pack missed READY on Notion/Docs HTML→Markdown exports.
+    Prior Unicode ZWSP / nested / dunder forms must still parse.
+    """
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+    )
+
+    assert _decode_icml_status_html_entities("&#8203;**STATUS: READY**") == (
+        "\u200b**STATUS: READY**"
+    )
+    assert _decode_icml_status_html_entities("&ZeroWidthSpace;STATUS: READY") == (
+        "\u200bSTATUS: READY"
+    )
+    assert _decode_icml_status_html_entities("**STATUS:&nbsp;READY**") == (
+        "**STATUS:\u00a0READY**"
+    )
+    # Unknown entities left alone.
+    assert _decode_icml_status_html_entities("&amp;**STATUS: READY**") == (
+        "&amp;**STATUS: READY**"
+    )
+    assert _strip_icml_status_line_noise("&#8203;**STATUS: READY**") == (
+        "**STATUS: READY**"
+    )
+    assert _strip_icml_status_line_noise("**STATUS:&nbsp;READY**") == (
+        "**STATUS:\u00a0READY**"
+    )
+    assert _icml_ready_status_header("&#8203;**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("&#x200b;**STATUS: IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("&ZeroWidthSpace;**STATUS: READY**\n") == (
+        "READY"
+    )
+    assert _icml_ready_status_header("**STATUS:&nbsp;READY**\n") == "READY"
+    assert _icml_ready_status_header("**STATUS:&#160;IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    # Containers + HTML entity still work.
+    assert _icml_ready_status_header("> &#8203;**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("# **STATUS:&nbsp;IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    # Prior Unicode ZWSP / nested / dunder / bold forms unchanged.
+    assert _icml_ready_status_header("\u200b**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("**__STATUS: READY__**\n") == "READY"
+    assert _icml_ready_status_header("__STATUS: READY__\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_ent = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "&#8203;**STATUS: READY**\n"
+    )
+    assert _icml_ready_status_header(prose_ent) == "READY"
+    demoted_ent = _demote_icml_ready_status(prose_ent)
+    assert _icml_ready_status_header(demoted_ent) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_ent
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_ent.splitlines()
+    )
+    assert not any(
+        "&#8203;" in ln and "STATUS: READY" in ln for ln in demoted_ent.splitlines()
+    )
+    assert _icml_ready_richness(prose_ent)[2] == 1
+
+    prose_nbsp = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "**STATUS:&nbsp;READY**\n"
+    )
+    assert _icml_ready_status_header(prose_nbsp) == "READY"
+    demoted_nbsp = _demote_icml_ready_status(prose_nbsp)
+    assert _icml_ready_status_header(demoted_nbsp) == "IN_PROGRESS"
+    assert not any(
+        "&nbsp;" in ln and "STATUS: READY" in ln for ln in demoted_nbsp.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7141,6 +7228,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert r"\*\*__|__\*\*" in env_checks or "\\*\\*__|__\\*\\*" in env_checks
     assert "ICML ZWSP/nested bold-dunder STATUS header (Tick 454)" in master
     assert "test_icml_ready_status_header_accepts_zwsp_nested_bold_dunder_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 455: HTML-entity ZWSP / nbsp decode before Unicode strip.
+    assert "_decode_icml_status_html_entities" in env_checks
+    assert "_ICML_STATUS_HTML_ENTITY_RE" in env_checks
+    assert "ZeroWidthSpace" in env_checks
+    assert "ICML HTML-entity ZWSP/nbsp STATUS header (Tick 455)" in master
+    assert "test_icml_ready_status_header_accepts_html_entity_zwsp_nbsp_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
