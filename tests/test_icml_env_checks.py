@@ -5680,6 +5680,104 @@ def test_icml_ready_status_header_accepts_html_entity_zwsp_nbsp_status() -> None
     )
 
 
+def test_icml_ready_status_header_accepts_html_tag_wrapped_status() -> None:
+    """Tick 456: HTML-tag-wrapped STATUS headers must parse + demote.
+
+    Pre-456 entity/ZWSP strip left ``<strong>STATUS: READY</strong>`` /
+    ``<p><b>**STATUS:…**</b></p>`` / ``<span style=\"…\">**STATUS: READY**</span>``
+    unmatched so demote no-op'd / G4 pack missed READY on Notion/Docs rich-paste
+    and partial HTML→Markdown exports. Prior entity / ZWSP / nested forms must
+    still parse.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_html_tags,
+        _strip_icml_status_line_noise,
+    )
+
+    assert _strip_icml_status_html_tags("<strong>STATUS: READY</strong>") == (
+        "STATUS: READY"
+    )
+    assert _strip_icml_status_html_tags(
+        '<span style="font-weight:bold">**STATUS: READY**</span>'
+    ) == "**STATUS: READY**"
+    assert _strip_icml_status_html_tags("<p><b>STATUS: IN_PROGRESS</b></p>") == (
+        "STATUS: IN_PROGRESS"
+    )
+    # Non-allowlisted tags left alone (do not eat comparisons).
+    assert _strip_icml_status_html_tags("STATUS < 1") == "STATUS < 1"
+    assert _strip_icml_status_html_tags("<table>STATUS: READY</table>") == (
+        "<table>STATUS: READY</table>"
+    )
+    assert _strip_icml_status_line_noise("<strong>STATUS: READY</strong>") == (
+        "STATUS: READY"
+    )
+    assert _strip_icml_status_line_noise(
+        "<strong>&#8203;**STATUS: READY**</strong>"
+    ) == "**STATUS: READY**"
+    assert _icml_ready_status_header("<strong>STATUS: READY</strong>\n") == "READY"
+    assert _icml_ready_status_header("<b>STATUS: IN_PROGRESS</b>\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("<em>STATUS: READY</em>\n") == "READY"
+    assert _icml_ready_status_header("<p><strong>STATUS: READY</strong></p>\n") == (
+        "READY"
+    )
+    assert (
+        _icml_ready_status_header("<strong>**STATUS: READY**</strong>\n") == "READY"
+    )
+    assert (
+        _icml_ready_status_header(
+            '<span style="font-weight:bold">**STATUS: IN_PROGRESS**</span>\n'
+        )
+        == "IN_PROGRESS"
+    )
+    # Containers + HTML tags still work.
+    assert _icml_ready_status_header("> <strong>STATUS: READY</strong>\n") == "READY"
+    assert _icml_ready_status_header("# <b>**STATUS: IN_PROGRESS**</b>\n") == (
+        "IN_PROGRESS"
+    )
+    # Combined entity + tag.
+    assert (
+        _icml_ready_status_header("<strong>&#8203;**STATUS: READY**</strong>\n")
+        == "READY"
+    )
+    # Prior entity / ZWSP / nested / bold forms unchanged.
+    assert _icml_ready_status_header("&#8203;**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("\u200b**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("**__STATUS: READY__**\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_tag = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<strong>STATUS: READY</strong>\n"
+    )
+    assert _icml_ready_status_header(prose_tag) == "READY"
+    demoted_tag = _demote_icml_ready_status(prose_tag)
+    assert _icml_ready_status_header(demoted_tag) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_tag
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_tag.splitlines()
+    )
+    assert not any(
+        "<strong>" in ln and "STATUS: READY" in ln for ln in demoted_tag.splitlines()
+    )
+    assert _icml_ready_richness(prose_tag)[2] == 1
+
+    prose_span = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<span style="font-weight:bold">**STATUS: READY**</span>\n'
+    )
+    assert _icml_ready_status_header(prose_span) == "READY"
+    demoted_span = _demote_icml_ready_status(prose_span)
+    assert _icml_ready_status_header(demoted_span) == "IN_PROGRESS"
+    assert not any(
+        "<span" in ln and "STATUS: READY" in ln for ln in demoted_span.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7236,6 +7334,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ZeroWidthSpace" in env_checks
     assert "ICML HTML-entity ZWSP/nbsp STATUS header (Tick 455)" in master
     assert "test_icml_ready_status_header_accepts_html_entity_zwsp_nbsp_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 456: HTML-tag wrappers stripped before STATUS match.
+    assert "_strip_icml_status_html_tags" in env_checks
+    assert "_ICML_STATUS_HTML_TAG_RE" in env_checks
+    assert "strong|b|em|i|p|div|span" in env_checks
+    assert "ICML HTML-tag-wrapped STATUS header (Tick 456)" in master
+    assert "test_icml_ready_status_header_accepts_html_tag_wrapped_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

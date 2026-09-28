@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-28T06:04Z — Tick 456 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-f433` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 455 decoded HTML-entity ZWSP/nbsp but Notion/Docs **rich-paste / partial HTML→Markdown** often leave wrapper tags (`<strong>STATUS: READY</strong>` / `<p><b>**STATUS:…**</b></p>` / `<span style="…">**STATUS: READY**</span>`) — `_icml_ready_status_header` returned None: `demote_icml_ready_file` no-op'd (`!= READY`) and left poisoned READY on disk after trust refuse; `update_icml_ready_from_g4` could return READY while leaving tagged IN_PROGRESS on disk. Highest leverage without paid spend: **HTML-tag STATUS strip + demote/update rewrite**.
+
+### What this tick did (ONE step)
+**Tick 456 — HTML-tag-wrapped STATUS (no API spend):**
+1. Recovered tip ← Tick 455 (`f49c`); confirmed secrets absent; boot `f433` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_strip_icml_status_html_tags` / `_ICML_STATUS_HTML_TAG_RE` strip allowlisted wrappers (`strong|b|em|i|p|div|span|…`) after entity decode; demote/update normalize to `**STATUS:…**`
+3. Tests: `test_icml_ready_status_header_accepts_html_tag_wrapped_status` + G4 demote/update tag cases + Tick 455 locks → focused **3+ passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 455) | After (Tick 456) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `<strong>STATUS: READY</strong>` / `<span>**STATUS…**</span>` demote / G4 pack rewrite | **miss / no-op / report≠disk** | **header-only demote + normalize to `**STATUS:**`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-28T04:15Z — Tick 455 (automation cron)
 
 ### Status snapshot

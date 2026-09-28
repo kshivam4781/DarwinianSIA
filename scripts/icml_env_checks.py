@@ -2859,6 +2859,9 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # Tick 455: HTML exports often encode the same invisibles as entities
 # (``&#8203;**STATUS: READY**`` / ``&ZeroWidthSpace;`` / ``**STATUS:&nbsp;READY**``)
 # — decode those before Unicode strip so demote / G4 pack still match.
+# Tick 456: Notion/Docs HTML→Markdown / rich-paste also leave wrapper tags
+# (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
+# ``<span style="…">**STATUS: READY**</span>``) — strip those before match.
 _ICML_STATUS_INVISIBLE_CHARS_RE = re.compile(
     r"[\ufeff\u200b\u200c\u200d\u2060\u00ad]+"
 )
@@ -2879,6 +2882,12 @@ _ICML_STATUS_HTML_NAMED = {
 }
 _ICML_STATUS_HTML_CODEPOINTS = frozenset(
     {0x200B, 0x200C, 0x200D, 0x2060, 0x00AD, 0xFEFF, 0x00A0}
+)
+# Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
+_ICML_STATUS_HTML_TAG_RE = re.compile(
+    r"</?(?:strong|b|em|i|p|div|span|font|mark|u|s|strike|del|ins|small|big|"
+    r"code|tt|br|hr)(?:\s[^>/]*)?\s*/?>",
+    re.IGNORECASE,
 )
 
 
@@ -2905,6 +2914,21 @@ def _decode_icml_status_html_entities(line: str) -> str:
         return m.group(0)
 
     return _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, line or "")
+
+
+def _strip_icml_status_html_tags(line: str) -> str:
+    """Tick 456: remove formatting HTML tags around STATUS headers.
+
+    Pre-456 entity/ZWSP strip still left ``<strong>STATUS: READY</strong>`` /
+    ``<p><b>**STATUS:…**</b></p>`` / ``<span style=\"…\">**STATUS: READY**</span>``
+    unmatched — demote no-op / G4 pack miss READY on Notion/Docs rich-paste
+    and partial HTML→Markdown exports. Only strip a fixed allowlist of
+    emphasis/block wrappers (with optional attributes); leave other ``<…>``
+    untouched so prose like ``STATUS < 1`` is not eaten.
+    """
+    return _ICML_STATUS_HTML_TAG_RE.sub("", line or "")
+
+
 _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
@@ -2939,7 +2963,7 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
 
 
 def _strip_icml_status_line_noise(line: str) -> str:
-    """Tick 451/454/455: decode HTML entities, strip BOM/ZWSP/…, then whitespace.
+    """Tick 451/454/455/456: decode entities, strip HTML tags + BOM/ZWSP/…, whitespace.
 
     Python ``str.strip()`` does **not** remove ZWSP (``\\u200b``) / ZWNJ / ZWJ /
     word-joiner / soft-hyphen. Pre-454 only ``lstrip(\"\\ufeff\")`` + ``strip()``,
@@ -2952,19 +2976,25 @@ def _strip_icml_status_line_noise(line: str) -> str:
     before Unicode strip — ``&#8203;**STATUS: READY**`` /
     ``&ZeroWidthSpace;**STATUS:…**`` / ``**STATUS:&nbsp;READY**`` otherwise stay
     unmatched after Tick 454's Unicode-only strip.
+
+    Tick 456: also strip allowlisted formatting HTML tags after entity decode —
+    ``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
+    ``<span style=\"…\">**STATUS: READY**</span>`` otherwise stay unmatched
+    after Tick 455's entity-only path.
     """
     s = _decode_icml_status_html_entities(line or "")
+    s = _strip_icml_status_html_tags(s)
     s = _ICML_STATUS_INVISIBLE_CHARS_RE.sub("", s)
     return s.strip()
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–455: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity) after strip."""
+    """Tick 447–456: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3042,6 +3072,12 @@ def _icml_ready_status_header(text: str) -> str | None:
     ``&ZeroWidthSpace;**STATUS:…**`` / ``**STATUS:&nbsp;READY**``). Pre-455
     Unicode-only strip left HTML-export stubs unmatched — demote no-op / G4
     pack miss READY the same way prior STATUS variants did.
+
+    Tick 456: also strip allowlisted formatting HTML tags after entity decode
+    (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
+    ``<span style=\"…\">**STATUS: READY**</span>``). Pre-456 entity/ZWSP strip
+    left rich-paste / partial HTML→Markdown stubs unmatched — demote no-op /
+    G4 pack miss READY the same way prior STATUS variants did.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -3106,7 +3142,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–455).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–456).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -3146,6 +3182,11 @@ def _demote_icml_ready_status(body: str) -> str:
     Tick 455: also rewrite HTML-entity ZWSP / nbsp STATUS lines
     (``&#8203;**STATUS: READY**`` / ``&ZeroWidthSpace;**STATUS:…**`` /
     ``**STATUS:&nbsp;READY**``) to the same normalized header.
+
+    Tick 456: also rewrite HTML-tag-wrapped STATUS lines
+    (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
+    ``<span style=\"…\">**STATUS: READY**</span>``) to the same normalized
+    header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

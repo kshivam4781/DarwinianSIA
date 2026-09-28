@@ -1030,11 +1030,16 @@ def demote_icml_ready_file(
     (``&#8203;**STATUS: READY**`` / ``&ZeroWidthSpace;**STATUS:…**`` /
     ``**STATUS:&nbsp;READY**``) — pre-455 left HTML-export READY poisoned
     after trust refuse.
+
+    Tick 456: also demote HTML-tag-wrapped STATUS
+    (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
+    ``<span style=\"…\">**STATUS: READY**</span>``) — pre-456 left rich-paste
+    / partial HTML→Markdown READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–455: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–456: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1148,14 +1153,16 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–455: strip() + plain/ATX/bold-label/colon-out/container/
-        # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity STATUS so
-        # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
-        # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
-        # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
-        # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
-        # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` headers update
-        # (normalize to ``**STATUS:…**``).
+        # Tick 443/447–456: strip() + plain/ATX/bold-label/colon-out/container/
+        # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag
+        # STATUS so indented / bare / heading / ``**STATUS:** TOKEN`` /
+        # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
+        # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` /
+        # ``***STATUS: TOKEN***`` / ``\\u200b**STATUS:…**`` /
+        # ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
+        # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` /
+        # ``<strong>STATUS: TOKEN</strong>`` / ``<span>**STATUS:…**</span>``
+        # headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

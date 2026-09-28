@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 455: HTML-entity ZWSP/nbsp STATUS headers (`&#8203;**STATUS: READY**` / `&ZeroWidthSpace;**STATUS:…**` / `**STATUS:&nbsp;READY**`) now decode + demote/update — closes G4 demote no-op / pack miss on Notion/Docs HTML→Markdown exports; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 456: HTML-tag-wrapped STATUS headers (`<strong>STATUS: READY</strong>` / `<p><b>**STATUS:…**</b></p>` / `<span style="…">**STATUS: READY**</span>`) now strip + demote/update — closes G4 demote no-op / pack miss on Notion/Docs rich-paste / partial HTML→Markdown; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
