@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-28 (Section 21 ICML; Tick 453 dunder/triple-star STATUS; Tick 452 italic/underscore STATUS; Tick 451 blockquote/list/BOM STATUS; Tick 450 colon-outside-bold STATUS; Tick 449 bold-closed label STATUS; Tick 448 ATX heading STATUS; Tick 447 plain STATUS header; Tick 446 STATUS header token parse; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
+**Last updated:** 2026-09-28 (Section 21 ICML; Tick 454 ZWSP/nested bold-dunder STATUS; Tick 453 dunder/triple-star STATUS; Tick 452 italic/underscore STATUS; Tick 451 blockquote/list/BOM STATUS; Tick 450 colon-outside-bold STATUS; Tick 449 bold-closed label STATUS; Tick 448 ATX heading STATUS; Tick 447 plain STATUS header; Tick 446 STATUS header token parse; Tick 445 judge STATUS header-only; Tick 444 pipeline STATUS read header-only; Tick 443 G4 demote header-only STATUS; Tick 442 ICML_READY STATUS header-only demote; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -904,6 +904,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML blockquote/list/BOM STATUS header (Tick 451) | **DONE** | `_icml_ready_status_header` / demote / G4 pack accept `> **STATUS: READY**` / `- STATUS: READY` / `1. **STATUS:** READY` + UTF-8 BOM strip — closes demote no-op + pack miss on quoted/listed/BOM stubs; focused container + G4 demote/update tests |
 | ICML italic/underscore STATUS header (Tick 452) | **DONE** | `_icml_ready_status_header` / demote / G4 pack accept `*STATUS*: READY` / `*STATUS: READY*` / `_STATUS: READY_` — closes demote no-op + pack miss on emphasis stubs (`(?!\w)` after token so `_` closers work); focused italic + G4 demote/update tests |
 | ICML dunder/triple-star STATUS header (Tick 453) | **DONE** | `_icml_ready_status_header` / demote / G4 pack accept `__STATUS: READY__` / `***STATUS: READY***` — closes demote no-op + pack miss on CommonMark `__bold__` / `***bold+italic***` stubs; focused dunder/triple-star + G4 demote/update tests |
+| ICML ZWSP/nested bold-dunder STATUS header (Tick 454) | **DONE** | `_strip_icml_status_line_noise` + nested `**__STATUS…__**` / `__**STATUS…**__` + compound closers — closes demote no-op + pack miss on Notion/Docs ZWSP paste and mixed-editor nested stubs; focused ZWSP/nested + G4 demote/update tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |

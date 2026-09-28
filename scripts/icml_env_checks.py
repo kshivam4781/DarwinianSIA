@@ -2852,10 +2852,23 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # Tick 453 also accepts double-underscore bold and triple-star bold+italic
 # (``__STATUS: READY__`` / ``***STATUS: READY***``) that Tick 452 left unmatched
 # (``__`` is CommonMark bold; ``***`` is bold+italic — neither is ``**`` / ``*`` / ``_``).
+# Tick 454 also strips leading invisible format chars (ZWSP/ZWNJ/ZWJ/WJ/SHY/BOM)
+# and accepts nested bold↔dunder wrappers (``**__STATUS: READY__**`` /
+# ``__**STATUS: READY**__``) that Tick 453 left unmatched — copy-paste from
+# Notion/Docs/Cursor often prefixes ZWSP; mixed editors nest ``**`` around ``__``.
+_ICML_STATUS_INVISIBLE_CHARS_RE = re.compile(
+    r"[\ufeff\u200b\u200c\u200d\u2060\u00ad]+"
+)
 _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
     r"\*{3}STATUS\*{0,3}:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:*** / ***STATUS:
+    r"|"
+    # Nested bold-outer + dunder-inner (Tick 454). Before plain ``__STATUS``.
+    r"\*\*__STATUS(?:__)?:\s*(?:__)?\s*"  # **__STATUS:… / **__STATUS__:…
+    r"|"
+    # Nested dunder-outer + bold-inner (Tick 454). Before plain ``__STATUS``.
+    r"__\*\*STATUS(?:\*\*)?:\s*(?:\*\*)?\s*"  # __**STATUS:… / __**STATUS:**…
     r"|"
     # Double-underscore bold. Use (?:__)? — NOT __? — so STATUS may be
     # followed by zero underscores before ``:`` (``__STATUS: READY__``).
@@ -2870,23 +2883,36 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"_STATUS_?:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
     r")"
     r"(READY|IN_PROGRESS)"
-    # Optional trailing close emphasis. Longer closers first (*** before ** before *).
+    # Optional trailing close emphasis. Compound nested closers first
+    # (``**__`` / ``__**``), then longer single closers (*** before ** before *).
     # Do not use \\b before ``_`` / ``__`` closers — underscore is a word char
     # (Tick 452/453), so ``READY_`` / ``READY__`` have no word boundary.
-    r"(?:\*{1,3}|__|_)?(?!\w)",
+    r"(?:\*\*__|__\*\*|\*{1,3}|__|_)?(?!\w)",
     re.IGNORECASE,
 )
 
 
+def _strip_icml_status_line_noise(line: str) -> str:
+    """Tick 451/454: strip BOM/ZWSP/ZWNJ/ZWJ/WJ/SHY then whitespace.
+
+    Python ``str.strip()`` does **not** remove ZWSP (``\\u200b``) / ZWNJ / ZWJ /
+    word-joiner / soft-hyphen. Pre-454 only ``lstrip(\"\\ufeff\")`` + ``strip()``,
+    so a Notion/Docs paste of ``\\u200b**STATUS: READY**`` (or ZWSP between a
+    blockquote marker and STATUS) made demote no-op / G4 pack miss READY while
+    leaving poisoned READY on disk. Remove invisibles anywhere on the line
+    before matching so ``> \\u200b**STATUS:…**`` still parses.
+    """
+    s = _ICML_STATUS_INVISIBLE_CHARS_RE.sub("", line or "")
+    return s.strip()
+
+
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–453: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***) after strip."""
-    return _ICML_READY_STATUS_HEADER_RE.match(
-        (line or "").lstrip("\ufeff").strip()
-    )
+    """Tick 447–454: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested) after strip."""
+    return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2951,6 +2977,13 @@ def _icml_ready_status_header(text: str) -> str | None:
     / ``***STATUS:*** READY``). Pre-453 matched ``**`` / ``*`` / ``_`` only, so
     CommonMark ``__bold__`` and ``***bold+italic***`` stubs made demote no-op /
     G4 pack miss READY the same way prior STATUS variants did.
+
+    Tick 454: also strip leading invisible format chars (ZWSP ``\\u200b`` /
+    ZWNJ / ZWJ / word-joiner / soft-hyphen / BOM) before matching, and accept
+    nested bold↔dunder wrappers (``**__STATUS: READY__**`` /
+    ``__**STATUS: READY**__``). Pre-454 left Notion/Docs paste ZWSP prefixes
+    and mixed-editor nested ``**``/``__`` stubs unmatched — demote no-op / G4
+    pack miss READY the same way prior STATUS variants did.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -3015,7 +3048,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–453).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–454).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -3047,6 +3080,10 @@ def _demote_icml_ready_status(body: str) -> str:
     Tick 453: also rewrite double-underscore bold / triple-star bold+italic
     STATUS lines (``__STATUS: READY__`` / ``***STATUS: READY***``) to the same
     normalized header.
+
+    Tick 454: also rewrite ZWSP-prefixed and nested bold↔dunder STATUS lines
+    (``\\u200b**STATUS: READY**`` / ``**__STATUS: READY__**`` /
+    ``__**STATUS: READY**__``) to the same normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

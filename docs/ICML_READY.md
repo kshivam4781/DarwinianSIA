@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 453: `__STATUS: READY__` / `***STATUS: READY***` headers now parse + demote/update like italic/underscore — closes G4 demote no-op / pack miss on CommonMark dunder-bold / triple-star stubs; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 454: ZWSP-prefixed + nested bold↔dunder STATUS headers (`\u200b**STATUS: READY**` / `**__STATUS: READY__**` / `__**STATUS: READY**__`) now parse + demote/update — closes G4 demote no-op / pack miss on Notion/Docs paste ZWSP and mixed-editor nested stubs; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

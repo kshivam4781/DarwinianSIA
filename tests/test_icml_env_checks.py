@@ -5510,6 +5510,89 @@ def test_icml_ready_status_header_accepts_dunder_triple_star_status() -> None:
     assert not any("***STATUS: READY***" in ln for ln in demoted3.splitlines())
 
 
+def test_icml_ready_status_header_accepts_zwsp_nested_bold_dunder_status() -> None:
+    """Tick 454: ZWSP-prefixed + nested bold↔dunder STATUS headers must parse.
+
+    Pre-454 left ``\\u200b**STATUS: READY**`` / ``**__STATUS: READY__**`` /
+    ``__**STATUS: READY**__`` unmatched so demote no-op'd / G4 pack missed
+    READY on paste/nested stubs. Prior dunder / bold / italic forms must still
+    parse.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+    )
+
+    zwsp = "\u200b"
+    assert _strip_icml_status_line_noise(f"{zwsp}**STATUS: READY**") == (
+        "**STATUS: READY**"
+    )
+    assert _icml_ready_status_header(f"{zwsp}**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header(f"{zwsp}{zwsp}STATUS: IN_PROGRESS\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("**__STATUS: READY__**\n") == "READY"
+    assert _icml_ready_status_header("**__STATUS__: IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("__**STATUS: READY**__\n") == "READY"
+    assert _icml_ready_status_header("__**STATUS:** IN_PROGRESS__\n") == (
+        "IN_PROGRESS"
+    )
+    # Containers + ZWSP / nested still work.
+    assert _icml_ready_status_header(f"> {zwsp}**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("# **__STATUS: IN_PROGRESS__**\n") == (
+        "IN_PROGRESS"
+    )
+    # Prior dunder / bold / italic / plain forms unchanged.
+    assert _icml_ready_status_header("__STATUS: READY__\n") == "READY"
+    assert _icml_ready_status_header("***STATUS: READY***\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("*STATUS*: READY\n") == "READY"
+    assert _icml_ready_status_header("STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+
+    prose_zw = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{zwsp}**STATUS: READY**\n"
+    )
+    assert _icml_ready_status_header(prose_zw) == "READY"
+    demoted_zw = _demote_icml_ready_status(prose_zw)
+    assert _icml_ready_status_header(demoted_zw) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_zw
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_zw.splitlines()
+    )
+    assert not any(zwsp in ln for ln in demoted_zw.splitlines() if "STATUS:" in ln)
+    assert _icml_ready_richness(prose_zw)[2] == 1
+
+    prose_nest = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "**__STATUS: READY__**\n"
+    )
+    assert _icml_ready_status_header(prose_nest) == "READY"
+    demoted_nest = _demote_icml_ready_status(prose_nest)
+    assert _icml_ready_status_header(demoted_nest) == "IN_PROGRESS"
+    assert not any(
+        "**__STATUS: READY__**" in ln for ln in demoted_nest.splitlines()
+    )
+
+    prose_nest2 = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "__**STATUS: READY**__\n"
+    )
+    assert _icml_ready_status_header(prose_nest2) == "READY"
+    demoted_nest2 = _demote_icml_ready_status(prose_nest2)
+    assert _icml_ready_status_header(demoted_nest2) == "IN_PROGRESS"
+    assert not any(
+        "__**STATUS: READY**__" in ln for ln in demoted_nest2.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7048,6 +7131,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "__STATUS(?:__)?" in env_checks or "__STATUS(?:__)?" in env_checks
     assert "ICML dunder/triple-star STATUS header (Tick 453)" in master
     assert "test_icml_ready_status_header_accepts_dunder_triple_star_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 454: ZWSP strip + nested bold↔dunder STATUS headers.
+    assert "_strip_icml_status_line_noise" in env_checks
+    assert "_ICML_STATUS_INVISIBLE_CHARS_RE" in env_checks
+    assert r"\*\*__STATUS" in env_checks or "\\*\\*__STATUS" in env_checks
+    assert r"__\*\*STATUS" in env_checks or "__\\*\\*STATUS" in env_checks
+    assert r"\*\*__|__\*\*" in env_checks or "\\*\\*__|__\\*\\*" in env_checks
+    assert "ICML ZWSP/nested bold-dunder STATUS header (Tick 454)" in master
+    assert "test_icml_ready_status_header_accepts_zwsp_nested_bold_dunder_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
