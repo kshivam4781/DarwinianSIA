@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 462: GitHub task-list checkbox (`- [ ] STATUS: READY` / `- [x] **STATUS: READY**`) + inline token-wrap STATUS (`STATUS: \`READY\`` / `STATUS: ~~READY~~`) — closes demote no-op / G4 pack miss after Tick 461; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 463: bare / ordered / blockquote checkbox STATUS (`[ ] STATUS: READY` / `1. [ ] STATUS: READY` / `> [x] **STATUS: READY**` / `| [ ] STATUS: READY |`) — closes demote no-op / G4 pack miss after Tick 462 required `[-*+]` before `[ ]`; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

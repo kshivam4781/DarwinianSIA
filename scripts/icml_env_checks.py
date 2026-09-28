@@ -3001,8 +3001,12 @@ def _strip_icml_status_md_table_pipes(line: str) -> str:
 # container + outer-wrap + pipe forms (``> `| STATUS: READY |` ``) unwrap.
 # Tick 462: also peel GitHub task-list checkboxes (``- [ ] STATUS:…`` /
 # ``- [x] STATUS:…``) — Tick 451/460 ``[-*+]\\s+`` alone left ``[ ]`` unmatched.
+# Tick 463: also peel bare checkboxes (``[ ] STATUS:…`` / ``[x] STATUS:…``)
+# and ordered-list checkboxes (``1. [ ] STATUS:…``) — Tick 462 required a
+# ``[-*+]`` list marker, so paste stubs without ``-`` / with ``1. [ ]`` missed.
 _ICML_STATUS_MD_CONTAINER_PREFIX_RE = re.compile(
-    r"^(?:>\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|#{1,6}\s+)"
+    r"^(?:>\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+(?:\[[ xX]\]\s+)?|"
+    r"\[[ xX]\]\s+|#{1,6}\s+)"
 )
 
 
@@ -3042,6 +3046,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     inline token wraps in the STATUS header regex (``STATUS: `READY` `` /
     ``STATUS: ~~READY~~``) — pre-462 left checklist-header and chat
     code/strike token stubs unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 463: also peel bare checkboxes (``[ ] STATUS: READY`` /
+    ``[x] **STATUS: READY**``), ordered-list checkboxes
+    (``1. [ ] STATUS: READY``), and blockquote+bare-checkbox
+    (``> [ ] STATUS: READY``) — pre-463 Tick 462 required ``[-*+]`` before
+    ``[ ]``, so paste stubs without a dash / with ``1. [ ]`` missed.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3067,9 +3077,10 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
 
 
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    # Tick 462: optional GitHub task-list checkbox after list marker
-    # (``- [ ] STATUS:…`` / ``- [x] **STATUS:…**``).
-    r"^(?:>\s*)?(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)?(?:#{1,6}\s+)?"
+    # Tick 462/463: optional list/ordered marker + optional task-list checkbox
+    # (``- [ ] STATUS:…`` / ``[ ] STATUS:…`` / ``1. [ ] STATUS:…`` /
+    # ``> [x] **STATUS:…**``).
+    r"^(?:>\s*)?(?:(?:[-*+]|\d+[.)])\s+)?(?:\[[ xX]\]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
     # Tick 461: optional whitespace before ``:`` (``STATUS : READY``).
     r"\*{3}STATUS\*{0,3}\s*:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:***
@@ -3156,6 +3167,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
     Tick 462: also peel GitHub task-list checkboxes (``- [ ]`` / ``- [x]``)
     and accept inline token wraps (``STATUS: `READY` `` / ``STATUS: ~~READY~~``)
     — pre-462 left those stubs unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 463: also peel bare checkboxes (``[ ]`` / ``[x]``), ordered-list
+    checkboxes (``1. [ ]``), and blockquote+bare-checkbox (``> [ ]``) —
+    pre-463 left paste stubs without a ``[-*+]`` list marker unmatched.
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3165,12 +3180,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–462: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap) after strip."""
+    """Tick 447–463: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/bare-checkbox/ordered-checkbox/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462/463: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3292,6 +3307,17 @@ def _icml_ready_status_header(text: str) -> str | None:
     (b) quote wrappers (``"STATUS: READY"`` / ``'STATUS: READY'``); (c)
     optional whitespace before colon (``STATUS : READY``). Pre-461 quote /
     space-colon stubs made demote no-op / G4 pack miss READY.
+
+    Tick 462: also peel GitHub task-list checkboxes after list markers
+    (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**``) and accept
+    inline token wraps (``STATUS: `READY` `` / ``STATUS: ~~READY~~``).
+
+    Tick 463: also peel bare checkboxes (``[ ] STATUS: READY`` /
+    ``[x] **STATUS: READY**``), ordered-list checkboxes
+    (``1. [ ] STATUS: READY`` / ``1. [x] **STATUS: READY**``), and
+    blockquote+bare-checkbox (``> [ ] STATUS: READY``) — pre-463 Tick 462
+    required ``[-*+]`` before ``[ ]``, so those paste stubs made demote
+    no-op / G4 pack miss READY.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -3424,6 +3450,11 @@ def _demote_icml_ready_status(body: str) -> str:
     (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**``) and inline
     token-wrap forms (``STATUS: `READY` `` / ``STATUS: ~~READY~~``) to the
     same normalized header.
+
+    Tick 463: also rewrite bare / ordered / blockquote-checkbox headers
+    (``[ ] STATUS: READY`` / ``1. [ ] STATUS: READY`` /
+    ``> [x] **STATUS: READY**`` / ``| [ ] STATUS: READY |``) to the same
+    normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

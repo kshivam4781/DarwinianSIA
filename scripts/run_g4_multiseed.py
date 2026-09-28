@@ -1070,11 +1070,17 @@ def demote_icml_ready_file(
     (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**`` /
     ``STATUS: `READY` `` / ``STATUS: ~~READY~~``) — pre-462 left checklist
     header and chat code/strike token READY poisoned after trust refuse.
+
+    Tick 463: also demote bare / ordered / blockquote-checkbox STATUS
+    (``[ ] STATUS: READY`` / ``1. [ ] STATUS: READY`` /
+    ``> [x] **STATUS: READY**`` / ``| [ ] STATUS: READY |``) — pre-463
+    Tick 462 required ``[-*+]`` before ``[ ]``, so those READY stubs stayed
+    poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–462: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–463: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1188,11 +1194,12 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–460: strip() + plain/ATX/bold-label/colon-out/container/
+        # Tick 443/447–463: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
         # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
-        # HTML-table / semantic / md-pipe / wrap+pipe STATUS so indented / bare /
-        # heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
+        # HTML-table / semantic / md-pipe / wrap+pipe / quote / space-colon /
+        # task-list / bare-checkbox / ordered-checkbox / token-wrap STATUS so
+        # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
         # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
         # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
         # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
@@ -1202,7 +1209,9 @@ def update_icml_ready_from_g4(
         # ``<blockquote>STATUS:…</blockquote>`` / ``==STATUS:…==`` /
         # ``<td>STATUS: TOKEN</td>`` / ``<section>STATUS:…</section>`` /
         # ``| STATUS: TOKEN |`` / `` `| STATUS: TOKEN |` `` /
-        # ``~~| STATUS: TOKEN |~~`` headers update (normalize to ``**STATUS:…**``).
+        # ``~~| STATUS: TOKEN |~~`` / ``- [ ] STATUS:…`` / ``[ ] STATUS:…`` /
+        # ``1. [ ] STATUS:…`` / ``> [x] **STATUS:…**`` / ``STATUS: `TOKEN` ``
+        # headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-28 (Section 21 ICML; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; Tick 459 HTML-table + semantic + md-pipe STATUS; Tick 458 HTML-container + Obsidian STATUS; Tick 457 HTML-heading + markdown-wrap STATUS; Tick 456 HTML-tag-wrapped STATUS; …)
+**Last updated:** 2026-09-28 (Section 21 ICML; Tick 463 bare + ordered checkbox STATUS; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; Tick 459 HTML-table + semantic + md-pipe STATUS; Tick 458 HTML-container + Obsidian STATUS; Tick 457 HTML-heading + markdown-wrap STATUS; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -913,6 +913,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML wrap-around md-pipe STATUS header (Tick 460) | **DONE** | Iterative pipe peel inside wrap loop + container-prefix peel — `` `| STATUS:… |` `` / ``~~| STATUS:… |~~`` / ``==| STATUS:… |==`` / ``**| STATUS:… |**`` / ``> `| STATUS:… |` `` demote/update — closes G4 demote no-op / pack miss after Tick 459 one-shot pre-wrap pipe peel; focused wrap+pipe + G4 demote/update tests |
 | ICML quote + space-colon STATUS header (Tick 461) | **DONE** | Quote wrappers (`"STATUS:…"` / `'STATUS:…'`) + `STATUS : TOKEN` space-before-colon + strict one-cell pipe peel (`| STATUS: READY | note |` no longer false READY) — closes demote no-op / pack miss + multi-cell false READY; focused quote/space-colon + G4 demote/update tests |
 | ICML task-list + token-wrap STATUS header (Tick 462) | **DONE** | GitHub task-list checkbox peel (`- [ ] STATUS:…` / `- [x] **STATUS:…**`) + inline token wraps (`STATUS: \`READY\`` / `STATUS: ~~READY~~`) — closes demote no-op / pack miss on checklist-header and chat code/strike token stubs; focused task-list/token-wrap + G4 demote/update tests |
+| ICML bare + ordered checkbox STATUS header (Tick 463) | **DONE** | Bare `[ ]`/`[x]`, ordered-list `1. [ ]`, blockquote `> [ ]`, and pipe+bare `| [ ] STATUS:… |` checkbox peel — closes demote no-op / pack miss after Tick 462 required `[-*+]` before `[ ]`; focused bare/ordered/bq + G4 demote/update tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
@@ -1118,7 +1119,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–457 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–463 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |

@@ -6279,6 +6279,91 @@ def test_icml_ready_status_header_accepts_task_list_and_token_wrap_status() -> N
     )
 
 
+def test_icml_ready_status_header_accepts_bare_ordered_blockquote_checkbox_status() -> None:
+    """Tick 463: bare / ordered / blockquote checkbox STATUS headers.
+
+    Pre-463 ``[ ] STATUS: READY`` / ``1. [ ] STATUS: READY`` /
+    ``> [x] **STATUS: READY**`` / ``| [ ] STATUS: READY |`` missed demote /
+    G4 pack rewrite (Tick 462 required ``[-*+]`` before ``[ ]``).
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    # Bare checkbox peel (no list marker).
+    assert _strip_icml_status_md_wrappers("[ ] STATUS: READY") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("[x] **STATUS: READY**") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("[X] STATUS: IN_PROGRESS") == (
+        "STATUS: IN_PROGRESS"
+    )
+    assert _strip_icml_status_line_noise("[ ] STATUS: READY") == "STATUS: READY"
+    assert _icml_ready_status_header("[ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("[x] **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("[ ] **STATUS: IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("[ ] STATUS: `READY`\n") == "READY"
+    assert _icml_ready_status_header("[x] STATUS: ~~READY~~\n") == "READY"
+
+    # Ordered-list + checkbox.
+    assert _strip_icml_status_md_wrappers("1. [ ] STATUS: READY") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("2) [x] **STATUS: READY**") == (
+        "STATUS: READY"
+    )
+    assert _icml_ready_status_header("1. [ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("1. [x] **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("3. [ ] STATUS : READY\n") == "READY"
+
+    # Blockquote + bare checkbox.
+    assert _strip_icml_status_md_wrappers("> [ ] STATUS: READY") == "STATUS: READY"
+    assert _icml_ready_status_header("> [ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("> [x] **STATUS: READY**\n") == "READY"
+
+    # Pipe + bare checkbox (peel pipe then checkbox).
+    assert _icml_ready_status_header("| [ ] STATUS: READY |\n") == "READY"
+    assert _icml_ready_status_header("| [x] **STATUS: READY** |\n") == "READY"
+    # Multi-cell still not a header.
+    assert _icml_ready_status_header("| [ ] STATUS: READY | note |\n") is None
+
+    # Prior Tick 462 list+checkbox forms still parse.
+    assert _icml_ready_status_header("- [ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("- [x] **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("STATUS: `READY`\n") == "READY"
+
+    prose_bare = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "[ ] STATUS: READY\n"
+    )
+    assert _icml_ready_status_header(prose_bare) == "READY"
+    demoted_b = _demote_icml_ready_status(prose_bare)
+    assert _icml_ready_status_header(demoted_b) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_b
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_b.splitlines())
+    assert not any(
+        ln.strip().startswith("[ ]") and "STATUS: READY" in ln
+        for ln in demoted_b.splitlines()
+    )
+    assert _icml_ready_richness(prose_bare)[2] == 1
+
+    prose_ord = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "1. [ ] STATUS: READY\n"
+    )
+    assert _icml_ready_status_header(prose_ord) == "READY"
+    demoted_o = _demote_icml_ready_status(prose_ord)
+    assert _icml_ready_status_header(demoted_o) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_o.splitlines())
+    assert not any(
+        "1. [ ]" in ln and "STATUS: READY" in ln for ln in demoted_o.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7901,6 +7986,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML task-list + token-wrap STATUS header (Tick 462)" in master
     assert (
         "test_icml_ready_status_header_accepts_task_list_and_token_wrap_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 463: bare / ordered / blockquote checkbox STATUS (no ``[-*+]`` required).
+    assert r"\[[ xX]\]\s+" in env_checks or "[[ xX]]\\s+" in env_checks
+    assert r"(?:[-*+]|\d+[.)])" in env_checks or "(?:[-*+]|\\d+[.)])" in env_checks
+    assert "ICML bare + ordered checkbox STATUS header (Tick 463)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_bare_ordered_blockquote_checkbox_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

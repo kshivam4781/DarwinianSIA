@@ -3590,6 +3590,94 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
         "~~READY~~" in ln for ln in strike_tok_text.splitlines() if "STATUS" in ln
     )
 
+    # (ao) Tick 463: bare ``[ ] STATUS: READY`` must demote —
+    # pre-463 required ``[-*+]`` before checkbox; demote no-op left poisoned READY.
+    bare_ready = tmp_path / "bare_checkbox_status.md"
+    bare_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "[ ] STATUS: READY\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(bare_ready.read_text(encoding="utf-8")) == "READY"
+    assert demote_icml_ready_file(bare_ready, reason="bare checkbox READY", timestamp="t") is True
+    bare_text = bare_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(bare_text) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in bare_text.splitlines())
+    assert "Do not set STATUS: READY until criteria pass." in bare_text
+    assert not any(
+        ln.strip().startswith("[ ]") and "STATUS: READY" in ln
+        for ln in bare_text.splitlines()
+    )
+
+    # (ap) Tick 463: ``1. [ ] STATUS: IN_PROGRESS`` ordered checkbox must update to READY.
+    ord_upd = tmp_path / "update_ordered_checkbox_status.md"
+    ord_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "1. [ ] STATUS: IN_PROGRESS\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_ord = update_icml_ready_from_g4(
+        ready_path=ord_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-28T20:00:00Z",
+        allow_ready=True,
+    )
+    assert status_ord == "READY"
+    ord_updated = ord_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(ord_updated) == "READY"
+    assert any(ln.strip() == "**STATUS: READY**" for ln in ord_updated.splitlines())
+    assert not any(
+        "1. [ ]" in ln and "STATUS: IN_PROGRESS" in ln for ln in ord_updated.splitlines()
+    )
+
+    # (aq) Tick 463: ``> [x] **STATUS: READY**`` blockquote+checkbox must demote.
+    bq_ready = tmp_path / "blockquote_checkbox_status.md"
+    bq_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "> [x] **STATUS: READY**\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(bq_ready.read_text(encoding="utf-8")) == "READY"
+    assert (
+        demote_icml_ready_file(bq_ready, reason="bq-checkbox READY", timestamp="t")
+        is True
+    )
+    bq_text = bq_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(bq_text) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in bq_text.splitlines())
+    assert not any(
+        ">" in ln and "STATUS: READY" in ln for ln in bq_text.splitlines()
+    )
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
