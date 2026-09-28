@@ -2902,9 +2902,15 @@ _ICML_STATUS_HTML_TAG_RE = re.compile(
     r"(?:\s[^>/]*)?\s*/?>",
     re.IGNORECASE,
 )
-# Tick 457/458/461: outer markdown inline-code / strikethrough / Obsidian
-# highlight / bold / quote wrappers. Groups: (1) backtick (2) ~~ (3) ==
-# (4) ** (5) __ (6) "…" (7) '…'.
+# Tick 457/458/461/464: outer markdown inline-code / strikethrough / Obsidian
+# highlight / bold / quote / paren / bracket / brace wrappers.
+# Groups: (1) backtick (2) ~~ (3) == (4) ** (5) __ (6) "…" (7) '…'
+# (8) (…) (9) （…） fullwidth (10) […] (11) {…}.
+# Tick 464: chat / JSON / Notion paste often wraps the whole STATUS header in
+# matching paren/bracket/brace (``(STATUS: READY)`` / ``[STATUS: READY]`` /
+# ``{STATUS: READY}`` / ``（STATUS: READY）``). Bracket wrap must stay *after*
+# bare-checkbox peel (``[ ] STATUS`` has no trailing ``]``, so it is not
+# mistaken for ``[STATUS:…]``).
 _ICML_STATUS_MD_WRAP_RE = re.compile(
     r"^(?:`+)(.*?)(?:`+)$|"
     r"^(?:~~)(.*?)(?:~~)$|"
@@ -2912,7 +2918,11 @@ _ICML_STATUS_MD_WRAP_RE = re.compile(
     r"^(?:\*\*)(.*?)(?:\*\*)$|"
     r"^(?:__)(.*?)(?:__)$|"
     r'^(?:")(.*?)(?:")$|'
-    r"^(?:')(.*?)(?:')$"
+    r"^(?:')(.*?)(?:')$|"
+    r"^\((.*?)\)$|"
+    r"^（(.*?)）$|"
+    r"^\[(.*?)\]$|"
+    r"^\{(.*?)\}$"
 )
 # Tick 459/461: outer markdown table-cell pipes (``| STATUS: READY |``).
 # Tick 461: require a true one-cell row (no inner ``|``) so
@@ -3052,6 +3062,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     (``1. [ ] STATUS: READY``), and blockquote+bare-checkbox
     (``> [ ] STATUS: READY``) — pre-463 Tick 462 required ``[-*+]`` before
     ``[ ]``, so paste stubs without a dash / with ``1. [ ]`` missed.
+
+    Tick 464: also peel matching paren / bracket / brace wrappers
+    (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）``) and accept fullwidth colon ``STATUS：READY`` —
+    pre-464 left chat/JSON/Notion paren stubs and CJK fullwidth-colon
+    headers unmatched (demote no-op / G4 pack miss READY).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3076,32 +3092,49 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     return s
 
 
+# Tick 464: ASCII ``:`` or fullwidth ``：`` (U+FF1A) after STATUS.
+_ICML_STATUS_COLON = r"[:：]"
+
 _ICML_READY_STATUS_HEADER_RE = re.compile(
     # Tick 462/463: optional list/ordered marker + optional task-list checkbox
     # (``- [ ] STATUS:…`` / ``[ ] STATUS:…`` / ``1. [ ] STATUS:…`` /
     # ``> [x] **STATUS:…**``).
     r"^(?:>\s*)?(?:(?:[-*+]|\d+[.)])\s+)?(?:\[[ xX]\]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
-    # Tick 461: optional whitespace before ``:`` (``STATUS : READY``).
-    r"\*{3}STATUS\*{0,3}\s*:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:***
+    # Tick 461/464: optional whitespace before ``:`` / fullwidth ``：``
+    # (``STATUS : READY`` / ``STATUS：READY``).
+    # Use string concat (not rf"…{3}…") so regex quantifiers stay literal.
+    r"\*{3}STATUS\*{0,3}\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:***
     r"|"
-    # Nested bold-outer + dunder-inner (Tick 454). Before plain ``__STATUS``.
-    r"\*\*__STATUS(?:__)?\s*:\s*(?:__)?\s*"  # **__STATUS:… / **__STATUS__:…
+    r"\*\*__STATUS(?:__)?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*(?:__)?\s*"  # **__STATUS:… / **__STATUS__:…
     r"|"
-    # Nested dunder-outer + bold-inner (Tick 454). Before plain ``__STATUS``.
-    r"__\*\*STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*"  # __**STATUS:… / __**STATUS:**…
+    r"__\*\*STATUS(?:\*\*)?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*(?:\*\*)?\s*"  # __**STATUS:… / __**STATUS:**…
     r"|"
     # Double-underscore bold. Use (?:__)? — NOT __? — so STATUS may be
     # followed by zero underscores before ``:`` (``__STATUS: READY__``).
     # ``__?`` would require ≥1 ``_`` after STATUS (``?`` only optionalizes the
     # second underscore of a two-underscore run).
-    r"__STATUS(?:__)?\s*:\s*(?:__)?\s*"  # __STATUS__: / __STATUS:__ / __STATUS:
+    r"__STATUS(?:__)?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*(?:__)?\s*"  # __STATUS__: / __STATUS:__ / __STATUS:
     r"|"
-    r"(?:\*\*)?STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
+    r"(?:\*\*)?STATUS(?:\*\*)?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
     r"|"
-    r"\*STATUS\*?\s*:\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
+    r"\*STATUS\*?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
     r"|"
-    r"_STATUS_?\s*:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
+    r"_STATUS_?\s*"
+    + _ICML_STATUS_COLON
+    + r"\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
     r")"
     # Tick 462: optional inline wrap around the token (``STATUS: `READY` `` /
     # ``STATUS: ~~READY~~``) — outer-line wraps already peeled by md-wrap.
@@ -3171,6 +3204,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
     Tick 463: also peel bare checkboxes (``[ ]`` / ``[x]``), ordered-list
     checkboxes (``1. [ ]``), and blockquote+bare-checkbox (``> [ ]``) —
     pre-463 left paste stubs without a ``[-*+]`` list marker unmatched.
+
+    Tick 464: also peel matching paren / bracket / brace wrappers
+    (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）``) and accept fullwidth colon ``STATUS：READY`` —
+    pre-464 left chat/JSON/Notion paren stubs and CJK fullwidth-colon
+    headers unmatched (demote no-op / G4 pack miss READY).
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3180,12 +3219,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–463: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/bare-checkbox/ordered-checkbox/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap) after strip."""
+    """Tick 447–464: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/bare-checkbox/ordered-checkbox/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap/paren/bracket/brace/fullwidth-colon) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462/463: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462/463/464: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3455,6 +3494,11 @@ def _demote_icml_ready_status(body: str) -> str:
     (``[ ] STATUS: READY`` / ``1. [ ] STATUS: READY`` /
     ``> [x] **STATUS: READY**`` / ``| [ ] STATUS: READY |``) to the same
     normalized header.
+
+    Tick 464: also rewrite paren / bracket / brace / fullwidth-colon headers
+    (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）`` / ``STATUS：READY`` / ``**STATUS：READY**``) to the
+    same normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

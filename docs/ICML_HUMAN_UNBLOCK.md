@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 464:** paren / bracket / brace / fullwidth-colon STATUS headers (`(STATUS: READY)` / `[STATUS: READY]` / `{STATUS: READY}` / `（STATUS: READY）` / `STATUS：READY`) strip + demote/update — closes G4 demote no-op / pack miss on chat/JSON/Notion paren stubs + CJK colon.  
 **Tick 463:** bare / ordered / blockquote checkbox STATUS headers (`[ ] STATUS: READY` / `1. [ ] STATUS:…` / `> [x] **STATUS:…**` / `| [ ] STATUS:… |`) strip + demote/update — closes G4 demote no-op / pack miss on paste stubs without `[-*+]` list marker (Tick 462 left those unmatched).  
 **Tick 459:** HTML-table + semantic + md-pipe STATUS headers (`<td>STATUS: READY</td>` / `<section>STATUS:…</section>` / `| STATUS: READY |` / `| **STATUS: READY** |`) strip + demote/update — closes G4 demote no-op / pack miss on Notion/Docs HTML table-cell/section export + GitHub one-cell pipe (Tick 458 left `<table>` unmatched).  
 **Tick 458:** HTML-container + Obsidian STATUS headers (`<blockquote>STATUS: READY</blockquote>` / `<li>STATUS:…</li>` / `==STATUS: READY==` / `**~~STATUS: READY~~**`) strip + demote/update — closes G4 demote no-op / pack miss on Notion HTML list/blockquote export + Obsidian highlight (Tick 451 markdown `>`/`-` already worked).  

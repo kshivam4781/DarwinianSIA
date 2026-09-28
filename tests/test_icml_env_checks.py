@@ -6364,6 +6364,77 @@ def test_icml_ready_status_header_accepts_bare_ordered_blockquote_checkbox_statu
     )
 
 
+def test_icml_ready_status_header_accepts_paren_bracket_brace_fullwidth_colon_status() -> None:
+    """Tick 464: paren / bracket / brace / fullwidth-colon STATUS headers.
+
+    Pre-464 ``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）`` / ``STATUS：READY`` missed demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    # Paren / bracket / brace / fullwidth-paren peel.
+    assert _strip_icml_status_md_wrappers("(STATUS: READY)") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("[STATUS: READY]") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("{STATUS: READY}") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("（STATUS: READY）") == "STATUS: READY"
+    # Iterative wrap peel: outer paren then outer ``**`` → bare STATUS.
+    assert _strip_icml_status_md_wrappers("(**STATUS: READY**)") == "STATUS: READY"
+    assert _strip_icml_status_line_noise("(STATUS: READY)") == "STATUS: READY"
+    assert _strip_icml_status_line_noise("[**STATUS: READY**]") == "STATUS: READY"
+
+    assert _icml_ready_status_header("(STATUS: READY)\n") == "READY"
+    assert _icml_ready_status_header("[STATUS: READY]\n") == "READY"
+    assert _icml_ready_status_header("{STATUS: IN_PROGRESS}\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("（**STATUS: READY**）\n") == "READY"
+    assert _icml_ready_status_header('("STATUS: READY")\n') == "READY"
+    assert _icml_ready_status_header("| (STATUS: READY) |\n") == "READY"
+
+    # Fullwidth colon (CJK / Notion export).
+    assert _icml_ready_status_header("STATUS：READY\n") == "READY"
+    assert _icml_ready_status_header("**STATUS：READY**\n") == "READY"
+    assert _icml_ready_status_header("STATUS： IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("(STATUS：READY)\n") == "READY"
+    assert _icml_ready_status_header("[STATUS：READY]\n") == "READY"
+
+    # Bare checkbox still peels (not mistaken for [STATUS:…] wrap).
+    assert _strip_icml_status_md_wrappers("[ ] STATUS: READY") == "STATUS: READY"
+    assert _icml_ready_status_header("[ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("- [x] **STATUS: READY**\n") == "READY"
+
+    prose_paren = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "(STATUS: READY)\n"
+    )
+    assert _icml_ready_status_header(prose_paren) == "READY"
+    demoted_p = _demote_icml_ready_status(prose_paren)
+    assert _icml_ready_status_header(demoted_p) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_p
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_p.splitlines())
+    assert not any(
+        ln.strip().startswith("(") and "STATUS: READY" in ln
+        for ln in demoted_p.splitlines()
+    )
+    assert _icml_ready_richness(prose_paren)[2] == 1
+
+    prose_fw = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS：READY\n"
+    )
+    assert _icml_ready_status_header(prose_fw) == "READY"
+    demoted_fw = _demote_icml_ready_status(prose_fw)
+    assert _icml_ready_status_header(demoted_fw) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_fw.splitlines())
+    assert not any("STATUS：READY" in ln for ln in demoted_fw.splitlines())
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7853,6 +7924,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         or "(?:\\*\\*)?STATUS(?:\\*\\*)?:" in env_checks
         or r"(?:\*\*)?STATUS(?:\*\*)?\s*:" in env_checks
         or "(?:\\*\\*)?STATUS(?:\\*\\*)?\\s*:" in env_checks
+        # Tick 464: colon may be `_ICML_STATUS_COLON` (`[:：]`) via string concat.
+        or (
+            r"(?:\*\*)?STATUS(?:\*\*)?\s*" in env_checks
+            and "_ICML_STATUS_COLON" in env_checks
+        )
     )
     assert "_icml_ready_status_line_match" in env_checks
     g4_src = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
@@ -7874,6 +7950,12 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         or "STATUS(?:\\*\\*)?:\\s*(?:\\*\\*)?\\s*" in env_checks
         or r"STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*" in env_checks
         or "STATUS(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?\\s*" in env_checks
+        # Tick 464: colon via ``_ICML_STATUS_COLON`` string concat.
+        or (
+            r"(?:\*\*)?STATUS(?:\*\*)?\s*" in env_checks
+            and "_ICML_STATUS_COLON" in env_checks
+            and r"\s*(?:\*\*)?\s*" in env_checks
+        )
     )
     assert "(READY|IN_PROGRESS)" in env_checks
     assert "ICML bold-closed label STATUS header (Tick 449)" in master
@@ -7886,6 +7968,10 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         or "STATUS(?:\\*\\*)?:" in env_checks
         or r"STATUS(?:\*\*)?\s*:" in env_checks
         or "STATUS(?:\\*\\*)?\\s*:" in env_checks
+        or (
+            r"STATUS(?:\*\*)?\s*" in env_checks
+            and "_ICML_STATUS_COLON" in env_checks
+        )
     )
     assert "ICML colon-outside-bold STATUS header (Tick 450)" in master
     assert "test_icml_ready_status_header_accepts_colon_outside_bold_status" in (
@@ -7994,6 +8080,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML bare + ordered checkbox STATUS header (Tick 463)" in master
     assert (
         "test_icml_ready_status_header_accepts_bare_ordered_blockquote_checkbox_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 464: paren / bracket / brace wrap + fullwidth colon STATUS.
+    assert r"^\((.*?)\)$" in env_checks or "^\\((.*?)\\)$" in env_checks
+    assert "_ICML_STATUS_COLON" in env_checks
+    assert "[:：]" in env_checks or "[:\\uff1a]" in env_checks or "：]" in env_checks
+    assert "ICML paren/bracket/brace + fullwidth-colon STATUS header (Tick 464)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_paren_bracket_brace_fullwidth_colon_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
