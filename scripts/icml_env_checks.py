@@ -2999,8 +2999,10 @@ def _strip_icml_status_md_table_pipes(line: str) -> str:
 
 # Tick 460: peel leading blockquote / list / ATX inside the wrap loop so
 # container + outer-wrap + pipe forms (``> `| STATUS: READY |` ``) unwrap.
+# Tick 462: also peel GitHub task-list checkboxes (``- [ ] STATUS:…`` /
+# ``- [x] STATUS:…``) — Tick 451/460 ``[-*+]\\s+`` alone left ``[ ]`` unmatched.
 _ICML_STATUS_MD_CONTAINER_PREFIX_RE = re.compile(
-    r"^(?:>\s+|[-*+]\s+|\d+[.)]\s+|#{1,6}\s+)"
+    r"^(?:>\s+|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|#{1,6}\s+)"
 )
 
 
@@ -3034,6 +3036,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     (``"STATUS: READY"`` / ``'STATUS: READY'`` / ``"**STATUS: READY**"``)
     so JSON/YAML/chat paste stubs demote/update. Pipe peel is one-cell-only
     (see ``_strip_icml_status_md_table_pipes``).
+
+    Tick 462: also peel GitHub task-list checkboxes in the container-prefix
+    loop (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**``) and accept
+    inline token wraps in the STATUS header regex (``STATUS: `READY` `` /
+    ``STATUS: ~~READY~~``) — pre-462 left checklist-header and chat
+    code/strike token stubs unmatched (demote no-op / G4 pack miss READY).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3059,7 +3067,9 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
 
 
 _ICML_READY_STATUS_HEADER_RE = re.compile(
-    r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
+    # Tick 462: optional GitHub task-list checkbox after list marker
+    # (``- [ ] STATUS:…`` / ``- [x] **STATUS:…**``).
+    r"^(?:>\s*)?(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
     # Tick 461: optional whitespace before ``:`` (``STATUS : READY``).
     r"\*{3}STATUS\*{0,3}\s*:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:***
@@ -3082,12 +3092,18 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"|"
     r"_STATUS_?\s*:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
     r")"
+    # Tick 462: optional inline wrap around the token (``STATUS: `READY` `` /
+    # ``STATUS: ~~READY~~``) — outer-line wraps already peeled by md-wrap.
+    r"(?:`+|~~)?"
+    r"\s*"
     r"(READY|IN_PROGRESS)"
-    # Optional trailing close emphasis. Compound nested closers first
-    # (``**__`` / ``__**``), then longer single closers (*** before ** before *).
-    # Do not use \\b before ``_`` / ``__`` closers — underscore is a word char
-    # (Tick 452/453), so ``READY_`` / ``READY__`` have no word boundary.
-    r"(?:\*\*__|__\*\*|\*{1,3}|__|_)?(?!\w)",
+    r"\s*"
+    # Optional trailing close emphasis / token wrap. Compound nested closers
+    # first (``**__`` / ``__**``), then ~~ / backticks, then longer single
+    # closers (*** before ** before *). Do not use \\b before ``_`` / ``__``
+    # closers — underscore is a word char (Tick 452/453), so ``READY_`` /
+    # ``READY__`` have no word boundary.
+    r"(?:`+|~~|\*\*__|__\*\*|\*{1,3}|__|_)?(?!\w)",
     re.IGNORECASE,
 )
 
@@ -3136,6 +3152,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
     Tick 461: also strip quote wrappers + allow ``STATUS : TOKEN`` (space
     before colon); one-cell-only pipe peel so ``| STATUS: READY | note |``
     is not a false READY header.
+
+    Tick 462: also peel GitHub task-list checkboxes (``- [ ]`` / ``- [x]``)
+    and accept inline token wraps (``STATUS: `READY` `` / ``STATUS: ~~READY~~``)
+    — pre-462 left those stubs unmatched (demote no-op / G4 pack miss READY).
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3145,12 +3165,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–461: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon) after strip."""
+    """Tick 447–462: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3395,6 +3415,15 @@ def _demote_icml_ready_status(body: str) -> str:
     pipe-table STATUS lines (``<td>STATUS: READY</td>`` /
     ``<section>STATUS: READY</section>`` / ``| STATUS: READY |`` /
     ``| **STATUS: READY** |``) to the same normalized header.
+
+    Tick 460–461: also rewrite wrap-around pipe / quote / space-colon STATUS
+    lines (`` `| STATUS: READY |` `` / ``"STATUS: READY"`` / ``STATUS : READY``)
+    to the same normalized header (multi-cell pipes intentionally untouched).
+
+    Tick 462: also rewrite GitHub task-list checkbox headers
+    (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**``) and inline
+    token-wrap forms (``STATUS: `READY` `` / ``STATUS: ~~READY~~``) to the
+    same normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

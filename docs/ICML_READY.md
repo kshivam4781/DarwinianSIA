@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 461: quote-wrap + space-before-colon STATUS (`"STATUS: READY"` / `STATUS : READY`) + strict one-cell markdown pipe peel (`| STATUS: READY | note |` no longer false READY) — closes demote no-op / pack miss and multi-cell false READY after Tick 460; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 462: GitHub task-list checkbox (`- [ ] STATUS: READY` / `- [x] **STATUS: READY**`) + inline token-wrap STATUS (`STATUS: \`READY\`` / `STATUS: ~~READY~~`) — closes demote no-op / G4 pack miss after Tick 461; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

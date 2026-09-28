@@ -3501,6 +3501,95 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
         demote_icml_ready_file(multi_cell, reason="multi-cell", timestamp="t") is False
     )
 
+    # (al) Tick 462: GitHub task-list ``- [ ] STATUS: READY`` must demote —
+    # pre-462 checkbox after list marker missed; demote no-op left poisoned READY.
+    task_ready = tmp_path / "task_list_status.md"
+    task_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "- [ ] STATUS: READY\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(task_ready.read_text(encoding="utf-8")) == "READY"
+    assert demote_icml_ready_file(task_ready, reason="task-list READY", timestamp="t") is True
+    task_text = task_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(task_text) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in task_text.splitlines())
+    assert "Do not set STATUS: READY until criteria pass." in task_text
+    assert not any(
+        "[ ]" in ln and "STATUS: READY" in ln for ln in task_text.splitlines()
+    )
+
+    # (am) Tick 462: ``STATUS: `IN_PROGRESS` `` token-wrap must update to READY.
+    token_upd = tmp_path / "update_token_wrap_status.md"
+    token_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "STATUS: `IN_PROGRESS`\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_token = update_icml_ready_from_g4(
+        ready_path=token_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-28T18:00:00Z",
+        allow_ready=True,
+    )
+    assert status_token == "READY"
+    token_updated = token_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(token_updated) == "READY"
+    assert any(ln.strip() == "**STATUS: READY**" for ln in token_updated.splitlines())
+    assert not any(
+        "`IN_PROGRESS`" in ln for ln in token_updated.splitlines() if "STATUS" in ln
+    )
+
+    # (an) Tick 462: ``STATUS: ~~READY~~`` strikethrough token must demote.
+    strike_token = tmp_path / "strike_token_status.md"
+    strike_token.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS: ~~READY~~\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(strike_token.read_text(encoding="utf-8")) == "READY"
+    assert (
+        demote_icml_ready_file(strike_token, reason="strike-token READY", timestamp="t")
+        is True
+    )
+    strike_tok_text = strike_token.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(strike_tok_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in strike_tok_text.splitlines()
+    )
+    assert not any(
+        "~~READY~~" in ln for ln in strike_tok_text.splitlines() if "STATUS" in ln
+    )
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

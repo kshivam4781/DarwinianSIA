@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-28T18:15Z — Tick 462 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-a55b` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 461 left two realistic STATUS hazards: (1) GitHub task-list checkbox headers (`- [ ] STATUS: READY` / `- [x] **STATUS: READY**`) — Tick 451/460 list peel stopped at `- ` and left `[ ]` unmatched; (2) inline token wraps (`STATUS: \`READY\`` / `STATUS: ~~READY~~`) common in chat/checklist paste — demote no-op / G4 pack miss READY. Highest leverage without paid spend: **task-list checkbox + token-wrap STATUS**.
+
+### What this tick did (ONE step)
+**Tick 462 — task-list + token-wrap STATUS (no API spend):**
+1. Recovered tip ← Tick 461 (`f49c`); confirmed secrets absent; boot `a55b` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_ICML_STATUS_MD_CONTAINER_PREFIX_RE` + header regex accept `- [ ]` / `- [x]` checkboxes; header regex accepts `` ` `` / `~~` wraps around READY|IN_PROGRESS; demote/update normalize to `**STATUS:…**`
+3. Tests: `test_icml_ready_status_header_accepts_task_list_and_token_wrap_status` + G4 demote/update task-list/token cases + Tick 461 lock → focused **3 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 461) | After (Tick 462) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `- [ ] STATUS: READY` / `STATUS: \`READY\`` / `STATUS: ~~READY~~` demote | **miss / miss / miss** | **demote/update normalize** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-28T16:20Z — Tick 461 (automation cron)
 
 ### Status snapshot

@@ -1065,11 +1065,16 @@ def demote_icml_ready_file(
     ``"**STATUS: READY**"``) — pre-461 left JSON/YAML/chat paste and
     spaced-colon READY poisoned after trust refuse. One-cell-only pipe peel
     so ``| STATUS: READY | note |`` is not a false READY header.
+
+    Tick 462: also demote GitHub task-list checkbox + inline token-wrap STATUS
+    (``- [ ] STATUS: READY`` / ``- [x] **STATUS: READY**`` /
+    ``STATUS: `READY` `` / ``STATUS: ~~READY~~``) — pre-462 left checklist
+    header and chat code/strike token READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–461: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–462: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""

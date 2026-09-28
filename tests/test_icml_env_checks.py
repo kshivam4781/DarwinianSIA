@@ -6208,6 +6208,77 @@ def test_icml_ready_status_header_accepts_quote_and_space_colon_status() -> None
     assert _icml_ready_status_header(multi) == "IN_PROGRESS"
 
 
+def test_icml_ready_status_header_accepts_task_list_and_token_wrap_status() -> None:
+    """Tick 462: GitHub task-list checkbox + inline token-wrap STATUS.
+
+    Pre-462 ``- [ ] STATUS: READY`` / ``STATUS: `READY` `` /
+    ``STATUS: ~~READY~~`` missed demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    # Task-list checkbox peel (container prefix + header regex).
+    assert _strip_icml_status_md_wrappers("- [ ] STATUS: READY") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("- [x] **STATUS: READY**") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("* [X] STATUS: IN_PROGRESS") == (
+        "STATUS: IN_PROGRESS"
+    )
+    assert _strip_icml_status_line_noise("- [ ] STATUS: READY") == "STATUS: READY"
+    assert _icml_ready_status_header("- [ ] STATUS: READY\n") == "READY"
+    assert _icml_ready_status_header("- [x] **STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("- [ ] **STATUS: IN_PROGRESS**\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("+ [x] STATUS : READY\n") == "READY"
+
+    # Inline token wraps (backtick / strikethrough around READY|IN_PROGRESS).
+    assert _icml_ready_status_header("STATUS: `READY`\n") == "READY"
+    assert _icml_ready_status_header("STATUS: ~~READY~~\n") == "READY"
+    assert _icml_ready_status_header("STATUS: `IN_PROGRESS`\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("**STATUS: `READY`**\n") == "READY"
+    assert _icml_ready_status_header("- [ ] STATUS: `READY`\n") == "READY"
+    assert _icml_ready_status_header('"STATUS: ~~READY~~"\n') == "READY"
+    # Prior Tick 461 forms still parse.
+    assert _icml_ready_status_header('"STATUS: READY"\n') == "READY"
+    assert _icml_ready_status_header("STATUS : READY\n") == "READY"
+    assert _icml_ready_status_header("| STATUS: READY |\n") == "READY"
+    # Multi-cell still not a header.
+    assert _icml_ready_status_header("| STATUS: READY | note |\n") is None
+
+    prose_task = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "- [ ] STATUS: READY\n"
+    )
+    assert _icml_ready_status_header(prose_task) == "READY"
+    demoted_t = _demote_icml_ready_status(prose_task)
+    assert _icml_ready_status_header(demoted_t) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_t
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_t.splitlines())
+    assert not any(
+        "[ ]" in ln and "STATUS: READY" in ln for ln in demoted_t.splitlines()
+    )
+    assert _icml_ready_richness(prose_task)[2] == 1
+
+    prose_token = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS: `READY`\n"
+    )
+    assert _icml_ready_status_header(prose_token) == "READY"
+    demoted_k = _demote_icml_ready_status(prose_token)
+    assert _icml_ready_status_header(demoted_k) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_k.splitlines())
+    assert not any(
+        "`READY`" in ln for ln in demoted_k.splitlines() if "STATUS" in ln
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7822,6 +7893,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML quote + space-colon STATUS header (Tick 461)" in master
     assert (
         "test_icml_ready_status_header_accepts_quote_and_space_colon_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 462: GitHub task-list checkbox + inline token-wrap STATUS.
+    assert r"\[[ xX]\]" in env_checks or "[[ xX]]" in env_checks
+    assert r"(?:`+|~~)?" in env_checks or "(?:`+|~~)?" in env_checks
+    assert "ICML task-list + token-wrap STATUS header (Tick 462)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_task_list_and_token_wrap_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
