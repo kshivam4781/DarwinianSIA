@@ -5984,9 +5984,12 @@ def test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status
         "**STATUS: READY**"
     )
     assert _strip_icml_status_md_table_pipes("|STATUS: READY|") == "STATUS: READY"
-    # Multi-cell rows keep inner pipes (do not become STATUS headers).
+    # Multi-cell rows are not peeled (Tick 461: leave full row; no false READY).
     assert _strip_icml_status_md_table_pipes("| foo | STATUS: READY |") == (
-        "foo | STATUS: READY"
+        "| foo | STATUS: READY |"
+    )
+    assert _strip_icml_status_md_table_pipes("| STATUS: READY | note |") == (
+        "| STATUS: READY | note |"
     )
     assert _strip_icml_status_md_wrappers("| ==STATUS: READY== |") == "STATUS: READY"
     assert _strip_icml_status_line_noise(
@@ -6005,6 +6008,7 @@ def test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status
     assert _icml_ready_status_header("| **STATUS: READY** |\n") == "READY"
     assert _icml_ready_status_header("| ==STATUS: READY== |\n") == "READY"
     assert _icml_ready_status_header("| foo | STATUS: READY |\n") is None
+    assert _icml_ready_status_header("| STATUS: READY | note |\n") is None
     assert _icml_ready_status_header("<blockquote>STATUS: READY</blockquote>\n") == (
         "READY"
     )
@@ -6116,6 +6120,92 @@ def test_icml_ready_status_header_accepts_wrap_around_md_pipe_status() -> None:
     assert not any(
         "~~|" in ln and "STATUS: READY" in ln for ln in demoted_strike.splitlines()
     )
+
+
+def test_icml_ready_status_header_accepts_quote_and_space_colon_status() -> None:
+    """Tick 461: quote-wrap + space-before-colon STATUS; strict one-cell pipes.
+
+    Pre-461 ``| STATUS: READY | note |`` peeled to ``STATUS: READY | note``
+    and still matched READY (false positive). Quote wrappers and
+    ``STATUS : READY`` missed demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_table_pipes,
+        _strip_icml_status_md_wrappers,
+    )
+
+    # Strict one-cell pipe peel (multi-cell untouched).
+    assert _strip_icml_status_md_table_pipes("| STATUS: READY |") == "STATUS: READY"
+    assert _strip_icml_status_md_table_pipes("| STATUS: READY | note |") == (
+        "| STATUS: READY | note |"
+    )
+    assert _strip_icml_status_md_table_pipes("| foo | STATUS: READY |") == (
+        "| foo | STATUS: READY |"
+    )
+    assert _icml_ready_status_header("| STATUS: READY | note |\n") is None
+    assert _icml_ready_status_header("| foo | STATUS: READY |\n") is None
+    assert _icml_ready_status_header("| STATUS: READY |\n") == "READY"
+
+    # Quote wrappers.
+    assert _strip_icml_status_md_wrappers('"STATUS: READY"') == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("'STATUS: IN_PROGRESS'") == (
+        "STATUS: IN_PROGRESS"
+    )
+    assert _strip_icml_status_md_wrappers('"**STATUS: READY**"') == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("\"| STATUS: READY |\"") == "STATUS: READY"
+    assert _strip_icml_status_line_noise('"STATUS: READY"') == "STATUS: READY"
+    assert _icml_ready_status_header('"STATUS: READY"\n') == "READY"
+    assert _icml_ready_status_header("'STATUS: READY'\n") == "READY"
+    assert _icml_ready_status_header('"**STATUS: IN_PROGRESS**"\n') == "IN_PROGRESS"
+
+    # Space before colon.
+    assert _icml_ready_status_header("STATUS : READY\n") == "READY"
+    assert _icml_ready_status_header("**STATUS : IN_PROGRESS**\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header('"STATUS : READY"\n') == "READY"
+    assert _icml_ready_status_header("| STATUS : READY |\n") == "READY"
+    # Prior Tick 460 forms still parse.
+    assert _icml_ready_status_header("`| STATUS: READY |`\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_quote = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '"STATUS: READY"\n'
+    )
+    assert _icml_ready_status_header(prose_quote) == "READY"
+    demoted_q = _demote_icml_ready_status(prose_quote)
+    assert _icml_ready_status_header(demoted_q) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_q
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_q.splitlines())
+    assert not any(
+        '"' in ln and "STATUS: READY" in ln for ln in demoted_q.splitlines()
+    )
+    assert _icml_ready_richness(prose_quote)[2] == 1
+
+    prose_space = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS : READY\n"
+    )
+    assert _icml_ready_status_header(prose_space) == "READY"
+    demoted_s = _demote_icml_ready_status(prose_space)
+    assert _icml_ready_status_header(demoted_s) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_s.splitlines())
+    assert not any(
+        ln.strip().startswith("STATUS : READY") for ln in demoted_s.splitlines()
+    )
+
+    # Multi-cell first-cell STATUS must not demote as a poisoned READY header.
+    multi = (
+        "# Title\n\n"
+        "| STATUS: READY | note |\n\n"
+        "**STATUS: IN_PROGRESS**\n"
+    )
+    assert _icml_ready_status_header(multi) == "IN_PROGRESS"
 
 
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
@@ -7598,12 +7688,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # Tick 447: plain (no ``**``) STATUS headers must parse + demote/update.
     env_checks = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     # Tick 450 evolved ``STATUS:`` → ``STATUS(?:\*\*)?:`` (colon-outside-bold);
+    # Tick 461 further allows optional whitespace before ``:`` (``STATUS :``).
     # still requires optional leading ``**`` so bare STATUS lines match.
     assert (
         r"^(?:\*\*)?STATUS:" in env_checks
         or "(?:\\*\\*)?STATUS:" in env_checks
         or r"(?:\*\*)?STATUS(?:\*\*)?:" in env_checks
         or "(?:\\*\\*)?STATUS(?:\\*\\*)?:" in env_checks
+        or r"(?:\*\*)?STATUS(?:\*\*)?\s*:" in env_checks
+        or "(?:\\*\\*)?STATUS(?:\\*\\*)?\\s*:" in env_checks
     )
     assert "_icml_ready_status_line_match" in env_checks
     g4_src = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
@@ -7623,14 +7716,21 @@ def test_env_example_and_section4_anthropic_optional() -> None:
         or "STATUS(?:\\*\\*)?:\\s*(?:\\*\\*)?\\s*(READY|IN_PROGRESS)" in env_checks
         or r"STATUS(?:\*\*)?:\s*(?:\*\*)?\s*" in env_checks
         or "STATUS(?:\\*\\*)?:\\s*(?:\\*\\*)?\\s*" in env_checks
+        or r"STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*" in env_checks
+        or "STATUS(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?\\s*" in env_checks
     )
     assert "(READY|IN_PROGRESS)" in env_checks
     assert "ICML bold-closed label STATUS header (Tick 449)" in master
     assert "test_icml_ready_status_header_accepts_bold_closed_label_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
-    # Tick 450: colon-outside-bold ``**STATUS**: READY``.
-    assert r"STATUS(?:\*\*)?:" in env_checks or "STATUS(?:\\*\\*)?:" in env_checks
+    # Tick 450: colon-outside-bold ``**STATUS**: READY`` (Tick 461: optional ``\s*`` before ``:``).
+    assert (
+        r"STATUS(?:\*\*)?:" in env_checks
+        or "STATUS(?:\\*\\*)?:" in env_checks
+        or r"STATUS(?:\*\*)?\s*:" in env_checks
+        or "STATUS(?:\\*\\*)?\\s*:" in env_checks
+    )
     assert "ICML colon-outside-bold STATUS header (Tick 450)" in master
     assert "test_icml_ready_status_header_accepts_colon_outside_bold_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
@@ -7714,6 +7814,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML wrap-around md-pipe STATUS header (Tick 460)" in master
     assert (
         "test_icml_ready_status_header_accepts_wrap_around_md_pipe_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 461: quote-wrap + space-before-colon + strict one-cell pipe peel.
+    assert r'^(?:")(.*?)(?:")$' in env_checks or '^(?:")(.*?)(?:")$' in env_checks
+    assert r"([^|]*?)" in env_checks  # one-cell pipe inner
+    assert "ICML quote + space-colon STATUS header (Tick 461)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_quote_and_space_colon_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

@@ -2902,17 +2902,22 @@ _ICML_STATUS_HTML_TAG_RE = re.compile(
     r"(?:\s[^>/]*)?\s*/?>",
     re.IGNORECASE,
 )
-# Tick 457/458: outer markdown inline-code / strikethrough / Obsidian highlight /
-# bold wrappers. Groups: (1) backtick (2) ~~ (3) == (4) ** (5) __.
+# Tick 457/458/461: outer markdown inline-code / strikethrough / Obsidian
+# highlight / bold / quote wrappers. Groups: (1) backtick (2) ~~ (3) ==
+# (4) ** (5) __ (6) "…" (7) '…'.
 _ICML_STATUS_MD_WRAP_RE = re.compile(
     r"^(?:`+)(.*?)(?:`+)$|"
     r"^(?:~~)(.*?)(?:~~)$|"
     r"^(?:==)(.*?)(?:==)$|"
     r"^(?:\*\*)(.*?)(?:\*\*)$|"
-    r"^(?:__)(.*?)(?:__)$"
+    r"^(?:__)(.*?)(?:__)$|"
+    r'^(?:")(.*?)(?:")$|'
+    r"^(?:')(.*?)(?:')$"
 )
-# Tick 459: outer markdown table-cell pipes (``| STATUS: READY |``).
-_ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*(.*?)\s*\|+\s*$")
+# Tick 459/461: outer markdown table-cell pipes (``| STATUS: READY |``).
+# Tick 461: require a true one-cell row (no inner ``|``) so
+# ``| STATUS: READY | note |`` is not peeled into a false READY header.
+_ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
@@ -2971,14 +2976,19 @@ def _strip_icml_status_html_tags(line: str) -> str:
 
 
 def _strip_icml_status_md_table_pipes(line: str) -> str:
-    """Tick 459: strip outer markdown table-cell pipes once.
+    """Tick 459/461: strip outer markdown table-cell pipes (one-cell only).
 
     Notion / GitHub / Docs often paste STATUS into a one-cell markdown table
     row (``| STATUS: READY |`` / ``| **STATUS: READY** |``). Pre-459 HTML
     table-tag strip still left pure-markdown pipe rows unmatched — demote
-    no-op / G4 pack miss READY. Only peel a full-line outer ``|…|`` wrapper;
-    multi-cell rows (``| foo | STATUS: READY |``) keep inner pipes and do
-    **not** become a STATUS header (inner does not start with STATUS).
+    no-op / G4 pack miss READY. Only peel a full-line outer ``|…|`` wrapper
+    when the inner cell has **no** ``|`` (true one-cell).
+
+    Tick 461: Pre-461 used non-greedy ``.*?`` between outer pipes, so
+    multi-cell ``| STATUS: READY | note |`` peeled to ``STATUS: READY | note``
+    and the STATUS header regex still matched READY (trailing ``| note``
+    ignored) — false READY / demote of a table note row. Leave multi-cell
+    rows untouched (``| foo | STATUS: READY |`` / ``| STATUS: READY | note |``).
     """
     s = (line or "").strip()
     m = _ICML_STATUS_MD_PIPE_RE.match(s)
@@ -2995,7 +3005,7 @@ _ICML_STATUS_MD_CONTAINER_PREFIX_RE = re.compile(
 
 
 def _strip_icml_status_md_wrappers(line: str) -> str:
-    """Tick 457/458/459/460: strip outer markdown wrappers (iterate nested pairs).
+    """Tick 457/458/459/460/461: strip outer markdown wrappers (iterate nested pairs).
 
     Chat / PR / docs paste often wraps the STATUS header in inline code
     (`` `STATUS: READY` `` / `` `**STATUS: READY**` ``) or strikethrough
@@ -3019,6 +3029,11 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``| STATUS: READY |`` after unwrap and never re-peeled — demote no-op /
     G4 pack miss READY. Also peel leading blockquote / list / ATX prefixes
     in the same loop so ``> `| STATUS: READY |` `` unwraps.
+
+    Tick 461: also strip matching double/single quote wrappers
+    (``"STATUS: READY"`` / ``'STATUS: READY'`` / ``"**STATUS: READY**"``)
+    so JSON/YAML/chat paste stubs demote/update. Pipe peel is one-cell-only
+    (see ``_strip_icml_status_md_table_pipes``).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3046,25 +3061,26 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
 _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
-    r"\*{3}STATUS\*{0,3}:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:*** / ***STATUS:
+    # Tick 461: optional whitespace before ``:`` (``STATUS : READY``).
+    r"\*{3}STATUS\*{0,3}\s*:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:***
     r"|"
     # Nested bold-outer + dunder-inner (Tick 454). Before plain ``__STATUS``.
-    r"\*\*__STATUS(?:__)?:\s*(?:__)?\s*"  # **__STATUS:… / **__STATUS__:…
+    r"\*\*__STATUS(?:__)?\s*:\s*(?:__)?\s*"  # **__STATUS:… / **__STATUS__:…
     r"|"
     # Nested dunder-outer + bold-inner (Tick 454). Before plain ``__STATUS``.
-    r"__\*\*STATUS(?:\*\*)?:\s*(?:\*\*)?\s*"  # __**STATUS:… / __**STATUS:**…
+    r"__\*\*STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*"  # __**STATUS:… / __**STATUS:**…
     r"|"
     # Double-underscore bold. Use (?:__)? — NOT __? — so STATUS may be
     # followed by zero underscores before ``:`` (``__STATUS: READY__``).
     # ``__?`` would require ≥1 ``_`` after STATUS (``?`` only optionalizes the
     # second underscore of a two-underscore run).
-    r"__STATUS(?:__)?:\s*(?:__)?\s*"  # __STATUS__: / __STATUS:__ / __STATUS:
+    r"__STATUS(?:__)?\s*:\s*(?:__)?\s*"  # __STATUS__: / __STATUS:__ / __STATUS:
     r"|"
-    r"(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
+    r"(?:\*\*)?STATUS(?:\*\*)?\s*:\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
     r"|"
-    r"\*STATUS\*?:\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
+    r"\*STATUS\*?\s*:\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
     r"|"
-    r"_STATUS_?:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
+    r"_STATUS_?\s*:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
     r")"
     r"(READY|IN_PROGRESS)"
     # Optional trailing close emphasis. Compound nested closers first
@@ -3116,6 +3132,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
     prefixes — pre-460 Tick 459 peeled ``|…|`` only once before wraps, so
     `` `| STATUS: READY |` `` / ``~~| STATUS:… |~~`` / ``> `| STATUS:… |` ``
     left residual pipes after unwrap (demote no-op / G4 pack miss READY).
+
+    Tick 461: also strip quote wrappers + allow ``STATUS : TOKEN`` (space
+    before colon); one-cell-only pipe peel so ``| STATUS: READY | note |``
+    is not a false READY header.
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3125,12 +3145,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–460: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe) after strip."""
+    """Tick 447–461: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3245,6 +3265,13 @@ def _icml_ready_status_header(text: str) -> str | None:
     ``> `| STATUS: READY |` ``) unwrap. Pre-460 Tick 459 peeled ``|…|``
     only once before wraps — residual pipes after unwrap made demote no-op /
     G4 pack miss READY.
+
+    Tick 461: (a) one-cell-only markdown pipe peel so
+    ``| STATUS: READY | note |`` is **not** a false READY header (pre-461
+    non-greedy ``.*?`` peeled to ``STATUS: READY | note`` and still matched);
+    (b) quote wrappers (``"STATUS: READY"`` / ``'STATUS: READY'``); (c)
+    optional whitespace before colon (``STATUS : READY``). Pre-461 quote /
+    space-colon stubs made demote no-op / G4 pack miss READY.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)

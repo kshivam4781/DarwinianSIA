@@ -1059,11 +1059,17 @@ def demote_icml_ready_file(
     `` `| **STATUS: READY** |` `` / ``> `| STATUS: READY |` ``) —
     pre-460 Tick 459 peeled pipes only once before wraps, so residual
     ``| STATUS:… |`` after unwrap left READY poisoned after trust refuse.
+
+    Tick 461: also demote quote-wrap + space-before-colon STATUS
+    (``"STATUS: READY"`` / ``'STATUS: READY'`` / ``STATUS : READY`` /
+    ``"**STATUS: READY**"``) — pre-461 left JSON/YAML/chat paste and
+    spaced-colon READY poisoned after trust refuse. One-cell-only pipe peel
+    so ``| STATUS: READY | note |`` is not a false READY header.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–459: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–461: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
