@@ -2849,9 +2849,20 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # Tick 452 also accepts italic / underscore emphasis wrappers
 # (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_``) that Tick 451
 # intentionally left unmatched (single ``*`` without ``\\s+`` is italic, not a list).
+# Tick 453 also accepts double-underscore bold and triple-star bold+italic
+# (``__STATUS: READY__`` / ``***STATUS: READY***``) that Tick 452 left unmatched
+# (``__`` is CommonMark bold; ``***`` is bold+italic — neither is ``**`` / ``*`` / ``_``).
 _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"^(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?(?:#{1,6}\s+)?"
     r"(?:"
+    r"\*{3}STATUS\*{0,3}:\s*\*{0,3}\s*"  # ***STATUS***: / ***STATUS:*** / ***STATUS:
+    r"|"
+    # Double-underscore bold. Use (?:__)? — NOT __? — so STATUS may be
+    # followed by zero underscores before ``:`` (``__STATUS: READY__``).
+    # ``__?`` would require ≥1 ``_`` after STATUS (``?`` only optionalizes the
+    # second underscore of a two-underscore run).
+    r"__STATUS(?:__)?:\s*(?:__)?\s*"  # __STATUS__: / __STATUS:__ / __STATUS:
+    r"|"
     r"(?:\*\*)?STATUS(?:\*\*)?:\s*(?:\*\*)?\s*"  # bold / plain / label / colon-out
     r"|"
     r"\*STATUS\*?:\s*\*?\s*"  # italic *STATUS*: / *STATUS:* / *STATUS:
@@ -2859,22 +2870,23 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
     r"_STATUS_?:\s*_?\s*"  # underscore _STATUS_: / _STATUS:_ / _STATUS:
     r")"
     r"(READY|IN_PROGRESS)"
-    # Optional trailing close emphasis. Do not use \\b before ``_`` closers —
-    # underscore is a word char, so ``READY_`` has no boundary (Tick 452).
-    r"(?:\*\*|\*|_)?(?!\w)",
+    # Optional trailing close emphasis. Longer closers first (*** before ** before *).
+    # Do not use \\b before ``_`` / ``__`` closers — underscore is a word char
+    # (Tick 452/453), so ``READY_`` / ``READY__`` have no word boundary.
+    r"(?:\*{1,3}|__|_)?(?!\w)",
     re.IGNORECASE,
 )
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–452: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic) after strip."""
+    """Tick 447–453: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(
         (line or "").lstrip("\ufeff").strip()
     )
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -2933,6 +2945,12 @@ def _icml_ready_status_header(text: str) -> str | None:
     / G4 pack miss READY the same way prior STATUS variants did. List markers
     still require ``\\s+`` after ``*``/``-``/``+`` (``* STATUS: READY`` stays
     a list line matched via the plain STATUS alt).
+
+    Tick 453: also accept double-underscore bold and triple-star bold+italic
+    (``__STATUS: READY__`` / ``__STATUS__: IN_PROGRESS`` / ``***STATUS: READY***``
+    / ``***STATUS:*** READY``). Pre-453 matched ``**`` / ``*`` / ``_`` only, so
+    CommonMark ``__bold__`` and ``***bold+italic***`` stubs made demote no-op /
+    G4 pack miss READY the same way prior STATUS variants did.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -2997,7 +3015,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–452).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–453).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -3025,6 +3043,10 @@ def _demote_icml_ready_status(body: str) -> str:
     Tick 452: also rewrite italic / underscore emphasis STATUS lines
     (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_``) to the
     same normalized header.
+
+    Tick 453: also rewrite double-underscore bold / triple-star bold+italic
+    STATUS lines (``__STATUS: READY__`` / ``***STATUS: READY***``) to the same
+    normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

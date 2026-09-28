@@ -5459,6 +5459,57 @@ def test_icml_ready_status_header_accepts_italic_underscore_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_dunder_triple_star_status() -> None:
+    """Tick 453: ``__STATUS:…__`` / ``***STATUS:…***`` headers must parse.
+
+    Pre-453 matched ``**`` / ``*`` / ``_`` only, so CommonMark double-underscore
+    bold and triple-star bold+italic stubs made demote no-op / G4 pack miss
+    READY. Prior bold / italic / underscore forms must still parse.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+    )
+
+    assert _icml_ready_status_header("__STATUS: READY__\n") == "READY"
+    assert _icml_ready_status_header("__STATUS__: IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("__STATUS:__ READY\n") == "READY"
+    assert _icml_ready_status_header("***STATUS: READY***\n") == "READY"
+    assert _icml_ready_status_header("***STATUS:*** IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("***STATUS: IN_PROGRESS***\n") == "IN_PROGRESS"
+    # Containers + dunder / triple-star still work.
+    assert _icml_ready_status_header("> __STATUS: READY__\n") == "READY"
+    assert _icml_ready_status_header("# ***STATUS: IN_PROGRESS***\n") == "IN_PROGRESS"
+    # Prior bold / italic / underscore / plain forms unchanged.
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+    assert _icml_ready_status_header("*STATUS*: READY\n") == "READY"
+    assert _icml_ready_status_header("_STATUS: READY_\n") == "READY"
+    assert _icml_ready_status_header("STATUS: IN_PROGRESS\n") == "IN_PROGRESS"
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "__STATUS: READY__\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any("__STATUS: READY__" in ln for ln in demoted.splitlines())
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose3 = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "***STATUS: READY***\n"
+    )
+    assert _icml_ready_status_header(prose3) == "READY"
+    demoted3 = _demote_icml_ready_status(prose3)
+    assert _icml_ready_status_header(demoted3) == "IN_PROGRESS"
+    assert not any("***STATUS: READY***" in ln for ln in demoted3.splitlines())
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -6990,6 +7041,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "(?!\\w)" in env_checks or r"(?!\w)" in env_checks
     assert "ICML italic/underscore STATUS header (Tick 452)" in master
     assert "test_icml_ready_status_header_accepts_italic_underscore_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 453: double-underscore bold / triple-star bold+italic STATUS headers.
+    assert r"\*{3}STATUS" in env_checks or "\\*{3}STATUS" in env_checks
+    assert "__STATUS(?:__)?" in env_checks or "__STATUS(?:__)?" in env_checks
+    assert "ICML dunder/triple-star STATUS header (Tick 453)" in master
+    assert "test_icml_ready_status_header_accepts_dunder_triple_star_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

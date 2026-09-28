@@ -1016,11 +1016,15 @@ def demote_icml_ready_file(
     Tick 452: also demote italic / underscore emphasis STATUS
     (``*STATUS*: READY`` / ``*STATUS: READY*`` / ``_STATUS: READY_``) —
     pre-452 left emphasis READY poisoned after trust refuse.
+
+    Tick 453: also demote double-underscore bold / triple-star bold+italic
+    STATUS (``__STATUS: READY__`` / ``***STATUS: READY***``) — pre-453 left
+    ``__`` / ``***`` READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–452: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–453: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1134,10 +1138,11 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–452: strip() + plain/ATX/bold-label/colon-out/container/
-        # italic STATUS so indented / bare / heading / ``**STATUS:** TOKEN`` /
-        # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
-        # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` headers update
+        # Tick 443/447–453: strip() + plain/ATX/bold-label/colon-out/container/
+        # italic / __ / *** STATUS so indented / bare / heading /
+        # ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` /
+        # ``- STATUS:…`` / ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` /
+        # ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` headers update
         # (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
