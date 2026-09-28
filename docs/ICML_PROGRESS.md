@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-28T14:10Z — Tick 460 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-f2ad` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 459 peeled markdown `|…|` pipes only **once before** wrap unwrap, so outer wrap-around-pipe forms (`` `| STATUS: READY |` `` / ``~~| STATUS:… |~~`` / ``==| STATUS:… |==`` / ``**| STATUS:… |**`` / `` `| **STATUS: READY** |` `` / ``> `| STATUS:… |` ``) left residual `| STATUS:… |` after unwrap — `_icml_ready_status_header` returned None: `demote_icml_ready_file` no-op'd and left poisoned READY on disk after trust refuse; `update_icml_ready_from_g4` could return READY while leaving wrap+pipe IN_PROGRESS on disk. Highest leverage without paid spend: **iterative wrap+pipe (+ container-prefix) STATUS peel**.
+
+### What this tick did (ONE step)
+**Tick 460 — wrap-around md-pipe STATUS (no API spend):**
+1. Recovered tip ← Tick 459 (`f49c`); confirmed secrets absent; boot `f2ad` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_strip_icml_status_md_wrappers`: peel pipes **inside** the iterative loop + `_ICML_STATUS_MD_CONTAINER_PREFIX_RE` for blockquote/list/ATX; demote/update normalize to `**STATUS:…**`
+3. Tests: `test_icml_ready_status_header_accepts_wrap_around_md_pipe_status` + G4 demote/update wrap-pipe cases + Tick 459 locks → focused **4 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 459) | After (Tick 460) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `` `| STATUS:… |` `` / ``~~| STATUS:… |~~`` / ``> `| STATUS:… |` `` demote / G4 pack rewrite | **miss / no-op / report≠disk** | **header-only demote + normalize to `**STATUS:**`** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-28T12:05Z — Tick 459 (automation cron)
 
 ### Status snapshot

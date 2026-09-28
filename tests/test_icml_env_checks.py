@@ -6041,6 +6041,83 @@ def test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status
     )
 
 
+def test_icml_ready_status_header_accepts_wrap_around_md_pipe_status() -> None:
+    """Tick 460: outer wrap-around-pipe STATUS must parse.
+
+    Pre-460 Tick 459 peeled ``|…|`` only once before markdown wraps, so
+    `` `| STATUS: READY |` `` / ``~~| STATUS:… |~~`` / ``==| STATUS:… |==`` /
+    ``**| STATUS:… |**`` / `` `| **STATUS: READY** |` `` /
+    ``> `| STATUS: READY |` `` left residual pipes after unwrap — demote
+    no-op / G4 pack miss READY.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    assert _strip_icml_status_md_wrappers("`| STATUS: READY |`") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("~~| STATUS: READY |~~") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("==| STATUS: READY |==") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("**| STATUS: READY |**") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("__| STATUS: READY |__") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("`| **STATUS: READY** |`") == (
+        "STATUS: READY"
+    )
+    assert _strip_icml_status_md_wrappers("> `| STATUS: READY |`") == "STATUS: READY"
+    # Tick 459 pipe-inside-wrap still works.
+    assert _strip_icml_status_md_wrappers("| ==STATUS: READY== |") == "STATUS: READY"
+    # Multi-cell rows still do not become STATUS headers.
+    assert _icml_ready_status_header("| foo | STATUS: READY |\n") is None
+
+    assert _strip_icml_status_line_noise("`| STATUS: READY |`") == "STATUS: READY"
+    assert _strip_icml_status_line_noise("~~| **STATUS: IN_PROGRESS** |~~") == (
+        "STATUS: IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("`| STATUS: READY |`\n") == "READY"
+    assert _icml_ready_status_header("~~| STATUS: READY |~~\n") == "READY"
+    assert _icml_ready_status_header("==| STATUS: READY |==\n") == "READY"
+    assert _icml_ready_status_header("**| STATUS: READY |**\n") == "READY"
+    assert _icml_ready_status_header("`| **STATUS: READY** |`\n") == "READY"
+    assert _icml_ready_status_header("> `| STATUS: READY |`\n") == "READY"
+    assert _icml_ready_status_header(
+        "~~| **STATUS: IN_PROGRESS** |~~\n"
+    ) == "IN_PROGRESS"
+    # Prior Tick 459 forms still parse.
+    assert _icml_ready_status_header("| STATUS: READY |\n") == "READY"
+    assert _icml_ready_status_header("| ==STATUS: READY== |\n") == "READY"
+    assert _icml_ready_status_header("<td>STATUS: READY</td>\n") == "READY"
+
+    prose_wrap_pipe = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "`| STATUS: READY |`\n"
+    )
+    assert _icml_ready_status_header(prose_wrap_pipe) == "READY"
+    demoted = _demote_icml_ready_status(prose_wrap_pipe)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "`|" in ln and "STATUS: READY" in ln for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose_wrap_pipe)[2] == 1
+
+    prose_strike_pipe = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "~~| STATUS: READY |~~\n"
+    )
+    assert _icml_ready_status_header(prose_strike_pipe) == "READY"
+    demoted_strike = _demote_icml_ready_status(prose_strike_pipe)
+    assert _icml_ready_status_header(demoted_strike) == "IN_PROGRESS"
+    assert not any(
+        "~~|" in ln and "STATUS: READY" in ln for ln in demoted_strike.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7630,6 +7707,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML HTML-table + semantic + md-pipe STATUS header (Tick 459)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 460: iterative wrap+pipe (+ container prefix) STATUS peel.
+    assert "_ICML_STATUS_MD_CONTAINER_PREFIX_RE" in env_checks
+    assert "ICML wrap-around md-pipe STATUS header (Tick 460)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_wrap_around_md_pipe_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

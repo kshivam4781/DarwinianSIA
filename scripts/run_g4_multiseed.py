@@ -1052,6 +1052,13 @@ def demote_icml_ready_file(
     ``<section>STATUS: READY</section>`` / ``| STATUS: READY |`` /
     ``| **STATUS: READY** |``) — pre-459 left Notion/Docs HTML table-cell /
     section exports and GitHub one-cell pipe READY poisoned after trust refuse.
+
+    Tick 460: also demote outer wrap-around-pipe STATUS
+    (`` `| STATUS: READY |` `` / ``~~| STATUS: READY |~~`` /
+    ``==| STATUS: READY |==`` / ``**| STATUS: READY |**`` /
+    `` `| **STATUS: READY** |` `` / ``> `| STATUS: READY |` ``) —
+    pre-460 Tick 459 peeled pipes only once before wraps, so residual
+    ``| STATUS:… |`` after unwrap left READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
@@ -1170,10 +1177,10 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–459: strip() + plain/ATX/bold-label/colon-out/container/
+        # Tick 443/447–460: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
         # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
-        # HTML-table / semantic / md-pipe STATUS so indented / bare /
+        # HTML-table / semantic / md-pipe / wrap+pipe STATUS so indented / bare /
         # heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
         # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
         # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
@@ -1183,7 +1190,8 @@ def update_icml_ready_from_g4(
         # ``<h1>STATUS: TOKEN</h1>`` / `` `STATUS: TOKEN` `` / ``~~STATUS:…~~`` /
         # ``<blockquote>STATUS:…</blockquote>`` / ``==STATUS:…==`` /
         # ``<td>STATUS: TOKEN</td>`` / ``<section>STATUS:…</section>`` /
-        # ``| STATUS: TOKEN |`` headers update (normalize to ``**STATUS:…**``).
+        # ``| STATUS: TOKEN |`` / `` `| STATUS: TOKEN |` `` /
+        # ``~~| STATUS: TOKEN |~~`` headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

@@ -2987,8 +2987,15 @@ def _strip_icml_status_md_table_pipes(line: str) -> str:
     return (m.group(1) or "").strip()
 
 
+# Tick 460: peel leading blockquote / list / ATX inside the wrap loop so
+# container + outer-wrap + pipe forms (``> `| STATUS: READY |` ``) unwrap.
+_ICML_STATUS_MD_CONTAINER_PREFIX_RE = re.compile(
+    r"^(?:>\s+|[-*+]\s+|\d+[.)]\s+|#{1,6}\s+)"
+)
+
+
 def _strip_icml_status_md_wrappers(line: str) -> str:
-    """Tick 457/458/459: strip outer markdown wrappers (iterate nested pairs).
+    """Tick 457/458/459/460: strip outer markdown wrappers (iterate nested pairs).
 
     Chat / PR / docs paste often wraps the STATUS header in inline code
     (`` `STATUS: READY` `` / `` `**STATUS: READY**` ``) or strikethrough
@@ -3002,11 +3009,29 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     bare STATUS and mid-line wrappers alone when no outer pair matches.
 
     Tick 459: also peel outer markdown table pipes (``| STATUS: READY |``)
-    once before the iterative wrap loop so pipe+Obsidian /
-    pipe+bold forms unwrap (``| ==STATUS: READY== |``).
+    so pipe+Obsidian / pipe+bold forms unwrap (``| ==STATUS: READY== |``).
+
+    Tick 460: peel pipes **inside** the iterative loop (not only once before
+    wraps). Pre-460 Tick 459 peeled ``|…|`` once up front, so outer
+    wrap-around-pipe forms (`` `| STATUS: READY |` `` /
+    ``~~| STATUS: READY |~~`` / ``==| STATUS: READY |==`` /
+    ``**| STATUS: READY |**`` / `` `| **STATUS: READY** |` ``) left
+    ``| STATUS: READY |`` after unwrap and never re-peeled — demote no-op /
+    G4 pack miss READY. Also peel leading blockquote / list / ATX prefixes
+    in the same loop so ``> `| STATUS: READY |` `` unwraps.
     """
-    s = _strip_icml_status_md_table_pipes(line)
-    for _ in range(8):
+    s = (line or "").strip()
+    for _ in range(12):
+        peeled = _strip_icml_status_md_table_pipes(s)
+        if peeled != s:
+            s = peeled
+            continue
+        m_pref = _ICML_STATUS_MD_CONTAINER_PREFIX_RE.match(s)
+        if m_pref:
+            nxt = s[m_pref.end() :].strip()
+            if nxt and nxt != s:
+                s = nxt
+                continue
         m = _ICML_STATUS_MD_WRAP_RE.match(s)
         if not m:
             break
@@ -3052,7 +3077,7 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
 
 
 def _strip_icml_status_line_noise(line: str) -> str:
-    """Tick 451/454/455/456/457/458/459: decode entities, strip HTML/md wrappers + BOM/ZWSP/….
+    """Tick 451/454/455/456/457/458/459/460: decode entities, strip HTML/md wrappers + BOM/ZWSP/….
 
     Python ``str.strip()`` does **not** remove ZWSP (``\\u200b``) / ZWNJ / ZWJ /
     word-joiner / soft-hyphen. Pre-454 only ``lstrip(\"\\ufeff\")`` + ``strip()``,
@@ -3086,6 +3111,11 @@ def _strip_icml_status_line_noise(line: str) -> str:
     ``table`` / ``section`` / ``article`` …) and outer markdown pipe-table
     rows (``| STATUS: READY |``) — pre-459 left Notion/Docs HTML table-cell /
     section exports and GitHub one-cell pipe stubs unmatched after Tick 458.
+
+    Tick 460: peel markdown pipes **iteratively** with wraps / container
+    prefixes — pre-460 Tick 459 peeled ``|…|`` only once before wraps, so
+    `` `| STATUS: READY |` `` / ``~~| STATUS:… |~~`` / ``> `| STATUS:… |` ``
+    left residual pipes after unwrap (demote no-op / G4 pack miss READY).
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3095,12 +3125,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–459: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe) after strip."""
+    """Tick 447–460: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3207,6 +3237,14 @@ def _icml_ready_status_header(text: str) -> str | None:
     section exports and GitHub one-cell pipe stubs unmatched — demote no-op /
     G4 pack miss READY (Tick 458 explicitly left ``<table>`` unmatched as a
     negative allowlist example).
+
+    Tick 460: peel markdown pipes **iteratively** with wraps / container
+    prefixes so outer wrap-around-pipe forms (`` `| STATUS: READY |` `` /
+    ``~~| STATUS: READY |~~`` / ``==| STATUS: READY |==`` /
+    ``**| STATUS: READY |**`` / `` `| **STATUS: READY** |` `` /
+    ``> `| STATUS: READY |` ``) unwrap. Pre-460 Tick 459 peeled ``|…|``
+    only once before wraps — residual pipes after unwrap made demote no-op /
+    G4 pack miss READY.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
