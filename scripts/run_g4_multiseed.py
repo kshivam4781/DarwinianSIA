@@ -1035,11 +1035,16 @@ def demote_icml_ready_file(
     (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
     ``<span style=\"…\">**STATUS: READY**</span>``) — pre-456 left rich-paste
     / partial HTML→Markdown READY poisoned after trust refuse.
+
+    Tick 457: also demote HTML heading + markdown backtick / strikethrough
+    STATUS (``<h1>STATUS: READY</h1>`` / `` `STATUS: READY` `` /
+    ``~~STATUS: READY~~``) — pre-457 left Notion HTML heading export and
+    chat/code-paste READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–456: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–457: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1153,15 +1158,16 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–456: strip() + plain/ATX/bold-label/colon-out/container/
-        # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag
-        # STATUS so indented / bare / heading / ``**STATUS:** TOKEN`` /
-        # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
-        # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` /
-        # ``***STATUS: TOKEN***`` / ``\\u200b**STATUS:…**`` /
-        # ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
+        # Tick 443/447–457: strip() + plain/ATX/bold-label/colon-out/container/
+        # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
+        # HTML-heading / md-backtick / strikethrough STATUS so indented / bare /
+        # heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
+        # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
+        # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
+        # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
         # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` /
-        # ``<strong>STATUS: TOKEN</strong>`` / ``<span>**STATUS:…**</span>``
+        # ``<strong>STATUS: TOKEN</strong>`` / ``<span>**STATUS:…**</span>`` /
+        # ``<h1>STATUS: TOKEN</h1>`` / `` `STATUS: TOKEN` `` / ``~~STATUS:…~~``
         # headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")

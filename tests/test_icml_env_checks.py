@@ -5778,6 +5778,82 @@ def test_icml_ready_status_header_accepts_html_tag_wrapped_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_html_heading_and_md_wrap_status() -> None:
+    """Tick 457: HTML heading + markdown backtick/strikethrough STATUS must parse.
+
+    Pre-457 Tick 456 stripped ``strong``/``span``/``p`` but left ``<h1>STATUS:
+    READY</h1>`` unmatched (ATX ``# STATUS:`` already worked via Tick 448), and
+    chat/code paste `` `STATUS: READY` `` / ``~~STATUS: READY~~`` also missed —
+    demote no-op'd / G4 pack missed READY.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_html_tags,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    assert _strip_icml_status_html_tags("<h1>STATUS: READY</h1>") == "STATUS: READY"
+    assert _strip_icml_status_html_tags("<h2>**STATUS: IN_PROGRESS**</h2>") == (
+        "**STATUS: IN_PROGRESS**"
+    )
+    assert _strip_icml_status_html_tags("<kbd>STATUS: READY</kbd>") == "STATUS: READY"
+    # Non-allowlisted tags still left alone.
+    assert _strip_icml_status_html_tags("<table>STATUS: READY</table>") == (
+        "<table>STATUS: READY</table>"
+    )
+    assert _strip_icml_status_md_wrappers("`STATUS: READY`") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("`**STATUS: READY**`") == "**STATUS: READY**"
+    assert _strip_icml_status_md_wrappers("~~STATUS: READY~~") == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers("STATUS: READY") == "STATUS: READY"
+    assert _strip_icml_status_line_noise("<h1>STATUS: READY</h1>") == "STATUS: READY"
+    assert _strip_icml_status_line_noise("`**STATUS: READY**`") == "**STATUS: READY**"
+    assert _icml_ready_status_header("<h1>STATUS: READY</h1>\n") == "READY"
+    assert _icml_ready_status_header("<h2>**STATUS: IN_PROGRESS**</h2>\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header("`STATUS: READY`\n") == "READY"
+    assert _icml_ready_status_header("`**STATUS: READY**`\n") == "READY"
+    assert _icml_ready_status_header("~~STATUS: IN_PROGRESS~~\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("``STATUS: READY``\n") == "READY"
+    # Combined heading + entity / prior forms.
+    assert _icml_ready_status_header("<h1>&#8203;**STATUS: READY**</h1>\n") == "READY"
+    assert _icml_ready_status_header("<strong>STATUS: READY</strong>\n") == "READY"
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_h1 = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<h1>STATUS: READY</h1>\n"
+    )
+    assert _icml_ready_status_header(prose_h1) == "READY"
+    demoted_h1 = _demote_icml_ready_status(prose_h1)
+    assert _icml_ready_status_header(demoted_h1) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_h1
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_h1.splitlines()
+    )
+    assert not any(
+        "<h1>" in ln and "STATUS: READY" in ln for ln in demoted_h1.splitlines()
+    )
+    assert _icml_ready_richness(prose_h1)[2] == 1
+
+    prose_bt = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "`STATUS: READY`\n"
+    )
+    assert _icml_ready_status_header(prose_bt) == "READY"
+    demoted_bt = _demote_icml_ready_status(prose_bt)
+    assert _icml_ready_status_header(demoted_bt) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("`") and "STATUS: READY" in ln
+        for ln in demoted_bt.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -7342,6 +7418,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "strong|b|em|i|p|div|span" in env_checks
     assert "ICML HTML-tag-wrapped STATUS header (Tick 456)" in master
     assert "test_icml_ready_status_header_accepts_html_tag_wrapped_status" in (
+        (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 457: HTML heading tags + markdown backtick/strikethrough wrappers.
+    assert "h[1-6]" in env_checks
+    assert "_strip_icml_status_md_wrappers" in env_checks
+    assert "_ICML_STATUS_MD_WRAP_RE" in env_checks
+    assert "ICML HTML-heading + markdown-wrap STATUS header (Tick 457)" in master
+    assert "test_icml_ready_status_header_accepts_html_heading_and_md_wrap_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
