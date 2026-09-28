@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 459:** HTML-table + semantic + md-pipe STATUS headers (`<td>STATUS: READY</td>` / `<section>STATUS:…</section>` / `| STATUS: READY |` / `| **STATUS: READY** |`) strip + demote/update — closes G4 demote no-op / pack miss on Notion/Docs HTML table-cell/section export + GitHub one-cell pipe (Tick 458 left `<table>` unmatched).  
 **Tick 458:** HTML-container + Obsidian STATUS headers (`<blockquote>STATUS: READY</blockquote>` / `<li>STATUS:…</li>` / `==STATUS: READY==` / `**~~STATUS: READY~~**`) strip + demote/update — closes G4 demote no-op / pack miss on Notion HTML list/blockquote export + Obsidian highlight (Tick 451 markdown `>`/`-` already worked).  
 **Tick 457:** HTML-heading + markdown-wrap STATUS headers (`<h1>STATUS: READY</h1>` / `` `STATUS: READY` `` / `~~STATUS: READY~~`) strip + demote/update — closes G4 demote no-op / pack miss on Notion HTML heading export + chat/code paste.  
 **Tick 456:** HTML-tag-wrapped STATUS headers (`<strong>STATUS: READY</strong>` / `<p><b>**STATUS:…**</b></p>` / `<span style="…">**STATUS: READY**</span>`) strip + demote/update — closes G4 demote no-op / pack miss on Notion/Docs rich-paste / partial HTML→Markdown.  

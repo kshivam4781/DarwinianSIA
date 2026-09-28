@@ -5883,9 +5883,9 @@ def test_icml_ready_status_header_accepts_html_container_and_obsidian_status() -
         "STATUS: READY"
     )
     assert _strip_icml_status_html_tags("<pre>STATUS: READY</pre>") == "STATUS: READY"
-    # Non-allowlisted tags still left alone.
-    assert _strip_icml_status_html_tags("<table>STATUS: READY</table>") == (
-        "<table>STATUS: READY</table>"
+    # Tick 459 allowlists table; keep a different non-allowlisted negative.
+    assert _strip_icml_status_html_tags("<canvas>STATUS: READY</canvas>") == (
+        "<canvas>STATUS: READY</canvas>"
     )
     assert _strip_icml_status_md_wrappers("==STATUS: READY==") == "STATUS: READY"
     assert _strip_icml_status_md_wrappers("==**STATUS: READY**==") == "STATUS: READY"
@@ -5938,6 +5938,106 @@ def test_icml_ready_status_header_accepts_html_container_and_obsidian_status() -
     assert not any(
         ln.strip().startswith("==") and "STATUS: READY" in ln
         for ln in demoted_eq.splitlines()
+    )
+
+
+def test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status() -> None:
+    """Tick 459: HTML table/semantic + markdown pipe STATUS must parse.
+
+    Pre-459 Tick 458 stripped list/blockquote/Obsidian but Notion/Docs HTML
+    ``<td>STATUS: READY</td>`` / ``<section>STATUS: READY</section>`` and
+    GitHub one-cell pipes ``| STATUS: READY |`` still missed — demote no-op'd
+    / G4 pack missed READY (Tick 458 even used ``<table>`` as a negative).
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_html_tags,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_table_pipes,
+        _strip_icml_status_md_wrappers,
+    )
+
+    assert _strip_icml_status_html_tags("<td>STATUS: READY</td>") == "STATUS: READY"
+    assert _strip_icml_status_html_tags("<th>**STATUS: IN_PROGRESS**</th>") == (
+        "**STATUS: IN_PROGRESS**"
+    )
+    assert _strip_icml_status_html_tags(
+        "<table><tr><td>STATUS: READY</td></tr></table>"
+    ) == "STATUS: READY"
+    assert _strip_icml_status_html_tags("<section>STATUS: READY</section>") == (
+        "STATUS: READY"
+    )
+    assert _strip_icml_status_html_tags("<article>**STATUS: READY**</article>") == (
+        "**STATUS: READY**"
+    )
+    assert _strip_icml_status_html_tags("<caption>STATUS: READY</caption>") == (
+        "STATUS: READY"
+    )
+    # Non-allowlisted tags still left alone.
+    assert _strip_icml_status_html_tags("<canvas>STATUS: READY</canvas>") == (
+        "<canvas>STATUS: READY</canvas>"
+    )
+    assert _strip_icml_status_md_table_pipes("| STATUS: READY |") == "STATUS: READY"
+    assert _strip_icml_status_md_table_pipes("| **STATUS: READY** |") == (
+        "**STATUS: READY**"
+    )
+    assert _strip_icml_status_md_table_pipes("|STATUS: READY|") == "STATUS: READY"
+    # Multi-cell rows keep inner pipes (do not become STATUS headers).
+    assert _strip_icml_status_md_table_pipes("| foo | STATUS: READY |") == (
+        "foo | STATUS: READY"
+    )
+    assert _strip_icml_status_md_wrappers("| ==STATUS: READY== |") == "STATUS: READY"
+    assert _strip_icml_status_line_noise(
+        "<td>STATUS: READY</td>"
+    ) == "STATUS: READY"
+    assert _strip_icml_status_line_noise("| **STATUS: READY** |") == "STATUS: READY"
+    assert _icml_ready_status_header("<td>STATUS: READY</td>\n") == "READY"
+    assert _icml_ready_status_header(
+        "<table><tr><td>**STATUS: IN_PROGRESS**</td></tr></table>\n"
+    ) == "IN_PROGRESS"
+    assert _icml_ready_status_header("<section>STATUS: READY</section>\n") == "READY"
+    assert _icml_ready_status_header("<article>**STATUS: READY**</article>\n") == (
+        "READY"
+    )
+    assert _icml_ready_status_header("| STATUS: READY |\n") == "READY"
+    assert _icml_ready_status_header("| **STATUS: READY** |\n") == "READY"
+    assert _icml_ready_status_header("| ==STATUS: READY== |\n") == "READY"
+    assert _icml_ready_status_header("| foo | STATUS: READY |\n") is None
+    assert _icml_ready_status_header("<blockquote>STATUS: READY</blockquote>\n") == (
+        "READY"
+    )
+    assert _icml_ready_status_header("**STATUS: READY**\n") == "READY"
+
+    prose_td = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<td>STATUS: READY</td>\n"
+    )
+    assert _icml_ready_status_header(prose_td) == "READY"
+    demoted_td = _demote_icml_ready_status(prose_td)
+    assert _icml_ready_status_header(demoted_td) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted_td
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_td.splitlines()
+    )
+    assert not any(
+        "<td>" in ln and "STATUS: READY" in ln for ln in demoted_td.splitlines()
+    )
+    assert _icml_ready_richness(prose_td)[2] == 1
+
+    prose_pipe = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "| STATUS: READY |\n"
+    )
+    assert _icml_ready_status_header(prose_pipe) == "READY"
+    demoted_pipe = _demote_icml_ready_status(prose_pipe)
+    assert _icml_ready_status_header(demoted_pipe) == "IN_PROGRESS"
+    assert not any(
+        ln.strip().startswith("|") and "STATUS: READY" in ln
+        for ln in demoted_pipe.splitlines()
     )
 
 
@@ -7521,6 +7621,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML HTML-container + Obsidian STATUS header (Tick 458)" in master
     assert "test_icml_ready_status_header_accepts_html_container_and_obsidian_status" in (
         (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 459: HTML table/semantic + markdown pipe-table STATUS.
+    assert "table|thead|tbody|tfoot|tr|td|th" in env_checks
+    assert "section|article|header|main" in env_checks
+    assert "_strip_icml_status_md_table_pipes" in env_checks
+    assert "_ICML_STATUS_MD_PIPE_RE" in env_checks
+    assert "ICML HTML-table + semantic + md-pipe STATUS header (Tick 459)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_table_semantic_and_md_pipe_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
     assert "_ensure_pytest" in finish

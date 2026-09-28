@@ -2891,9 +2891,14 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
 # Tick 457: include h1–h6 (+ kbd) so HTML heading exports match ATX Tick 448.
 # Tick 458: include blockquote/li/ul/ol (+ pre/center/summary/details) so HTML
 # container exports match Tick 451 markdown ``>`` / ``-`` list prefixes.
+# Tick 459: include table cells + semantic sectioning (+ caption/label/dt/dd)
+# so Notion/Docs HTML table / ``<section>`` / ``<article>`` exports match;
+# markdown pipe rows handled separately via ``_strip_icml_status_md_table_pipes``.
 _ICML_STATUS_HTML_TAG_RE = re.compile(
     r"</?(?:strong|b|em|i|p|div|span|font|mark|u|s|strike|del|ins|small|big|"
-    r"code|tt|kbd|br|hr|h[1-6]|blockquote|li|ul|ol|pre|center|summary|details)"
+    r"code|tt|kbd|br|hr|h[1-6]|blockquote|li|ul|ol|pre|center|summary|details|"
+    r"table|thead|tbody|tfoot|tr|td|th|caption|section|article|header|main|"
+    r"aside|nav|footer|figure|figcaption|label|dt|dd|dl)"
     r"(?:\s[^>/]*)?\s*/?>",
     re.IGNORECASE,
 )
@@ -2906,6 +2911,8 @@ _ICML_STATUS_MD_WRAP_RE = re.compile(
     r"^(?:\*\*)(.*?)(?:\*\*)$|"
     r"^(?:__)(.*?)(?:__)$"
 )
+# Tick 459: outer markdown table-cell pipes (``| STATUS: READY |``).
+_ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*(.*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
@@ -2934,7 +2941,7 @@ def _decode_icml_status_html_entities(line: str) -> str:
 
 
 def _strip_icml_status_html_tags(line: str) -> str:
-    """Tick 456/457/458: remove formatting HTML tags around STATUS headers.
+    """Tick 456/457/458/459: remove formatting HTML tags around STATUS headers.
 
     Pre-456 entity/ZWSP strip still left ``<strong>STATUS: READY</strong>`` /
     ``<p><b>**STATUS:…**</b></p>`` / ``<span style=\"…\">**STATUS: READY**</span>``
@@ -2952,12 +2959,36 @@ def _strip_icml_status_html_tags(line: str) -> str:
     matched markdown ``>`` / ``-`` list prefixes, but Notion/Docs HTML exports of
     the same containers left ``<blockquote>STATUS: READY</blockquote>`` /
     ``<li>STATUS: READY</li>`` unmatched after Tick 457.
+
+    Tick 459: also strip HTML table + semantic sectioning tags (``table`` /
+    ``td`` / ``th`` / ``tr`` / ``section`` / ``article`` / ``header`` / ``main``
+    / ``aside`` / ``caption`` / ``label`` / ``dt`` / ``dd`` …) — pre-459 left
+    Notion/Docs HTML table-cell and section exports unmatched after Tick 458
+    list/blockquote containers (Tick 458 even left ``<table>`` as a negative
+    allowlist example).
     """
     return _ICML_STATUS_HTML_TAG_RE.sub("", line or "")
 
 
+def _strip_icml_status_md_table_pipes(line: str) -> str:
+    """Tick 459: strip outer markdown table-cell pipes once.
+
+    Notion / GitHub / Docs often paste STATUS into a one-cell markdown table
+    row (``| STATUS: READY |`` / ``| **STATUS: READY** |``). Pre-459 HTML
+    table-tag strip still left pure-markdown pipe rows unmatched — demote
+    no-op / G4 pack miss READY. Only peel a full-line outer ``|…|`` wrapper;
+    multi-cell rows (``| foo | STATUS: READY |``) keep inner pipes and do
+    **not** become a STATUS header (inner does not start with STATUS).
+    """
+    s = (line or "").strip()
+    m = _ICML_STATUS_MD_PIPE_RE.match(s)
+    if not m:
+        return s
+    return (m.group(1) or "").strip()
+
+
 def _strip_icml_status_md_wrappers(line: str) -> str:
-    """Tick 457/458: strip outer markdown wrappers (iterate nested pairs).
+    """Tick 457/458/459: strip outer markdown wrappers (iterate nested pairs).
 
     Chat / PR / docs paste often wraps the STATUS header in inline code
     (`` `STATUS: READY` `` / `` `**STATUS: READY**` ``) or strikethrough
@@ -2969,8 +3000,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     like ``**~~STATUS: READY~~**`` / ``==**STATUS: READY**==`` unwrap to a
     bare STATUS header. Cap iterations to avoid pathological loops; leave
     bare STATUS and mid-line wrappers alone when no outer pair matches.
+
+    Tick 459: also peel outer markdown table pipes (``| STATUS: READY |``)
+    once before the iterative wrap loop so pipe+Obsidian /
+    pipe+bold forms unwrap (``| ==STATUS: READY== |``).
     """
-    s = (line or "").strip()
+    s = _strip_icml_status_md_table_pipes(line)
     for _ in range(8):
         m = _ICML_STATUS_MD_WRAP_RE.match(s)
         if not m:
@@ -3017,7 +3052,7 @@ _ICML_READY_STATUS_HEADER_RE = re.compile(
 
 
 def _strip_icml_status_line_noise(line: str) -> str:
-    """Tick 451/454/455/456/457/458: decode entities, strip HTML/md wrappers + BOM/ZWSP/….
+    """Tick 451/454/455/456/457/458/459: decode entities, strip HTML/md wrappers + BOM/ZWSP/….
 
     Python ``str.strip()`` does **not** remove ZWSP (``\\u200b``) / ZWNJ / ZWJ /
     word-joiner / soft-hyphen. Pre-454 only ``lstrip(\"\\ufeff\")`` + ``strip()``,
@@ -3046,6 +3081,11 @@ def _strip_icml_status_line_noise(line: str) -> str:
     ``ol`` …) and Obsidian ``==…==`` highlight / nested ``**~~…~~**`` wrappers —
     pre-458 left Notion HTML list/blockquote exports and Obsidian highlight
     stubs unmatched after Tick 451 markdown containers + Tick 457 md-wrap.
+
+    Tick 459: also strip HTML table + semantic sectioning tags (``td`` / ``th`` /
+    ``table`` / ``section`` / ``article`` …) and outer markdown pipe-table
+    rows (``| STATUS: READY |``) — pre-459 left Notion/Docs HTML table-cell /
+    section exports and GitHub one-cell pipe stubs unmatched after Tick 458.
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3055,12 +3095,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–458: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian) after strip."""
+    """Tick 447–459: match a STATUS header line (bold/plain/ATX/label/colon-out/container/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3157,6 +3197,16 @@ def _icml_ready_status_header(text: str) -> str | None:
     Pre-458 left Notion HTML list/blockquote exports (Tick 451 markdown ``>`` /
     ``-`` already worked) and Obsidian highlight stubs unmatched — demote
     no-op / G4 pack miss READY.
+
+    Tick 459: also strip HTML table + semantic sectioning tags
+    (``<td>STATUS: READY</td>`` / ``<th>**STATUS:…**</th>`` /
+    ``<table><tr><td>STATUS: READY</td></tr></table>`` /
+    ``<section>STATUS: READY</section>`` / ``<article>**STATUS:…**</article>``)
+    and outer markdown pipe-table rows (``| STATUS: READY |`` /
+    ``| **STATUS: READY** |``). Pre-459 left Notion/Docs HTML table-cell /
+    section exports and GitHub one-cell pipe stubs unmatched — demote no-op /
+    G4 pack miss READY (Tick 458 explicitly left ``<table>`` unmatched as a
+    negative allowlist example).
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)
@@ -3221,7 +3271,7 @@ def prefer_richer_icml_ready(a: str, b: str) -> str:
 
 
 def _demote_icml_ready_status(body: str) -> str:
-    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–458).
+    """Force header STATUS: IN_PROGRESS while preserving checklist (Tick 438/442/447–459).
 
     Tick 442: rewrite only STATUS *header* lines so Tick-note / audit prose
     mentioning ``STATUS: IN_PROGRESS`` cannot no-op the demote and leave a
@@ -3275,6 +3325,11 @@ def _demote_icml_ready_status(body: str) -> str:
     STATUS lines (``<blockquote>STATUS: READY</blockquote>`` /
     ``<li>STATUS: READY</li>`` / ``==STATUS: READY==`` /
     ``**~~STATUS: READY~~**``) to the same normalized header.
+
+    Tick 459: also rewrite HTML table + semantic sectioning + markdown
+    pipe-table STATUS lines (``<td>STATUS: READY</td>`` /
+    ``<section>STATUS: READY</section>`` / ``| STATUS: READY |`` /
+    ``| **STATUS: READY** |``) to the same normalized header.
     """
     body = (body or "").lstrip("\ufeff")
     lines = body.splitlines()

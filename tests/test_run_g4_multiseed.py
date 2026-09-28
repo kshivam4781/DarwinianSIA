@@ -3284,6 +3284,73 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
         for ln in eq_updated.splitlines()
     )
 
+    # (ae) Tick 459: HTML ``<td>STATUS: READY</td>`` must demote —
+    # pre-459 Tick 458 list/blockquote worked but Notion HTML table cells missed.
+    td = tmp_path / "html_td_status.md"
+    td.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<td>STATUS: READY</td>\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(td.read_text(encoding="utf-8")) == "READY"
+    assert demote_icml_ready_file(td, reason="html-td READY", timestamp="t") is True
+    td_text = td.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(td_text) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in td_text.splitlines())
+    assert "Do not set STATUS: READY until criteria pass." in td_text
+    assert not any(
+        "<td>" in ln and "STATUS: READY" in ln for ln in td_text.splitlines()
+    )
+
+    # (af) Tick 459: markdown ``| STATUS: IN_PROGRESS |`` must update.
+    pipe_upd = tmp_path / "update_md_pipe_status.md"
+    pipe_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "| STATUS: IN_PROGRESS |\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_pipe = update_icml_ready_from_g4(
+        ready_path=pipe_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-28T12:00:00Z",
+        allow_ready=True,
+    )
+    assert status_pipe == "READY"
+    pipe_updated = pipe_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(pipe_updated) == "READY"
+    assert any(ln.strip() == "**STATUS: READY**" for ln in pipe_updated.splitlines())
+    assert not any(
+        ln.strip().startswith("|") and "STATUS: IN_PROGRESS" in ln
+        for ln in pipe_updated.splitlines()
+    )
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

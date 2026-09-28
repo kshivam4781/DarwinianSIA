@@ -1046,11 +1046,17 @@ def demote_icml_ready_file(
     ``<li>STATUS: READY</li>`` / ``==STATUS: READY==`` /
     ``**~~STATUS: READY~~**``) — pre-458 left Notion HTML list/blockquote
     export and Obsidian highlight READY poisoned after trust refuse.
+
+    Tick 459: also demote HTML table + semantic sectioning + markdown
+    pipe-table STATUS (``<td>STATUS: READY</td>`` /
+    ``<section>STATUS: READY</section>`` / ``| STATUS: READY |`` /
+    ``| **STATUS: READY** |``) — pre-459 left Notion/Docs HTML table-cell /
+    section exports and GitHub one-cell pipe READY poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–458: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–459: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1164,17 +1170,20 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for line in text.splitlines():
-        # Tick 443/447–457: strip() + plain/ATX/bold-label/colon-out/container/
+        # Tick 443/447–459: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
-        # HTML-heading / md-backtick / strikethrough STATUS so indented / bare /
+        # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
+        # HTML-table / semantic / md-pipe STATUS so indented / bare /
         # heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
         # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
         # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
         # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
         # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` /
         # ``<strong>STATUS: TOKEN</strong>`` / ``<span>**STATUS:…**</span>`` /
-        # ``<h1>STATUS: TOKEN</h1>`` / `` `STATUS: TOKEN` `` / ``~~STATUS:…~~``
-        # headers update (normalize to ``**STATUS:…**``).
+        # ``<h1>STATUS: TOKEN</h1>`` / `` `STATUS: TOKEN` `` / ``~~STATUS:…~~`` /
+        # ``<blockquote>STATUS:…</blockquote>`` / ``==STATUS:…==`` /
+        # ``<td>STATUS: TOKEN</td>`` / ``<section>STATUS:…</section>`` /
+        # ``| STATUS: TOKEN |`` headers update (normalize to ``**STATUS:…**``).
         if _icml_ready_status_line_match(line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True
