@@ -2970,14 +2970,23 @@ _ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
 # (shields.io / Notion / Docs often paste ``<svg…><title>STATUS: READY</title>…``).
 # Do **not** allowlist-strip ``svg``/``title`` alone — residual ``<text>`` /
 # ``<desc>`` content concatenates onto the header (``STATUS: READYbadge``).
+# Tick 472: also peel root ``aria-label=`` / ``title=`` on the opening ``<svg>``
+# (a11y / tooltip SVG badge exports often put STATUS there when nested
+# ``<title>`` is decorative or omitted).
 _ICML_STATUS_HTML_SVG_TAG_RE = re.compile(
     r"^<svg\b[^>]*>.*</svg>\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_ICML_STATUS_HTML_SVG_OPEN_RE = re.compile(
+    r"^<svg\b([^>]*)>",
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_SVG_TITLE_RE = re.compile(
     r"<title\b[^>]*>(.*?)</title>",
     re.IGNORECASE | re.DOTALL,
 )
+# Reuse img attr pattern for svg root ``title`` / ``aria-label`` (alt rarely set).
+_ICML_STATUS_HTML_SVG_ATTR_RE = _ICML_STATUS_HTML_IMG_ATTR_RE
 
 
 def _peel_icml_status_html_img_alt(line: str) -> str | None:
@@ -3030,7 +3039,7 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
 
 
 def _peel_icml_status_html_svg_title(line: str) -> str | None:
-    """Tick 471: peel a full-line inline SVG ``<title>`` STATUS; return text.
+    """Tick 471/472: peel a full-line inline SVG STATUS name; return text.
 
     Tick 468–470 covered HTML ``<img>`` badge exports (alt / title /
     aria-label). Shields.io / Notion / Docs also paste STATUS as an inline
@@ -3042,17 +3051,47 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
     allowlist-stripping them would concatenate residual ``<text>`` /
     ``<desc>`` onto the header).
 
-    Requires a full-line ``<svg …>…</svg>`` with at least one ``<title>``
-    whose text looks like a STATUS header. Preference: first STATUS-looking
-    ``<title>`` in document order. Trailing prose after ``</svg>`` refuses
-    the peel. Nested non-STATUS titles alone do not peel.
+    Tick 472: also peel quoted root ``aria-label=`` / ``title=`` on the
+    opening ``<svg>`` when they carry the STATUS header
+    (``<svg aria-label="STATUS: READY" …>…</svg>`` /
+    ``<svg title="**STATUS: READY**" role="img">…</svg>`` /
+    ``<svg aria-label="STATUS: READY"><title>Badge</title>…</svg>``).
+    Pre-472 Tick 471 only read nested ``<title>``, so a11y/tooltip SVG
+    badge exports (decorative nested title / missing ``<title>``) missed
+    demote / G4 pack rewrite. Preference: first STATUS-looking value among
+    ``aria-label``, root ``title``, nested ``<title>`` (in that order);
+    else first STATUS-looking nested ``<title>`` (Tick 471 compat).
+    Decorative-only names refuse the peel.
+
+    Requires a full-line ``<svg …>…</svg>``. Trailing prose after ``</svg>``
+    refuses the peel.
     """
     s = (line or "").strip()
     if not _ICML_STATUS_HTML_SVG_TAG_RE.match(s):
         return None
+    by_name: dict[str, str] = {}
+    open_m = _ICML_STATUS_HTML_SVG_OPEN_RE.match(s)
+    if open_m:
+        attrs = open_m.group(1) or ""
+        for am in _ICML_STATUS_HTML_SVG_ATTR_RE.finditer(attrs):
+            name = (am.group(1) or "").lower()
+            val = (
+                am.group(2) if am.group(2) is not None else am.group(3) or ""
+            ).strip()
+            if name in ("aria-label", "title", "alt") and val and name not in by_name:
+                by_name[name] = val
+    nested_titles: list[str] = []
     for tm in _ICML_STATUS_HTML_SVG_TITLE_RE.finditer(s):
         val = (tm.group(1) or "").strip()
+        if val:
+            nested_titles.append(val)
+    # STATUS-looking preference: aria-label → root title → nested <title>.
+    for name in ("aria-label", "title", "alt"):
+        val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
+    for val in nested_titles:
+        if _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
     return None
 
@@ -3316,6 +3355,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     Tick 468–470 only covered ``<img>`` attrs, so shields.io / Notion SVG
     STATUS stubs missed demote / G4 pack rewrite (allowlist-stripping
     ``svg``/``title`` would concatenate residual ``<text>``/``<desc>``).
+
+    Tick 472: also peel SVG root ``aria-label=`` / ``title=`` STATUS
+    (``<svg aria-label="STATUS: READY" …>…</svg>`` /
+    ``<svg title="**STATUS: READY**"><title>Badge</title>…</svg>``) —
+    pre-472 Tick 471 only read nested ``<title>``, so a11y/tooltip SVG
+    badge exports (decorative nested title / missing ``<title>``) missed
+    demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):

@@ -6904,6 +6904,81 @@ def test_icml_ready_status_header_accepts_html_svg_title_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_svg_aria_title_attr_status() -> None:
+    """Tick 472: HTML SVG root ``aria-label=`` / ``title=`` STATUS badge exports.
+
+    Pre-472 Tick 471 only peeled nested ``<title>``, so a11y/tooltip SVG
+    badge exports (``<svg aria-label="STATUS: READY" …>`` /
+    ``<svg title="STATUS: READY"><title>Badge</title>…``) missed demote /
+    G4 pack rewrite when nested ``<title>`` was decorative or omitted.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_svg_title,
+        _strip_icml_status_md_wrappers,
+    )
+
+    aria_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" role="img" '
+        'aria-label="STATUS: READY">'
+        '<text x="0" y="15">badge</text></svg>'
+    )
+    title_attr_svg = (
+        '<svg viewBox="0 0 110 20" title="**STATUS: READY**" role="img">'
+        "<title>Badge</title>"
+        '<text x="0" y="15">ok</text></svg>'
+    )
+    # Nested STATUS wins when attrs are decorative (Tick 471 compat).
+    nested_wins = (
+        '<svg aria-label="badge_(live)" role="img">'
+        "<title>STATUS: IN_PROGRESS</title></svg>"
+    )
+    # aria-label STATUS beats decorative nested title.
+    aria_beats_nested = (
+        '<svg aria-label="STATUS: READY" role="img">'
+        "<title>ICML badge</title></svg>"
+    )
+    deco = '<svg title="ICML badge"><title>Badge</title></svg>'
+
+    assert _peel_icml_status_html_svg_title(aria_svg) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(title_attr_svg) == "**STATUS: READY**"
+    assert _peel_icml_status_html_svg_title(nested_wins) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_svg_title(aria_beats_nested) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(deco) is None
+    assert _peel_icml_status_html_svg_title(aria_svg + " note") is None
+    assert _strip_icml_status_md_wrappers(aria_svg) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(title_attr_svg) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(aria_beats_nested) == "STATUS: READY"
+    # Residual <text> must NOT concatenate onto the STATUS token.
+    assert _strip_icml_status_md_wrappers(aria_svg) != "STATUS: READYbadge"
+    assert _icml_ready_status_header(aria_svg + "\n") == "READY"
+    assert _icml_ready_status_header(title_attr_svg + "\n") == "READY"
+    assert _icml_ready_status_header(nested_wins + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header(f"| {aria_svg} |\n") == "READY"
+    )
+    assert (
+        _icml_ready_status_header(f"> {aria_svg}\n") == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{aria_beats_nested}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert not any(
+        "<svg" in ln.lower() and "STATUS: READY" in ln
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -8702,6 +8777,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-svg-title STATUS header (Tick 471)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_svg_title_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 472: HTML SVG root ``aria-label=`` / ``title=`` STATUS badge exports.
+    assert "_ICML_STATUS_HTML_SVG_OPEN_RE" in env_checks
+    assert "_ICML_STATUS_HTML_SVG_ATTR_RE" in env_checks
+    assert "ICML html-svg-aria-title-attr STATUS header (Tick 472)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_svg_aria_title_attr_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

@@ -1112,11 +1112,17 @@ def demote_icml_ready_file(
     exports (``<svg…><title>STATUS: READY</title>…</svg>``) — pre-471
     Tick 468–470 only peeled ``<img>`` attrs, so shields.io / Notion SVG
     READY stubs stayed poisoned after trust refuse.
+
+    Tick 472: also demote SVG root ``aria-label=`` / ``title=`` STATUS
+    (``<svg aria-label="STATUS: READY" …>…</svg>`` /
+    ``<svg title="**STATUS: READY**"><title>Badge</title>…</svg>``) —
+    pre-472 Tick 471 only peeled nested ``<title>``, so a11y/tooltip SVG
+    READY stubs stayed poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–471: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–472: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
