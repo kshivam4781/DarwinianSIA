@@ -2944,7 +2944,7 @@ _ICML_STATUS_MD_LINK_RE = re.compile(r"^\[([^\]]*)\]\([^)]*\)\s*$")
 
 
 def _peel_icml_status_md_link(line: str) -> str | None:
-    """Tick 465/466: peel a full-line markdown link; return link text or None.
+    """Tick 465/466/467: peel a full-line markdown link or image; return text/alt.
 
     Tick 465 covered flat ``[text](url)`` (no ``)`` inside the destination).
     Tick 466 also peels destinations with balanced nested parentheses —
@@ -2954,13 +2954,24 @@ def _peel_icml_status_md_link(line: str) -> str | None:
     which truncated at the first ``)`` and left the stub unmatched
     (demote no-op / G4 pack miss READY).
 
-    Requires ``](`` immediately after the link text so bare checkboxes
+    Tick 467: also peel markdown **image** STATUS stubs
+    (``![STATUS: READY](url)`` / ``![**STATUS: READY**](https://…/badge_(live).svg)``).
+    Shields.io / Notion / Docs often export a STATUS badge as an image whose
+    alt text is the STATUS header; pre-467 required a bare ``[`` start, so
+    the leading ``!`` left those READY stubs unmatched (demote no-op /
+    G4 pack miss READY). Image peel reuses the link scanner after stripping
+    the leading ``!``.
+
+    Requires ``](`` immediately after the link/alt text so bare checkboxes
     (``[ ] STATUS``) and Tick 464 bare brackets (``[STATUS:…]``) are never
     mistaken for links. Trailing non-whitespace after the closing ``)``
     refuses the peel (keeps ``[STATUS: READY](url) note`` from becoming a
     false header).
     """
     s = (line or "").strip()
+    # Tick 467: markdown image ``![alt](dest)`` → peel alt like link text.
+    if s.startswith("!["):
+        s = s[1:]
     if not s.startswith("["):
         return None
     # Fast path: flat destination (no nested ``)`` mid-url).
@@ -3153,6 +3164,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``[**STATUS: READY**](https://…#status-(draft))``) — pre-466
     ``[^)]*`` stopped at the first ``)``, so those GitHub/Notion linked
     STATUS stubs missed demote / G4 pack rewrite.
+
+    Tick 467: also peel markdown **image** STATUS stubs
+    (``![STATUS: READY](url)`` /
+    ``![**STATUS: READY**](https://…/badge_(live).svg)``) — pre-467
+    required a bare ``[`` start, so shields.io / Notion badge exports with
+    a leading ``!`` missed demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):

@@ -6590,6 +6590,69 @@ def test_icml_ready_status_header_accepts_md_link_nested_paren_url_status() -> N
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_md_image_status() -> None:
+    """Tick 467: markdown-image STATUS (shields.io / Notion badge exports).
+
+    Pre-467 ``![STATUS: READY](url)`` missed demote / G4 pack rewrite —
+    Tick 466 link peel required a bare ``[`` start, so the leading ``!``
+    left image-badge READY stubs unmatched.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_md_link,
+        _strip_icml_status_md_wrappers,
+    )
+
+    flat_img = "![STATUS: READY](https://img.shields.io/badge/STATUS-READY-green)"
+    nested_img = "![STATUS: READY](https://img.shields.io/badge/STATUS-READY_(live)-green)"
+    bold_img = "![**STATUS: READY**](https://cdn.example/badge_(draft).svg)"
+    prog_img = "![STATUS: IN_PROGRESS](https://img.shields.io/badge/STATUS-IN_PROGRESS-yellow)"
+
+    assert _peel_icml_status_md_link(flat_img) == "STATUS: READY"
+    assert _peel_icml_status_md_link(nested_img) == "STATUS: READY"
+    assert _peel_icml_status_md_link(bold_img) == "**STATUS: READY**"
+    assert _peel_icml_status_md_link(prog_img) == "STATUS: IN_PROGRESS"
+    # Trailing prose after image must not peel.
+    assert _peel_icml_status_md_link(flat_img + " note") is None
+    # Tick 466 nested-paren links still peel.
+    assert _peel_icml_status_md_link("[STATUS: READY](https://x.com/foo_(bar))") == (
+        "STATUS: READY"
+    )
+
+    assert _strip_icml_status_md_wrappers(flat_img) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(nested_img) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(bold_img) == "STATUS: READY"
+    assert _icml_ready_status_header(flat_img + "\n") == "READY"
+    assert _icml_ready_status_header(nested_img + "\n") == "READY"
+    assert _icml_ready_status_header(bold_img + "\n") == "READY"
+    assert _icml_ready_status_header(prog_img + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header("| ![STATUS: READY](https://x.com/badge_(live).svg) |\n")
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header("> ![STATUS: READY](https://x.com/badge_(live).svg)\n")
+        == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "![STATUS: READY](https://img.shields.io/badge/STATUS-READY_(live)-green)\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "STATUS: READY" in ln and "![" in ln for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -8262,6 +8325,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML md-link nested-paren URL STATUS header (Tick 466)" in master
     assert (
         "test_icml_ready_status_header_accepts_md_link_nested_paren_url_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 467: markdown-image STATUS (shields.io / Notion badge exports).
+    assert 'startswith("![")' in env_checks or "startswith('![')" in env_checks
+    assert "ICML md-image STATUS header (Tick 467)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_md_image_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

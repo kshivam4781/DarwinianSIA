@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 467:** markdown-image STATUS headers (`![STATUS: READY](url)` / `![**STATUS: READY**](…/badge_(live).svg)`) — `_peel_icml_status_md_link` strips leading `!` then reuses the link scanner — closes G4 demote no-op / pack miss after Tick 466 required bare `[`.  
 **Tick 466:** markdown-link nested-paren URL STATUS headers (`[STATUS: READY](https://x.com/foo_(bar))` / `[**STATUS: READY**](…#status-(draft))`) — `_peel_icml_status_md_link` balanced destination scan — closes G4 demote no-op / pack miss after Tick 465 `[^)]*` truncated at first `)`.  
 **Tick 465:** markdown-link + HTML-anchor STATUS headers (`[STATUS: READY](url)` / `[**STATUS: READY**](#anchor)` / `<a href="…">STATUS: READY</a>`) strip + demote/update — closes G4 demote no-op / pack miss on GitHub/Notion linked STATUS stubs (Tick 464 bare `[STATUS:…]` required end-at-`]`; `[^>/]*` also blocked `href="https://…"`).  
 **Tick 464:** paren / bracket / brace / fullwidth-colon STATUS headers (`(STATUS: READY)` / `[STATUS: READY]` / `{STATUS: READY}` / `（STATUS: READY）` / `STATUS：READY`) strip + demote/update — closes G4 demote no-op / pack miss on chat/JSON/Notion paren stubs + CJK colon.  
