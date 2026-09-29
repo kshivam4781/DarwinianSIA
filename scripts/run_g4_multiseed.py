@@ -1076,11 +1076,22 @@ def demote_icml_ready_file(
     ``> [x] **STATUS: READY**`` / ``| [ ] STATUS: READY |``) — pre-463
     Tick 462 required ``[-*+]`` before ``[ ]``, so those READY stubs stayed
     poisoned after trust refuse.
+
+    Tick 464: also demote paren / bracket / brace / fullwidth-colon STATUS
+    (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）`` / ``STATUS：READY``) — pre-464 left those READY
+    stubs poisoned after trust refuse.
+
+    Tick 465: also demote markdown-link + HTML-anchor STATUS
+    (``[STATUS: READY](url)`` / ``[**STATUS: READY**](#anchor)`` /
+    ``<a href=\"…\">STATUS: READY</a>``) — pre-465 Tick 464 bare
+    ``[STATUS:…]`` required end-at-``]``, so linked/``<a>`` READY stubs
+    stayed poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–463: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–465: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""

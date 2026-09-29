@@ -6435,6 +6435,100 @@ def test_icml_ready_status_header_accepts_paren_bracket_brace_fullwidth_colon_st
     assert not any("STATUS：READY" in ln for ln in demoted_fw.splitlines())
 
 
+def test_icml_ready_status_header_accepts_md_link_and_html_anchor_status() -> None:
+    """Tick 465: markdown-link + HTML-anchor STATUS headers.
+
+    Pre-465 ``[STATUS: READY](url)`` / ``[**STATUS: READY**](#anchor)`` /
+    ``<a href=\"…\">STATUS: READY</a>`` missed demote / G4 pack rewrite —
+    Tick 464 bare ``[STATUS:…]`` required the line to end at ``]``.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_line_noise,
+        _strip_icml_status_md_wrappers,
+    )
+
+    # Markdown inline link peel (before bare-bracket wrap).
+    assert (
+        _strip_icml_status_md_wrappers("[STATUS: READY](https://example.com)")
+        == "STATUS: READY"
+    )
+    assert (
+        _strip_icml_status_md_wrappers("[**STATUS: READY**](#anchor)")
+        == "STATUS: READY"
+    )
+    assert (
+        _strip_icml_status_md_wrappers("[STATUS: IN_PROGRESS](./ICML_READY.md)")
+        == "STATUS: IN_PROGRESS"
+    )
+    # Bare checkbox still peels (not mistaken for markdown link).
+    assert _strip_icml_status_md_wrappers("[ ] STATUS: READY") == "STATUS: READY"
+    # Bare bracket wrap (Tick 464) still peels when no trailing (url).
+    assert _strip_icml_status_md_wrappers("[STATUS: READY]") == "STATUS: READY"
+
+    assert _icml_ready_status_header(
+        "[STATUS: READY](https://example.com)\n"
+    ) == "READY"
+    assert _icml_ready_status_header("[**STATUS: READY**](#anchor)\n") == "READY"
+    assert (
+        _icml_ready_status_header("[STATUS: IN_PROGRESS](./ICML_READY.md)\n")
+        == "IN_PROGRESS"
+    )
+    assert (
+        _icml_ready_status_header('<a href="https://x">STATUS: READY</a>\n')
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header('<a href="#">**STATUS: READY**</a>\n') == "READY"
+    )
+    assert (
+        _icml_ready_status_header(
+            '| [STATUS: READY](https://example.com) |\n'
+        )
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header(
+            "> [STATUS: READY](https://example.com)\n"
+        )
+        == "READY"
+    )
+    assert _strip_icml_status_line_noise(
+        '<a href="https://x">STATUS: READY</a>'
+    ) == "STATUS: READY"
+
+    prose_link = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "[STATUS: READY](https://example.com)\n"
+    )
+    assert _icml_ready_status_header(prose_link) == "READY"
+    demoted = _demote_icml_ready_status(prose_link)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "](https://example.com)" in ln and "STATUS: READY" in ln
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose_link)[2] == 1
+
+    prose_a = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<a href="#">STATUS: READY</a>\n'
+    )
+    assert _icml_ready_status_header(prose_a) == "READY"
+    demoted_a = _demote_icml_ready_status(prose_a)
+    assert _icml_ready_status_header(demoted_a) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_a.splitlines())
+    assert not any(
+        "<a " in ln and "STATUS: READY" in ln for ln in demoted_a.splitlines()
+    )
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -8089,6 +8183,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML paren/bracket/brace + fullwidth-colon STATUS header (Tick 464)" in master
     assert (
         "test_icml_ready_status_header_accepts_paren_bracket_brace_fullwidth_colon_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 465: markdown-link + HTML-anchor STATUS.
+    assert "_ICML_STATUS_MD_LINK_RE" in env_checks
+    assert r"^\[([^\]]*)\]\([^)]*\)\s*$" in env_checks or "\\[([^\\]]*)\\]\\([^)]*\\)" in env_checks
+    assert "|a|button)" in env_checks or "a|button)" in env_checks
+    assert r"(?:\s[^>]*)?\s*/?>" in env_checks or "[^>]*" in env_checks
+    assert "ICML md-link + HTML-anchor STATUS header (Tick 465)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_md_link_and_html_anchor_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

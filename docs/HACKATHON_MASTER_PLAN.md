@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-28 (Section 21 ICML; Tick 464 paren/bracket/brace + fullwidth-colon STATUS; Tick 463 bare + ordered checkbox STATUS; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; Tick 459 HTML-table + semantic + md-pipe STATUS; …)
+**Last updated:** 2026-09-29 (Section 21 ICML; Tick 465 md-link + HTML-anchor STATUS; Tick 464 paren/bracket/brace + fullwidth-colon STATUS; Tick 463 bare + ordered checkbox STATUS; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; Tick 459 HTML-table + semantic + md-pipe STATUS; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -915,6 +915,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML task-list + token-wrap STATUS header (Tick 462) | **DONE** | GitHub task-list checkbox peel (`- [ ] STATUS:…` / `- [x] **STATUS:…**`) + inline token wraps (`STATUS: \`READY\`` / `STATUS: ~~READY~~`) — closes demote no-op / pack miss on checklist-header and chat code/strike token stubs; focused task-list/token-wrap + G4 demote/update tests |
 | ICML bare + ordered checkbox STATUS header (Tick 463) | **DONE** | Bare `[ ]`/`[x]`, ordered-list `1. [ ]`, blockquote `> [ ]`, and pipe+bare `| [ ] STATUS:… |` checkbox peel — closes demote no-op / pack miss after Tick 462 required `[-*+]` before `[ ]`; focused bare/ordered/bq + G4 demote/update tests |
 | ICML paren/bracket/brace + fullwidth-colon STATUS header (Tick 464) | **DONE** | Matching `(STATUS:…)` / `[STATUS:…]` / `{STATUS:…}` / `（STATUS:…）` wrap peel + fullwidth `STATUS：READY` colon — closes demote no-op / pack miss on chat/JSON/Notion paren stubs + CJK colon; focused paren/brace/fw-colon + G4 demote/update tests |
+| ICML md-link + HTML-anchor STATUS header (Tick 465) | **DONE** | Markdown `[STATUS:…](url)` peel before bare-bracket + HTML `a`/`button` allowlist + `[^>]*` attrs (so `href="https://…"` opens match) — closes demote no-op / pack miss on GitHub/Notion linked STATUS stubs after Tick 464; focused md-link/anchor + G4 demote/update tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |

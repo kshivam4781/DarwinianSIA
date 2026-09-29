@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-29T00:04Z — Tick 465 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-ca85` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 464 left realistic STATUS hazards on GitHub/Notion paste stubs: (1) markdown inline links `[STATUS: READY](url)` / `[**STATUS: READY**](#anchor)` — Tick 464 bare `[STATUS:…]` requires the line to end at `]`; (2) HTML anchors `<a href="https://…">STATUS: READY</a>` — `a` was not in the HTML allowlist, and `[^>/]*` stopped at the first `/` in `https://` so opening `<a href>` never matched. Highest leverage without paid spend: **md-link + HTML-anchor STATUS**.
+
+### What this tick did (ONE step)
+**Tick 465 — md-link + HTML-anchor STATUS (no API spend):**
+1. Recovered tip ← Tick 464 (`f49c`); confirmed secrets absent; boot `ca85` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_ICML_STATUS_MD_LINK_RE` peels `[text](url)` before bare-bracket wrap (requires `](` so `[ ] STATUS` checkboxes stay safe); HTML allowlist adds `a`/`button`; attribute matcher `[^>]*` (was `[^>/]*`) so `href="https://…"` opening tags strip
+3. Tests: `test_icml_ready_status_header_accepts_md_link_and_html_anchor_status` + G4 demote/update md-link/anchor cases + Tick 464 lock → focused **3 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 464) | After (Tick 465) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `[STATUS: READY](url)` / `<a href>STATUS:…</a>` demote | **miss / miss** | **demote/update normalize** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-28T22:04Z — Tick 464 (automation cron)
 
 ### Status snapshot

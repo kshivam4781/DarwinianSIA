@@ -2894,12 +2894,18 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
 # Tick 459: include table cells + semantic sectioning (+ caption/label/dt/dd)
 # so Notion/Docs HTML table / ``<section>`` / ``<article>`` exports match;
 # markdown pipe rows handled separately via ``_strip_icml_status_md_table_pipes``.
+# Tick 465: include ``a`` (+ ``button``) so Notion/Docs/GitHub HTML link
+# exports of STATUS (``<a href=\"…\">STATUS: READY</a>``) match — Tick 464
+# bracket wrap still left bare ``<a>…</a>`` unmatched.
 _ICML_STATUS_HTML_TAG_RE = re.compile(
     r"</?(?:strong|b|em|i|p|div|span|font|mark|u|s|strike|del|ins|small|big|"
     r"code|tt|kbd|br|hr|h[1-6]|blockquote|li|ul|ol|pre|center|summary|details|"
     r"table|thead|tbody|tfoot|tr|td|th|caption|section|article|header|main|"
-    r"aside|nav|footer|figure|figcaption|label|dt|dd|dl)"
-    r"(?:\s[^>/]*)?\s*/?>",
+    r"aside|nav|footer|figure|figcaption|label|dt|dd|dl|a|button)"
+    # Tick 465: allow ``/`` inside attributes (``href="https://…"``) — pre-465
+    # ``[^>/]*`` stopped at the first slash so opening ``<a href="https://…">``
+    # never matched (only ``</a>`` did). Self-closing still via trailing ``/?``.
+    r"(?:\s[^>]*)?\s*/?>",
     re.IGNORECASE,
 )
 # Tick 457/458/461/464: outer markdown inline-code / strikethrough / Obsidian
@@ -2924,6 +2930,12 @@ _ICML_STATUS_MD_WRAP_RE = re.compile(
     r"^\[(.*?)\]$|"
     r"^\{(.*?)\}$"
 )
+# Tick 465: markdown inline link wrappers (``[STATUS: READY](url)`` /
+# ``[**STATUS: READY**](#anchor)``). Tick 464 bare ``[STATUS:…]`` requires
+# the line to *end* at ``]``, so GitHub/Notion linked STATUS stubs with a
+# trailing ``(url)`` stayed unmatched (demote no-op / G4 pack miss READY).
+# Require ``](`` so bare checkbox ``[ ] STATUS`` is never mistaken for a link.
+_ICML_STATUS_MD_LINK_RE = re.compile(r"^\[([^\]]*)\]\([^)]*\)\s*$")
 # Tick 459/461: outer markdown table-cell pipes (``| STATUS: READY |``).
 # Tick 461: require a true one-cell row (no inner ``|``) so
 # ``| STATUS: READY | note |`` is not peeled into a false READY header.
@@ -2981,6 +2993,11 @@ def _strip_icml_status_html_tags(line: str) -> str:
     Notion/Docs HTML table-cell and section exports unmatched after Tick 458
     list/blockquote containers (Tick 458 even left ``<table>`` as a negative
     allowlist example).
+
+    Tick 465: also strip HTML anchor / button tags (``a`` / ``button``) —
+    pre-465 left Notion/Docs/GitHub HTML link exports
+    (``<a href=\"…\">STATUS: READY</a>``) unmatched after Tick 464 bracket
+    wrap (bare ``[STATUS:…]`` only) and Tick 456–459 non-anchor tags.
     """
     return _ICML_STATUS_HTML_TAG_RE.sub("", line or "")
 
@@ -3068,6 +3085,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``（STATUS: READY）``) and accept fullwidth colon ``STATUS：READY`` —
     pre-464 left chat/JSON/Notion paren stubs and CJK fullwidth-colon
     headers unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 465: also peel markdown inline link wrappers
+    (``[STATUS: READY](url)`` / ``[**STATUS: READY**](#anchor)``) —
+    pre-465 Tick 464 bare ``[STATUS:…]`` required the line to end at ``]``,
+    so GitHub/Notion linked STATUS stubs with trailing ``(url)`` missed
+    demote / G4 pack rewrite. Link peel runs before bare-bracket wrap and
+    requires ``](`` so ``[ ] STATUS`` checkboxes are never mistaken for links.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3078,6 +3102,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         m_pref = _ICML_STATUS_MD_CONTAINER_PREFIX_RE.match(s)
         if m_pref:
             nxt = s[m_pref.end() :].strip()
+            if nxt and nxt != s:
+                s = nxt
+                continue
+        m_link = _ICML_STATUS_MD_LINK_RE.match(s)
+        if m_link:
+            nxt = (m_link.group(1) or "").strip()
             if nxt and nxt != s:
                 s = nxt
                 continue
@@ -3210,6 +3240,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
     ``（STATUS: READY）``) and accept fullwidth colon ``STATUS：READY`` —
     pre-464 left chat/JSON/Notion paren stubs and CJK fullwidth-colon
     headers unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 465: also peel markdown inline links
+    (``[STATUS: READY](url)`` / ``[**STATUS: READY**](#anchor)``) and strip
+    HTML ``<a>`` / ``<button>`` tags — pre-465 left GitHub/Notion linked
+    STATUS stubs unmatched after Tick 464 bare-bracket wrap (demote no-op /
+    G4 pack miss READY).
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)
@@ -3219,12 +3255,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
 
 
 def _icml_ready_status_line_match(line: str):
-    """Tick 447–464: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/bare-checkbox/ordered-checkbox/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap/paren/bracket/brace/fullwidth-colon) after strip."""
+    """Tick 447–465: match a STATUS header line (bold/plain/ATX/label/colon-out/container/task-list/bare-checkbox/ordered-checkbox/italic/__/ ***/ZWSP/nested/HTML-entity/HTML-tag/HTML-heading/HTML-container/md-wrap/Obsidian/HTML-table/semantic/md-pipe/wrap+pipe/quote/space-colon/token-wrap/paren/bracket/brace/fullwidth-colon/md-link/HTML-anchor) after strip."""
     return _ICML_READY_STATUS_HEADER_RE.match(_strip_icml_status_line_noise(line))
 
 
 def _icml_ready_status_header(text: str) -> str | None:
-    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462/463/464: read STATUS from the STATUS header line only.
+    """Tick 442/446/447/448/449/450/451/452/453/454/455/456/457/458/459/460/461/462/463/464/465: read STATUS from the STATUS header line only.
 
     Pre-442 demote / richness / merge used whole-body substring checks for
     ``STATUS: READY`` / ``STATUS: IN_PROGRESS``. Tick notes and G4 audit prose
@@ -3357,6 +3393,19 @@ def _icml_ready_status_header(text: str) -> str | None:
     blockquote+bare-checkbox (``> [ ] STATUS: READY``) — pre-463 Tick 462
     required ``[-*+]`` before ``[ ]``, so those paste stubs made demote
     no-op / G4 pack miss READY.
+
+    Tick 464: also peel matching paren / bracket / brace wrappers
+    (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
+    ``（STATUS: READY）``) and accept fullwidth colon ``STATUS：READY`` —
+    pre-464 left chat/JSON/Notion paren stubs and CJK fullwidth-colon
+    headers unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 465: also peel markdown inline links
+    (``[STATUS: READY](url)`` / ``[**STATUS: READY**](#anchor)``) and strip
+    HTML ``<a>`` / ``<button>`` — pre-465 Tick 464 bare ``[STATUS:…]``
+    required the line to end at ``]``, so GitHub/Notion linked STATUS stubs
+    with trailing ``(url)`` / ``<a href>`` made demote no-op / G4 pack miss
+    READY.
     """
     for line in (text or "").lstrip("\ufeff").splitlines():
         m = _icml_ready_status_line_match(line)

@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 464: paren / bracket / brace / fullwidth-colon STATUS (`(STATUS: READY)` / `[STATUS: READY]` / `{STATUS: READY}` / `（STATUS: READY）` / `STATUS：READY`) — closes demote no-op / G4 pack miss on chat/JSON/Notion paren stubs + CJK colon; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 465: markdown-link + HTML-anchor STATUS (`[STATUS: READY](url)` / `[**STATUS: READY**](#anchor)` / `<a href="…">STATUS: READY</a>`) — closes demote no-op / G4 pack miss on GitHub/Notion linked STATUS stubs after Tick 464 bare brackets; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

@@ -3764,6 +3764,101 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in fw_text.splitlines())
     assert not any("STATUS：READY" in ln for ln in fw_text.splitlines())
 
+    # (au) Tick 465: ``[STATUS: READY](url)`` markdown-link wrap must demote —
+    # pre-465 Tick 464 bare ``[STATUS:…]`` left linked stubs unmatched.
+    mdlink_ready = tmp_path / "mdlink_status.md"
+    mdlink_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "[STATUS: READY](https://example.com)\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(mdlink_ready.read_text(encoding="utf-8")) == "READY"
+    )
+    assert (
+        demote_icml_ready_file(mdlink_ready, reason="md-link READY", timestamp="t")
+        is True
+    )
+    mdlink_text = mdlink_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(mdlink_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in mdlink_text.splitlines()
+    )
+    assert "Do not set STATUS: READY until criteria pass." in mdlink_text
+    assert not any(
+        "](https://example.com)" in ln and "STATUS: READY" in ln
+        for ln in mdlink_text.splitlines()
+    )
+
+    # (av) Tick 465: ``[STATUS: IN_PROGRESS](#)`` must update to READY.
+    mdlink_upd = tmp_path / "update_mdlink_status.md"
+    mdlink_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "[STATUS: IN_PROGRESS](#anchor)\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_ml = update_icml_ready_from_g4(
+        ready_path=mdlink_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-29T00:10:00Z",
+        allow_ready=True,
+    )
+    assert status_ml == "READY"
+    ml_updated = mdlink_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(ml_updated) == "READY"
+    assert any(ln.strip() == "**STATUS: READY**" for ln in ml_updated.splitlines())
+    assert not any(
+        "](#anchor)" in ln and "IN_PROGRESS" in ln for ln in ml_updated.splitlines()
+    )
+
+    # (aw) Tick 465: ``<a href>STATUS: READY</a>`` HTML anchor must demote.
+    a_ready = tmp_path / "html_anchor_status.md"
+    a_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<a href="https://example.com">STATUS: READY</a>\n\n'
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert _icml_ready_status_header(a_ready.read_text(encoding="utf-8")) == "READY"
+    assert (
+        demote_icml_ready_file(a_ready, reason="html-anchor READY", timestamp="t")
+        is True
+    )
+    a_text = a_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(a_text) == "IN_PROGRESS"
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in a_text.splitlines())
+    assert not any(
+        "<a " in ln and "STATUS: READY" in ln for ln in a_text.splitlines()
+    )
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
