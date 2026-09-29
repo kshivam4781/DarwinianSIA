@@ -6653,6 +6653,89 @@ def test_icml_ready_status_header_accepts_md_image_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_picture_img_alt_status() -> None:
+    """Tick 469: HTML ``<picture><img alt="STATUS:…">`` responsive badge exports.
+
+    Pre-469 ``<picture><img alt="STATUS: READY" src="…">…</picture>`` missed
+    demote / G4 pack rewrite — Tick 468 only peeled a full-line bare ``<img>``,
+    and ``picture``/``source`` were not in the HTML-tag allowlist.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _strip_icml_status_html_tags,
+        _strip_icml_status_md_wrappers,
+    )
+
+    flat_pic = (
+        '<picture><img alt="STATUS: READY" '
+        'src="https://img.shields.io/badge/STATUS-READY-green"></picture>'
+    )
+    with_source = (
+        '<picture><source srcset="https://cdn.example/badge_(live).webp" '
+        'type="image/webp">'
+        '<img src="https://cdn.example/badge_(live).svg" '
+        'alt="**STATUS: READY**" /></picture>'
+    )
+    prog_pic = (
+        '<picture><img alt="STATUS: IN_PROGRESS" '
+        'src="https://img.shields.io/badge/STATUS-IN_PROGRESS-yellow">'
+        "</picture>"
+    )
+
+    # Allowlist strip exposes nested img for Tick 468 alt peel.
+    assert (
+        _strip_icml_status_html_tags(flat_pic)
+        == '<img alt="STATUS: READY" '
+        'src="https://img.shields.io/badge/STATUS-READY-green">'
+    )
+    assert _strip_icml_status_md_wrappers(flat_pic) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(with_source) == "STATUS: READY"
+    assert _icml_ready_status_header(flat_pic + "\n") == "READY"
+    assert _icml_ready_status_header(with_source + "\n") == "READY"
+    assert _icml_ready_status_header(prog_pic + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header(
+            '| <picture><img alt="STATUS: READY" src="https://x.com/b.svg">'
+            "</picture> |\n"
+        )
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header(
+            '> <picture><img alt="STATUS: READY" src="https://x.com/b.svg">'
+            "</picture>\n"
+        )
+        == "READY"
+    )
+    # Tick 468 bare img + Tick 467 md-image still work.
+    assert (
+        _icml_ready_status_header(
+            '<img alt="STATUS: READY" src="https://x.com/b.svg">\n'
+        )
+        == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<picture><source srcset="https://cdn.example/badge_(live).webp">'
+        '<img alt="STATUS: READY" '
+        'src="https://img.shields.io/badge/STATUS-READY_(live)-green">'
+        "</picture>\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert not any(
+        "STATUS: READY" in ln and "<picture" in ln.lower()
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -8393,7 +8476,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     # Tick 465: markdown-link + HTML-anchor STATUS.
     assert "_ICML_STATUS_MD_LINK_RE" in env_checks
     assert r"^\[([^\]]*)\]\([^)]*\)\s*$" in env_checks or "\\[([^\\]]*)\\]\\([^)]*\\)" in env_checks
-    assert "|a|button)" in env_checks or "a|button)" in env_checks
+    # Tick 469 extended allowlist to ``a|button|picture|source)`` — still must
+    # include ``a|button`` (anchor peel); accept either suffix.
+    assert (
+        "|a|button)" in env_checks
+        or "a|button)" in env_checks
+        or "a|button|picture|source)" in env_checks
+    )
     assert r"(?:\s[^>]*)?\s*/?>" in env_checks or "[^>]*" in env_checks
     assert "ICML md-link + HTML-anchor STATUS header (Tick 465)" in master
     assert (
@@ -8422,6 +8511,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-img-alt STATUS header (Tick 468)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_img_alt_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 469: HTML ``<picture><img alt="STATUS:…">`` responsive badge exports.
+    assert "picture|source)" in env_checks or "picture|source|" in env_checks
+    assert "ICML html-picture STATUS header (Tick 469)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_picture_img_alt_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

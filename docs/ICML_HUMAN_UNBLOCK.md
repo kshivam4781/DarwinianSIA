@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 469:** HTML ``<picture><img alt="STATUS:…">`` STATUS headers (`<picture><img alt="STATUS: READY" src="…">` / `<picture><source …><img alt="**STATUS: READY**" /></picture>`) — allowlist `picture`/`source` so nested img reaches Tick 468 alt peel — closes G4 demote no-op / pack miss after Tick 468 full-line bare `<img>` only.  
 **Tick 468:** HTML ``<img alt="STATUS:…">`` STATUS headers (`<img alt="STATUS: READY" src="…">` / `<img src="…/badge_(live).svg" alt="**STATUS: READY**" />`) — `_peel_icml_status_html_img_alt` peels quoted alt text — closes G4 demote no-op / pack miss after Tick 467 markdown-image only.  
 **Tick 467:** markdown-image STATUS headers (`![STATUS: READY](url)` / `![**STATUS: READY**](…/badge_(live).svg)`) — `_peel_icml_status_md_link` strips leading `!` then reuses the link scanner — closes G4 demote no-op / pack miss after Tick 466 required bare `[`.  
 **Tick 466:** markdown-link nested-paren URL STATUS headers (`[STATUS: READY](https://x.com/foo_(bar))` / `[**STATUS: READY**](…#status-(draft))`) — `_peel_icml_status_md_link` balanced destination scan — closes G4 demote no-op / pack miss after Tick 465 `[^)]*` truncated at first `)`.  

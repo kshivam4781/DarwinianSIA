@@ -2897,11 +2897,16 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
 # Tick 465: include ``a`` (+ ``button``) so Notion/Docs/GitHub HTML link
 # exports of STATUS (``<a href=\"…\">STATUS: READY</a>``) match — Tick 464
 # bracket wrap still left bare ``<a>…</a>`` unmatched.
+# Tick 469: include ``picture`` (+ ``source``) so responsive HTML badge exports
+# (``<picture><img alt=\"STATUS:…\">…</picture>`` /
+# ``<picture><source …><img alt=\"STATUS:…\">…</picture>``) strip to the
+# nested ``<img>`` that Tick 468 peels — ``picture``/``source`` were not in
+# the allowlist, so Tick 468 full-line ``<img>`` peel never saw the alt.
 _ICML_STATUS_HTML_TAG_RE = re.compile(
     r"</?(?:strong|b|em|i|p|div|span|font|mark|u|s|strike|del|ins|small|big|"
     r"code|tt|kbd|br|hr|h[1-6]|blockquote|li|ul|ol|pre|center|summary|details|"
     r"table|thead|tbody|tfoot|tr|td|th|caption|section|article|header|main|"
-    r"aside|nav|footer|figure|figcaption|label|dt|dd|dl|a|button)"
+    r"aside|nav|footer|figure|figcaption|label|dt|dd|dl|a|button|picture|source)"
     # Tick 465: allow ``/`` inside attributes (``href="https://…"``) — pre-465
     # ``[^>/]*`` stopped at the first slash so opening ``<a href="https://…">``
     # never matched (only ``</a>`` did). Self-closing still via trailing ``/?``.
@@ -3102,6 +3107,13 @@ def _strip_icml_status_html_tags(line: str) -> str:
     pre-465 left Notion/Docs/GitHub HTML link exports
     (``<a href=\"…\">STATUS: READY</a>``) unmatched after Tick 464 bracket
     wrap (bare ``[STATUS:…]`` only) and Tick 456–459 non-anchor tags.
+
+    Tick 469: also strip HTML ``picture`` / ``source`` tags — pre-469 left
+    responsive badge exports
+    (``<picture><img alt=\"STATUS: READY\" src=\"…\"></picture>`` /
+    ``<picture><source srcset=\"…\"><img alt=\"STATUS:…\">…</picture>``)
+    unmatched after Tick 468 full-line ``<img alt>`` peel (``picture`` was
+    not allowlisted, so the nested img never surfaced for alt peel).
     """
     return _ICML_STATUS_HTML_TAG_RE.sub("", line or "")
 
@@ -3215,6 +3227,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     Tick 467 only peeled markdown ``![…](…)``, so Notion/Docs/GitHub HTML
     badge exports missed demote / G4 pack rewrite (``img`` is not in the
     HTML-tag allowlist — stripping would drop the alt).
+
+    Tick 469: also strip HTML ``<picture>`` / ``<source>`` wrappers so nested
+    ``<img alt="STATUS:…">`` reaches the Tick 468 peel
+    (``<picture><img alt="STATUS: READY" src="…"></picture>`` /
+    ``<picture><source srcset="…"><img alt="**STATUS: READY**" …></picture>``)
+    — pre-469 left responsive badge exports unmatched after Tick 468
+    required a full-line bare ``<img>``.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3228,6 +3247,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             if nxt and nxt != s:
                 s = nxt
                 continue
+        # Tick 469: peel picture/source *inside* the wrap loop so
+        # `` `| <picture><img alt=…></picture> |` `` still reaches img-alt.
+        html_peeled = _strip_icml_status_html_tags(s)
+        if html_peeled != s:
+            s = html_peeled.strip()
+            continue
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt
@@ -3371,6 +3396,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
     HTML ``<a>`` / ``<button>`` tags — pre-465 left GitHub/Notion linked
     STATUS stubs unmatched after Tick 464 bare-bracket wrap (demote no-op /
     G4 pack miss READY).
+
+    Tick 469: also strip HTML ``<picture>`` / ``<source>`` so nested
+    ``<img alt="STATUS:…">`` reaches Tick 468 peel — pre-469 left responsive
+    badge exports unmatched after Tick 468 full-line ``<img>`` only.
     """
     s = _decode_icml_status_html_entities(line or "")
     s = _strip_icml_status_html_tags(s)

@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-09-29 (Section 21 ICML; Tick 468 html-img-alt STATUS; Tick 467 md-image STATUS; Tick 466 md-link nested-paren URL STATUS; Tick 465 md-link + HTML-anchor STATUS; Tick 464 paren/bracket/brace + fullwidth-colon STATUS; Tick 463 bare + ordered checkbox STATUS; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; …)
+**Last updated:** 2026-09-29 (Section 21 ICML; Tick 469 html-picture STATUS; Tick 468 html-img-alt STATUS; Tick 467 md-image STATUS; Tick 466 md-link nested-paren URL STATUS; Tick 465 md-link + HTML-anchor STATUS; Tick 464 paren/bracket/brace + fullwidth-colon STATUS; Tick 463 bare + ordered checkbox STATUS; Tick 462 task-list + token-wrap STATUS; Tick 461 quote + space-colon STATUS + strict one-cell pipe; Tick 460 wrap-around md-pipe STATUS; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -919,6 +919,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML md-link nested-paren URL STATUS header (Tick 466) | **DONE** | `_peel_icml_status_md_link` balanced-paren destination scan — `[STATUS:…](https://x.com/foo_(bar))` / `#status-(draft)` demote/update; closes demote no-op / pack miss after Tick 465 `[^)]*` truncated at first `)`; focused nested-paren + G4 demote/update tests |
 | ICML md-image STATUS header (Tick 467) | **DONE** | `_peel_icml_status_md_link` strips leading `!` — `![STATUS:…](url)` / `![**STATUS:…**](…/badge_(live).svg)` demote/update; closes demote no-op / pack miss on shields.io / Notion badge exports after Tick 466 required bare `[`; focused md-image + G4 demote/update tests |
 | ICML html-img-alt STATUS header (Tick 468) | **DONE** | `_peel_icml_status_html_img_alt` peels quoted `alt=` from full-line `<img …>` — `<img alt="STATUS:…">` / `<img src="…/badge_(live).svg" alt="**STATUS:…**" />` demote/update; closes demote no-op / pack miss after Tick 467 markdown-image only; focused html-img-alt + G4 demote/update tests |
+| ICML html-picture STATUS header (Tick 469) | **DONE** | Allowlist `picture`/`source` + wrap-loop HTML peel — `<picture><img alt="STATUS:…">` / `<picture><source…><img alt="**STATUS:…**">` demote/update; closes demote no-op / pack miss after Tick 468 full-line bare `<img>` only; focused html-picture + G4 demote/update tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
 | Post-steering case-study H2 | **DONE (offline)** | Tick 23: measure preferred DNA share at gen≥3 (delay-all); multi-allele + fitness-aligned selection |
