@@ -6736,6 +6736,106 @@ def test_icml_ready_status_header_accepts_html_picture_img_alt_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_img_title_aria_status() -> None:
+    """Tick 470: HTML ``<img title=…>`` / ``aria-label=…`` STATUS badge exports.
+
+    Pre-470 Tick 468/469 only peeled ``alt=``, so a11y/tooltip badge exports
+    (``<img title="STATUS: READY" src="…">`` /
+    ``<img aria-label="**STATUS: READY**" src="…">`` /
+    ``<img alt="badge" title="STATUS: READY" src="…">``) missed demote /
+    G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_img_alt,
+        _strip_icml_status_md_wrappers,
+    )
+
+    title_img = (
+        '<img title="STATUS: READY" '
+        'src="https://img.shields.io/badge/STATUS-READY-green">'
+    )
+    aria_img = (
+        '<img src="https://cdn.example/badge_(live).svg" '
+        'aria-label="**STATUS: READY**" />'
+    )
+    decorative_alt = (
+        '<img alt="badge" title="STATUS: READY" '
+        'src="https://cdn.example/badge_(live).svg">'
+    )
+    prog_title = (
+        '<img title="STATUS: IN_PROGRESS" '
+        'src="https://img.shields.io/badge/STATUS-IN_PROGRESS-yellow">'
+    )
+    # Prefer STATUS-looking alt over decorative title.
+    alt_wins = (
+        '<img alt="STATUS: READY" title="tooltip" '
+        'src="https://cdn.example/badge.svg">'
+    )
+
+    assert _peel_icml_status_html_img_alt(title_img) == "STATUS: READY"
+    assert _peel_icml_status_html_img_alt(aria_img) == "**STATUS: READY**"
+    assert _peel_icml_status_html_img_alt(decorative_alt) == "STATUS: READY"
+    assert _peel_icml_status_html_img_alt(prog_title) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_img_alt(alt_wins) == "STATUS: READY"
+    # Tick 468 alt-only still peels.
+    assert (
+        _peel_icml_status_html_img_alt(
+            '<img alt="STATUS: READY" src="https://x.com/b.svg">'
+        )
+        == "STATUS: READY"
+    )
+    # No STATUS attrs → refuse.
+    assert (
+        _peel_icml_status_html_img_alt('<img src="https://x.com/b.svg">') is None
+    )
+    assert _strip_icml_status_md_wrappers(title_img) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(aria_img) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(decorative_alt) == "STATUS: READY"
+    assert _icml_ready_status_header(title_img + "\n") == "READY"
+    assert _icml_ready_status_header(aria_img + "\n") == "READY"
+    assert _icml_ready_status_header(decorative_alt + "\n") == "READY"
+    assert _icml_ready_status_header(prog_title + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header(
+            '| <img title="STATUS: READY" src="https://x.com/b.svg"> |\n'
+        )
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header(
+            '> <img aria-label="STATUS: READY" src="https://x.com/b.svg">\n'
+        )
+        == "READY"
+    )
+    # picture + title nested img (allowlist strip → title peel).
+    assert (
+        _icml_ready_status_header(
+            '<picture><img title="STATUS: READY" '
+            'src="https://x.com/b.svg"></picture>\n'
+        )
+        == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<img alt="badge_(live)" title="STATUS: READY" '
+        'src="https://img.shields.io/badge/STATUS-READY_(live)-green">\n'
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert not any(
+        "STATUS: READY" in ln and "<img" in ln.lower()
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -8518,6 +8618,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-picture STATUS header (Tick 469)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_picture_img_alt_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 470: HTML ``<img title=…>`` / ``aria-label=…`` STATUS badge exports.
+    assert "aria-label" in env_checks
+    assert "_ICML_STATUS_HTML_IMG_ATTR_RE" in env_checks
+    assert "ICML html-img-title-aria STATUS header (Tick 470)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_img_title_aria_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

@@ -2953,14 +2953,23 @@ _ICML_STATUS_HTML_IMG_TAG_RE = re.compile(
     r"^<img\b([^>]*)>\s*$",
     re.IGNORECASE,
 )
+# Tick 468: quoted ``alt=``. Tick 470: also ``title=`` / ``aria-label=`` —
+# a11y / tooltip badge exports often put STATUS there when ``alt`` is a
+# decorative filename or omitted.
+_ICML_STATUS_HTML_IMG_ATTR_RE = re.compile(
+    r"""\b(alt|title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    re.IGNORECASE,
+)
+# Back-compat alias (Tick 468 tests / callers that still import the old name).
 _ICML_STATUS_HTML_IMG_ALT_RE = re.compile(
     r"""\balt\s*=\s*(?:"([^"]*)"|'([^']*)')""",
     re.IGNORECASE,
 )
+_ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
 
 
 def _peel_icml_status_html_img_alt(line: str) -> str | None:
-    """Tick 468: peel a full-line HTML ``<img alt="STATUS:…">``; return alt text.
+    """Tick 468/470: peel a full-line HTML ``<img>`` STATUS attr; return text.
 
     Tick 467 covered markdown images (``![STATUS: READY](url)``), but Notion /
     Docs / GitHub often export the same badge as an HTML ``<img>`` whose
@@ -2970,20 +2979,42 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
     because ``img`` is not in the HTML-tag allowlist (stripping would drop
     the alt) and Tick 467 only peeled markdown ``![…](…)``.
 
-    Requires a full-line ``<img …>`` (optional self-close ``/>``) with a
-    quoted ``alt=`` attribute. Trailing prose after the tag refuses the peel.
-    Attribute order is free (``src`` before/after ``alt``).
+    Tick 470: also peel quoted ``title=`` / ``aria-label=`` when they carry
+    the STATUS header (``<img title="STATUS: READY" src="…">`` /
+    ``<img aria-label="**STATUS: READY**" src="…">`` /
+    ``<img alt="badge" title="STATUS: READY" src="…">``). Pre-470 only
+    read ``alt=``, so a11y/tooltip badge exports (decorative alt / missing
+    alt) missed demote / G4 pack rewrite. Preference: first STATUS-looking
+    value among ``alt``, ``title``, ``aria-label`` (in that order); else
+    first non-empty of those attrs (Tick 468 alt-first compat).
+
+    Requires a full-line ``<img …>`` (optional self-close ``/>``) with at
+    least one quoted ``alt`` / ``title`` / ``aria-label``. Trailing prose
+    after the tag refuses the peel. Attribute order is free.
     """
     s = (line or "").strip()
     m = _ICML_STATUS_HTML_IMG_TAG_RE.match(s)
     if not m:
         return None
     attrs = m.group(1) or ""
-    am = _ICML_STATUS_HTML_IMG_ALT_RE.search(attrs)
-    if not am:
+    # Preserve first-seen order per attr name (alt → title → aria-label).
+    by_name: dict[str, str] = {}
+    for am in _ICML_STATUS_HTML_IMG_ATTR_RE.finditer(attrs):
+        name = (am.group(1) or "").lower()
+        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        if name and val and name not in by_name:
+            by_name[name] = val
+    if not by_name:
         return None
-    alt = (am.group(1) if am.group(1) is not None else am.group(2) or "").strip()
-    return alt or None
+    order = ("alt", "title", "aria-label")
+    for name in order:
+        val = by_name.get(name)
+        if val and _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
+    for name in order:
+        if name in by_name:
+            return by_name[name]
+    return None
 
 
 def _peel_icml_status_md_link(line: str) -> str | None:
@@ -3234,6 +3265,11 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``<picture><source srcset="…"><img alt="**STATUS: READY**" …></picture>``)
     — pre-469 left responsive badge exports unmatched after Tick 468
     required a full-line bare ``<img>``.
+
+    Tick 470: also peel HTML ``<img title="STATUS:…">`` /
+    ``<img aria-label="STATUS:…">`` (and decorative-alt + STATUS title)
+    — pre-470 Tick 468/469 only read ``alt=``, so a11y/tooltip badge
+    exports missed demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3253,6 +3289,7 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         if html_peeled != s:
             s = html_peeled.strip()
             continue
+        # Tick 468/470: peel img alt / title / aria-label STATUS attrs.
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt

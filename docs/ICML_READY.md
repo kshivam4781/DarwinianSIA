@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 469: HTML picture+img-alt STATUS (`<picture><img alt="STATUS: READY">` / `<picture><source…><img alt="**STATUS: READY**">`) — allowlist `picture`/`source` so nested img reaches Tick 468 peel; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 470: HTML img title/aria-label STATUS (`<img title="STATUS: READY">` / `<img aria-label="**STATUS: READY**">` / decorative-alt+STATUS-title) — peels `title=`/`aria-label=` after Tick 468/469 `alt=` only; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
