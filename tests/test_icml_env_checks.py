@@ -7157,6 +7157,105 @@ def test_icml_ready_status_header_accepts_html_svg_text_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_svg_foreign_object_status() -> None:
+    """Tick 475: HTML SVG nested ``<foreignObject>STATUS:…</foreignObject>``.
+
+    Pre-475 Tick 471–474 only peeled attrs / ``<title>`` / ``<desc>`` /
+    ``<text>``, so Figma / browser HTML-in-SVG label badge exports
+    (``<svg…><title>Badge</title><foreignObject><div>STATUS: READY</div>
+    </foreignObject>…`` /
+    ``<svg…><foreignObject><span>**STATUS: READY**</span></foreignObject>``)
+    missed demote / G4 pack rewrite when a11y name was decorative or omitted.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_svg_title,
+        _strip_icml_status_md_wrappers,
+    )
+
+    fo_only = (
+        '<svg xmlns="http://www.w3.org/2000/svg" role="img">'
+        '<foreignObject width="120" height="20">'
+        '<div xmlns="http://www.w3.org/1999/xhtml">STATUS: READY</div>'
+        "</foreignObject></svg>"
+    )
+    deco_title_fo = (
+        '<svg viewBox="0 0 110 20" role="img">'
+        "<title>Badge_(live)</title>"
+        "<desc>ICML badge detail</desc>"
+        "<foreignObject width=\"110\" height=\"20\">"
+        "<span>**STATUS: READY**</span></foreignObject></svg>"
+    )
+    fo_prog = (
+        '<svg role="img"><title>draft</title>'
+        "<foreignObject><p>STATUS: IN_PROGRESS</p></foreignObject></svg>"
+    )
+    # Nested STATUS text still beats decorative foreignObject (Tick 474 compat).
+    text_beats_fo = (
+        '<svg role="img"><text x="0" y="15">STATUS: READY</text>'
+        "<foreignObject><div>ok</div></foreignObject></svg>"
+    )
+    # Nested STATUS desc still beats decorative foreignObject (Tick 473 compat).
+    desc_beats_fo = (
+        '<svg role="img"><desc>STATUS: READY</desc>'
+        "<foreignObject><div>ok</div></foreignObject></svg>"
+    )
+    # Nested STATUS title still beats decorative foreignObject (Tick 471 compat).
+    title_beats_fo = (
+        '<svg role="img"><title>STATUS: READY</title>'
+        "<foreignObject><div>badge</div></foreignObject></svg>"
+    )
+    # aria-label STATUS still beats decorative title+foreignObject (Tick 472).
+    aria_beats_fo = (
+        '<svg aria-label="STATUS: READY" role="img">'
+        "<title>Badge</title>"
+        "<foreignObject><div>detail</div></foreignObject></svg>"
+    )
+    deco = (
+        '<svg role="img"><title>Badge</title>'
+        "<foreignObject><div>ICML badge</div></foreignObject></svg>"
+    )
+
+    assert _peel_icml_status_html_svg_title(fo_only) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(deco_title_fo) == "**STATUS: READY**"
+    assert _peel_icml_status_html_svg_title(fo_prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_svg_title(text_beats_fo) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(desc_beats_fo) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(title_beats_fo) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(aria_beats_fo) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(deco) is None
+    assert _peel_icml_status_html_svg_title(fo_only + " note") is None
+    assert _strip_icml_status_md_wrappers(fo_only) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(deco_title_fo) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(fo_prog) == "STATUS: IN_PROGRESS"
+    assert _icml_ready_status_header(fo_only + "\n") == "READY"
+    assert _icml_ready_status_header(deco_title_fo + "\n") == "READY"
+    assert _icml_ready_status_header(fo_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(f"| {fo_only} |\n") == "READY"
+    assert _icml_ready_status_header(f"> {fo_only}\n") == "READY"
+    # Tick 474 text still peels.
+    assert _icml_ready_status_header(
+        '<svg role="img"><text>STATUS: READY</text></svg>\n'
+    ) == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{deco_title_fo}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert not any(
+        "<svg" in ln.lower() and "STATUS: READY" in ln
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -8980,6 +9079,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-svg-text STATUS header (Tick 474)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_svg_text_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 475: HTML SVG nested ``<foreignObject>STATUS:…</foreignObject>``.
+    assert "_ICML_STATUS_HTML_SVG_FOREIGN_OBJECT_RE" in env_checks
+    assert "nested_foreign" in env_checks or "nested <foreignObject>" in env_checks
+    assert "ICML html-svg-foreignObject STATUS header (Tick 475)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_svg_foreign_object_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

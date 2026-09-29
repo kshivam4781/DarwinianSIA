@@ -2979,6 +2979,9 @@ _ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
 # Tick 474: also peel nested ``<text>`` (incl. ``<tspan>`` plain text) when
 # attrs / title / desc are decorative — Figma / Illustrator / shields-like
 # SVG badge exports often put the visible STATUS only in ``<text>``.
+# Tick 475: also peel nested ``<foreignObject>`` (HTML-in-SVG plain text) when
+# attrs / title / desc / text are decorative — Figma / browser HTML-label
+# SVG badge exports often put STATUS only inside ``<foreignObject><div>…``.
 _ICML_STATUS_HTML_SVG_TAG_RE = re.compile(
     r"^<svg\b[^>]*>.*</svg>\s*$",
     re.IGNORECASE | re.DOTALL,
@@ -2997,6 +3000,10 @@ _ICML_STATUS_HTML_SVG_DESC_RE = re.compile(
 )
 _ICML_STATUS_HTML_SVG_TEXT_RE = re.compile(
     r"<text\b[^>]*>(.*?)</text>",
+    re.IGNORECASE | re.DOTALL,
+)
+_ICML_STATUS_HTML_SVG_FOREIGN_OBJECT_RE = re.compile(
+    r"<foreignObject\b[^>]*>(.*?)</foreignObject>",
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_INNER_TAG_RE = re.compile(r"<[^>]+>")
@@ -3060,7 +3067,7 @@ def _svg_inner_plain_text(inner: str) -> str:
 
 
 def _peel_icml_status_html_svg_title(line: str) -> str | None:
-    """Tick 471/472/473/474: peel a full-line inline SVG STATUS name; return text.
+    """Tick 471/472/473/474/475: peel a full-line inline SVG STATUS name; return text.
 
     Tick 468–470 covered HTML ``<img>`` badge exports (alt / title /
     aria-label). Shields.io / Notion / Docs also paste STATUS as an inline
@@ -3095,9 +3102,20 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
     Pre-474 Tick 471–473 only read attrs / ``<title>`` / ``<desc>``, so
     Figma / Illustrator / shields-like visible-label badge exports
     (decorative a11y name; STATUS only in ``<text>``) missed demote /
-    G4 pack rewrite. Preference: first STATUS-looking value among
-    ``aria-label``, root ``title``, nested ``<title>``, nested ``<desc>``,
-    nested ``<text>`` (in that order). Decorative-only names refuse the peel.
+    G4 pack rewrite.
+
+    Tick 475: also peel nested ``<foreignObject>`` (plain text after
+    stripping inner HTML tags) when it carries the STATUS header
+    (``<svg…><title>Badge</title><foreignObject><div>STATUS: READY</div>
+    </foreignObject>…</svg>`` /
+    ``<svg role="img"><foreignObject><span>**STATUS: READY**</span>
+    </foreignObject></svg>``). Pre-475 Tick 471–474 only read attrs /
+    ``<title>`` / ``<desc>`` / ``<text>``, so Figma / browser HTML-in-SVG
+    label badge exports (decorative a11y name; STATUS only in
+    ``<foreignObject>``) missed demote / G4 pack rewrite. Preference: first
+    STATUS-looking value among ``aria-label``, root ``title``, nested
+    ``<title>``, nested ``<desc>``, nested ``<text>``, nested
+    ``<foreignObject>`` (in that order). Decorative-only names refuse the peel.
 
     Requires a full-line ``<svg …>…</svg>``. Trailing prose after ``</svg>``
     refuses the peel.
@@ -3131,8 +3149,13 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
         val = _svg_inner_plain_text(xm.group(1) or "")
         if val:
             nested_texts.append(val)
+    nested_foreign: list[str] = []
+    for fm in _ICML_STATUS_HTML_SVG_FOREIGN_OBJECT_RE.finditer(s):
+        val = _svg_inner_plain_text(fm.group(1) or "")
+        if val:
+            nested_foreign.append(val)
     # STATUS-looking preference: aria-label → root title → nested <title>
-    # → nested <desc> → nested <text>.
+    # → nested <desc> → nested <text> → nested <foreignObject>.
     for name in ("aria-label", "title", "alt"):
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
@@ -3144,6 +3167,9 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
         if _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
     for val in nested_texts:
+        if _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
+    for val in nested_foreign:
         if _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
     return None
@@ -3430,6 +3456,15 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     Figma / Illustrator / shields-like visible-label badge exports
     (decorative a11y name; STATUS only in ``<text>``) missed demote /
     G4 pack rewrite.
+
+    Tick 475: also peel SVG nested ``<foreignObject>`` STATUS
+    (``<svg…><title>Badge</title><foreignObject><div>STATUS: READY</div>
+    </foreignObject>…</svg>`` /
+    ``<svg role="img"><foreignObject><span>**STATUS: READY**</span>
+    </foreignObject></svg>``) — pre-475 Tick 471–474 only read attrs /
+    ``<title>`` / ``<desc>`` / ``<text>``, so Figma / browser HTML-in-SVG
+    label badge exports (decorative a11y name; STATUS only in
+    ``<foreignObject>``) missed demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3454,7 +3489,7 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         if img_alt and img_alt != s:
             s = img_alt
             continue
-        # Tick 471–474: peel SVG title / aria / desc / text STATUS (before md-link).
+        # Tick 471–475: peel SVG title / aria / desc / text / foreignObject.
         svg_title = _peel_icml_status_html_svg_title(s)
         if svg_title and svg_title != s:
             s = svg_title
