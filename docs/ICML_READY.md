@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 472: HTML SVG aria-label/title-attr STATUS (`<svg aria-label="STATUS: READY" …>` / `<svg title="STATUS:…"><title>Badge</title>…`) — peels root attrs preferentially over decorative nested `<title>`; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 473: HTML SVG `<desc>` STATUS (`<svg…><title>Badge</title><desc>STATUS: READY</desc>…` / `<svg…><desc>**STATUS:…**</desc>…`) — peels nested `<desc>` after root attrs + nested `<title>`; Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

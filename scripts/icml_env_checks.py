@@ -2973,6 +2973,9 @@ _ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
 # Tick 472: also peel root ``aria-label=`` / ``title=`` on the opening ``<svg>``
 # (a11y / tooltip SVG badge exports often put STATUS there when nested
 # ``<title>`` is decorative or omitted).
+# Tick 473: also peel nested ``<desc>`` when root attrs + nested ``<title>``
+# are decorative / missing (a11y long-description badge exports often put
+# STATUS in ``<desc>`` while ``<title>`` is a short badge name).
 _ICML_STATUS_HTML_SVG_TAG_RE = re.compile(
     r"^<svg\b[^>]*>.*</svg>\s*$",
     re.IGNORECASE | re.DOTALL,
@@ -2983,6 +2986,10 @@ _ICML_STATUS_HTML_SVG_OPEN_RE = re.compile(
 )
 _ICML_STATUS_HTML_SVG_TITLE_RE = re.compile(
     r"<title\b[^>]*>(.*?)</title>",
+    re.IGNORECASE | re.DOTALL,
+)
+_ICML_STATUS_HTML_SVG_DESC_RE = re.compile(
+    r"<desc\b[^>]*>(.*?)</desc>",
     re.IGNORECASE | re.DOTALL,
 )
 # Reuse img attr pattern for svg root ``title`` / ``aria-label`` (alt rarely set).
@@ -3039,7 +3046,7 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
 
 
 def _peel_icml_status_html_svg_title(line: str) -> str | None:
-    """Tick 471/472: peel a full-line inline SVG STATUS name; return text.
+    """Tick 471/472/473: peel a full-line inline SVG STATUS name; return text.
 
     Tick 468–470 covered HTML ``<img>`` badge exports (alt / title /
     aria-label). Shields.io / Notion / Docs also paste STATUS as an inline
@@ -3058,10 +3065,17 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
     ``<svg aria-label="STATUS: READY"><title>Badge</title>…</svg>``).
     Pre-472 Tick 471 only read nested ``<title>``, so a11y/tooltip SVG
     badge exports (decorative nested title / missing ``<title>``) missed
-    demote / G4 pack rewrite. Preference: first STATUS-looking value among
-    ``aria-label``, root ``title``, nested ``<title>`` (in that order);
-    else first STATUS-looking nested ``<title>`` (Tick 471 compat).
-    Decorative-only names refuse the peel.
+    demote / G4 pack rewrite.
+
+    Tick 473: also peel nested ``<desc>`` when it carries the STATUS header
+    (``<svg…><title>Badge</title><desc>STATUS: READY</desc>…</svg>`` /
+    ``<svg role="img"><desc>**STATUS: READY**</desc><text>…</text></svg>``).
+    Pre-473 Tick 471/472 only read root attrs + nested ``<title>``, so a11y
+    long-description badge exports (decorative title / missing title; STATUS
+    only in ``<desc>``) missed demote / G4 pack rewrite. Preference: first
+    STATUS-looking value among ``aria-label``, root ``title``, nested
+    ``<title>``, nested ``<desc>`` (in that order). Decorative-only names
+    refuse the peel.
 
     Requires a full-line ``<svg …>…</svg>``. Trailing prose after ``</svg>``
     refuses the peel.
@@ -3085,12 +3099,21 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
         val = (tm.group(1) or "").strip()
         if val:
             nested_titles.append(val)
-    # STATUS-looking preference: aria-label → root title → nested <title>.
+    nested_descs: list[str] = []
+    for dm in _ICML_STATUS_HTML_SVG_DESC_RE.finditer(s):
+        val = (dm.group(1) or "").strip()
+        if val:
+            nested_descs.append(val)
+    # STATUS-looking preference: aria-label → root title → nested <title>
+    # → nested <desc>.
     for name in ("aria-label", "title", "alt"):
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
     for val in nested_titles:
+        if _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
+    for val in nested_descs:
         if _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
     return None
@@ -3362,6 +3385,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     pre-472 Tick 471 only read nested ``<title>``, so a11y/tooltip SVG
     badge exports (decorative nested title / missing ``<title>``) missed
     demote / G4 pack rewrite.
+
+    Tick 473: also peel SVG nested ``<desc>`` STATUS
+    (``<svg…><title>Badge</title><desc>STATUS: READY</desc>…</svg>`` /
+    ``<svg role="img"><desc>**STATUS: READY**</desc>…</svg>``) —
+    pre-473 Tick 471/472 only read root attrs + nested ``<title>``, so a11y
+    long-description badge exports (decorative / missing title; STATUS only
+    in ``<desc>``) missed demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3386,7 +3416,7 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         if img_alt and img_alt != s:
             s = img_alt
             continue
-        # Tick 471: peel SVG <title> STATUS (before md-link; full-line svg).
+        # Tick 471–473: peel SVG title / aria / desc STATUS (before md-link).
         svg_title = _peel_icml_status_html_svg_title(s)
         if svg_title and svg_title != s:
             s = svg_title
