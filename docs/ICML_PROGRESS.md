@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-29T02:10Z — Tick 466 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-1a85` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 465 left a realistic STATUS hazard on GitHub/Notion linked STATUS stubs whose destination contains **balanced nested parentheses** (`[STATUS: READY](https://x.com/foo_(bar))` / `#status-(draft)`) — Tick 465 `[^)]*` truncated at the first `)`, so demote no-op / G4 pack miss READY. Highest leverage without paid spend: **md-link nested-paren URL STATUS**.
+
+### What this tick did (ONE step)
+**Tick 466 — md-link nested-paren URL STATUS (no API spend):**
+1. Recovered tip ← Tick 465 (`f49c`); confirmed secrets absent; boot `1a85` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_peel_icml_status_md_link` balanced-paren destination scan (flat `_ICML_STATUS_MD_LINK_RE` fast-path retained); wrap loop uses peel helper; trailing prose after closing `)` refuses peel
+3. Tests: `test_icml_ready_status_header_accepts_md_link_nested_paren_url_status` + G4 demote/update nested-paren cases + Tick 465 lock → focused **3 passed**
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 465) | After (Tick 466) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `[STATUS:…](…foo_(bar))` demote/update | **miss** | **demote/update normalize** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-29T00:04Z — Tick 465 (automation cron)
 
 ### Status snapshot

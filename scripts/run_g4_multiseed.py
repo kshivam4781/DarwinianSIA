@@ -1087,6 +1087,11 @@ def demote_icml_ready_file(
     ``<a href=\"…\">STATUS: READY</a>``) — pre-465 Tick 464 bare
     ``[STATUS:…]`` required end-at-``]``, so linked/``<a>`` READY stubs
     stayed poisoned after trust refuse.
+
+    Tick 466: also demote markdown-link STATUS whose URL contains balanced
+    nested parentheses (``[STATUS: READY](https://x.com/foo_(bar))``) —
+    pre-466 ``[^)]*`` truncated at the first ``)``, so those READY stubs
+    stayed poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False

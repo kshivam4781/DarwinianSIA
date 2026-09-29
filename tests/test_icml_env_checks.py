@@ -6529,6 +6529,67 @@ def test_icml_ready_status_header_accepts_md_link_and_html_anchor_status() -> No
     )
 
 
+def test_icml_ready_status_header_accepts_md_link_nested_paren_url_status() -> None:
+    """Tick 466: markdown-link STATUS with nested parentheses in the URL.
+
+    Pre-466 ``[STATUS: READY](https://x.com/foo_(bar))`` missed demote /
+    G4 pack rewrite — Tick 465 ``[^)]*`` stopped at the first ``)``.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_md_link,
+        _strip_icml_status_md_wrappers,
+    )
+
+    nested = "[STATUS: READY](https://x.com/foo_(bar))"
+    nested_anchor = "[**STATUS: READY**](https://example.com/path#status-(draft))"
+    nested_prog = "[STATUS: IN_PROGRESS](https://x.com/a_(b)_c)"
+    flat = "[STATUS: READY](https://example.com)"
+
+    assert _peel_icml_status_md_link(nested) == "STATUS: READY"
+    assert _peel_icml_status_md_link(nested_anchor) == "**STATUS: READY**"
+    assert _peel_icml_status_md_link(nested_prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_md_link(flat) == "STATUS: READY"
+    # Bare checkbox / bare bracket still not mistaken for links.
+    assert _peel_icml_status_md_link("[ ] STATUS: READY") is None
+    assert _peel_icml_status_md_link("[STATUS: READY]") is None
+    # Trailing prose after closing paren must not peel.
+    assert _peel_icml_status_md_link("[STATUS: READY](https://x.com/foo_(bar)) note") is None
+
+    assert _strip_icml_status_md_wrappers(nested) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(nested_anchor) == "STATUS: READY"
+    assert _icml_ready_status_header(nested + "\n") == "READY"
+    assert _icml_ready_status_header(nested_anchor + "\n") == "READY"
+    assert _icml_ready_status_header(nested_prog + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header("| [STATUS: READY](https://x.com/foo_(bar)) |\n")
+        == "READY"
+    )
+    assert (
+        _icml_ready_status_header("> [STATUS: READY](https://x.com/foo_(bar))\n")
+        == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "[STATUS: READY](https://github.com/org/repo/blob/main/docs/ICML_READY.md#status-(draft))\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert any(ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines())
+    assert not any(
+        "foo_(bar)" in ln or "status-(draft)" in ln
+        for ln in demoted.splitlines()
+        if "STATUS: READY" in ln
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_merge_paper_artifacts_prefers_richer_live_over_thin_stub() -> None:
     """Tick 440: offline stub mentioning Live Table must not wipe filled live pack.
 
@@ -8193,6 +8254,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML md-link + HTML-anchor STATUS header (Tick 465)" in master
     assert (
         "test_icml_ready_status_header_accepts_md_link_and_html_anchor_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 466: nested-paren URL markdown-link STATUS (balanced destination scan).
+    assert "_peel_icml_status_md_link" in env_checks
+    assert "Balanced-paren scan" in env_checks or "balanced nested" in env_checks
+    assert "ICML md-link nested-paren URL STATUS header (Tick 466)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_md_link_nested_paren_url_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

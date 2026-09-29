@@ -2935,7 +2935,62 @@ _ICML_STATUS_MD_WRAP_RE = re.compile(
 # the line to *end* at ``]``, so GitHub/Notion linked STATUS stubs with a
 # trailing ``(url)`` stayed unmatched (demote no-op / G4 pack miss READY).
 # Require ``](`` so bare checkbox ``[ ] STATUS`` is never mistaken for a link.
+# Tick 466: destination may contain *balanced* nested parentheses
+# (``https://x.com/foo_(bar)`` / GitHub blob anchors with ``(draft)``).
+# Pre-466 ``[^)]*`` stopped at the first ``)``, so those URLs never peeled.
+# Keep the simple regex for the common no-nest case; balanced scan is the
+# fallback (see ``_peel_icml_status_md_link``).
 _ICML_STATUS_MD_LINK_RE = re.compile(r"^\[([^\]]*)\]\([^)]*\)\s*$")
+
+
+def _peel_icml_status_md_link(line: str) -> str | None:
+    """Tick 465/466: peel a full-line markdown link; return link text or None.
+
+    Tick 465 covered flat ``[text](url)`` (no ``)`` inside the destination).
+    Tick 466 also peels destinations with balanced nested parentheses —
+    CommonMark allows ``(`` / ``)`` inside the destination, and GitHub /
+    Notion paste often yields ``[STATUS: READY](https://…/foo_(bar))`` or
+    ``…#status-(draft)``. Pre-466 ``_ICML_STATUS_MD_LINK_RE`` used ``[^)]*``,
+    which truncated at the first ``)`` and left the stub unmatched
+    (demote no-op / G4 pack miss READY).
+
+    Requires ``](`` immediately after the link text so bare checkboxes
+    (``[ ] STATUS``) and Tick 464 bare brackets (``[STATUS:…]``) are never
+    mistaken for links. Trailing non-whitespace after the closing ``)``
+    refuses the peel (keeps ``[STATUS: READY](url) note`` from becoming a
+    false header).
+    """
+    s = (line or "").strip()
+    if not s.startswith("["):
+        return None
+    # Fast path: flat destination (no nested ``)`` mid-url).
+    m = _ICML_STATUS_MD_LINK_RE.match(s)
+    if m:
+        text = (m.group(1) or "").strip()
+        return text or None
+    # Balanced-paren scan for nested destinations.
+    close_text = s.find("]")
+    if close_text < 1:
+        return None
+    if close_text + 1 >= len(s) or s[close_text + 1] != "(":
+        return None
+    depth = 1
+    i = close_text + 2
+    while i < len(s):
+        ch = s[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                if s[i + 1 :].strip():
+                    return None
+                text = s[1:close_text].strip()
+                return text or None
+        i += 1
+    return None
+
+
 # Tick 459/461: outer markdown table-cell pipes (``| STATUS: READY |``).
 # Tick 461: require a true one-cell row (no inner ``|``) so
 # ``| STATUS: READY | note |`` is not peeled into a false READY header.
@@ -3092,6 +3147,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     so GitHub/Notion linked STATUS stubs with trailing ``(url)`` missed
     demote / G4 pack rewrite. Link peel runs before bare-bracket wrap and
     requires ``](`` so ``[ ] STATUS`` checkboxes are never mistaken for links.
+
+    Tick 466: also peel markdown links whose destination contains balanced
+    nested parentheses (``[STATUS: READY](https://x.com/foo_(bar))`` /
+    ``[**STATUS: READY**](https://…#status-(draft))``) — pre-466
+    ``[^)]*`` stopped at the first ``)``, so those GitHub/Notion linked
+    STATUS stubs missed demote / G4 pack rewrite.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3105,12 +3166,10 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             if nxt and nxt != s:
                 s = nxt
                 continue
-        m_link = _ICML_STATUS_MD_LINK_RE.match(s)
-        if m_link:
-            nxt = (m_link.group(1) or "").strip()
-            if nxt and nxt != s:
-                s = nxt
-                continue
+        link_text = _peel_icml_status_md_link(s)
+        if link_text and link_text != s:
+            s = link_text
+            continue
         m = _ICML_STATUS_MD_WRAP_RE.match(s)
         if not m:
             break
