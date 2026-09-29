@@ -4687,6 +4687,89 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
         for ln in html_svg_fo_updated.splitlines()
     )
 
+    # (br) Tick 476: pretty-printed multi-line SVG ``<text>STATUS: READY</text>``
+    # must demote — pre-476 Tick 471–475 required a full-line ``<svg>…</svg>``.
+    html_svg_ml_ready = tmp_path / "html_svg_multiline_status.md"
+    html_svg_ml_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="24">\n'
+        "  <title>Badge_(live)</title>\n"
+        '  <text x="0" y="16">STATUS: READY</text>\n'
+        "</svg>\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(html_svg_ml_ready.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            html_svg_ml_ready, reason="html-svg-multiline READY", timestamp="t"
+        )
+        is True
+    )
+    html_svg_ml_text = html_svg_ml_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(html_svg_ml_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in html_svg_ml_text.splitlines()
+    )
+    assert "Do not set STATUS: READY until criteria pass." in html_svg_ml_text
+    # Whole SVG block replaced (not inner-line rewrite leaving broken markup).
+    assert "<svg" not in html_svg_ml_text.lower()
+
+    # (bs) Tick 476: multi-line SVG IN_PROGRESS must update to READY.
+    html_svg_ml_upd = tmp_path / "update_html_svg_multiline_status.md"
+    html_svg_ml_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        '<svg role="img">\n'
+        "  <title>draft</title>\n"
+        "  <text>**STATUS: IN_PROGRESS**</text>\n"
+        "</svg>\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_html_svg_ml = update_icml_ready_from_g4(
+        ready_path=html_svg_ml_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-29T22:10:00Z",
+        allow_ready=True,
+    )
+    assert status_html_svg_ml == "READY"
+    html_svg_ml_updated = html_svg_ml_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(html_svg_ml_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**"
+        for ln in html_svg_ml_updated.splitlines()
+    )
+    assert "<svg" not in html_svg_ml_updated.lower()
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

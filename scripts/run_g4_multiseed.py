@@ -113,6 +113,7 @@ from prepare_gpqa_diamond import (  # noqa: E402
 from icml_env_checks import (  # noqa: E402
     _icml_ready_status_header,
     _icml_ready_status_line_match,
+    _iter_icml_ready_status_units,
     autowire_diamond_csv,
     collect_icml_secrets_status,
     commit_durable_ledgers_after_live,
@@ -1118,11 +1119,20 @@ def demote_icml_ready_file(
     ``<svg title="**STATUS: READY**"><title>Badge</title>…</svg>``) —
     pre-472 Tick 471 only peeled nested ``<title>``, so a11y/tooltip SVG
     READY stubs stayed poisoned after trust refuse.
+
+    Tick 473–475: also demote SVG nested ``<desc>`` / ``<text>`` /
+    ``<foreignObject>`` STATUS (see ``icml_env_checks``).
+
+    Tick 476: also demote pretty-printed multi-line ``<svg>…</svg>`` STATUS
+    blocks (Figma / Illustrator "Copy as SVG") as a whole unit — pre-476
+    line-at-a-time scan missed multi-line ``<text>STATUS:…</text>`` badges
+    (and left broken SVG when only an inner HTML ``<div>STATUS:…</div>``
+    line matched inside multi-line ``<foreignObject>``).
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–472: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–476: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1133,19 +1143,20 @@ def demote_icml_ready_file(
     )
     out_lines: list[str] = []
     inserted_audit = False
-    for line in text.splitlines():
-        if _icml_ready_status_line_match(line):
+    for span, match_line in _iter_icml_ready_status_units(text):
+        if _icml_ready_status_line_match(match_line):
             out_lines.append("**STATUS: IN_PROGRESS**")
             out_lines.append("")
             out_lines.append(audit)
             inserted_audit = True
             continue
-        stripped = line.strip()
-        if stripped.startswith("_Tick 417 demote:") or stripped.startswith(
-            "_Last G4 pack refresh:"
-        ):
-            continue
-        out_lines.append(line)
+        for line in span:
+            stripped = line.strip()
+            if stripped.startswith("_Tick 417 demote:") or stripped.startswith(
+                "_Last G4 pack refresh:"
+            ):
+                continue
+            out_lines.append(line)
     if not inserted_audit:
         return False
     ready_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
@@ -1235,12 +1246,13 @@ def update_icml_ready_from_g4(
 
     out_lines: list[str] = []
     saw_status = False
-    for line in text.splitlines():
-        # Tick 443/447–463: strip() + plain/ATX/bold-label/colon-out/container/
+    for span, match_line in _iter_icml_ready_status_units(text):
+        # Tick 443/447–476: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
         # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
         # HTML-table / semantic / md-pipe / wrap+pipe / quote / space-colon /
-        # task-list / bare-checkbox / ordered-checkbox / token-wrap STATUS so
+        # task-list / bare-checkbox / ordered-checkbox / token-wrap / md-link /
+        # md-image / html-img / html-picture / html-svg(+multiline) STATUS so
         # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
         # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
         # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
@@ -1252,15 +1264,17 @@ def update_icml_ready_from_g4(
         # ``<td>STATUS: TOKEN</td>`` / ``<section>STATUS:…</section>`` /
         # ``| STATUS: TOKEN |`` / `` `| STATUS: TOKEN |` `` /
         # ``~~| STATUS: TOKEN |~~`` / ``- [ ] STATUS:…`` / ``[ ] STATUS:…`` /
-        # ``1. [ ] STATUS:…`` / ``> [x] **STATUS:…**`` / ``STATUS: `TOKEN` ``
-        # headers update (normalize to ``**STATUS:…**``).
-        if _icml_ready_status_line_match(line):
+        # ``1. [ ] STATUS:…`` / ``> [x] **STATUS:…**`` / ``STATUS: `TOKEN` `` /
+        # multi-line ``<svg>\\n<text>STATUS:…</text>\\n</svg>`` headers update
+        # (normalize to ``**STATUS:…**``; whole SVG block replaced).
+        if _icml_ready_status_line_match(match_line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True
             continue
-        if line.strip().startswith("_Last G4 pack refresh:"):
-            continue
-        out_lines.append(line)
+        for line in span:
+            if line.strip().startswith("_Last G4 pack refresh:"):
+                continue
+            out_lines.append(line)
     if not saw_status:
         # No header line — prepend so live READY cannot stay invisible on disk.
         out_lines = [f"**STATUS: {status}**", ""] + out_lines

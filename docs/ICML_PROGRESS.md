@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-29T22:13Z — Tick 476 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-d418` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 475 left a realistic STATUS hazard on Figma / Illustrator / browser "Copy as SVG" badge exports whose STATUS header lives in a **pretty-printed multi-line** `<svg>…</svg>` (STATUS in nested `<text>` / `<foreignObject>` spanning lines) — Tick 471–475 required a *full-line* SVG, so demote no-op / G4 pack miss READY (and accidental HTML `<div>` allowlist peels inside multi-line foreignObject rewrote only the inner STATUS line, leaving broken SVG markup). Highest leverage without paid spend: **html-svg-multiline STATUS**.
+
+### What this tick did (ONE step)
+**Tick 476 — html-svg-multiline STATUS (no API spend):**
+1. Recovered tip ← Tick 475 (`f49c`); confirmed secrets absent; boot `d418` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_take_icml_status_multiline_svg_block` + `_iter_icml_ready_status_units` collapse pretty-printed multi-line `<svg>…</svg>` before Tick 471–475 peels; header / demote / G4 update replace the **whole** SVG block (not an inner-line rewrite)
+3. Tests: `test_icml_ready_status_header_accepts_html_svg_multiline_status` + G4 demote/update multiline cases + Tick 475 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 475) | After (Tick 476) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Multi-line `<svg>\n<text>STATUS:…</text>\n</svg>` demote/update | **miss** | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-29T20:15Z — Tick 475 (automation cron)
 
 ### Status snapshot

@@ -7256,6 +7256,93 @@ def test_icml_ready_status_header_accepts_html_svg_foreign_object_status() -> No
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_svg_multiline_status() -> None:
+    """Tick 476: pretty-printed multi-line ``<svg>…</svg>`` STATUS badges.
+
+    Pre-476 Tick 471–475 required a full-line ``<svg>…</svg>``, so Figma /
+    Illustrator / browser "Copy as SVG" exports spanning lines
+    (``<svg>\\n  <title>Badge</title>\\n  <text>STATUS: READY</text>\\n</svg>`` /
+    multi-line ``<foreignObject><div>STATUS:…</div></foreignObject>``) missed
+    demote / G4 pack rewrite — except accidental HTML ``<div>`` allowlist peels
+    that rewrote only the inner STATUS line and left broken SVG markup.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _take_icml_status_multiline_svg_block,
+    )
+
+    multi_text = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="24">\n'
+        "  <title>Badge</title>\n"
+        '  <text x="0" y="16">STATUS: READY</text>\n'
+        "</svg>"
+    )
+    multi_fo = (
+        '<svg role="img" xmlns="http://www.w3.org/2000/svg">\n'
+        "  <title>Badge_(live)</title>\n"
+        '  <foreignObject width="110" height="20">\n'
+        '    <div xmlns="http://www.w3.org/1999/xhtml">STATUS: READY</div>\n'
+        "  </foreignObject>\n"
+        "</svg>"
+    )
+    multi_prog = (
+        '<svg role="img">\n'
+        "  <title>draft</title>\n"
+        "  <text>**STATUS: IN_PROGRESS**</text>\n"
+        "</svg>"
+    )
+    multi_deco = (
+        '<svg xmlns="http://www.w3.org/2000/svg">\n'
+        "  <title>Badge</title>\n"
+        "  <text>ICML badge</text>\n"
+        "</svg>"
+    )
+    # Single-line still handled by Tick 471–475 (no multi-line take).
+    one_line = '<svg role="img"><text>STATUS: READY</text></svg>'
+
+    lines_text = multi_text.splitlines()
+    taken = _take_icml_status_multiline_svg_block(lines_text, 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 4
+    assert "<text" in collapsed and "STATUS: READY" in collapsed
+    assert _take_icml_status_multiline_svg_block([one_line], 0) is None
+
+    assert _icml_ready_status_header(multi_text + "\n") == "READY"
+    assert _icml_ready_status_header(multi_fo + "\n") == "READY"
+    assert _icml_ready_status_header(multi_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(multi_deco + "\n") is None
+    assert _icml_ready_status_header(one_line + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{multi_text}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    # Whole SVG block replaced (not an inner-line rewrite leaving broken markup).
+    assert "<svg" not in demoted.lower()
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    # Decorative multi-line SVG must stay pretty-printed when demote prepends.
+    deco_prose = (
+        "# Title\n\n"
+        f"{multi_deco}\n\n"
+        "Do not set STATUS: READY until criteria pass.\n"
+    )
+    demoted_deco = _demote_icml_ready_status(deco_prose)
+    assert "  <title>Badge</title>" in demoted_deco
+    assert "  <text>ICML badge</text>" in demoted_deco
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9087,6 +9174,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-svg-foreignObject STATUS header (Tick 475)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_svg_foreign_object_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 476: pretty-printed multi-line ``<svg>…</svg>`` STATUS badge exports.
+    assert "_take_icml_status_multiline_svg_block" in env_checks
+    assert "_iter_icml_ready_status_units" in env_checks
+    assert "ICML html-svg-multiline STATUS header (Tick 476)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_svg_multiline_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

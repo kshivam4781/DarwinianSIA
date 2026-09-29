@@ -3009,6 +3009,64 @@ _ICML_STATUS_HTML_SVG_FOREIGN_OBJECT_RE = re.compile(
 _ICML_STATUS_HTML_INNER_TAG_RE = re.compile(r"<[^>]+>")
 # Reuse img attr pattern for svg root ``title`` / ``aria-label`` (alt rarely set).
 _ICML_STATUS_HTML_SVG_ATTR_RE = _ICML_STATUS_HTML_IMG_ATTR_RE
+# Tick 476: pretty-printed multi-line ``<svg>…</svg>`` badge exports (Figma /
+# Illustrator / browser "Copy as SVG") open on one line and close later —
+# Tick 471–475 required a *full-line* ``<svg>…</svg>``, so those stubs missed
+# demote / G4 pack rewrite (except accidental ``<div>STATUS:…</div>`` HTML
+# allowlist peels inside multi-line ``<foreignObject>``).
+_ICML_STATUS_SVG_BLOCK_OPEN_RE = re.compile(r"^<svg\b", re.IGNORECASE)
+_ICML_STATUS_SVG_BLOCK_CLOSE_RE = re.compile(r"</svg\s*>", re.IGNORECASE)
+
+
+def _take_icml_status_multiline_svg_block(
+    lines: list[str], start: int
+) -> tuple[int, str] | None:
+    """Tick 476: if ``lines[start]`` opens a multi-line SVG, return ``(n, collapsed)``.
+
+    Single-line complete ``<svg>…</svg>`` returns ``None`` (Tick 471–475 peel).
+    Incomplete blocks (no closing ``</svg>``) return ``None`` so originals stay
+    intact. Collapsed form joins stripped lines with a single space.
+    """
+    if start < 0 or start >= len(lines):
+        return None
+    first = (lines[start] or "").strip()
+    if not _ICML_STATUS_SVG_BLOCK_OPEN_RE.match(first):
+        return None
+    # Already a single-line complete SVG → leave to existing peel.
+    if _ICML_STATUS_HTML_SVG_TAG_RE.match(first):
+        return None
+    parts = [first]
+    j = start + 1
+    while j < len(lines):
+        parts.append((lines[j] or "").strip())
+        if _ICML_STATUS_SVG_BLOCK_CLOSE_RE.search(lines[j] or ""):
+            collapsed = " ".join(p for p in parts if p)
+            if not _ICML_STATUS_HTML_SVG_TAG_RE.match(collapsed):
+                return None
+            return (j - start + 1, collapsed)
+        j += 1
+    return None
+
+
+def _iter_icml_ready_status_units(text: str):
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476).
+
+    ``span_lines`` keeps original pretty-printed lines for non-STATUS SVG blocks;
+    ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
+    multi-line SVG or the single original line).
+    """
+    raw = (text or "").lstrip("\ufeff")
+    lines = raw.splitlines()
+    i = 0
+    while i < len(lines):
+        block = _take_icml_status_multiline_svg_block(lines, i)
+        if block is not None:
+            n, collapsed = block
+            yield lines[i : i + n], collapsed
+            i += n
+            continue
+        yield [lines[i]], lines[i]
+        i += 1
 
 
 def _peel_icml_status_html_img_alt(line: str) -> str | None:
@@ -3118,7 +3176,8 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
     ``<foreignObject>`` (in that order). Decorative-only names refuse the peel.
 
     Requires a full-line ``<svg …>…</svg>``. Trailing prose after ``</svg>``
-    refuses the peel.
+    refuses the peel. Tick 476 collapses pretty-printed multi-line SVG blocks
+    into one line before calling this helper.
     """
     s = (line or "").strip()
     if not _ICML_STATUS_HTML_SVG_TAG_RE.match(s):
@@ -3465,6 +3524,14 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``<title>`` / ``<desc>`` / ``<text>``, so Figma / browser HTML-in-SVG
     label badge exports (decorative a11y name; STATUS only in
     ``<foreignObject>``) missed demote / G4 pack rewrite.
+
+    Tick 476: pretty-printed multi-line ``<svg>…</svg>`` blocks are collapsed
+    by ``_iter_icml_ready_status_units`` / ``_take_icml_status_multiline_svg_block``
+    before this peel — Figma / Illustrator "Copy as SVG" STATUS badges that
+    span lines (``<svg>\\n  <text>STATUS: READY</text>\\n</svg>``) reach the
+    Tick 471–475 single-line SVG peels. Pre-476 required a full-line SVG, so
+    those stubs missed demote / G4 pack rewrite (except accidental HTML
+    ``<div>STATUS:…</div>`` allowlist peels inside multi-line foreignObject).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3490,6 +3557,7 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             s = img_alt
             continue
         # Tick 471–475: peel SVG title / aria / desc / text / foreignObject.
+        # Tick 476: multi-line SVG already collapsed into ``s`` when present.
         svg_title = _peel_icml_status_html_svg_title(s)
         if svg_title and svg_title != s:
             s = svg_title
@@ -3797,9 +3865,13 @@ def _icml_ready_status_header(text: str) -> str | None:
     required the line to end at ``]``, so GitHub/Notion linked STATUS stubs
     with trailing ``(url)`` / ``<a href>`` made demote no-op / G4 pack miss
     READY.
+
+    Tick 476: also scan pretty-printed multi-line ``<svg>…</svg>`` STATUS
+    blocks (collapsed via ``_iter_icml_ready_status_units``) — pre-476
+    line-at-a-time scan missed Figma / Illustrator multi-line SVG badges.
     """
-    for line in (text or "").lstrip("\ufeff").splitlines():
-        m = _icml_ready_status_line_match(line)
+    for _span, match_line in _iter_icml_ready_status_units(text):
+        m = _icml_ready_status_line_match(match_line)
         if not m:
             continue
         token = m.group(1).upper()
@@ -3939,17 +4011,20 @@ def _demote_icml_ready_status(body: str) -> str:
     (``(STATUS: READY)`` / ``[STATUS: READY]`` / ``{STATUS: READY}`` /
     ``（STATUS: READY）`` / ``STATUS：READY`` / ``**STATUS：READY**``) to the
     same normalized header.
+
+    Tick 476: also rewrite pretty-printed multi-line ``<svg>…</svg>`` STATUS
+    blocks as a single normalized header (replace the whole block — pre-476
+    only rewrote the inner STATUS-bearing line and left broken SVG markup).
     """
     body = (body or "").lstrip("\ufeff")
-    lines = body.splitlines()
     out: list[str] = []
     found_header = False
-    for line in lines:
-        if _icml_ready_status_line_match(line):
+    for span, match_line in _iter_icml_ready_status_units(body):
+        if _icml_ready_status_line_match(match_line):
             out.append("**STATUS: IN_PROGRESS**")
             found_header = True
         else:
-            out.append(line)
+            out.extend(span)
     if found_header:
         ended = body.endswith("\n")
         return "\n".join(out) + ("\n" if ended else "")
