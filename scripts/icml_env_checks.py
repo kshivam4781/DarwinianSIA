@@ -2941,6 +2941,44 @@ _ICML_STATUS_MD_WRAP_RE = re.compile(
 # Keep the simple regex for the common no-nest case; balanced scan is the
 # fallback (see ``_peel_icml_status_md_link``).
 _ICML_STATUS_MD_LINK_RE = re.compile(r"^\[([^\]]*)\]\([^)]*\)\s*$")
+# Tick 468: full-line HTML ``<img … alt="STATUS:…" …>`` (Notion/Docs/GitHub
+# rich-paste of shields badges). ``img`` is intentionally *not* in the HTML
+# tag allowlist (Tick 456–465) — stripping it would drop the alt text.
+_ICML_STATUS_HTML_IMG_TAG_RE = re.compile(
+    r"^<img\b([^>]*)>\s*$",
+    re.IGNORECASE,
+)
+_ICML_STATUS_HTML_IMG_ALT_RE = re.compile(
+    r"""\balt\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    re.IGNORECASE,
+)
+
+
+def _peel_icml_status_html_img_alt(line: str) -> str | None:
+    """Tick 468: peel a full-line HTML ``<img alt="STATUS:…">``; return alt text.
+
+    Tick 467 covered markdown images (``![STATUS: READY](url)``), but Notion /
+    Docs / GitHub often export the same badge as an HTML ``<img>`` whose
+    ``alt`` holds the STATUS header (``<img alt="STATUS: READY" src="…">`` /
+    ``<img src="…/badge_(live).svg" alt="**STATUS: READY**" />``). Pre-468
+    left those READY stubs unmatched (demote no-op / G4 pack miss READY)
+    because ``img`` is not in the HTML-tag allowlist (stripping would drop
+    the alt) and Tick 467 only peeled markdown ``![…](…)``.
+
+    Requires a full-line ``<img …>`` (optional self-close ``/>``) with a
+    quoted ``alt=`` attribute. Trailing prose after the tag refuses the peel.
+    Attribute order is free (``src`` before/after ``alt``).
+    """
+    s = (line or "").strip()
+    m = _ICML_STATUS_HTML_IMG_TAG_RE.match(s)
+    if not m:
+        return None
+    attrs = m.group(1) or ""
+    am = _ICML_STATUS_HTML_IMG_ALT_RE.search(attrs)
+    if not am:
+        return None
+    alt = (am.group(1) if am.group(1) is not None else am.group(2) or "").strip()
+    return alt or None
 
 
 def _peel_icml_status_md_link(line: str) -> str | None:
@@ -3170,6 +3208,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``![**STATUS: READY**](https://…/badge_(live).svg)``) — pre-467
     required a bare ``[`` start, so shields.io / Notion badge exports with
     a leading ``!`` missed demote / G4 pack rewrite.
+
+    Tick 468: also peel HTML ``<img alt="STATUS:…">`` STATUS stubs
+    (``<img alt="STATUS: READY" src="…">`` /
+    ``<img src="…/badge_(live).svg" alt="**STATUS: READY**" />``) — pre-468
+    Tick 467 only peeled markdown ``![…](…)``, so Notion/Docs/GitHub HTML
+    badge exports missed demote / G4 pack rewrite (``img`` is not in the
+    HTML-tag allowlist — stripping would drop the alt).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3183,6 +3228,10 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             if nxt and nxt != s:
                 s = nxt
                 continue
+        img_alt = _peel_icml_status_html_img_alt(s)
+        if img_alt and img_alt != s:
+            s = img_alt
+            continue
         link_text = _peel_icml_status_md_link(s)
         if link_text and link_text != s:
             s = link_text

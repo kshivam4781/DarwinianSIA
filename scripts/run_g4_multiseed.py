@@ -1098,11 +1098,17 @@ def demote_icml_ready_file(
     ``![**STATUS: READY**](https://…/badge_(live).svg)``) — pre-467
     required a bare ``[`` start, so shields.io / Notion badge READY stubs
     stayed poisoned after trust refuse.
+
+    Tick 468: also demote HTML ``<img alt="STATUS:…">`` STATUS
+    (``<img alt="STATUS: READY" src="…">`` /
+    ``<img src="…/badge_(live).svg" alt="**STATUS: READY**" />``) — pre-468
+    Tick 467 only peeled markdown ``![…](…)``, so Notion/Docs/GitHub HTML
+    badge READY stubs stayed poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–467: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–468: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
