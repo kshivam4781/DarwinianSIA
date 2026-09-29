@@ -1104,11 +1104,19 @@ def demote_icml_ready_file(
     ``<img src="…/badge_(live).svg" alt="**STATUS: READY**" />``) — pre-468
     Tick 467 only peeled markdown ``![…](…)``, so Notion/Docs/GitHub HTML
     badge READY stubs stayed poisoned after trust refuse.
+
+    Tick 469–470: also demote ``<picture><img…>`` and ``<img title=`` /
+    ``aria-label=`` STATUS badge exports (see ``icml_env_checks``).
+
+    Tick 471: also demote inline SVG ``<title>STATUS:…</title>`` badge
+    exports (``<svg…><title>STATUS: READY</title>…</svg>``) — pre-471
+    Tick 468–470 only peeled ``<img>`` attrs, so shields.io / Notion SVG
+    READY stubs stayed poisoned after trust refuse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–468: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–471: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""

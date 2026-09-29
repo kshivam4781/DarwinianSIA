@@ -2966,6 +2966,18 @@ _ICML_STATUS_HTML_IMG_ALT_RE = re.compile(
     re.IGNORECASE,
 )
 _ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
+# Tick 471: full-line inline SVG badge exports whose ``<title>`` holds STATUS
+# (shields.io / Notion / Docs often paste ``<svg…><title>STATUS: READY</title>…``).
+# Do **not** allowlist-strip ``svg``/``title`` alone — residual ``<text>`` /
+# ``<desc>`` content concatenates onto the header (``STATUS: READYbadge``).
+_ICML_STATUS_HTML_SVG_TAG_RE = re.compile(
+    r"^<svg\b[^>]*>.*</svg>\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_ICML_STATUS_HTML_SVG_TITLE_RE = re.compile(
+    r"<title\b[^>]*>(.*?)</title>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _peel_icml_status_html_img_alt(line: str) -> str | None:
@@ -3014,6 +3026,34 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
     for name in order:
         if name in by_name:
             return by_name[name]
+    return None
+
+
+def _peel_icml_status_html_svg_title(line: str) -> str | None:
+    """Tick 471: peel a full-line inline SVG ``<title>`` STATUS; return text.
+
+    Tick 468–470 covered HTML ``<img>`` badge exports (alt / title /
+    aria-label). Shields.io / Notion / Docs also paste STATUS as an inline
+    SVG whose accessible name lives in ``<title>``
+    (``<svg …><title>STATUS: READY</title>…</svg>`` /
+    ``<svg role="img"><title>**STATUS: READY**</title><text>…</text></svg>``).
+    Pre-471 left those READY stubs unmatched (demote no-op / G4 pack miss
+    READY): ``svg``/``title`` are not in the HTML-tag allowlist (and
+    allowlist-stripping them would concatenate residual ``<text>`` /
+    ``<desc>`` onto the header).
+
+    Requires a full-line ``<svg …>…</svg>`` with at least one ``<title>``
+    whose text looks like a STATUS header. Preference: first STATUS-looking
+    ``<title>`` in document order. Trailing prose after ``</svg>`` refuses
+    the peel. Nested non-STATUS titles alone do not peel.
+    """
+    s = (line or "").strip()
+    if not _ICML_STATUS_HTML_SVG_TAG_RE.match(s):
+        return None
+    for tm in _ICML_STATUS_HTML_SVG_TITLE_RE.finditer(s):
+        val = (tm.group(1) or "").strip()
+        if val and _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
     return None
 
 
@@ -3270,6 +3310,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``<img aria-label="STATUS:…">`` (and decorative-alt + STATUS title)
     — pre-470 Tick 468/469 only read ``alt=``, so a11y/tooltip badge
     exports missed demote / G4 pack rewrite.
+
+    Tick 471: also peel inline SVG ``<title>STATUS:…</title>`` badge
+    exports (``<svg…><title>STATUS: READY</title>…</svg>``) — pre-471
+    Tick 468–470 only covered ``<img>`` attrs, so shields.io / Notion SVG
+    STATUS stubs missed demote / G4 pack rewrite (allowlist-stripping
+    ``svg``/``title`` would concatenate residual ``<text>``/``<desc>``).
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3293,6 +3339,11 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt
+            continue
+        # Tick 471: peel SVG <title> STATUS (before md-link; full-line svg).
+        svg_title = _peel_icml_status_html_svg_title(s)
+        if svg_title and svg_title != s:
+            s = svg_title
             continue
         link_text = _peel_icml_status_md_link(s)
         if link_text and link_text != s:

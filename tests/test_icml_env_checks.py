@@ -6836,6 +6836,74 @@ def test_icml_ready_status_header_accepts_html_img_title_aria_status() -> None:
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_svg_title_status() -> None:
+    """Tick 471: HTML inline SVG ``<title>STATUS:…</title>`` badge exports.
+
+    Pre-471 Tick 468–470 only peeled ``<img>`` attrs, so shields.io / Notion
+    SVG badge exports (``<svg…><title>STATUS: READY</title>…</svg>``) missed
+    demote / G4 pack rewrite. Allowlist-stripping ``svg``/``title`` would
+    concatenate residual ``<text>``/``<desc>`` onto the header.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_svg_title,
+        _strip_icml_status_md_wrappers,
+    )
+
+    flat_svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" role="img">'
+        "<title>STATUS: READY</title></svg>"
+    )
+    bold_svg = (
+        '<svg viewBox="0 0 110 20" role="img">'
+        "<title>**STATUS: READY**</title>"
+        '<text x="0" y="15">badge</text></svg>'
+    )
+    prog_svg = (
+        '<svg role="img"><title>STATUS: IN_PROGRESS</title>'
+        "<desc>ICML Thesis 1</desc></svg>"
+    )
+    # Non-STATUS title must refuse peel (decorative SVG).
+    deco = '<svg><title>ICML badge</title><text>ok</text></svg>'
+
+    assert _peel_icml_status_html_svg_title(flat_svg) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(bold_svg) == "**STATUS: READY**"
+    assert _peel_icml_status_html_svg_title(prog_svg) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_svg_title(deco) is None
+    assert _peel_icml_status_html_svg_title(flat_svg + " note") is None
+    assert _peel_icml_status_html_svg_title('<img alt="STATUS: READY" src="x">') is None
+    assert _strip_icml_status_md_wrappers(flat_svg) == "STATUS: READY"
+    assert _strip_icml_status_md_wrappers(bold_svg) == "STATUS: READY"
+    # Residual <text> must NOT concatenate onto the STATUS token.
+    assert _strip_icml_status_md_wrappers(bold_svg) != "**STATUS: READY**badge"
+    assert _icml_ready_status_header(flat_svg + "\n") == "READY"
+    assert _icml_ready_status_header(bold_svg + "\n") == "READY"
+    assert _icml_ready_status_header(prog_svg + "\n") == "IN_PROGRESS"
+    assert (
+        _icml_ready_status_header(f"| {flat_svg} |\n") == "READY"
+    )
+    assert (
+        _icml_ready_status_header(f"> {flat_svg}\n") == "READY"
+    )
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{bold_svg}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert not any(
+        "<svg" in ln.lower() and "STATUS: READY" in ln
+        for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -8626,6 +8694,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-img-title-aria STATUS header (Tick 470)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_img_title_aria_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 471: HTML inline SVG ``<title>STATUS:…</title>`` badge exports.
+    assert "_peel_icml_status_html_svg_title" in env_checks
+    assert "_ICML_STATUS_HTML_SVG_TAG_RE" in env_checks
+    assert "ICML html-svg-title STATUS header (Tick 471)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_svg_title_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
