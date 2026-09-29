@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 474:** HTML SVG nested ``<text>STATUS:…</text>`` STATUS headers (`<svg…><title>Badge</title><text>STATUS: READY</text>…` / `<svg…><text><tspan>**STATUS: READY**</tspan></text>…`) — `_peel_icml_status_html_svg_title` peels nested `<text>` (plain after stripping `<tspan>`) after attrs + `<title>` + `<desc>` — closes G4 demote no-op / pack miss after Tick 471–473 attrs/title/desc only.
 **Tick 473:** HTML SVG nested ``<desc>STATUS:…</desc>`` STATUS headers (`<svg…><title>Badge</title><desc>STATUS: READY</desc>…` / `<svg…><desc>**STATUS: READY**</desc>…`) — `_peel_icml_status_html_svg_title` peels nested `<desc>` after root attrs + nested `<title>` — closes G4 demote no-op / pack miss after Tick 471/472 attrs+title only.
 **Tick 472:** HTML SVG root ``aria-label="STATUS:…">`` / ``title="STATUS:…">`` STATUS headers (`<svg aria-label="STATUS: READY" …>` / `<svg title="**STATUS: READY**"><title>Badge</title>…`) — `_peel_icml_status_html_svg_title` peels quoted root attrs (prefer STATUS-looking among aria-label→title-attr→nested `<title>`) — closes G4 demote no-op / pack miss after Tick 471 nested-`<title>` only.
 **Tick 471:** HTML SVG ``<title>STATUS:…</title>`` STATUS headers (`<svg…><title>STATUS: READY</title>…</svg>` / residual `<text>`/`<desc>`) — `_peel_icml_status_html_svg_title` peels nested `<title>` without allowlist strip — closes G4 demote no-op / pack miss after Tick 468–470 `<img>`-only.
