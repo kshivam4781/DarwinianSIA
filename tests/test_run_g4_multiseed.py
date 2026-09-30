@@ -5438,6 +5438,86 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     )
     assert "alt=STATUS:IN_PROGRESS" not in img_uq_updated
 
+    # (cj) Tick 486: HTML-entity STATUS colon must demote —
+    # pre-486 Tick 455 decoded only invisibles/nbsp.
+    entity_colon_ready = tmp_path / "html_entity_colon_status.md"
+    entity_colon_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS&#58; READY\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(entity_colon_ready.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            entity_colon_ready,
+            reason="html-entity-colon READY",
+            timestamp="t",
+        )
+        is True
+    )
+    entity_colon_text = entity_colon_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(entity_colon_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in entity_colon_text.splitlines()
+    )
+    assert "Do not set STATUS: READY until criteria pass." in entity_colon_text
+    assert "STATUS&#58; READY" not in entity_colon_text
+
+    # (ck) Tick 486: attr title="STATUS&colon; IN_PROGRESS" must update to READY.
+    attr_colon_upd = tmp_path / "update_html_entity_colon_attr_status.md"
+    attr_colon_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        '<p\n'
+        '  title="STATUS&colon; IN_PROGRESS"\n'
+        ">badge</p>\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_attr_colon = update_icml_ready_from_g4(
+        ready_path=attr_colon_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-30T18:10:00Z",
+        allow_ready=True,
+    )
+    assert status_attr_colon == "READY"
+    attr_colon_updated = attr_colon_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(attr_colon_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**"
+        for ln in attr_colon_updated.splitlines()
+    )
+    assert "STATUS&colon;" not in attr_colon_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

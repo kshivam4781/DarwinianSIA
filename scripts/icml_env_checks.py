@@ -2859,6 +2859,11 @@ def merge_prior_live_evidence_dict(ours: dict, theirs: dict) -> dict:
 # Tick 455: HTML exports often encode the same invisibles as entities
 # (``&#8203;**STATUS: READY**`` / ``&ZeroWidthSpace;`` / ``**STATUS:&nbsp;READY**``)
 # — decode those before Unicode strip so demote / G4 pack still match.
+# Tick 486: also decode HTML-entity *colons* (``STATUS&#58; READY`` /
+# ``STATUS&colon;READY`` / ``STATUS&#x3a; READY`` / fullwidth ``STATUS&#xff1a;READY``
+# / attr ``title="STATUS&#58; READY"``) — CMS/XSS-escaped exports leave the
+# STATUS separator as an entity so Tick 455 invisibles-only decode still missed
+# demote / G4 pack.
 # Tick 456: Notion/Docs HTML→Markdown / rich-paste also leave wrapper tags
 # (``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /
 # ``<span style="…">**STATUS: READY**</span>``) — strip those before match.
@@ -2873,7 +2878,7 @@ _ICML_STATUS_HTML_ENTITY_RE = re.compile(
     r"&(?:"
     r"#(?:x([0-9a-fA-F]+)|([0-9]+))"
     r"|"
-    r"(nbsp|ZeroWidthSpace|zwnj|zwj|shy)"
+    r"(nbsp|ZeroWidthSpace|zwnj|zwj|shy|colon)"
     r");",
     re.IGNORECASE,
 )
@@ -2883,9 +2888,22 @@ _ICML_STATUS_HTML_NAMED = {
     "zwnj": "\u200c",
     "zwj": "\u200d",
     "shy": "\u00ad",
+    # Tick 486: HTML5 ``&colon;`` → ASCII ``:`` (STATUS separator).
+    "colon": ":",
 }
 _ICML_STATUS_HTML_CODEPOINTS = frozenset(
-    {0x200B, 0x200C, 0x200D, 0x2060, 0x00AD, 0xFEFF, 0x00A0}
+    {
+        0x200B,
+        0x200C,
+        0x200D,
+        0x2060,
+        0x00AD,
+        0xFEFF,
+        0x00A0,
+        # Tick 486: ASCII colon + CJK fullwidth colon (Tick 464 char form).
+        0x3A,
+        0xFF1A,
+    }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
 # Tick 457: include h1–h6 (+ kbd) so HTML heading exports match ATX Tick 448.
@@ -3892,13 +3910,20 @@ _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455: decode HTML entities for STATUS invisibles / nbsp only.
+    """Tick 455/486: decode HTML entities for STATUS invisibles / nbsp / colon.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
     ``&ZeroWidthSpace;**STATUS:…**`` / ``**STATUS:&nbsp;READY**`` still made
     demote no-op / G4 pack miss READY. Only decode the codepoints we then
-    strip (or treat as whitespace via ``\\s``); leave other entities untouched.
+    strip (or treat as whitespace via ``\\s``), plus Tick 486 STATUS separator
+    colons (``&#58;`` / ``&colon;`` / ``&#x3a;`` / ``&#xff1a;``); leave other
+    entities untouched.
+
+    Tick 486: CMS/XSS-escaped exports often encode the STATUS colon
+    (``STATUS&#58; READY`` / ``STATUS&colon;READY`` /
+    ``<p title="STATUS&#58; READY">badge</p>``) — pre-486 invisibles-only
+    decode left those stubs unmatched (demote no-op / G4 pack miss READY).
     """
 
     def _sub(m: re.Match) -> str:
@@ -4303,6 +4328,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
     before Unicode strip — ``&#8203;**STATUS: READY**`` /
     ``&ZeroWidthSpace;**STATUS:…**`` / ``**STATUS:&nbsp;READY**`` otherwise stay
     unmatched after Tick 454's Unicode-only strip.
+
+    Tick 486: also decode HTML-entity STATUS colons (``STATUS&#58; READY`` /
+    ``STATUS&colon;READY`` / ``STATUS&#x3a; READY`` / ``STATUS&#xff1a;READY`` /
+    attr ``title="STATUS&#58; READY"``) — pre-486 Tick 455 invisibles-only
+    decode left CMS/XSS-escaped colon stubs unmatched (demote no-op /
+    G4 pack miss READY).
 
     Tick 456: also strip allowlisted formatting HTML tags after entity decode —
     ``<strong>STATUS: READY</strong>`` / ``<p><b>**STATUS:…**</b></p>`` /

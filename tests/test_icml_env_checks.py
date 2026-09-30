@@ -5625,8 +5625,10 @@ def test_icml_ready_status_header_accepts_html_entity_zwsp_nbsp_status() -> None
     assert _strip_icml_status_line_noise("&#8203;**STATUS: READY**") == (
         "**STATUS: READY**"
     )
+    # Bold peels after nbsp decode (wrap sees leading ``**``; ZWSP-prefix above
+    # keeps bold until header match).
     assert _strip_icml_status_line_noise("**STATUS:&nbsp;READY**") == (
-        "**STATUS:\u00a0READY**"
+        "STATUS:\u00a0READY"
     )
     assert _icml_ready_status_header("&#8203;**STATUS: READY**\n") == "READY"
     assert _icml_ready_status_header("&#x200b;**STATUS: IN_PROGRESS**\n") == (
@@ -8148,6 +8150,113 @@ def test_icml_ready_status_header_accepts_html_aria_description_status() -> None
     assert 'aria-description="STATUS: READY"' not in demoted_a
 
 
+def test_icml_ready_status_header_accepts_html_entity_colon_status() -> None:
+    """Tick 486: HTML-entity STATUS colons (``&#58;`` / ``&colon;`` / ``&#x3a;``).
+
+    Pre-486 Tick 455 decoded only invisibles/nbsp, so CMS/XSS-escaped
+    exports whose STATUS separator is an entity (``STATUS&#58; READY`` /
+    ``STATUS&colon;READY`` / ``**STATUS&#58; READY**`` /
+    ``STATUS&#xff1a;READY`` / ``<p title="STATUS&#58; READY">badge</p>`` /
+    Prettier ``<p\\n  title="STATUS&colon; READY"\\n>badge</p>``) missed
+    demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_inline_title,
+        _strip_icml_status_line_noise,
+        _take_icml_status_multiline_inline_block,
+    )
+
+    assert _decode_icml_status_html_entities("STATUS&#58; READY") == "STATUS: READY"
+    assert _decode_icml_status_html_entities("STATUS&colon;READY") == "STATUS:READY"
+    assert _decode_icml_status_html_entities("STATUS&#x3a; READY") == "STATUS: READY"
+    assert _decode_icml_status_html_entities("STATUS&#x3A;IN_PROGRESS") == (
+        "STATUS:IN_PROGRESS"
+    )
+    assert _decode_icml_status_html_entities("STATUS&#xff1a;READY") == (
+        "STATUS\uff1aREADY"
+    )
+    # Unknown entities still left alone (Tick 455 contract).
+    assert _decode_icml_status_html_entities("&amp;**STATUS: READY**") == (
+        "&amp;**STATUS: READY**"
+    )
+    # Prior invisibles/nbsp still decode.
+    assert _decode_icml_status_html_entities("**STATUS:&nbsp;READY**") == (
+        "**STATUS:\u00a0READY**"
+    )
+
+    assert _strip_icml_status_line_noise("STATUS&#58; READY") == "STATUS: READY"
+    # Bold wrappers peel after entity decode (Tick 456/453 path).
+    assert _strip_icml_status_line_noise("**STATUS&colon; READY**") == "STATUS: READY"
+    assert _icml_ready_status_header("STATUS&#58; READY\n") == "READY"
+    assert _icml_ready_status_header("STATUS&colon;READY\n") == "READY"
+    assert _icml_ready_status_header("**STATUS&#58; READY**\n") == "READY"
+    assert _icml_ready_status_header("STATUS&#x3a; IN_PROGRESS\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header("STATUS&#xff1a;READY\n") == "READY"
+    # Attr peels after entity decode (Tick 483/485 surfaces).
+    attr_ent = '<p title="STATUS&#58; READY">badge</p>'
+    assert _decode_icml_status_html_entities(attr_ent) == (
+        '<p title="STATUS: READY">badge</p>'
+    )
+    assert (
+        _peel_icml_status_html_inline_title(
+            _decode_icml_status_html_entities(attr_ent)
+        )
+        == "STATUS: READY"
+    )
+    assert _icml_ready_status_header(attr_ent + "\n") == "READY"
+    named_attr = '<span aria-label="STATUS&colon; READY">x</span>'
+    assert _icml_ready_status_header(named_attr + "\n") == "READY"
+    img_ent = '<img alt="STATUS&#58;READY" src="https://x.com/b.svg">'
+    assert _icml_ready_status_header(img_ent + "\n") == "READY"
+    soft = (
+        "<p\n"
+        '  title="STATUS&colon; READY"\n'
+        ">badge</p>"
+    )
+    taken = _take_icml_status_multiline_inline_block(soft.splitlines(), 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 3
+    assert "STATUS&colon; READY" in collapsed or "STATUS: READY" in (
+        _decode_icml_status_html_entities(collapsed)
+    )
+    assert _icml_ready_status_header(soft + "\n") == "READY"
+    # Prior Tick 455 / 485 forms unchanged.
+    assert _icml_ready_status_header("**STATUS:&nbsp;READY**\n") == "READY"
+    assert _icml_ready_status_header("<p title=STATUS:READY>badge</p>\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS&#58; READY\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert "&#58;" not in demoted or "STATUS&#58; READY" not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_attr = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{soft}\n"
+    )
+    demoted_attr = _demote_icml_ready_status(prose_attr)
+    assert _icml_ready_status_header(demoted_attr) == "IN_PROGRESS"
+    assert "STATUS&colon;" not in demoted_attr
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_attr.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -10163,6 +10272,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-unquoted-attr STATUS header (Tick 485)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_unquoted_attr_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 486: HTML-entity STATUS colon (&#58; / &colon; / &#x3a; / &#xff1a;).
+    assert "&colon;" in env_checks or "colon" in env_checks
+    assert "0x3A" in env_checks or "0x3a" in env_checks
+    assert "ICML html-entity-colon STATUS header (Tick 486)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_entity_colon_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

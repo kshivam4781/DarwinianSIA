@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges (`<p title=STATUS:READY>badge</p>` / `<span aria-label=STATUS:READY>x</span>` / `<a aria-description=STATUS:READY>Go</a>` / `<img alt=STATUS:READY src=…>` / Prettier `<p\n  title=STATUS:READY\n>badge</p>`) — ATTR peels now accept unquoted values; IN_ATTR requires READY/IN_PROGRESS token (no truncated `STATUS:` false-peel from spaced unquoted HTML). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 486: HTML-entity STATUS colons (`STATUS&#58; READY` / `STATUS&colon;READY` / `STATUS&#x3a; READY` / `STATUS&#xff1a;READY` / `<p title="STATUS&#58; READY">badge</p>` / Prettier `<p\n  title="STATUS&colon; READY"\n>badge</p>`) — `_decode_icml_status_html_entities` now decodes `&colon;` / `&#58;` / `&#x3a;` / `&#xff1a;` (extends Tick 455 invisibles/nbsp-only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
