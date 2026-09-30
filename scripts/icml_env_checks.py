@@ -3068,6 +3068,31 @@ _ICML_STATUS_HTML_A_COMPLETE_RE = re.compile(
     r"<(?:a|button)\b[^>]*>.*?</(?:a|button)\s*>",
     re.IGNORECASE | re.DOTALL,
 )
+# Tick 482: HTML ``span`` / ``label`` / ``div`` / ``summary`` / ``figcaption`` /
+# ``mark`` whose STATUS lives only in quoted ``title=`` / ``aria-label=`` with
+# decorative body (``<span title="STATUS: READY">badge</span>`` /
+# ``<label aria-label="STATUS: READY">x</label>``). Tick 465–481 allowlist-
+# strip those tags to *inner text only*, and Tick 481 only peeled ``a``/
+# ``button`` attrs — so Notion/Docs/GitHub a11y badge exports on these
+# wrappers still collapsed to ``badge`` / ``x`` and missed demote / G4 pack.
+_ICML_STATUS_HTML_SPAN_TAG_RE = re.compile(
+    r"^<(span|label|div|summary|figcaption|mark)\b([^>]*)>(.*?)</\1\s*>\s*$",
+    re.IGNORECASE | re.DOTALL,
+)
+_ICML_STATUS_HTML_SPAN_ATTR_RE = re.compile(
+    r"""\b(title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    re.IGNORECASE,
+)
+_ICML_STATUS_SPAN_INLINE_OPEN_RE = re.compile(
+    r"<(?:span|label|div|summary|figcaption|mark)\b", re.IGNORECASE
+)
+_ICML_STATUS_SPAN_BLOCK_CLOSE_RE = re.compile(
+    r"</(?:span|label|div|summary|figcaption|mark)\s*>", re.IGNORECASE
+)
+_ICML_STATUS_HTML_SPAN_COMPLETE_RE = re.compile(
+    r"<(?:span|label|div|summary|figcaption|mark)\b[^>]*>.*?</(?:span|label|div|summary|figcaption|mark)\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _take_icml_status_multiline_md_link_block(
@@ -3257,13 +3282,62 @@ def _take_icml_status_multiline_a_block(
     return None
 
 
+def _take_icml_status_multiline_span_block(
+    lines: list[str], start: int
+) -> tuple[int, str] | None:
+    """Tick 482: if ``lines[start]`` opens a multi-line span/label/div/…, return ``(n, collapsed)``.
+
+    Collapses Prettier / Notion / Docs pretty-printed forms such as::
+
+        <span
+          title="STATUS: READY"
+        >badge</span>
+
+        <label
+          aria-label="**STATUS: READY**"
+        >x</label>
+
+        <div role="status"
+          title="STATUS: READY"
+        >…</div>
+
+    into a single line so ``_peel_icml_status_html_span_title`` can run.
+    Single-line complete tags (bare or already wrapped) return ``None``.
+    Incomplete blocks (no closing tag, blank mid-tag) return ``None``.
+    Collapsed form joins stripped lines with a single space.
+    """
+    if start < 0 or start >= len(lines):
+        return None
+    first = (lines[start] or "").strip()
+    if not _ICML_STATUS_SPAN_INLINE_OPEN_RE.search(first):
+        return None
+    # Already a single-line complete span/label/… → leave to Tick 482 peel.
+    if _ICML_STATUS_HTML_SPAN_COMPLETE_RE.search(first):
+        return None
+    parts = [first]
+    j = start + 1
+    max_extra = 12
+    while j < len(lines) and (j - start) <= max_extra:
+        raw_j = lines[j] or ""
+        if not raw_j.strip():
+            return None
+        parts.append(raw_j.strip())
+        collapsed = " ".join(p for p in parts if p)
+        if _ICML_STATUS_SPAN_BLOCK_CLOSE_RE.search(raw_j):
+            if not _ICML_STATUS_HTML_SPAN_COMPLETE_RE.search(collapsed):
+                return None
+            return (j - start + 1, collapsed)
+        j += 1
+    return None
+
+
 def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–481).
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–482).
 
     ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
-    multi-line SVG / img / a-button / soft-wrapped md link-image or the
-    single original line).
+    multi-line SVG / img / a-button / span-label / soft-wrapped md link-image
+    or the single original line).
     """
     raw = (text or "").lstrip("\ufeff")
     lines = raw.splitlines()
@@ -3290,6 +3364,13 @@ def _iter_icml_ready_status_units(text: str):
             continue
         # Tick 481: multi-line <a>/<button> title/aria-label STATUS.
         block = _take_icml_status_multiline_a_block(lines, i)
+        if block is not None:
+            n, collapsed = block
+            yield lines[i : i + n], collapsed
+            i += n
+            continue
+        # Tick 482: multi-line <span>/<label>/<div>/… title/aria-label STATUS.
+        block = _take_icml_status_multiline_span_block(lines, i)
         if block is not None:
             n, collapsed = block
             yield lines[i : i + n], collapsed
@@ -3403,6 +3484,49 @@ def _peel_icml_status_html_a_title(line: str) -> str | None:
             return val
     # No STATUS-looking attr — return None so allowlist strip can surface
     # body-text STATUS (``<a title="Click me">STATUS: READY</a>``).
+    return None
+
+
+def _peel_icml_status_html_span_title(line: str) -> str | None:
+    """Tick 482: peel full-line span/label/div/summary/figcaption/mark STATUS attr.
+
+    Tick 465–481 allowlist-strip these tags to *inner text only*. Tick 481
+    peeled ``title=`` / ``aria-label=`` on ``<a>``/``<button>`` only, so
+    Notion / Docs / GitHub a11y badge exports whose STATUS lives only in
+    quoted attrs with decorative body
+    (``<span title="STATUS: READY">badge</span>`` /
+    ``<label aria-label="**STATUS: READY**">x</label>`` /
+    ``<div role="status" title="STATUS: READY">…</div>`` /
+    ``<summary title="STATUS: READY">Details</summary>``) collapsed to
+    ``badge`` / ``x`` / ``…`` / ``Details`` and missed demote / G4 pack.
+
+    Preference: first STATUS-looking value among ``title``, ``aria-label``
+    (in that order). If neither attr carries STATUS, return ``None`` so
+    allowlist strip can surface body-text STATUS. Multi-line blocks are
+    collapsed by ``_take_icml_status_multiline_span_block`` before this runs.
+    """
+    s = (line or "").strip()
+    m = _ICML_STATUS_HTML_SPAN_TAG_RE.match(s)
+    if not m:
+        cm = _ICML_STATUS_HTML_SPAN_COMPLETE_RE.search(s)
+        if not cm:
+            return None
+        m = _ICML_STATUS_HTML_SPAN_TAG_RE.match(cm.group(0))
+        if not m:
+            return None
+    attrs = m.group(2) or ""
+    by_name: dict[str, str] = {}
+    for am in _ICML_STATUS_HTML_SPAN_ATTR_RE.finditer(attrs):
+        name = (am.group(1) or "").lower()
+        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        if name and val and name not in by_name:
+            by_name[name] = val
+    if not by_name:
+        return None
+    for name in ("title", "aria-label"):
+        val = by_name.get(name)
+        if val and _ICML_STATUS_IN_ATTR_RE.search(val):
+            return val
     return None
 
 
@@ -3839,6 +3963,12 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     multi-line pretty-printed opens are collapsed by
     ``_take_icml_status_multiline_a_block``. Pre-481 Tick 465 strip kept
     inner text only (``badge``/``Go``), dropping STATUS attrs.
+
+    Tick 482: also peel HTML ``span``/``label``/``div``/``summary``/
+    ``figcaption``/``mark`` ``title=`` / ``aria-label=`` STATUS *before*
+    allowlist strip (see ``_peel_icml_status_html_span_title``); multi-line
+    opens collapsed by ``_take_icml_status_multiline_span_block``. Pre-482
+    Tick 481 only covered ``a``/``button``.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -3857,6 +3987,11 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         a_title = _peel_icml_status_html_a_title(s)
         if a_title and a_title != s:
             s = a_title
+            continue
+        # Tick 482: peel span/label/div/… title/aria-label before allowlist strip.
+        span_title = _peel_icml_status_html_span_title(s)
+        if span_title and span_title != s:
+            s = span_title
             continue
         # Tick 469: peel picture/source *inside* the wrap loop so
         # `` `| <picture><img alt=…></picture> |` `` still reaches img-alt.
@@ -4025,6 +4160,11 @@ def _strip_icml_status_line_noise(line: str) -> str:
     (``badge``/``Go``) and drops STATUS attrs, so a11y/tooltip link badge
     exports missed demote / G4 pack rewrite after Tick 470/472 covered the
     same attrs on ``<img>``/``<svg>``.
+
+    Tick 482: also peel HTML ``span``/``label``/``div``/``summary``/
+    ``figcaption``/``mark`` ``title=`` / ``aria-label=`` STATUS *before*
+    allowlist strip — Tick 481 only covered ``a``/``button``, so a11y
+    badge exports on these wrappers still missed demote / G4 pack.
     """
     s = _decode_icml_status_html_entities(line or "")
     # Tick 481: peel a/button title/aria-label before allowlist strip drops attrs.
@@ -4032,7 +4172,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
     if a_title:
         s = a_title
     else:
-        s = _strip_icml_status_html_tags(s)
+        # Tick 482: peel span/label/div/… title/aria-label before allowlist strip.
+        span_title = _peel_icml_status_html_span_title(s)
+        if span_title:
+            s = span_title
+        else:
+            s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
     s = _ICML_STATUS_INVISIBLE_CHARS_RE.sub("", s)
     return s.strip()
@@ -4370,6 +4515,13 @@ def _demote_icml_ready_status(body: str) -> str:
     allowlist-stripped ``a``/``button`` to inner text only (``badge``/``Go``),
     so a11y/tooltip link badge exports missed demote / G4 pack rewrite after
     Tick 470/472 covered the same attrs on ``<img>``/``<svg>``.
+
+    Tick 482: also rewrite HTML ``span``/``label``/``div``/``summary``/
+    ``figcaption``/``mark`` whose STATUS lives only in ``title=`` /
+    ``aria-label=`` (decorative body), including Prettier multi-line opens
+    (``<span\\n  title="STATUS: READY"\\n>badge</span>`` /
+    ``<label aria-label="STATUS: READY">x</label>``) — pre-482 Tick 481
+    only covered ``a``/``button``.
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []
