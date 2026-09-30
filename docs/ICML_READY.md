@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 482: HTML `<span>`/`<label>`/`<div>`/`<summary>`/`<figcaption>`/`<mark>` title/aria-label STATUS (`<span title="STATUS: READY">badge</span>` / `<label aria-label="STATUS: READY">x</label>` / Prettier `<span\n  title="STATUS: READY"\n>badge</span>`) — `_peel_icml_status_html_span_title` peels STATUS attrs *before* allowlist strip; `_take_icml_status_multiline_span_block` collapses multi-line opens (Tick 481 covered `<a>`/`<button>` only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 483: HTML `<p>`/`<strong>`/`<h1>`–`<h6>`/`<td>`/`<th>`/`<li>`/`<blockquote>`/`<section>`/`<article>`/… title/aria-label STATUS (`<p title="STATUS: READY">badge</p>` / `<strong aria-label="STATUS: READY">x</strong>` / Prettier `<p\n  title="STATUS: READY"\n>badge</p>`) — `_peel_icml_status_html_inline_title` peels STATUS attrs *before* allowlist strip; `_take_icml_status_multiline_inline_block` collapses multi-line opens (Tick 482 covered `<span>`/`<label>`/`<div>`/… only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

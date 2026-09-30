@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T12:15Z — Tick 483 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-1046` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 482 left a realistic STATUS hazard on Notion / Docs / GitHub a11y badge exports whose STATUS lives only in remaining allowlisted formatting / container / table / semantic tags' `title=` / `aria-label=` with decorative body (`<p title="STATUS: READY">badge</p>` / `<strong aria-label="STATUS: READY">x</strong>` / `<h1 title="STATUS: READY">Badge</h1>` / `<td title="STATUS: READY">x</td>` / Prettier `<p\n  title="STATUS: READY"\n>badge</p>`) — Tick 465–482 allowlist-strips those tags to *inner text only*, and Tick 482 only peeled the same attrs on `<span>`/`<label>`/`<div>`/`<summary>`/`<figcaption>`/`<mark>`, so demote no-op / G4 pack miss READY (header=None → prepend-only demote leaving READY title intact). Highest leverage without paid spend: **html-inline-title-aria STATUS**.
+
+### What this tick did (ONE step)
+**Tick 483 — html-inline-title-aria STATUS (no API spend):**
+1. Recovered tip ← Tick 482 (`f49c`); confirmed secrets absent; boot `1046` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_peel_icml_status_html_inline_title` + `_take_icml_status_multiline_inline_block` + `_ICML_STATUS_HTML_INLINE_*` — peel STATUS-looking `title=`/`aria-label=` on remaining allowlisted `p`/`strong`/`h1`–`h6`/`td`/`th`/`li`/`blockquote`/`section`/`article`/… *before* allowlist strip; collapse Prettier multi-line opens; wire into wrap loop + `_strip_icml_status_line_noise` + `_iter_icml_ready_status_units`
+3. Tests: `test_icml_ready_status_header_accepts_html_inline_title_aria_status` + G4 demote/update p/strong/h1 cases + Tick 482 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 482) | After (Tick 483) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `<p title="STATUS:…">badge</p>` / `<strong aria-label=…>` / `<h1 title=…>` demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T10:05Z — Tick 482 (automation cron)
 
 ### Status snapshot

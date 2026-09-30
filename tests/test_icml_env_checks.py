@@ -7916,6 +7916,123 @@ def test_icml_ready_status_header_accepts_html_span_label_title_aria_status() ->
     assert 'aria-label="**STATUS: READY**"' not in demoted_label
 
 
+def test_icml_ready_status_header_accepts_html_inline_title_aria_status() -> None:
+    """Tick 483: HTML p/strong/h1/td/… title/aria-label STATUS badges.
+
+    Pre-483 Tick 465–482 allowlist-stripped remaining formatting / container /
+    table / semantic tags to *inner text only*, and Tick 482 only peeled
+    ``span``/``label``/``div``/``summary``/``figcaption``/``mark`` attrs, so
+    Notion / Docs / GitHub a11y badge exports whose STATUS lives only in
+    quoted ``title=`` / ``aria-label=`` with decorative body
+    (``<p title="STATUS: READY">badge</p>`` /
+    ``<strong aria-label="STATUS: READY">x</strong>`` /
+    ``<h1 title="STATUS: READY">Badge</h1>`` /
+    Prettier ``<p\\n  title="STATUS: READY"\\n>badge</p>``)
+    missed demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_inline_title,
+        _take_icml_status_multiline_inline_block,
+    )
+
+    flat_p = '<p title="STATUS: READY">badge</p>'
+    strong_aria = '<strong aria-label="**STATUS: READY**">x</strong>'
+    h1_title = '<h1 title="STATUS: READY">Badge</h1>'
+    td_title = '<td title="STATUS: READY">badge</td>'
+    section_aria = '<section aria-label="STATUS: READY">…</section>'
+    li_title = '<li title="STATUS: IN_PROGRESS">item</li>'
+    body_only = "<p>STATUS: READY</p>"
+    deco_title_body = '<p title="Click me">STATUS: READY</p>'
+    soft = (
+        "<p\n"
+        '  title="STATUS: READY"\n'
+        ">badge</p>"
+    )
+    soft_strong = (
+        "<strong\n"
+        '  aria-label="STATUS: READY"\n'
+        ">x</strong>"
+    )
+    wrapped = '<div><p title="STATUS: READY">badge</p></div>'
+    incomplete = "<p\n  title=\"STATUS: READY\""
+    blank_mid = "<p\n\n  title=\"STATUS: READY\">badge</p>"
+
+    assert _peel_icml_status_html_inline_title(flat_p) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(strong_aria) == "**STATUS: READY**"
+    assert _peel_icml_status_html_inline_title(h1_title) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(td_title) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(section_aria) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(li_title) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_inline_title(body_only) is None
+    assert _peel_icml_status_html_inline_title(deco_title_body) is None
+    assert _peel_icml_status_html_inline_title(wrapped) == "STATUS: READY"
+    # Tick 482 span tags must not be claimed by the Tick 483 inline peeler.
+    assert (
+        _peel_icml_status_html_inline_title(
+            '<span title="STATUS: READY">badge</span>'
+        )
+        is None
+    )
+
+    assert _take_icml_status_multiline_inline_block([flat_p], 0) is None
+    taken = _take_icml_status_multiline_inline_block(soft.splitlines(), 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 3
+    assert 'title="STATUS: READY"' in collapsed
+    assert _peel_icml_status_html_inline_title(collapsed) == "STATUS: READY"
+    assert _take_icml_status_multiline_inline_block(incomplete.splitlines(), 0) is None
+    assert _take_icml_status_multiline_inline_block(blank_mid.splitlines(), 0) is None
+
+    assert _icml_ready_status_header(flat_p + "\n") == "READY"
+    assert _icml_ready_status_header(strong_aria + "\n") == "READY"
+    assert _icml_ready_status_header(h1_title + "\n") == "READY"
+    assert _icml_ready_status_header(td_title + "\n") == "READY"
+    assert _icml_ready_status_header(section_aria + "\n") == "READY"
+    assert _icml_ready_status_header(li_title + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(body_only + "\n") == "READY"
+    assert _icml_ready_status_header(deco_title_body + "\n") == "READY"
+    assert _icml_ready_status_header(soft + "\n") == "READY"
+    assert _icml_ready_status_header(soft_strong + "\n") == "READY"
+    assert _icml_ready_status_header(wrapped + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{soft}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert 'title="STATUS: READY"' not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_strong = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{strong_aria}\n"
+    )
+    demoted_strong = _demote_icml_ready_status(prose_strong)
+    assert _icml_ready_status_header(demoted_strong) == "IN_PROGRESS"
+    assert 'aria-label="**STATUS: READY**"' not in demoted_strong
+
+    prose_h1 = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{h1_title}\n"
+    )
+    demoted_h1 = _demote_icml_ready_status(prose_h1)
+    assert _icml_ready_status_header(demoted_h1) == "IN_PROGRESS"
+    assert 'title="STATUS: READY"' not in demoted_h1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9805,6 +9922,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-span-label-title-aria STATUS header (Tick 482)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_span_label_title_aria_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 483: HTML p/strong/h1/td/… title/aria-label STATUS (+ multiline).
+    assert "_peel_icml_status_html_inline_title" in env_checks
+    assert "_take_icml_status_multiline_inline_block" in env_checks
+    assert "_ICML_STATUS_HTML_INLINE_COMPLETE_RE" in env_checks
+    assert "ICML html-inline-title-aria STATUS header (Tick 483)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_inline_title_aria_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
