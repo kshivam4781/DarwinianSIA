@@ -8148,6 +8148,104 @@ def test_icml_ready_status_header_accepts_html_aria_description_status() -> None
     assert 'aria-description="STATUS: READY"' not in demoted_a
 
 
+def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
+    """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
+
+    Pre-485 ATTR peels required quotes, so minified HTML / some CMS /
+    shields-like badge exports whose STATUS lives only in unquoted attrs
+    with decorative body (``<p title=STATUS:READY>badge</p>`` /
+    ``<span aria-label=STATUS:READY>x</span>`` /
+    ``<a aria-description=STATUS:READY>Go</a>`` /
+    ``<img alt=STATUS:READY src=…>`` /
+    ``<svg title=STATUS:READY>…</svg>`` /
+    Prettier ``<p\\n  title=STATUS:READY\\n>badge</p>``) missed demote /
+    G4 pack rewrite. Spaced unquoted ``title=STATUS: READY`` remains a miss
+    (invalid HTML attr value).
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _icml_status_html_attr_value,
+        _peel_icml_status_html_a_title,
+        _peel_icml_status_html_img_alt,
+        _peel_icml_status_html_inline_title,
+        _peel_icml_status_html_span_title,
+        _peel_icml_status_html_svg_title,
+        _take_icml_status_multiline_inline_block,
+        _ICML_STATUS_HTML_INLINE_ATTR_RE,
+    )
+
+    flat_p = "<p title=STATUS:READY>badge</p>"
+    span_uq = "<span aria-label=STATUS:READY>x</span>"
+    a_uq = "<a aria-description=STATUS:READY>Go</a>"
+    img_uq = '<img alt=STATUS:READY src="https://x.com/b.svg">'
+    img_src_uq = "<img alt=STATUS:READY src=b.svg>"
+    svg_uq = "<svg title=STATUS:READY><title>Badge</title></svg>"
+    prog = "<p title=STATUS:IN_PROGRESS>badge</p>"
+    quoted_ok = '<p title="STATUS: READY">badge</p>'
+    spaced_miss = "<p title=STATUS: READY>badge</p>"
+    soft = "<p\n  title=STATUS:READY\n>badge</p>"
+
+    assert _peel_icml_status_html_inline_title(flat_p) == "STATUS:READY"
+    assert _peel_icml_status_html_span_title(span_uq) == "STATUS:READY"
+    assert _peel_icml_status_html_a_title(a_uq) == "STATUS:READY"
+    assert _peel_icml_status_html_img_alt(img_uq) == "STATUS:READY"
+    assert _peel_icml_status_html_img_alt(img_src_uq) == "STATUS:READY"
+    assert _peel_icml_status_html_svg_title(svg_uq) == "STATUS:READY"
+    assert _peel_icml_status_html_inline_title(prog) == "STATUS:IN_PROGRESS"
+    assert _peel_icml_status_html_inline_title(quoted_ok) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(spaced_miss) is None
+
+    am = _ICML_STATUS_HTML_INLINE_ATTR_RE.search(" title=STATUS:READY")
+    assert am is not None
+    assert _icml_status_html_attr_value(am) == "STATUS:READY"
+    am_q = _ICML_STATUS_HTML_INLINE_ATTR_RE.search(' title="STATUS: READY"')
+    assert am_q is not None
+    assert _icml_status_html_attr_value(am_q) == "STATUS: READY"
+
+    taken = _take_icml_status_multiline_inline_block(soft.splitlines(), 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 3
+    assert "title=STATUS:READY" in collapsed
+    assert _peel_icml_status_html_inline_title(collapsed) == "STATUS:READY"
+
+    assert _icml_ready_status_header(flat_p + "\n") == "READY"
+    assert _icml_ready_status_header(span_uq + "\n") == "READY"
+    assert _icml_ready_status_header(a_uq + "\n") == "READY"
+    assert _icml_ready_status_header(img_uq + "\n") == "READY"
+    assert _icml_ready_status_header(img_src_uq + "\n") == "READY"
+    assert _icml_ready_status_header(svg_uq + "\n") == "READY"
+    assert _icml_ready_status_header(prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(soft + "\n") == "READY"
+    assert _icml_ready_status_header(spaced_miss + "\n") is None
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{soft}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert "title=STATUS:READY" not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_img = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{img_src_uq}\n"
+    )
+    demoted_img = _demote_icml_ready_status(prose_img)
+    assert _icml_ready_status_header(demoted_img) == "IN_PROGRESS"
+    assert "alt=STATUS:READY" not in demoted_img
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -10056,6 +10154,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-aria-description STATUS header (Tick 484)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_aria_description_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 485: unquoted HTML STATUS attrs (minified / CMS badge exports).
+    assert "_ICML_STATUS_HTML_ATTR_VALUE" in env_checks
+    assert "_icml_status_html_attr_value" in env_checks
+    assert '|([^\\s"\'=<>`]+))' in env_checks
+    assert "ICML html-unquoted-attr STATUS header (Tick 485)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_unquoted_attr_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

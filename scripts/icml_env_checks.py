@@ -2958,16 +2958,31 @@ _ICML_STATUS_HTML_IMG_TAG_RE = re.compile(
 # decorative filename or omitted.
 # Tick 484: also ``aria-description=`` (ARIA 1.3 long description) — same
 # allowlist-strip hazard as title/aria-label when body text is decorative.
+# Tick 485: also accept *unquoted* attr values (minified HTML / some CMS /
+# shields-like exports) — ``alt=STATUS:READY`` / ``title=STATUS:IN_PROGRESS``.
+# HTML unquoted values cannot contain whitespace, so spaced
+# ``STATUS: READY`` remains quoted-only; group 4 captures the bare token.
+_ICML_STATUS_HTML_ATTR_VALUE = (
+    r"""(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))"""
+)
 _ICML_STATUS_HTML_IMG_ATTR_RE = re.compile(
-    r"""\b(alt|title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(alt|title|aria-label|aria-description)\s*=\s*"""
+    + _ICML_STATUS_HTML_ATTR_VALUE,
     re.IGNORECASE,
 )
 # Back-compat alias (Tick 468 tests / callers that still import the old name).
+# Tick 485: unquoted alt values too.
 _ICML_STATUS_HTML_IMG_ALT_RE = re.compile(
-    r"""\balt\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\balt\s*=\s*""" + _ICML_STATUS_HTML_ATTR_VALUE,
     re.IGNORECASE,
 )
-_ICML_STATUS_IN_ATTR_RE = re.compile(r"STATUS\s*[:：]", re.IGNORECASE)
+# Tick 468+: STATUS-looking attr values. Tick 485: require READY/IN_PROGRESS
+# token so truncated unquoted ``title=STATUS: READY`` (HTML parse → value
+# ``STATUS:`` only) does not false-peel and poison demote / header match.
+_ICML_STATUS_IN_ATTR_RE = re.compile(
+    r"STATUS\s*[:：]\s*(?:READY|IN_PROGRESS)\b",
+    re.IGNORECASE,
+)
 # Tick 471: full-line inline SVG badge exports whose ``<title>`` holds STATUS
 # (shields.io / Notion / Docs often paste ``<svg…><title>STATUS: READY</title>…``).
 # Do **not** allowlist-strip ``svg``/``title`` alone — residual ``<text>`` /
@@ -3059,7 +3074,8 @@ _ICML_STATUS_HTML_A_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_A_ATTR_RE = re.compile(
-    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*"""
+    + _ICML_STATUS_HTML_ATTR_VALUE,
     re.IGNORECASE,
 )
 _ICML_STATUS_A_INLINE_OPEN_RE = re.compile(r"<(?:a|button)\b", re.IGNORECASE)
@@ -3082,7 +3098,8 @@ _ICML_STATUS_HTML_SPAN_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_SPAN_ATTR_RE = re.compile(
-    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*"""
+    + _ICML_STATUS_HTML_ATTR_VALUE,
     re.IGNORECASE,
 )
 _ICML_STATUS_SPAN_INLINE_OPEN_RE = re.compile(
@@ -3115,9 +3132,18 @@ _ICML_STATUS_HTML_INLINE_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_INLINE_ATTR_RE = re.compile(
-    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*"""
+    + _ICML_STATUS_HTML_ATTR_VALUE,
     re.IGNORECASE,
 )
+
+
+def _icml_status_html_attr_value(am: re.Match[str]) -> str:
+    """Return quoted (g2/g3) or unquoted (g4) value from ATTR_RE match (Tick 485)."""
+    for g in (am.group(2), am.group(3), am.group(4)):
+        if g is not None:
+            return g.strip()
+    return ""
 _ICML_STATUS_INLINE_INLINE_OPEN_RE = re.compile(
     rf"<(?:{_ICML_STATUS_HTML_INLINE_TAG_NAMES})\b", re.IGNORECASE
 )
@@ -3508,7 +3534,7 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
     by_name: dict[str, str] = {}
     for am in _ICML_STATUS_HTML_IMG_ATTR_RE.finditer(attrs):
         name = (am.group(1) or "").lower()
-        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        val = _icml_status_html_attr_value(am)
         if name and val and name not in by_name:
             by_name[name] = val
     if not by_name:
@@ -3563,7 +3589,7 @@ def _peel_icml_status_html_a_title(line: str) -> str | None:
     by_name: dict[str, str] = {}
     for am in _ICML_STATUS_HTML_A_ATTR_RE.finditer(attrs):
         name = (am.group(1) or "").lower()
-        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        val = _icml_status_html_attr_value(am)
         if name and val and name not in by_name:
             by_name[name] = val
     if not by_name:
@@ -3614,7 +3640,7 @@ def _peel_icml_status_html_span_title(line: str) -> str | None:
     by_name: dict[str, str] = {}
     for am in _ICML_STATUS_HTML_SPAN_ATTR_RE.finditer(attrs):
         name = (am.group(1) or "").lower()
-        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        val = _icml_status_html_attr_value(am)
         if name and val and name not in by_name:
             by_name[name] = val
     if not by_name:
@@ -3664,7 +3690,7 @@ def _peel_icml_status_html_inline_title(line: str) -> str | None:
     by_name: dict[str, str] = {}
     for am in _ICML_STATUS_HTML_INLINE_ATTR_RE.finditer(attrs):
         name = (am.group(1) or "").lower()
-        val = (am.group(2) if am.group(2) is not None else am.group(3) or "").strip()
+        val = _icml_status_html_attr_value(am)
         if name and val and name not in by_name:
             by_name[name] = val
     if not by_name:
@@ -3746,9 +3772,7 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
         attrs = open_m.group(1) or ""
         for am in _ICML_STATUS_HTML_SVG_ATTR_RE.finditer(attrs):
             name = (am.group(1) or "").lower()
-            val = (
-                am.group(2) if am.group(2) is not None else am.group(3) or ""
-            ).strip()
+            val = _icml_status_html_attr_value(am)
             if (
                 name in ("aria-label", "title", "alt", "aria-description")
                 and val
@@ -4133,6 +4157,13 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     ``<span aria-description="STATUS: READY">x</span>`` /
     Prettier ``<p\\n  aria-description="STATUS: READY"\\n>badge</p>``)
     still collapsed to decorative body and missed demote / G4 pack.
+
+    Tick 485: also peel *unquoted* STATUS attr values on those same
+    surfaces (``<p title=STATUS:READY>badge</p>`` /
+    ``<img alt=STATUS:READY src=…>`` /
+    ``<a aria-label=STATUS:IN_PROGRESS>Go</a>``) — minified HTML / some
+    CMS / shields-like exports omit quotes; HTML unquoted values cannot
+    contain whitespace, so spaced ``STATUS: READY`` remains quoted-only.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -4146,19 +4177,19 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             if nxt and nxt != s:
                 s = nxt
                 continue
-        # Tick 481/484: peel <a>/<button> title/aria-label/aria-description
-        # STATUS *before* allowlist strip (Tick 465 strip keeps inner text
-        # only and drops attrs).
+        # Tick 481/484/485: peel <a>/<button> title/aria-label/aria-description
+        # (quoted or unquoted) STATUS *before* allowlist strip (Tick 465 strip
+        # keeps inner text only and drops attrs).
         a_title = _peel_icml_status_html_a_title(s)
         if a_title and a_title != s:
             s = a_title
             continue
-        # Tick 482/484: peel span/label/div/… title/aria-label/aria-description.
+        # Tick 482/484/485: peel span/label/div/… (quoted or unquoted).
         span_title = _peel_icml_status_html_span_title(s)
         if span_title and span_title != s:
             s = span_title
             continue
-        # Tick 483/484: peel p/strong/h1/td/… title/aria-label/aria-description.
+        # Tick 483/484/485: peel p/strong/h1/td/… (quoted or unquoted).
         inline_title = _peel_icml_status_html_inline_title(s)
         if inline_title and inline_title != s:
             s = inline_title
@@ -4169,14 +4200,15 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         if html_peeled != s:
             s = html_peeled.strip()
             continue
-        # Tick 468/470/484: peel img alt / title / aria-label / aria-description.
+        # Tick 468/470/484/485: peel img alt / title / aria-label /
+        # aria-description (quoted or unquoted).
         # Tick 477: multi-line img already collapsed into ``s`` when present.
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt
             continue
-        # Tick 471–475/484: peel SVG title / aria / desc / text / foreignObject
-        # (+ root aria-description).
+        # Tick 471–475/484/485: peel SVG title / aria / desc / text /
+        # foreignObject (+ root aria-description; quoted or unquoted).
         # Tick 476: multi-line SVG already collapsed into ``s`` when present.
         svg_title = _peel_icml_status_html_svg_title(s)
         if svg_title and svg_title != s:
@@ -4724,6 +4756,12 @@ def _demote_icml_ready_status(body: str) -> str:
     ``<span aria-description="STATUS: READY">x</span>`` /
     ``<a aria-description="STATUS: READY">Go</a>``) — pre-484 Tick 481–483
     only covered ``title=`` / ``aria-label=``.
+
+    Tick 485: also rewrite *unquoted* STATUS attrs on those same surfaces
+    (``<p title=STATUS:READY>badge</p>`` /
+    ``<img alt=STATUS:READY src=…>`` /
+    ``<a aria-label=STATUS:IN_PROGRESS>Go</a>``) — pre-485 ATTR peels
+    required quotes, so minified HTML badge exports missed demote / G4 pack.
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []

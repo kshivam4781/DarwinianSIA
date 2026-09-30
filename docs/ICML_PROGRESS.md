@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T16:20Z — Tick 485 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-36db` (anti-churn: recovered tip `f49c` / PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-36db` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 484 left a realistic STATUS hazard on minified HTML / some CMS / shields-like badge exports whose STATUS lives only in *unquoted* attrs with decorative body (`<p title=STATUS:READY>badge</p>` / `<span aria-label=STATUS:READY>x</span>` / `<a aria-description=STATUS:READY>Go</a>` / `<img alt=STATUS:READY src=…>` / Prettier `<p\n  title=STATUS:READY\n>badge</p>`) — Tick 468–484 ATTR peels required quotes, so demote no-op / G4 pack miss READY. Highest leverage without paid spend: **html-unquoted-attr STATUS**.
+
+### What this tick did (ONE step)
+**Tick 485 — html-unquoted-attr STATUS (no API spend):**
+1. Recovered tip ← Tick 484 (`f49c`); confirmed secrets absent; boot `36db` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_ICML_STATUS_HTML_ATTR_VALUE` + `_icml_status_html_attr_value` — ATTR peels on a/button/span/inline/img/svg accept unquoted values; tighten `_ICML_STATUS_IN_ATTR_RE` to require READY/IN_PROGRESS token (no truncated `STATUS:` false-peel from spaced unquoted HTML)
+3. Tests: `test_icml_ready_status_header_accepts_html_unquoted_attr_status` + G4 demote/update unquoted cases + Tick 484 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 484) | After (Tick 485) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `<p title=STATUS:READY>badge</p>` / `<img alt=STATUS:READY>` demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T14:20Z — Tick 484 (automation cron)
 
 ### Status snapshot

@@ -5356,6 +5356,88 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     )
     assert 'aria-description="STATUS: IN_PROGRESS"' not in span_desc_updated
 
+    # (ch) Tick 485: unquoted HTML STATUS attrs must demote —
+    # pre-485 ATTR peels required quotes.
+    from icml_env_checks import _icml_ready_status_header
+
+    unquoted_ready = tmp_path / "html_unquoted_attr_status.md"
+    unquoted_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<p\n"
+        "  title=STATUS:READY\n"
+        ">badge</p>\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(unquoted_ready.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            unquoted_ready,
+            reason="html-unquoted-attr READY",
+            timestamp="t",
+        )
+        is True
+    )
+    unquoted_text = unquoted_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(unquoted_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in unquoted_text.splitlines()
+    )
+    assert "Do not set STATUS: READY until criteria pass." in unquoted_text
+    assert "title=STATUS:READY" not in unquoted_text
+
+    # (ci) Tick 485: <img alt=STATUS:IN_PROGRESS must update to READY.
+    img_uq_upd = tmp_path / "update_html_unquoted_attr_status.md"
+    img_uq_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "<img alt=STATUS:IN_PROGRESS src=b.svg>\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_img_uq = update_icml_ready_from_g4(
+        ready_path=img_uq_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-30T16:10:00Z",
+        allow_ready=True,
+    )
+    assert status_img_uq == "READY"
+    img_uq_updated = img_uq_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(img_uq_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**"
+        for ln in img_uq_updated.splitlines()
+    )
+    assert "alt=STATUS:IN_PROGRESS" not in img_uq_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
