@@ -7343,6 +7343,105 @@ def test_icml_ready_status_header_accepts_html_svg_multiline_status() -> None:
     assert "  <text>ICML badge</text>" in demoted_deco
 
 
+def test_icml_ready_status_header_accepts_html_img_multiline_status() -> None:
+    """Tick 477: pretty-printed multi-line ``<img …>`` STATUS badges.
+
+    Pre-477 Tick 468–470 required a full-line ``<img …>``, so Notion / Docs /
+    Prettier / browser HTML-format exports spanning lines
+    (``<img\\n  alt="STATUS: READY"\\n  src="…"/>`` /
+    ``<img\\n  title="**STATUS: READY**"\\n  src="…">``) missed demote /
+    G4 pack rewrite after Tick 476 only collapsed multi-line ``<svg>``.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _take_icml_status_multiline_img_block,
+    )
+
+    multi_alt = (
+        "<img\n"
+        '  alt="STATUS: READY"\n'
+        '  src="https://img.shields.io/badge/status-ready-green.svg"\n'
+        "/>"
+    )
+    multi_title = (
+        "<img\n"
+        '  title="**STATUS: READY**"\n'
+        '  src="https://cdn.example/badge_(live).svg"\n'
+        ">"
+    )
+    multi_aria = (
+        "<img\n"
+        '  aria-label="STATUS: READY"\n'
+        '  alt="badge"\n'
+        '  src="https://x.com/b.svg"\n'
+        "/>"
+    )
+    multi_prog = (
+        "<img\n"
+        '  alt="STATUS: IN_PROGRESS"\n'
+        '  src="https://img.shields.io/badge/status-wip-yellow.svg"\n'
+        "/>"
+    )
+    multi_deco = (
+        "<img\n"
+        '  alt="ICML badge"\n'
+        '  src="https://x.com/b.svg"\n'
+        "/>"
+    )
+    # Single-line still handled by Tick 468–470 (no multi-line take).
+    one_line = '<img alt="STATUS: READY" src="https://x.com/b.svg" />'
+
+    lines_alt = multi_alt.splitlines()
+    taken = _take_icml_status_multiline_img_block(lines_alt, 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 4
+    assert 'alt="STATUS: READY"' in collapsed
+    assert _take_icml_status_multiline_img_block([one_line], 0) is None
+    # Blank mid-tag must not collapse.
+    assert (
+        _take_icml_status_multiline_img_block(
+            ["<img", "", 'alt="STATUS: READY"', "/>"], 0
+        )
+        is None
+    )
+
+    assert _icml_ready_status_header(multi_alt + "\n") == "READY"
+    assert _icml_ready_status_header(multi_title + "\n") == "READY"
+    assert _icml_ready_status_header(multi_aria + "\n") == "READY"
+    assert _icml_ready_status_header(multi_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(multi_deco + "\n") is None
+    assert _icml_ready_status_header(one_line + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{multi_alt}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    # Whole img block replaced (not an inner-attr rewrite leaving broken markup).
+    assert "<img" not in demoted.lower()
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    # Decorative multi-line img must stay pretty-printed when demote prepends.
+    deco_prose = (
+        "# Title\n\n"
+        f"{multi_deco}\n\n"
+        "Do not set STATUS: READY until criteria pass.\n"
+    )
+    demoted_deco = _demote_icml_ready_status(deco_prose)
+    assert '  alt="ICML badge"' in demoted_deco
+    assert '  src="https://x.com/b.svg"' in demoted_deco
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9182,6 +9281,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-svg-multiline STATUS header (Tick 476)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_svg_multiline_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 477: pretty-printed multi-line ``<img …>`` STATUS badge exports.
+    assert "_take_icml_status_multiline_img_block" in env_checks
+    assert "_ICML_STATUS_IMG_BLOCK_OPEN_RE" in env_checks
+    assert "ICML html-img-multiline STATUS header (Tick 477)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_img_multiline_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

@@ -3016,6 +3016,11 @@ _ICML_STATUS_HTML_SVG_ATTR_RE = _ICML_STATUS_HTML_IMG_ATTR_RE
 # allowlist peels inside multi-line ``<foreignObject>``).
 _ICML_STATUS_SVG_BLOCK_OPEN_RE = re.compile(r"^<svg\b", re.IGNORECASE)
 _ICML_STATUS_SVG_BLOCK_CLOSE_RE = re.compile(r"</svg\s*>", re.IGNORECASE)
+# Tick 477: pretty-printed multi-line ``<img …>`` badge exports (Notion / Docs /
+# Prettier / browser HTML format) open on one line and close later — Tick
+# 468–470 required a *full-line* ``<img …>``, so those stubs missed demote /
+# G4 pack rewrite after Tick 476 only collapsed multi-line ``<svg>``.
+_ICML_STATUS_IMG_BLOCK_OPEN_RE = re.compile(r"^<img\b", re.IGNORECASE)
 
 
 def _take_icml_status_multiline_svg_block(
@@ -3048,18 +3053,57 @@ def _take_icml_status_multiline_svg_block(
     return None
 
 
-def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476).
+def _take_icml_status_multiline_img_block(
+    lines: list[str], start: int
+) -> tuple[int, str] | None:
+    """Tick 477: if ``lines[start]`` opens a multi-line ``<img>``, return ``(n, collapsed)``.
 
-    ``span_lines`` keeps original pretty-printed lines for non-STATUS SVG blocks;
+    Single-line complete ``<img …>`` returns ``None`` (Tick 468–470 peel).
+    Incomplete blocks (no closing ``>`` / blank line mid-tag) return ``None``
+    so originals stay intact. Collapsed form joins stripped lines with a
+    single space so ``_peel_icml_status_html_img_alt`` can run.
+    """
+    if start < 0 or start >= len(lines):
+        return None
+    first = (lines[start] or "").strip()
+    if not _ICML_STATUS_IMG_BLOCK_OPEN_RE.match(first):
+        return None
+    # Already a single-line complete img → leave to existing peel.
+    if _ICML_STATUS_HTML_IMG_TAG_RE.match(first):
+        return None
+    parts = [first]
+    j = start + 1
+    while j < len(lines):
+        raw_j = lines[j] or ""
+        # Blank mid-tag → not a pretty-printed img; leave lines alone.
+        if not raw_j.strip():
+            return None
+        parts.append(raw_j.strip())
+        collapsed = " ".join(p for p in parts if p)
+        if _ICML_STATUS_HTML_IMG_TAG_RE.match(collapsed):
+            return (j - start + 1, collapsed)
+        j += 1
+    return None
+
+
+def _iter_icml_ready_status_units(text: str):
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476/477).
+
+    ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
-    multi-line SVG or the single original line).
+    multi-line SVG / img or the single original line).
     """
     raw = (text or "").lstrip("\ufeff")
     lines = raw.splitlines()
     i = 0
     while i < len(lines):
         block = _take_icml_status_multiline_svg_block(lines, i)
+        if block is not None:
+            n, collapsed = block
+            yield lines[i : i + n], collapsed
+            i += n
+            continue
+        block = _take_icml_status_multiline_img_block(lines, i)
         if block is not None:
             n, collapsed = block
             yield lines[i : i + n], collapsed
@@ -3092,6 +3136,10 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
     Requires a full-line ``<img …>`` (optional self-close ``/>``) with at
     least one quoted ``alt`` / ``title`` / ``aria-label``. Trailing prose
     after the tag refuses the peel. Attribute order is free.
+
+    Tick 477: pretty-printed multi-line ``<img>`` blocks are collapsed by
+    ``_iter_icml_ready_status_units`` / ``_take_icml_status_multiline_img_block``
+    before this helper runs.
     """
     s = (line or "").strip()
     m = _ICML_STATUS_HTML_IMG_TAG_RE.match(s)
@@ -3552,6 +3600,7 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             s = html_peeled.strip()
             continue
         # Tick 468/470: peel img alt / title / aria-label STATUS attrs.
+        # Tick 477: multi-line img already collapsed into ``s`` when present.
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt
@@ -4015,6 +4064,11 @@ def _demote_icml_ready_status(body: str) -> str:
     Tick 476: also rewrite pretty-printed multi-line ``<svg>…</svg>`` STATUS
     blocks as a single normalized header (replace the whole block — pre-476
     only rewrote the inner STATUS-bearing line and left broken SVG markup).
+
+    Tick 477: also rewrite pretty-printed multi-line ``<img …>`` STATUS
+    blocks as a single normalized header (replace the whole block — pre-477
+    Tick 468–470 required a full-line ``<img>``, so Notion/Prettier
+    multi-line badge exports missed demote after Tick 476 SVG-only collapse).
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []

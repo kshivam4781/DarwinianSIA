@@ -1128,11 +1128,17 @@ def demote_icml_ready_file(
     line-at-a-time scan missed multi-line ``<text>STATUS:…</text>`` badges
     (and left broken SVG when only an inner HTML ``<div>STATUS:…</div>``
     line matched inside multi-line ``<foreignObject>``).
+
+    Tick 477: also demote pretty-printed multi-line ``<img …>`` STATUS
+    blocks (Notion / Docs / Prettier HTML format) as a whole unit — pre-477
+    Tick 468–470 required a full-line ``<img>``, so multi-line
+    ``alt``/``title``/``aria-label`` badge exports missed demote after
+    Tick 476 SVG-only collapse.
     """
     if not ready_path.is_file():
         return False
     text = ready_path.read_text(encoding="utf-8")
-    # Tick 443/447–476: header-only (parity with Tick 442 durable merge demote).
+    # Tick 443/447–477: header-only (parity with Tick 442 durable merge demote).
     if _icml_ready_status_header(text) != "READY":
         return False
     ts = timestamp or ""
@@ -1247,16 +1253,17 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for span, match_line in _iter_icml_ready_status_units(text):
-        # Tick 443/447–476: strip() + plain/ATX/bold-label/colon-out/container/
+        # Tick 443/447–477: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
         # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
         # HTML-table / semantic / md-pipe / wrap+pipe / quote / space-colon /
         # task-list / bare-checkbox / ordered-checkbox / token-wrap / md-link /
-        # md-image / html-img / html-picture / html-svg(+multiline) STATUS so
-        # indented / bare / heading / ``**STATUS:** TOKEN`` / ``**STATUS**: TOKEN`` /
-        # ``> **STATUS:…**`` / ``- STATUS:…`` / ``*STATUS*: TOKEN`` /
-        # ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` / ``***STATUS: TOKEN***`` /
-        # ``\\u200b**STATUS:…**`` / ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
+        # md-image / html-img(+multiline) / html-picture / html-svg(+multiline)
+        # STATUS so indented / bare / heading / ``**STATUS:** TOKEN`` /
+        # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
+        # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` /
+        # ``***STATUS: TOKEN***`` / ``\\u200b**STATUS:…**`` /
+        # ``**__STATUS:…__**`` / ``__**STATUS:…**__`` /
         # ``&#8203;**STATUS:…**`` / ``**STATUS:&nbsp;TOKEN**`` /
         # ``<strong>STATUS: TOKEN</strong>`` / ``<span>**STATUS:…**</span>`` /
         # ``<h1>STATUS: TOKEN</h1>`` / `` `STATUS: TOKEN` `` / ``~~STATUS:…~~`` /
@@ -1265,8 +1272,9 @@ def update_icml_ready_from_g4(
         # ``| STATUS: TOKEN |`` / `` `| STATUS: TOKEN |` `` /
         # ``~~| STATUS: TOKEN |~~`` / ``- [ ] STATUS:…`` / ``[ ] STATUS:…`` /
         # ``1. [ ] STATUS:…`` / ``> [x] **STATUS:…**`` / ``STATUS: `TOKEN` `` /
-        # multi-line ``<svg>\\n<text>STATUS:…</text>\\n</svg>`` headers update
-        # (normalize to ``**STATUS:…**``; whole SVG block replaced).
+        # multi-line ``<svg>\\n<text>STATUS:…</text>\\n</svg>`` /
+        # multi-line ``<img\\n  alt="STATUS:…"\\n/>`` headers update
+        # (normalize to ``**STATUS:…**``; whole SVG/img block replaced).
         if _icml_ready_status_line_match(match_line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True
