@@ -3014,8 +3014,18 @@ _ICML_STATUS_HTML_SVG_ATTR_RE = _ICML_STATUS_HTML_IMG_ATTR_RE
 # Tick 471–475 required a *full-line* ``<svg>…</svg>``, so those stubs missed
 # demote / G4 pack rewrite (except accidental ``<div>STATUS:…</div>`` HTML
 # allowlist peels inside multi-line ``<foreignObject>``).
+# Tick 479: also collapse when ``<svg`` opens *mid-line* after wrappers
+# (``<div role="img"><svg\\n  aria-label="STATUS:…"\\n>…</svg></div>`` /
+# ``<a href="…"><svg\\n…`` / ``<figure><svg\\n…``) — Tick 476 required
+# ``^<svg`` at line start, so wrapper-prefixed opens missed demote / G4 pack
+# (Tick 478 twin for img).
 _ICML_STATUS_SVG_BLOCK_OPEN_RE = re.compile(r"^<svg\b", re.IGNORECASE)
+_ICML_STATUS_SVG_INLINE_OPEN_RE = re.compile(r"<svg\b", re.IGNORECASE)
 _ICML_STATUS_SVG_BLOCK_CLOSE_RE = re.compile(r"</svg\s*>", re.IGNORECASE)
+_ICML_STATUS_HTML_SVG_COMPLETE_RE = re.compile(
+    r"<svg\b[^>]*>.*?</svg\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
 # Tick 477: pretty-printed multi-line ``<img …>`` badge exports (Notion / Docs /
 # Prettier / browser HTML format) open on one line and close later — Tick
 # 468–470 required a *full-line* ``<img …>``, so those stubs missed demote /
@@ -3031,19 +3041,29 @@ _ICML_STATUS_HTML_IMG_COMPLETE_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 def _take_icml_status_multiline_svg_block(
     lines: list[str], start: int
 ) -> tuple[int, str] | None:
-    """Tick 476: if ``lines[start]`` opens a multi-line SVG, return ``(n, collapsed)``.
+    """Tick 476/479: if ``lines[start]`` opens a multi-line SVG, return ``(n, collapsed)``.
 
-    Single-line complete ``<svg>…</svg>`` returns ``None`` (Tick 471–475 peel).
-    Incomplete blocks (no closing ``</svg>``) return ``None`` so originals stay
-    intact. Collapsed form joins stripped lines with a single space.
+    Tick 476: line-start ``<svg\\n  …\\n</svg>`` collapses before Tick 471–475
+    peels. Tick 479: also collapse when ``<svg`` opens *mid-line* after HTML
+    wrappers (``<div role="img"><svg\\n  aria-label="STATUS:…"\\n>…</svg></div>`` /
+    ``<a href="…"><svg\\n…`` / ``<figure><svg\\n…``) — pre-479 required
+    ``^<svg`` so wrapper-prefixed opens missed demote / G4 pack (Tick 478 twin).
+
+    Single-line complete ``<svg>…</svg>`` (bare or already wrapped) returns
+    ``None`` (Tick 471–475 peel + allowlist strip). Incomplete blocks (no
+    closing ``</svg>``) return ``None`` so originals stay intact. Collapsed
+    form joins stripped lines with a single space so allowlist strip +
+    ``_peel_icml_status_html_svg_title`` can run.
     """
     if start < 0 or start >= len(lines):
         return None
     first = (lines[start] or "").strip()
-    if not _ICML_STATUS_SVG_BLOCK_OPEN_RE.match(first):
+    # Tick 479: mid-line ``<svg`` after div/a/figure wrappers.
+    if not _ICML_STATUS_SVG_INLINE_OPEN_RE.search(first):
         return None
-    # Already a single-line complete SVG → leave to existing peel.
-    if _ICML_STATUS_HTML_SVG_TAG_RE.match(first):
+    # Already a single-line complete SVG (bare ^<svg…> or wrapped) → leave
+    # to existing Tick 471–475 peels (+ allowlist strip for wrappers).
+    if _ICML_STATUS_HTML_SVG_COMPLETE_RE.search(first):
         return None
     parts = [first]
     j = start + 1
@@ -3051,7 +3071,9 @@ def _take_icml_status_multiline_svg_block(
         parts.append((lines[j] or "").strip())
         if _ICML_STATUS_SVG_BLOCK_CLOSE_RE.search(lines[j] or ""):
             collapsed = " ".join(p for p in parts if p)
-            if not _ICML_STATUS_HTML_SVG_TAG_RE.match(collapsed):
+            # Tick 479: search (not ^match) so wrappers around the svg still
+            # count as a complete multi-line block once ``</svg>`` closes.
+            if not _ICML_STATUS_HTML_SVG_COMPLETE_RE.search(collapsed):
                 return None
             return (j - start + 1, collapsed)
         j += 1
@@ -3103,7 +3125,7 @@ def _take_icml_status_multiline_img_block(
 
 
 def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–478).
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–479).
 
     ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
@@ -3596,6 +3618,11 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     Tick 471–475 single-line SVG peels. Pre-476 required a full-line SVG, so
     those stubs missed demote / G4 pack rewrite (except accidental HTML
     ``<div>STATUS:…</div>`` allowlist peels inside multi-line foreignObject).
+
+    Tick 479: mid-line ``<svg`` after wrappers
+    (``<div role="img"><svg\\n  aria-label="STATUS:…"\\n>…</svg></div>``)
+    is also collapsed by ``_take_icml_status_multiline_svg_block`` before this
+    peel — pre-479 Tick 476 required ``^<svg`` at line start.
     """
     s = (line or "").strip()
     for _ in range(12):

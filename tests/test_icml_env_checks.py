@@ -7536,6 +7536,101 @@ def test_icml_ready_status_header_accepts_html_picture_img_multiline_status() ->
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_html_svg_inline_multiline_status() -> None:
+    """Tick 479: mid-line ``<svg`` after ``<div>``/``<a>``/``<figure>`` multiline.
+
+    Pre-479 Tick 476 required ``^<svg`` at line start, so Notion / Docs /
+    Figma exports that open the svg mid-line after wrappers
+    (``<div role="img"><svg\\n  aria-label="STATUS: READY"\\n>…</svg></div>``)
+    missed demote / G4 pack rewrite after Tick 476 line-start multiline svg
+    + Tick 478 mid-line img twin.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _take_icml_status_multiline_svg_block,
+    )
+
+    div_ml = (
+        '<div role="img"><svg\n'
+        '  aria-label="STATUS: READY"\n'
+        '  width="120" height="20">\n'
+        "<title>Badge</title>\n"
+        "</svg></div>"
+    )
+    a_ml = (
+        '<a href="https://img.shields.io/badge/status-ready-green"><svg\n'
+        '  role="img"\n'
+        '  aria-label="**STATUS: READY**"\n'
+        ">\n"
+        "<title>x</title>\n"
+        "</svg></a>"
+    )
+    figure_ml = (
+        '<figure class="badge"><svg\n'
+        '  title="STATUS: READY"\n'
+        ">\n"
+        "<desc>ICML</desc>\n"
+        "</svg></figure>"
+    )
+    div_prog = (
+        '<div role="img"><svg\n'
+        '  aria-label="STATUS: IN_PROGRESS"\n'
+        ">\n"
+        "<title>WIP</title>\n"
+        "</svg></div>"
+    )
+    # Single-line wrapped svg still handled by Tick 471–475 + allowlist strip.
+    one_line = (
+        '<div role="img"><svg aria-label="STATUS: READY" width="1">'
+        "<title>B</title></svg></div>"
+    )
+    # Line-start multiline (Tick 476) still collapses.
+    line_start = (
+        "<svg\n"
+        '  aria-label="STATUS: READY"\n'
+        ">\n"
+        "<title>Badge</title>\n"
+        "</svg>"
+    )
+
+    lines = div_ml.splitlines()
+    taken = _take_icml_status_multiline_svg_block(lines, 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 5
+    assert 'aria-label="STATUS: READY"' in collapsed
+    assert "<div" in collapsed.lower()
+    assert _take_icml_status_multiline_svg_block([one_line], 0) is None
+    ls_taken = _take_icml_status_multiline_svg_block(line_start.splitlines(), 0)
+    assert ls_taken is not None
+
+    assert _icml_ready_status_header(div_ml + "\n") == "READY"
+    assert _icml_ready_status_header(a_ml + "\n") == "READY"
+    assert _icml_ready_status_header(figure_ml + "\n") == "READY"
+    assert _icml_ready_status_header(div_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(one_line + "\n") == "READY"
+    assert _icml_ready_status_header(line_start + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{div_ml}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    # Whole wrapper+svg block replaced (not an inner-line rewrite).
+    assert "<svg" not in demoted.lower()
+    assert "<div" not in demoted.lower()
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9391,6 +9486,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-picture-img-multiline STATUS header (Tick 478)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_picture_img_multiline_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 479: mid-line ``<svg`` after ``<div>``/``<a>``/``<figure>`` multiline.
+    assert "_ICML_STATUS_SVG_INLINE_OPEN_RE" in env_checks
+    assert "_ICML_STATUS_HTML_SVG_COMPLETE_RE" in env_checks
+    assert "ICML html-svg-inline-multiline STATUS header (Tick 479)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_svg_inline_multiline_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
