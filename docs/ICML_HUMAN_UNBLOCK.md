@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 487:** double-escaped HTML STATUS (`STATUS&amp;#58; READY` / `STATUS&amp;colon;READY` / `&lt;p title=&quot;STATUS: READY&quot;&gt;…`) — `_ICML_STATUS_DOUBLE_AMP_RE` + iterative entity decode (also `&lt;`/`&gt;`/`&quot;`/`&apos;`); closes G4 demote no-op / pack miss after Tick 486 single-layer entities.
 **Tick 486:** HTML-entity STATUS colons (`STATUS&#58; READY` / `STATUS&colon;READY` / `STATUS&#x3a; READY` / `STATUS&#xff1a;READY` / attr `title="STATUS&#58; READY"`) — `_decode_icml_status_html_entities` decodes `&colon;` / `&#58;` / `&#x3a;` / `&#xff1a;` (extends Tick 455 invisibles/nbsp-only); closes G4 demote no-op / pack miss on CMS/XSS-escaped colon stubs.
 **Tick 485:** unquoted HTML STATUS attrs (`<p title=STATUS:READY>badge</p>` / `<img alt=STATUS:READY src=…>`) — ATTR peels accept unquoted values; IN_ATTR requires READY/IN_PROGRESS token; closes demote no-op / pack miss after Tick 484 quoted-only.
 **Tick 478:** HTML picture/figure mid-line multiline ``<img`` STATUS headers (`<picture><source…><img\n  alt="STATUS: READY"\n  src="…"/>\n</picture>` / `<figure><img\n  title="**STATUS: READY**"\n/>`) — `_ICML_STATUS_IMG_INLINE_OPEN_RE` + `_ICML_STATUS_HTML_IMG_COMPLETE_RE` collapse mid-line `<img` opens after wrappers; demote/update replace the whole block — closes G4 demote no-op / pack miss after Tick 477 `^<img`-only.

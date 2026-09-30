@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T20:20Z — Tick 487 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-73f1` (anti-churn: recovered tip `f49c` / PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-73f1` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 486 left a realistic STATUS hazard on CMS/XSS *double*-escaped HTML exports (`STATUS&amp;#58; READY` / `STATUS&amp;colon;READY` / `STATUS&#38;#58; READY` / `&lt;p title=&quot;STATUS: READY&quot;&gt;badge&lt;/p&gt;` / nested `&amp;colon;` in escaped attrs) — Tick 486 decoded only a single entity layer, so demote no-op / G4 pack miss READY. Highest leverage without paid spend: **html-double-escaped STATUS**.
+
+### What this tick did (ONE step)
+**Tick 487 — html-double-escaped STATUS (no API spend):**
+1. Recovered tip ← Tick 486 (`f49c`); confirmed secrets absent; boot `73f1` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_ICML_STATUS_DOUBLE_AMP_RE` — peel `&amp;`/`&#38;`/`&#x26;` only when they prefix another entity body; decode also maps `&lt;`/`&gt;`/`&quot;`/`&apos;`; `_decode_icml_status_html_entities` iterates until stable (preserves Tick 486 `&amp;**STATUS…` contract)
+3. Tests: `test_icml_ready_status_header_accepts_html_double_escaped_status` + G4 demote/update double-escaped cases + Tick 486 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 486) | After (Tick 487) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `STATUS&amp;#58; READY` / `&lt;p title=&quot;STATUS: READY&quot;&gt;` demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T18:20Z — Tick 486 (automation cron)
 
 ### Status snapshot

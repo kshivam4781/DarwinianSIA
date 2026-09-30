@@ -2878,8 +2878,19 @@ _ICML_STATUS_HTML_ENTITY_RE = re.compile(
     r"&(?:"
     r"#(?:x([0-9a-fA-F]+)|([0-9]+))"
     r"|"
-    r"(nbsp|ZeroWidthSpace|zwnj|zwj|shy|colon)"
+    # Tick 487: also lt/gt/quot/apos so double-escaped HTML badge stubs
+    # (``&lt;p title=&quot;STATUS: READY&quot;&gt;…``) become peelable tags.
+    r"(nbsp|ZeroWidthSpace|zwnj|zwj|shy|colon|lt|gt|quot|apos)"
     r");",
+    re.IGNORECASE,
+)
+# Tick 487: CMS/XSS double-escape turns ``&#58;`` into ``&amp;#58;`` (and
+# ``&colon;`` into ``&amp;colon;``). Only peel ``&amp;`` / ``&#38;`` /
+# ``&#x26;`` when they prefix another entity body — leave lone
+# ``&amp;**STATUS…`` untouched (Tick 486 unknown-entity contract).
+_ICML_STATUS_DOUBLE_AMP_RE = re.compile(
+    r"(?:&amp;|&#0*38;|&#x0*26;)"
+    r"(?=(?:#(?:x[0-9a-fA-F]+|[0-9]+)|[a-zA-Z][a-zA-Z0-9]*);)",
     re.IGNORECASE,
 )
 _ICML_STATUS_HTML_NAMED = {
@@ -2890,6 +2901,11 @@ _ICML_STATUS_HTML_NAMED = {
     "shy": "\u00ad",
     # Tick 486: HTML5 ``&colon;`` → ASCII ``:`` (STATUS separator).
     "colon": ":",
+    # Tick 487: markup escapes for double-escaped HTML STATUS badges.
+    "lt": "<",
+    "gt": ">",
+    "quot": '"',
+    "apos": "'",
 }
 _ICML_STATUS_HTML_CODEPOINTS = frozenset(
     {
@@ -2903,6 +2919,11 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
         # Tick 486: ASCII colon + CJK fullwidth colon (Tick 464 char form).
         0x3A,
         0xFF1A,
+        # Tick 487: < > " ' for escaped HTML badge stubs.
+        0x3C,
+        0x3E,
+        0x22,
+        0x27,
     }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
@@ -3910,7 +3931,7 @@ _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486: decode HTML entities for STATUS invisibles / nbsp / colon.
+    """Tick 455/486/487: decode HTML entities for STATUS invisibles / colon / escapes.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -3924,6 +3945,14 @@ def _decode_icml_status_html_entities(line: str) -> str:
     (``STATUS&#58; READY`` / ``STATUS&colon;READY`` /
     ``<p title="STATUS&#58; READY">badge</p>``) — pre-486 invisibles-only
     decode left those stubs unmatched (demote no-op / G4 pack miss READY).
+
+    Tick 487: sanitizers often *double*-escape those entities
+    (``STATUS&amp;#58; READY`` / ``STATUS&amp;colon;READY`` /
+    ``&lt;p title=&quot;STATUS: READY&quot;&gt;badge&lt;/p&gt;``) — pre-487
+    Tick 486 decoded only a single entity layer, so demote no-op / G4 pack
+    miss READY. Peel ``&amp;``/``&#38;``/``&#x26;`` only when they prefix
+    another entity body (preserve Tick 486 ``&amp;**STATUS…`` contract),
+    decode ``&lt;``/``&gt;``/``&quot;``/``&apos;``, and iterate until stable.
     """
 
     def _sub(m: re.Match) -> str:
@@ -3938,7 +3967,15 @@ def _decode_icml_status_html_entities(line: str) -> str:
             return chr(code)
         return m.group(0)
 
-    return _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, line or "")
+    s = line or ""
+    # Bound iterations: ``&amp;amp;#58;``-style stacks are rare; 8 is ample.
+    for _ in range(8):
+        prev = s
+        s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
+        s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
+        if s == prev:
+            break
+    return s
 
 
 def _strip_icml_status_html_tags(line: str) -> str:
