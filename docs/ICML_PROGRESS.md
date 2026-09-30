@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T14:20Z — Tick 484 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-b40c` (anti-churn: recovered tip `f49c` / PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-b40c` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 483 left a realistic STATUS hazard on Notion / Docs / GitHub a11y long-description badge exports whose STATUS lives only in `aria-description=` with decorative body (`<p aria-description="STATUS: READY">badge</p>` / `<span aria-description="STATUS: READY">x</span>` / `<a aria-description="STATUS: READY">Go</a>` / `<img aria-description="STATUS: READY" src="…">` / Prettier `<p\n  aria-description="STATUS: READY"\n>badge</p>`) — Tick 481–483 peeled `title=`/`aria-label=` only, so allowlist strip still collapsed those stubs to decorative body and demote no-op / G4 pack miss READY. Highest leverage without paid spend: **html-aria-description STATUS**.
+
+### What this tick did (ONE step)
+**Tick 484 — html-aria-description STATUS (no API spend):**
+1. Recovered tip ← Tick 483 (`f49c`); confirmed secrets absent; boot `b40c` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. Extended ATTR peels on a/button/span/inline/img/svg to include `aria-description` (preference title→aria-label→aria-description; img also alt-first; svg root attrs include aria-description)
+3. Tests: `test_icml_ready_status_header_accepts_html_aria_description_status` + G4 demote/update aria-description cases + Tick 483 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 483) | After (Tick 484) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `<p aria-description="STATUS:…">badge</p>` / span/a/img demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T12:15Z — Tick 483 (automation cron)
 
 ### Status snapshot

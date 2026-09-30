@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 483: HTML `<p>`/`<strong>`/`<h1>`–`<h6>`/`<td>`/`<th>`/`<li>`/`<blockquote>`/`<section>`/`<article>`/… title/aria-label STATUS (`<p title="STATUS: READY">badge</p>` / `<strong aria-label="STATUS: READY">x</strong>` / Prettier `<p\n  title="STATUS: READY"\n>badge</p>`) — `_peel_icml_status_html_inline_title` peels STATUS attrs *before* allowlist strip; `_take_icml_status_multiline_inline_block` collapses multi-line opens (Tick 482 covered `<span>`/`<label>`/`<div>`/… only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 484: HTML `aria-description` STATUS on allowlisted a11y badges (`<p aria-description="STATUS: READY">badge</p>` / `<span aria-description="STATUS: READY">x</span>` / `<a aria-description="STATUS: READY">Go</a>` / `<img aria-description="STATUS: READY" src="…">` / Prettier `<p\n  aria-description="STATUS: READY"\n>badge</p>`) — ATTR peels now include `aria-description` (preference title→aria-label→aria-description) *before* allowlist strip (Tick 481–483 covered title/aria-label only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

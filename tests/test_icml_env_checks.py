@@ -8033,6 +8033,121 @@ def test_icml_ready_status_header_accepts_html_inline_title_aria_status() -> Non
     assert 'title="STATUS: READY"' not in demoted_h1
 
 
+def test_icml_ready_status_header_accepts_html_aria_description_status() -> None:
+    """Tick 484: HTML aria-description STATUS on allowlisted a11y badges.
+
+    Pre-484 Tick 481–483 peeled ``title=`` / ``aria-label=`` only, so Notion /
+    Docs / GitHub a11y long-description badge exports whose STATUS lives only
+    in ``aria-description=`` with decorative body
+    (``<p aria-description="STATUS: READY">badge</p>`` /
+    ``<span aria-description="STATUS: READY">x</span>`` /
+    ``<a aria-description="STATUS: READY">Go</a>`` /
+    ``<img aria-description="STATUS: READY" src="…">`` /
+    Prettier ``<p\\n  aria-description="STATUS: READY"\\n>badge</p>``)
+    still collapsed to decorative body after allowlist strip and missed
+    demote / G4 pack rewrite.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_a_title,
+        _peel_icml_status_html_img_alt,
+        _peel_icml_status_html_inline_title,
+        _peel_icml_status_html_span_title,
+        _peel_icml_status_html_svg_title,
+        _take_icml_status_multiline_inline_block,
+    )
+
+    flat_p = '<p aria-description="STATUS: READY">badge</p>'
+    span_desc = '<span aria-description="STATUS: READY">x</span>'
+    a_desc = '<a aria-description="STATUS: READY">Go</a>'
+    strong_desc = '<strong aria-description="**STATUS: READY**">x</strong>'
+    img_desc = '<img aria-description="STATUS: READY" src="https://x.com/b.svg">'
+    svg_desc = (
+        '<svg aria-description="STATUS: READY"><title>Badge</title></svg>'
+    )
+    prog = '<p aria-description="STATUS: IN_PROGRESS">badge</p>'
+    body_only = "<p>STATUS: READY</p>"
+    deco_desc_body = '<p aria-description="Click me">STATUS: READY</p>'
+    title_wins = (
+        '<p title="STATUS: IN_PROGRESS" '
+        'aria-description="STATUS: READY">badge</p>'
+    )
+    label_wins = (
+        '<p aria-label="STATUS: IN_PROGRESS" '
+        'aria-description="STATUS: READY">badge</p>'
+    )
+    soft = (
+        "<p\n"
+        '  aria-description="STATUS: READY"\n'
+        ">badge</p>"
+    )
+
+    assert _peel_icml_status_html_inline_title(flat_p) == "STATUS: READY"
+    assert _peel_icml_status_html_span_title(span_desc) == "STATUS: READY"
+    assert _peel_icml_status_html_a_title(a_desc) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(strong_desc) == "**STATUS: READY**"
+    assert _peel_icml_status_html_img_alt(img_desc) == "STATUS: READY"
+    assert _peel_icml_status_html_svg_title(svg_desc) == "STATUS: READY"
+    assert _peel_icml_status_html_inline_title(prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_inline_title(body_only) is None
+    assert _peel_icml_status_html_inline_title(deco_desc_body) is None
+    assert _peel_icml_status_html_inline_title(title_wins) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_inline_title(label_wins) == "STATUS: IN_PROGRESS"
+
+    taken = _take_icml_status_multiline_inline_block(soft.splitlines(), 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 3
+    assert 'aria-description="STATUS: READY"' in collapsed
+    assert _peel_icml_status_html_inline_title(collapsed) == "STATUS: READY"
+
+    assert _icml_ready_status_header(flat_p + "\n") == "READY"
+    assert _icml_ready_status_header(span_desc + "\n") == "READY"
+    assert _icml_ready_status_header(a_desc + "\n") == "READY"
+    assert _icml_ready_status_header(strong_desc + "\n") == "READY"
+    assert _icml_ready_status_header(img_desc + "\n") == "READY"
+    assert _icml_ready_status_header(svg_desc + "\n") == "READY"
+    assert _icml_ready_status_header(prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(soft + "\n") == "READY"
+    assert _icml_ready_status_header(title_wins + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(label_wins + "\n") == "IN_PROGRESS"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{soft}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert 'aria-description="STATUS: READY"' not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_span = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{span_desc}\n"
+    )
+    demoted_span = _demote_icml_ready_status(prose_span)
+    assert _icml_ready_status_header(demoted_span) == "IN_PROGRESS"
+    assert 'aria-description="STATUS: READY"' not in demoted_span
+
+    prose_a = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{a_desc}\n"
+    )
+    demoted_a = _demote_icml_ready_status(prose_a)
+    assert _icml_ready_status_header(demoted_a) == "IN_PROGRESS"
+    assert 'aria-description="STATUS: READY"' not in demoted_a
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9931,6 +10046,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-inline-title-aria STATUS header (Tick 483)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_inline_title_aria_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 484: HTML aria-description STATUS on allowlisted a11y badges.
+    assert "aria-description" in env_checks
+    assert 'r"""\\b(title|aria-label|aria-description)' in env_checks or (
+        "(title|aria-label|aria-description)" in env_checks
+    )
+    assert "ICML html-aria-description STATUS header (Tick 484)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_aria_description_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

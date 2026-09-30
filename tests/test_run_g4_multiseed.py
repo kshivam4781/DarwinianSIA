@@ -5274,6 +5274,88 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     )
     assert 'aria-label="STATUS: IN_PROGRESS"' not in label_updated
 
+    # (cf) Tick 484: HTML aria-description STATUS must demote —
+    # pre-484 Tick 481–483 only peeled title/aria-label.
+    from icml_env_checks import _icml_ready_status_header
+
+    aria_desc_ready = tmp_path / "html_aria_description_status.md"
+    aria_desc_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "<p\n"
+        '  aria-description="STATUS: READY"\n'
+        ">badge</p>\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(aria_desc_ready.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            aria_desc_ready,
+            reason="html-aria-description READY",
+            timestamp="t",
+        )
+        is True
+    )
+    aria_desc_text = aria_desc_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(aria_desc_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in aria_desc_text.splitlines()
+    )
+    assert "Do not set STATUS: READY until criteria pass." in aria_desc_text
+    assert 'aria-description="STATUS: READY"' not in aria_desc_text
+
+    # (cg) Tick 484: <span aria-description= IN_PROGRESS must update to READY.
+    span_desc_upd = tmp_path / "update_html_aria_description_status.md"
+    span_desc_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        '<span aria-description="STATUS: IN_PROGRESS">x</span>\n\n'
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_span_desc = update_icml_ready_from_g4(
+        ready_path=span_desc_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-30T14:10:00Z",
+        allow_ready=True,
+    )
+    assert status_span_desc == "READY"
+    span_desc_updated = span_desc_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(span_desc_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**"
+        for ln in span_desc_updated.splitlines()
+    )
+    assert 'aria-description="STATUS: IN_PROGRESS"' not in span_desc_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

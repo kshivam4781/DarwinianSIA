@@ -2956,8 +2956,10 @@ _ICML_STATUS_HTML_IMG_TAG_RE = re.compile(
 # Tick 468: quoted ``alt=``. Tick 470: also ``title=`` / ``aria-label=`` —
 # a11y / tooltip badge exports often put STATUS there when ``alt`` is a
 # decorative filename or omitted.
+# Tick 484: also ``aria-description=`` (ARIA 1.3 long description) — same
+# allowlist-strip hazard as title/aria-label when body text is decorative.
 _ICML_STATUS_HTML_IMG_ATTR_RE = re.compile(
-    r"""\b(alt|title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(alt|title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
     re.IGNORECASE,
 )
 # Back-compat alias (Tick 468 tests / callers that still import the old name).
@@ -3057,7 +3059,7 @@ _ICML_STATUS_HTML_A_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_A_ATTR_RE = re.compile(
-    r"""\b(title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
     re.IGNORECASE,
 )
 _ICML_STATUS_A_INLINE_OPEN_RE = re.compile(r"<(?:a|button)\b", re.IGNORECASE)
@@ -3080,7 +3082,7 @@ _ICML_STATUS_HTML_SPAN_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_SPAN_ATTR_RE = re.compile(
-    r"""\b(title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
     re.IGNORECASE,
 )
 _ICML_STATUS_SPAN_INLINE_OPEN_RE = re.compile(
@@ -3113,7 +3115,7 @@ _ICML_STATUS_HTML_INLINE_TAG_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_INLINE_ATTR_RE = re.compile(
-    r"""\b(title|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+    r"""\b(title|aria-label|aria-description)\s*=\s*(?:"([^"]*)"|'([^']*)')""",
     re.IGNORECASE,
 )
 _ICML_STATUS_INLINE_INLINE_OPEN_RE = re.compile(
@@ -3511,7 +3513,7 @@ def _peel_icml_status_html_img_alt(line: str) -> str | None:
             by_name[name] = val
     if not by_name:
         return None
-    order = ("alt", "title", "aria-label")
+    order = ("alt", "title", "aria-label", "aria-description")
     for name in order:
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
@@ -3534,9 +3536,9 @@ def _peel_icml_status_html_a_title(line: str) -> str | None:
     ``badge`` / ``Go`` and missed demote / G4 pack rewrite after Tick 470
     covered the same attrs on ``<img>`` and Tick 472 on ``<svg>``.
 
-    Preference: first STATUS-looking value among ``title``, ``aria-label``
-    (in that order). If neither attr carries STATUS, return ``None`` so
-    allowlist strip can surface body-text STATUS
+    Preference: first STATUS-looking value among ``title``, ``aria-label``,
+    ``aria-description`` (in that order; Tick 484). If none carry STATUS,
+    return ``None`` so allowlist strip can surface body-text STATUS
     (``<a title="Click me">STATUS: READY</a>``). Inner body text is ignored
     when attrs carry STATUS (decorative label). Requires a full-line
     ``<a>…</a>`` / ``<button>…</button>`` (optional wrappers already stripped
@@ -3566,7 +3568,7 @@ def _peel_icml_status_html_a_title(line: str) -> str | None:
             by_name[name] = val
     if not by_name:
         return None
-    order = ("title", "aria-label")
+    order = ("title", "aria-label", "aria-description")
     for name in order:
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
@@ -3577,7 +3579,7 @@ def _peel_icml_status_html_a_title(line: str) -> str | None:
 
 
 def _peel_icml_status_html_span_title(line: str) -> str | None:
-    """Tick 482: peel full-line span/label/div/summary/figcaption/mark STATUS attr.
+    """Tick 482/484: peel full-line span/label/div/… STATUS attr.
 
     Tick 465–481 allowlist-strip these tags to *inner text only*. Tick 481
     peeled ``title=`` / ``aria-label=`` on ``<a>``/``<button>`` only, so
@@ -3589,10 +3591,15 @@ def _peel_icml_status_html_span_title(line: str) -> str | None:
     ``<summary title="STATUS: READY">Details</summary>``) collapsed to
     ``badge`` / ``x`` / ``…`` / ``Details`` and missed demote / G4 pack.
 
-    Preference: first STATUS-looking value among ``title``, ``aria-label``
-    (in that order). If neither attr carries STATUS, return ``None`` so
-    allowlist strip can surface body-text STATUS. Multi-line blocks are
-    collapsed by ``_take_icml_status_multiline_span_block`` before this runs.
+    Tick 484: also peel ``aria-description=`` (ARIA 1.3) on the same tags —
+    ``<span aria-description="STATUS: READY">badge</span>`` still collapsed
+    to ``badge`` after Tick 482 only covered ``title`` / ``aria-label``.
+
+    Preference: first STATUS-looking value among ``title``, ``aria-label``,
+    ``aria-description`` (in that order). If none carry STATUS, return
+    ``None`` so allowlist strip can surface body-text STATUS. Multi-line
+    blocks are collapsed by ``_take_icml_status_multiline_span_block``
+    before this runs.
     """
     s = (line or "").strip()
     m = _ICML_STATUS_HTML_SPAN_TAG_RE.match(s)
@@ -3612,7 +3619,7 @@ def _peel_icml_status_html_span_title(line: str) -> str | None:
             by_name[name] = val
     if not by_name:
         return None
-    for name in ("title", "aria-label"):
+    for name in ("title", "aria-label", "aria-description"):
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
@@ -3620,7 +3627,7 @@ def _peel_icml_status_html_span_title(line: str) -> str | None:
 
 
 def _peel_icml_status_html_inline_title(line: str) -> str | None:
-    """Tick 483: peel full-line p/strong/h1/td/… STATUS title/aria-label attr.
+    """Tick 483/484: peel full-line p/strong/h1/td/… STATUS attr.
 
     Tick 465–482 allowlist-strip remaining formatting / container / table /
     semantic tags to *inner text only*. Tick 481 peeled ``a``/``button``;
@@ -3634,10 +3641,15 @@ def _peel_icml_status_html_inline_title(line: str) -> str | None:
     ``<section aria-label="STATUS: READY">…</section>``) collapsed to
     ``badge`` / ``x`` / ``Badge`` / ``…`` and missed demote / G4 pack.
 
-    Preference: first STATUS-looking value among ``title``, ``aria-label``
-    (in that order). If neither attr carries STATUS, return ``None`` so
-    allowlist strip can surface body-text STATUS. Multi-line blocks are
-    collapsed by ``_take_icml_status_multiline_inline_block`` before this runs.
+    Tick 484: also peel ``aria-description=`` on the same remaining tags —
+    ``<p aria-description="STATUS: READY">badge</p>`` still collapsed to
+    ``badge`` after Tick 483 only covered ``title`` / ``aria-label``.
+
+    Preference: first STATUS-looking value among ``title``, ``aria-label``,
+    ``aria-description`` (in that order). If none carry STATUS, return
+    ``None`` so allowlist strip can surface body-text STATUS. Multi-line
+    blocks are collapsed by ``_take_icml_status_multiline_inline_block``
+    before this runs.
     """
     s = (line or "").strip()
     m = _ICML_STATUS_HTML_INLINE_TAG_RE.match(s)
@@ -3657,7 +3669,7 @@ def _peel_icml_status_html_inline_title(line: str) -> str | None:
             by_name[name] = val
     if not by_name:
         return None
-    for name in ("title", "aria-label"):
+    for name in ("title", "aria-label", "aria-description"):
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
@@ -3737,7 +3749,11 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
             val = (
                 am.group(2) if am.group(2) is not None else am.group(3) or ""
             ).strip()
-            if name in ("aria-label", "title", "alt") and val and name not in by_name:
+            if (
+                name in ("aria-label", "title", "alt", "aria-description")
+                and val
+                and name not in by_name
+            ):
                 by_name[name] = val
     nested_titles: list[str] = []
     for tm in _ICML_STATUS_HTML_SVG_TITLE_RE.finditer(s):
@@ -3759,9 +3775,10 @@ def _peel_icml_status_html_svg_title(line: str) -> str | None:
         val = _svg_inner_plain_text(fm.group(1) or "")
         if val:
             nested_foreign.append(val)
-    # STATUS-looking preference: aria-label → root title → nested <title>
-    # → nested <desc> → nested <text> → nested <foreignObject>.
-    for name in ("aria-label", "title", "alt"):
+    # STATUS-looking preference: aria-label → root title → alt →
+    # aria-description → nested <title> → nested <desc> → nested <text> →
+    # nested <foreignObject>.
+    for name in ("aria-label", "title", "alt", "aria-description"):
         val = by_name.get(name)
         if val and _ICML_STATUS_IN_ATTR_RE.search(val):
             return val
@@ -4104,13 +4121,18 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
     opens collapsed by ``_take_icml_status_multiline_span_block``. Pre-482
     Tick 481 only covered ``a``/``button``.
 
-    Tick 483: also peel remaining allowlisted formatting / container /
-    table / semantic tags (``p``/``strong``/``h1``–``h6``/``td``/``th``/
-    ``li``/``blockquote``/``section``/``article``/…) ``title=`` /
-    ``aria-label=`` STATUS *before* allowlist strip (see
-    ``_peel_icml_status_html_inline_title``); multi-line opens collapsed by
-    ``_take_icml_status_multiline_inline_block``. Pre-483 Tick 482 only
-    covered ``span``/``label``/``div``/``summary``/``figcaption``/``mark``.
+    Tick 483: also peel remaining allowlisted ``p``/``strong``/``h1``–``h6``/
+    ``td``/``th``/``li``/``blockquote``/``section``/``article``/… ``title=`` /
+    ``aria-label=`` STATUS *before* allowlist strip — Tick 482 only covered
+    ``span``/``label``/``div``/``summary``/``figcaption``/``mark``.
+
+    Tick 484: also peel ``aria-description=`` (ARIA 1.3) on the same
+    allowlisted a/button/span/inline/img/svg surfaces — Tick 481–483 only
+    covered ``title=`` / ``aria-label=``, so a11y long-description badge
+    exports (``<p aria-description="STATUS: READY">badge</p>`` /
+    ``<span aria-description="STATUS: READY">x</span>`` /
+    Prettier ``<p\\n  aria-description="STATUS: READY"\\n>badge</p>``)
+    still collapsed to decorative body and missed demote / G4 pack.
     """
     s = (line or "").strip()
     for _ in range(12):
@@ -4124,18 +4146,19 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
             if nxt and nxt != s:
                 s = nxt
                 continue
-        # Tick 481: peel <a>/<button> title/aria-label STATUS *before*
-        # allowlist strip (Tick 465 strip keeps inner text only and drops attrs).
+        # Tick 481/484: peel <a>/<button> title/aria-label/aria-description
+        # STATUS *before* allowlist strip (Tick 465 strip keeps inner text
+        # only and drops attrs).
         a_title = _peel_icml_status_html_a_title(s)
         if a_title and a_title != s:
             s = a_title
             continue
-        # Tick 482: peel span/label/div/… title/aria-label before allowlist strip.
+        # Tick 482/484: peel span/label/div/… title/aria-label/aria-description.
         span_title = _peel_icml_status_html_span_title(s)
         if span_title and span_title != s:
             s = span_title
             continue
-        # Tick 483: peel p/strong/h1/td/… title/aria-label before allowlist strip.
+        # Tick 483/484: peel p/strong/h1/td/… title/aria-label/aria-description.
         inline_title = _peel_icml_status_html_inline_title(s)
         if inline_title and inline_title != s:
             s = inline_title
@@ -4146,13 +4169,14 @@ def _strip_icml_status_md_wrappers(line: str) -> str:
         if html_peeled != s:
             s = html_peeled.strip()
             continue
-        # Tick 468/470: peel img alt / title / aria-label STATUS attrs.
+        # Tick 468/470/484: peel img alt / title / aria-label / aria-description.
         # Tick 477: multi-line img already collapsed into ``s`` when present.
         img_alt = _peel_icml_status_html_img_alt(s)
         if img_alt and img_alt != s:
             s = img_alt
             continue
-        # Tick 471–475: peel SVG title / aria / desc / text / foreignObject.
+        # Tick 471–475/484: peel SVG title / aria / desc / text / foreignObject
+        # (+ root aria-description).
         # Tick 476: multi-line SVG already collapsed into ``s`` when present.
         svg_title = _peel_icml_status_html_svg_title(s)
         if svg_title and svg_title != s:
@@ -4317,19 +4341,23 @@ def _strip_icml_status_line_noise(line: str) -> str:
     ``td``/``th``/``li``/``blockquote``/``section``/``article``/… ``title=`` /
     ``aria-label=`` STATUS *before* allowlist strip — Tick 482 only covered
     ``span``/``label``/``div``/``summary``/``figcaption``/``mark``.
+
+    Tick 484: also peel ``aria-description=`` STATUS *before* allowlist strip
+    on the same a/button/span/inline/img/svg surfaces — Tick 481–483 only
+    covered ``title=`` / ``aria-label=``.
     """
     s = _decode_icml_status_html_entities(line or "")
-    # Tick 481: peel a/button title/aria-label before allowlist strip drops attrs.
+    # Tick 481/484: peel a/button title/aria-label/aria-description before strip.
     a_title = _peel_icml_status_html_a_title(s)
     if a_title:
         s = a_title
     else:
-        # Tick 482: peel span/label/div/… title/aria-label before allowlist strip.
+        # Tick 482/484: peel span/label/div/… title/aria-label/aria-description.
         span_title = _peel_icml_status_html_span_title(s)
         if span_title:
             s = span_title
         else:
-            # Tick 483: peel p/strong/h1/td/… title/aria-label before allowlist strip.
+            # Tick 483/484: peel p/strong/h1/td/… title/aria-label/aria-description.
             inline_title = _peel_icml_status_html_inline_title(s)
             if inline_title:
                 s = inline_title
@@ -4688,6 +4716,14 @@ def _demote_icml_ready_status(body: str) -> str:
     ``<h1 title="STATUS: READY">Badge</h1>`` /
     ``<td title="STATUS: READY">x</td>``) — pre-483 Tick 482 only covered
     ``span``/``label``/``div``/``summary``/``figcaption``/``mark``.
+
+    Tick 484: also rewrite ``aria-description=`` STATUS on the same
+    allowlisted a/button/span/inline/img/svg surfaces (decorative body),
+    including Prettier multi-line opens
+    (``<p\\n  aria-description="STATUS: READY"\\n>badge</p>`` /
+    ``<span aria-description="STATUS: READY">x</span>`` /
+    ``<a aria-description="STATUS: READY">Go</a>``) — pre-484 Tick 481–483
+    only covered ``title=`` / ``aria-label=``.
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []
