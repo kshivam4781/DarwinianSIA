@@ -7631,6 +7631,103 @@ def test_icml_ready_status_header_accepts_html_svg_inline_multiline_status() -> 
     assert _icml_ready_richness(prose)[2] == 1
 
 
+def test_icml_ready_status_header_accepts_md_link_softwrap_status() -> None:
+    """Tick 480: soft-wrapped markdown link/image STATUS badges.
+
+    Pre-480 Tick 465–467 required a single-line ``[…](…)`` / ``![…](…)``, so
+    Prettier / GitHub / MD soft-wrap exports spanning lines
+    (``![STATUS: READY](\\nhttps://…/badge.svg)`` /
+    ``[**STATUS: READY**](\\nhttps://x.com/foo_(bar))`` /
+    ``![STATUS: READY]\\n(https://…)``) missed demote / G4 pack rewrite after
+    Tick 476–479 only collapsed multi-line HTML ``<svg>`` / ``<img>``.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _take_icml_status_multiline_md_link_block,
+    )
+
+    img_paren = (
+        "![STATUS: READY](\n"
+        "https://img.shields.io/badge/status-ready-green.svg)"
+    )
+    link_nested = (
+        "[**STATUS: READY**](\n"
+        "https://x.com/foo_(bar))"
+    )
+    img_split_paren = (
+        "![STATUS: READY]\n"
+        "(https://cdn.example/badge_(live).svg)"
+    )
+    img_prog = (
+        "![STATUS: IN_PROGRESS](\n"
+        "https://img.shields.io/badge/status-wip-yellow.svg)"
+    )
+    # Single-line still handled by Tick 465–467 (no multi-line take).
+    one_line = "![STATUS: READY](https://img.shields.io/badge/status-ready-green.svg)"
+    # Incomplete / blank mid-block must not collapse.
+    incomplete = "![STATUS: READY](\nhttps://example.com/badge.svg"
+    blank_mid = "![STATUS: READY](\n\nhttps://example.com/badge.svg)"
+
+    lines = img_paren.splitlines()
+    taken = _take_icml_status_multiline_md_link_block(lines, 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 2
+    assert collapsed == (
+        "![STATUS: READY](https://img.shields.io/badge/status-ready-green.svg)"
+    )
+    assert _take_icml_status_multiline_md_link_block([one_line], 0) is None
+    assert _take_icml_status_multiline_md_link_block(incomplete.splitlines(), 0) is None
+    assert _take_icml_status_multiline_md_link_block(blank_mid.splitlines(), 0) is None
+
+    split_taken = _take_icml_status_multiline_md_link_block(
+        img_split_paren.splitlines(), 0
+    )
+    assert split_taken is not None
+    assert split_taken[1] == "![STATUS: READY](https://cdn.example/badge_(live).svg)"
+
+    nested_taken = _take_icml_status_multiline_md_link_block(
+        link_nested.splitlines(), 0
+    )
+    assert nested_taken is not None
+    assert nested_taken[1] == "[**STATUS: READY**](https://x.com/foo_(bar))"
+
+    assert _icml_ready_status_header(img_paren + "\n") == "READY"
+    assert _icml_ready_status_header(link_nested + "\n") == "READY"
+    assert _icml_ready_status_header(img_split_paren + "\n") == "READY"
+    assert _icml_ready_status_header(img_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(one_line + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{img_paren}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    # Whole soft-wrapped image block replaced (not prepend-only leaving READY alt).
+    assert "![STATUS: READY]" not in demoted
+    assert "STATUS: READY](" not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    # Nested-paren soft-wrap link demotes similarly.
+    link_prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{link_nested}\n"
+    )
+    demoted_link = _demote_icml_ready_status(link_prose)
+    assert _icml_ready_status_header(demoted_link) == "IN_PROGRESS"
+    assert "[**STATUS: READY**]" not in demoted_link
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9494,6 +9591,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-svg-inline-multiline STATUS header (Tick 479)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_svg_inline_multiline_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 480: soft-wrapped markdown link/image STATUS.
+    assert "_take_icml_status_multiline_md_link_block" in env_checks
+    assert "_ICML_STATUS_MD_LINK_OPEN_RE" in env_checks
+    assert "ICML md-link-softwrap STATUS header (Tick 480)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_md_link_softwrap_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

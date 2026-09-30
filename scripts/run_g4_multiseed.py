@@ -1259,7 +1259,7 @@ def update_icml_ready_from_g4(
         # HTML-table / semantic / md-pipe / wrap+pipe / quote / space-colon /
         # task-list / bare-checkbox / ordered-checkbox / token-wrap / md-link /
         # md-image / html-img(+multiline) / html-picture(+midline-img) /
-        # html-svg(+multiline/+midline-wrapper) STATUS so indented / bare / heading /
+        # html-svg(+multiline/+midline-wrapper) / md-link-image soft-wrap STATUS so indented / bare / heading /
         # ``**STATUS:** TOKEN`` /
         # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
         # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` /

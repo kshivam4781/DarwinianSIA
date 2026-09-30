@@ -3036,6 +3036,62 @@ _ICML_STATUS_HTML_SVG_COMPLETE_RE = re.compile(
 _ICML_STATUS_IMG_BLOCK_OPEN_RE = re.compile(r"^<img\b", re.IGNORECASE)
 _ICML_STATUS_IMG_INLINE_OPEN_RE = re.compile(r"<img\b", re.IGNORECASE)
 _ICML_STATUS_HTML_IMG_COMPLETE_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+# Tick 480: soft-wrapped markdown link/image STATUS badges — Prettier / MD
+# formatters / GitHub soft-wrap often break ``![STATUS:…](url)`` /
+# ``[STATUS:…](url)`` after the opening ``(`` (or between ``]`` and ``(``):
+# ``![STATUS: READY](\\nhttps://…/badge_(live).svg)`` /
+# ``[**STATUS: READY**](\\nhttps://x.com/foo_(bar))``. Tick 465–467 required a
+# *single-line* ``[…](…)`` / ``![…](…)``, so those stubs missed demote / G4 pack
+# rewrite after Tick 476–479 only collapsed multi-line HTML ``<svg>`` / ``<img>``.
+_ICML_STATUS_MD_LINK_OPEN_RE = re.compile(r"^!?\[")
+
+
+def _take_icml_status_multiline_md_link_block(
+    lines: list[str], start: int
+) -> tuple[int, str] | None:
+    """Tick 480: if ``lines[start]`` opens a soft-wrapped md link/image, return ``(n, collapsed)``.
+
+    Collapses Prettier / markdown soft-wrap forms such as::
+
+        ![STATUS: READY](
+        https://img.shields.io/badge/status-ready-green.svg)
+
+        [**STATUS: READY**](
+        https://x.com/foo_(bar))
+
+        ![STATUS: READY]
+        (https://cdn.example/badge_(live).svg)
+
+    into a single line so Tick 465–467 ``_peel_icml_status_md_link`` can run.
+    Single-line complete ``![…](…)`` / ``[…](…)`` returns ``None`` (existing peel).
+    Incomplete blocks (no closing ``)``, blank mid-block, >12 lines) return
+    ``None``. Collapsed form joins stripped lines with ``""`` so URL soft-wraps
+    after ``(`` stay contiguous (no inserted spaces).
+    """
+    if start < 0 or start >= len(lines):
+        return None
+    first = (lines[start] or "").strip()
+    if not _ICML_STATUS_MD_LINK_OPEN_RE.match(first):
+        return None
+    # Already a single-line complete link/image → leave to Tick 465–467 peel.
+    if _peel_icml_status_md_link(first) is not None:
+        return None
+    # Must look like an unfinished link/image opener (has ``[``; may lack ``](`` yet).
+    if "[" not in first:
+        return None
+    parts = [first]
+    j = start + 1
+    max_extra = 12
+    while j < len(lines) and (j - start) <= max_extra:
+        raw_j = lines[j] or ""
+        if not raw_j.strip():
+            return None
+        parts.append(raw_j.strip())
+        collapsed = "".join(parts)
+        if _peel_icml_status_md_link(collapsed) is not None:
+            return (j - start + 1, collapsed)
+        j += 1
+    return None
 
 
 def _take_icml_status_multiline_svg_block(
@@ -3125,16 +3181,23 @@ def _take_icml_status_multiline_img_block(
 
 
 def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–479).
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–480).
 
     ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
-    multi-line SVG / img or the single original line).
+    multi-line SVG / img / soft-wrapped md link-image or the single original line).
     """
     raw = (text or "").lstrip("\ufeff")
     lines = raw.splitlines()
     i = 0
     while i < len(lines):
+        # Tick 480: soft-wrapped md link/image before HTML collapses.
+        block = _take_icml_status_multiline_md_link_block(lines, i)
+        if block is not None:
+            n, collapsed = block
+            yield lines[i : i + n], collapsed
+            i += n
+            continue
         block = _take_icml_status_multiline_svg_block(lines, i)
         if block is not None:
             n, collapsed = block
@@ -3338,6 +3401,11 @@ def _peel_icml_status_md_link(line: str) -> str | None:
     the leading ``!`` left those READY stubs unmatched (demote no-op /
     G4 pack miss READY). Image peel reuses the link scanner after stripping
     the leading ``!``.
+
+    Tick 480: pretty-printed / soft-wrapped multi-line ``![…](…)`` /
+    ``[…](…)`` blocks are collapsed by ``_iter_icml_ready_status_units`` /
+    ``_take_icml_status_multiline_md_link_block`` before this helper runs
+    (Prettier / GitHub soft-wrap after ``(``; Tick 465–467 were single-line).
 
     Requires ``](`` immediately after the link/alt text so bare checkboxes
     (``[ ] STATUS``) and Tick 464 bare brackets (``[STATUS:…]``) are never
@@ -4117,6 +4185,18 @@ def _demote_icml_ready_status(body: str) -> str:
     HTML wrappers (``<picture><source…><img\\n  alt="STATUS:…"\\n/></picture>``)
     as a single normalized header — pre-478 Tick 477 required ``^<img``, so
     picture/source-prefixed opens missed demote / G4 pack rewrite.
+
+    Tick 479: also rewrite mid-line ``<svg`` after wrappers
+    (``<div role="img"><svg\\n  aria-label="STATUS:…"\\n>…</svg></div>``)
+    as a single normalized header — pre-479 Tick 476 required ``^<svg``.
+
+    Tick 480: also rewrite soft-wrapped markdown link/image STATUS
+    (``![STATUS: READY](\\nhttps://…/badge.svg)`` /
+    ``[**STATUS: READY**](\\nhttps://x.com/foo_(bar))`` /
+    ``![STATUS: READY]\\n(https://…)``) as a single normalized header —
+    pre-480 Tick 465–467 required a single-line ``[…](…)`` / ``![…](…)``,
+    so Prettier / GitHub soft-wrap badge exports missed demote / G4 pack
+    rewrite after Tick 476–479 HTML-only collapses.
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []

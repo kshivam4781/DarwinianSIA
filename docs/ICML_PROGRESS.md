@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T06:15Z — Tick 480 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-a78c` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 479 left a realistic STATUS hazard on Prettier / GitHub / markdown soft-wrap badge exports whose STATUS header lives in a **soft-wrapped** `![…](url)` / `[…](url)` spanning lines (`![STATUS: READY](\nhttps://…/badge.svg)` / `[**STATUS: READY**](\nhttps://x.com/foo_(bar))` / `![STATUS: READY]\n(https://…)`) — Tick 465–467 required a *single-line* link/image, and Tick 476–479 only collapsed multi-line HTML `<svg>`/`<img>`, so demote no-op / G4 pack miss READY (header=None → prepend-only demote leaving READY alt intact). Highest leverage without paid spend: **md-link-softwrap STATUS**.
+
+### What this tick did (ONE step)
+**Tick 480 — md-link-softwrap STATUS (no API spend):**
+1. Recovered tip ← Tick 479 (`f49c`); confirmed secrets absent; boot `a78c` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_take_icml_status_multiline_md_link_block` + `_ICML_STATUS_MD_LINK_OPEN_RE` — `_iter_icml_ready_status_units` collapses soft-wrapped md link/image opens before Tick 465–467 peels; header / demote / G4 update replace the **whole** soft-wrap block
+3. Tests: `test_icml_ready_status_header_accepts_md_link_softwrap_status` + G4 demote/update softwrap cases + Tick 479 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 479) | After (Tick 480) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| Soft-wrapped `![STATUS:…](\nurl)` demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T04:15Z — Tick 479 (automation cron)
 
 ### Status snapshot

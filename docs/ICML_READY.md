@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 479: HTML mid-line multiline SVG STATUS after wrappers (`<div role="img"><svg\n  aria-label="STATUS: READY"\n>…</svg></div>` / `<a…><svg\n…` / `<figure><svg\n…`) — `_take_icml_status_multiline_svg_block` collapses mid-line `<svg` opens after wrappers (Tick 476 required `^<svg`; Tick 478 twin for img). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 480: soft-wrapped markdown link/image STATUS (`![STATUS: READY](\nhttps://…/badge.svg)` / `[**STATUS:…**](\nhttps://x.com/foo_(bar))` / `![STATUS:…]\n(url)`) — `_take_icml_status_multiline_md_link_block` collapses soft-wrap opens before Tick 465–467 peels (Tick 465–467 required single-line; Tick 476–479 HTML-only). Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
