@@ -1,5 +1,40 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T08:15Z — Tick 481 (automation cron)
+
+### Status snapshot
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Branch: `cursor/icml-epistemic-results-f49c` (anti-churn: commits onto tip PR #337 head)
+- Bootstrap PR (not tip): https://github.com/kshivam4781/DarwinianSIA/pull/338 — `cursor/icml-main-agents-bootstrap`
+- API keys in cloud env: **absent** (NEBIUS + HF/CSV still required; Anthropic optional)
+- Budget: ~$20 ceiling; spend this tick = $0
+- `main_has_icml_tip`: **false** (origin/main still lacks `scripts/icml_cron_entry.sh`)
+- Tip PR #337: open draft (MERGEABLE/CLEAN; GitHub **title+body may still be Tick 336**)
+- Boot branch was greenfield `cursor/icml-epistemic-results-b654` (main SHA); recovered tip `f49c`
+- Secrets re-filed via `request-environment-setup-actions` (Portal Save skipped)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 480 left a realistic STATUS hazard on Notion / Docs / GitHub a11y link badge exports whose STATUS lives only in `<a>`/`<button>` `title=` / `aria-label=` with decorative body text (`<a href="…" title="STATUS: READY">badge</a>` / `<button aria-label="STATUS: READY">Go</button>` / Prettier `<a\n  title="STATUS: READY"\n>badge</a>`) — Tick 465 allowlist-strips `a`/`button` to *inner text only* (`badge`/`Go`), and Tick 470/472 only peeled those attrs on `<img>`/`<svg>`, so demote no-op / G4 pack miss READY (header=None → prepend-only demote leaving READY title intact). Highest leverage without paid spend: **html-a-title-aria STATUS**.
+
+### What this tick did (ONE step)
+**Tick 481 — html-a-title-aria STATUS (no API spend):**
+1. Recovered tip ← Tick 480 (`f49c`); confirmed secrets absent; boot `b654` vs tip `f49c`; re-filed NEBIUS+HF secrets request
+2. `_peel_icml_status_html_a_title` + `_take_icml_status_multiline_a_block` + `_ICML_STATUS_HTML_A_*` — peel STATUS-looking `title=`/`aria-label=` on `<a>`/`<button>` *before* Tick 465 allowlist strip; collapse Prettier multi-line opens; `_strip_icml_status_line_noise` peels attrs before strip so header/demote/G4 update replace the whole block
+3. Tests: `test_icml_ready_status_header_accepts_html_a_title_aria_status` + G4 demote/update a-title/button-aria cases + Tick 480 lock → focused suite green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+### Metrics delta
+| Metric | Before (Tick 480) | After (Tick 481) |
+|--------|-------------------|------------------|
+| Offline D final / gens30 / cost30 / H5 / H2 | 5/5 / 4/5 / 4/5 / 5/5 / 5/5 | unchanged |
+| `<a title="STATUS:…">badge</a>` / `<button aria-label=…>` demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live PRIMARY / G2 | Blocked on NEBIUS + HF/CSV | Still blocked |
+| `ICML_READY` | IN_PROGRESS | IN_PROGRESS |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
+---
 ## 2026-09-30T06:15Z — Tick 480 (automation cron)
 
 ### Status snapshot

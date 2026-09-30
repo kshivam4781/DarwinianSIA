@@ -7728,6 +7728,101 @@ def test_icml_ready_status_header_accepts_md_link_softwrap_status() -> None:
     assert "[**STATUS: READY**]" not in demoted_link
 
 
+def test_icml_ready_status_header_accepts_html_a_title_aria_status() -> None:
+    """Tick 481: HTML ``<a>``/``<button>`` title/aria-label STATUS badges.
+
+    Pre-481 Tick 465 allowlist-stripped ``a``/``button`` to *inner text only*,
+    so Notion / Docs / GitHub a11y badge exports whose STATUS lives only in
+    quoted ``title=`` / ``aria-label=`` with decorative body
+    (``<a href="…" title="STATUS: READY">badge</a>`` /
+    ``<button aria-label="STATUS: READY">Go</button>`` /
+    Prettier multi-line ``<a\\n  title="STATUS: READY"\\n>badge</a>``)
+    missed demote / G4 pack rewrite after Tick 470/472 covered the same
+    attrs on ``<img>``/``<svg>``.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_a_title,
+        _take_icml_status_multiline_a_block,
+    )
+
+    flat_a = '<a href="https://x" title="STATUS: READY">badge</a>'
+    aria_a = '<a href="#" aria-label="**STATUS: READY**">Go</a>'
+    btn = '<button aria-label="STATUS: READY">Go</button>'
+    btn_title = '<button title="STATUS: IN_PROGRESS">x</button>'
+    body_only = '<a href="#">STATUS: READY</a>'
+    deco_title_body = '<a title="Click me" href="#">STATUS: READY</a>'
+    soft = (
+        "<a\n"
+        '  href="https://x"\n'
+        '  title="STATUS: READY"\n'
+        ">badge</a>"
+    )
+    soft_btn = (
+        "<button\n"
+        '  aria-label="STATUS: READY"\n'
+        ">Go</button>"
+    )
+    wrapped = '<p><a href="#" title="STATUS: READY">badge</a></p>'
+    one_line_complete = flat_a
+    incomplete = "<a\n  title=\"STATUS: READY\""
+    blank_mid = "<a\n\n  title=\"STATUS: READY\">badge</a>"
+
+    assert _peel_icml_status_html_a_title(flat_a) == "STATUS: READY"
+    assert _peel_icml_status_html_a_title(aria_a) == "**STATUS: READY**"
+    assert _peel_icml_status_html_a_title(btn) == "STATUS: READY"
+    assert _peel_icml_status_html_a_title(btn_title) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_html_a_title(body_only) is None
+    assert _peel_icml_status_html_a_title(deco_title_body) is None
+    assert _peel_icml_status_html_a_title(wrapped) == "STATUS: READY"
+
+    assert _take_icml_status_multiline_a_block([one_line_complete], 0) is None
+    taken = _take_icml_status_multiline_a_block(soft.splitlines(), 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 4
+    assert 'title="STATUS: READY"' in collapsed
+    assert _peel_icml_status_html_a_title(collapsed) == "STATUS: READY"
+    assert _take_icml_status_multiline_a_block(incomplete.splitlines(), 0) is None
+    assert _take_icml_status_multiline_a_block(blank_mid.splitlines(), 0) is None
+
+    assert _icml_ready_status_header(flat_a + "\n") == "READY"
+    assert _icml_ready_status_header(aria_a + "\n") == "READY"
+    assert _icml_ready_status_header(btn + "\n") == "READY"
+    assert _icml_ready_status_header(btn_title + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(body_only + "\n") == "READY"
+    assert _icml_ready_status_header(deco_title_body + "\n") == "READY"
+    assert _icml_ready_status_header(soft + "\n") == "READY"
+    assert _icml_ready_status_header(soft_btn + "\n") == "READY"
+    assert _icml_ready_status_header(wrapped + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{soft}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    assert 'title="STATUS: READY"' not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_btn = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{btn}\n"
+    )
+    demoted_btn = _demote_icml_ready_status(prose_btn)
+    assert _icml_ready_status_header(demoted_btn) == "IN_PROGRESS"
+    assert "aria-label=\"STATUS: READY\"" not in demoted_btn
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9599,6 +9694,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML md-link-softwrap STATUS header (Tick 480)" in master
     assert (
         "test_icml_ready_status_header_accepts_md_link_softwrap_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 481: HTML <a>/<button> title/aria-label STATUS (+ multiline).
+    assert "_peel_icml_status_html_a_title" in env_checks
+    assert "_take_icml_status_multiline_a_block" in env_checks
+    assert "_ICML_STATUS_HTML_A_COMPLETE_RE" in env_checks
+    assert "ICML html-a-title-aria STATUS header (Tick 481)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_a_title_aria_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
