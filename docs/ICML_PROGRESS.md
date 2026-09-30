@@ -1,5 +1,30 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-09-30T22:20Z — Tick 488 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-8e06` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 487 left a realistic STATUS hazard on JSON/API/CMS string exports whose STATUS separator (and badge markup) is JS/JSON-escaped (`STATUS\u003a READY` / `STATUS\x3a READY` / `STATUS\u003a\u0020READY` / `\u003cp title=\u0022STATUS\u003a READY\u0022\u003ebadge\u003c/p\u003e` / `STATUS\uff1aREADY`) — Tick 487 decoded HTML entities only, so demote no-op / G4 pack miss READY. Highest leverage without paid spend: **js-unicode-escaped STATUS**.
+
+### What we did
+**Tick 488 — js-unicode-escaped STATUS (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `8e06`
+2. `_ICML_STATUS_JS_ESCAPE_RE` — peel allowlisted `\uXXXX`/`\xXX` (colon/space/invisibles/`<>"'`); unknown `\u0041` untouched; preserves Tick 486/487 HTML contracts
+3. Focused tests + G4 demote/update + lock green
+4. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+| Metric | Before (Tick 487) | After (Tick 488) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | unchanged (5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5) | unchanged |
+| `STATUS\u003a READY` / JSON-escaped HTML badge demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live GPQA | blocked (NEBIUS + HF/CSV) | blocked |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
 ## 2026-09-30T20:20Z — Tick 487 (automation cron)
 
 ### Status snapshot

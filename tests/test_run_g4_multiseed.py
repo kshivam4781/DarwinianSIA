@@ -5593,6 +5593,81 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     assert "&lt;p" not in esc_updated
     assert "STATUS&amp;colon;" not in esc_updated
 
+    # (cn) Tick 488: JSON/JS STATUS\u003a READY must demote.
+    js_ready = tmp_path / "js_unicode_escaped_status.md"
+    js_ready.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        "STATUS\\u003a READY\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(js_ready.read_text(encoding="utf-8")) == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            js_ready,
+            reason="js-unicode-escaped READY",
+            timestamp="t",
+        )
+        is True
+    )
+    js_text = js_ready.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(js_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in js_text.splitlines()
+    )
+    assert "STATUS\\u003a READY" not in js_text
+
+    # (co) Tick 488: JSON-escaped HTML badge IN_PROGRESS must update to READY.
+    js_upd = tmp_path / "update_js_unicode_escaped_attr_status.md"
+    js_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "\\u003cp title=\\u0022STATUS\\u003a IN_PROGRESS\\u0022\\u003e"
+        "badge\\u003c/p\\u003e\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_js = update_icml_ready_from_g4(
+        ready_path=js_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-09-30T22:20:00Z",
+        allow_ready=True,
+    )
+    assert status_js == "READY"
+    js_updated = js_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(js_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**" for ln in js_updated.splitlines()
+    )
+    assert "\\u003c" not in js_updated
+    assert "STATUS\\u003a" not in js_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

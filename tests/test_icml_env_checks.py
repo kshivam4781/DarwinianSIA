@@ -8357,6 +8357,109 @@ def test_icml_ready_status_header_accepts_html_double_escaped_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_js_unicode_escaped_status() -> None:
+    """Tick 488: JSON/JS unicode+hex STATUS escapes (``\\u003a`` / ``\\x3a``).
+
+    Pre-488 Tick 487 decoded HTML entities only, so JSON/API/CMS string
+    exports (``STATUS\\u003a READY`` / ``STATUS\\x3a READY`` /
+    ``STATUS\\u003a\\u0020READY`` /
+    ``\\u003cp title=\\u0022STATUS\\u003a READY\\u0022\\u003ebadge\\u003c/p\\u003e`` /
+    ``STATUS\\uff1aREADY``) missed demote / G4 pack rewrite. Unknown
+    ``\\u0041`` stays literal (no false STATUS token). Lone
+    ``&amp;**STATUS…`` contract preserved.
+    """
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_inline_title,
+        _strip_icml_status_line_noise,
+    )
+
+    assert _decode_icml_status_html_entities(r"STATUS\u003a READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\u003A READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\x3a READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\x3A READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\u003a\u0020READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\uff1aREADY") == (
+        "STATUS：READY"
+    )
+    # Unknown codepoint stays literal (cannot invent STATUS).
+    assert _decode_icml_status_html_entities(r"STATUS\u0041 READY") == (
+        r"STATUS\u0041 READY"
+    )
+    # Tick 486/487 contracts unchanged.
+    assert _decode_icml_status_html_entities("&amp;**STATUS: READY**") == (
+        "&amp;**STATUS: READY**"
+    )
+    assert _decode_icml_status_html_entities("STATUS&amp;#58; READY") == (
+        "STATUS: READY"
+    )
+    # JSON-escaped HTML badge → real tags → peelable title.
+    esc = (
+        r"\u003cp title=\u0022STATUS\u003a READY\u0022\u003e"
+        r"badge\u003c/p\u003e"
+    )
+    assert _decode_icml_status_html_entities(esc) == (
+        '<p title="STATUS: READY">badge</p>'
+    )
+    assert (
+        _peel_icml_status_html_inline_title(_decode_icml_status_html_entities(esc))
+        == "STATUS: READY"
+    )
+
+    assert _strip_icml_status_line_noise(r"STATUS\u003a READY") == "STATUS: READY"
+    assert _icml_ready_status_header(r"STATUS\u003a READY" + "\n") == "READY"
+    assert _icml_ready_status_header(r"STATUS\x3a READY" + "\n") == "READY"
+    assert _icml_ready_status_header(r"STATUS\u003a\u0020IN_PROGRESS" + "\n") == (
+        "IN_PROGRESS"
+    )
+    assert _icml_ready_status_header(esc + "\n") == "READY"
+    assert _icml_ready_status_header(r"STATUS\uff1aREADY" + "\n") == "READY"
+    # Unknown escape is not a READY header.
+    assert _icml_ready_status_header(r"STATUS\u0041 READY" + "\n") is None
+    # Prior Tick 487 forms unchanged.
+    assert _icml_ready_status_header("STATUS&amp;#58; READY\n") == "READY"
+    assert _icml_ready_status_header("&amp;**STATUS: READY**\n") is None
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        r"STATUS\u003a READY" + "\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert r"STATUS\u003a READY" not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_esc = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{esc}\n"
+    )
+    demoted_esc = _demote_icml_ready_status(prose_esc)
+    assert _icml_ready_status_header(demoted_esc) == "IN_PROGRESS"
+    assert r"\u003c" not in demoted_esc
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_esc.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -10389,6 +10492,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-double-escaped STATUS header (Tick 487)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_double_escaped_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 488: JSON/JS unicode+hex STATUS escapes (\u003a / \x3a / \u003c…).
+    assert "_ICML_STATUS_JS_ESCAPE_RE" in env_checks
+    assert r"\\u(" in env_checks or "\\\\u(" in env_checks
+    assert "0x20" in env_checks
+    assert "ICML js-unicode-escaped STATUS header (Tick 488)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_js_unicode_escaped_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

@@ -2893,6 +2893,13 @@ _ICML_STATUS_DOUBLE_AMP_RE = re.compile(
     r"(?=(?:#(?:x[0-9a-fA-F]+|[0-9]+)|[a-zA-Z][a-zA-Z0-9]*);)",
     re.IGNORECASE,
 )
+# Tick 488: JSON/JS string escapes for STATUS (``\u003a`` / ``\x3a`` / ``\u003c``).
+# Only peel allowlisted codepoints (colon / space / invisibles / <>"') so
+# ``\u0041`` etc. stay literal and cannot invent a false STATUS token.
+_ICML_STATUS_JS_ESCAPE_RE = re.compile(
+    r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
+    re.IGNORECASE,
+)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -2924,6 +2931,8 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
         0x3E,
         0x22,
         0x27,
+        # Tick 488: ASCII space so ``STATUS\u003a\u0020READY`` peels.
+        0x20,
     }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
@@ -3931,7 +3940,7 @@ _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487: decode HTML entities for STATUS invisibles / colon / escapes.
+    """Tick 455/486/487/488: decode HTML + JSON/JS escapes for STATUS headers.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -3953,6 +3962,13 @@ def _decode_icml_status_html_entities(line: str) -> str:
     miss READY. Peel ``&amp;``/``&#38;``/``&#x26;`` only when they prefix
     another entity body (preserve Tick 486 ``&amp;**STATUS…`` contract),
     decode ``&lt;``/``&gt;``/``&quot;``/``&apos;``, and iterate until stable.
+
+    Tick 488: JSON/API/CMS string exports often escape the STATUS separator
+    (and badge markup) as JS/JSON unicode or hex escapes
+    (``STATUS\\u003a READY`` / ``STATUS\\x3a READY`` /
+    ``\\u003cp title=\\u0022STATUS\\u003a READY\\u0022\\u003e…``) — pre-488
+    HTML-entity-only decode left those stubs unmatched (demote no-op / G4
+    pack miss READY). Peel allowlisted ``\\uXXXX`` / ``\\xXX`` only.
     """
 
     def _sub(m: re.Match) -> str:
@@ -3967,12 +3983,23 @@ def _decode_icml_status_html_entities(line: str) -> str:
             return chr(code)
         return m.group(0)
 
+    def _js_sub(m: re.Match) -> str:
+        u_g, x_g = m.group(1), m.group(2)
+        try:
+            code = int(u_g, 16) if u_g is not None else int(x_g, 16)
+        except (TypeError, ValueError):
+            return m.group(0)
+        if code in _ICML_STATUS_HTML_CODEPOINTS:
+            return chr(code)
+        return m.group(0)
+
     s = line or ""
-    # Bound iterations: ``&amp;amp;#58;``-style stacks are rare; 8 is ample.
+    # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` stacks are rare.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
+        s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
         if s == prev:
             break
     return s
