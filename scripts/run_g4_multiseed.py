@@ -1253,13 +1253,14 @@ def update_icml_ready_from_g4(
     out_lines: list[str] = []
     saw_status = False
     for span, match_line in _iter_icml_ready_status_units(text):
-        # Tick 443/447–477: strip() + plain/ATX/bold-label/colon-out/container/
+        # Tick 443/447–478: strip() + plain/ATX/bold-label/colon-out/container/
         # italic / __ / *** / ZWSP / nested bold↔dunder / HTML-entity / HTML-tag /
         # HTML-heading / md-backtick / strikethrough / HTML-container / Obsidian /
         # HTML-table / semantic / md-pipe / wrap+pipe / quote / space-colon /
         # task-list / bare-checkbox / ordered-checkbox / token-wrap / md-link /
-        # md-image / html-img(+multiline) / html-picture / html-svg(+multiline)
-        # STATUS so indented / bare / heading / ``**STATUS:** TOKEN`` /
+        # md-image / html-img(+multiline) / html-picture(+midline-img) /
+        # html-svg(+multiline) STATUS so indented / bare / heading /
+        # ``**STATUS:** TOKEN`` /
         # ``**STATUS**: TOKEN`` / ``> **STATUS:…**`` / ``- STATUS:…`` /
         # ``*STATUS*: TOKEN`` / ``_STATUS: TOKEN_`` / ``__STATUS: TOKEN__`` /
         # ``***STATUS: TOKEN***`` / ``\\u200b**STATUS:…**`` /
@@ -1273,8 +1274,9 @@ def update_icml_ready_from_g4(
         # ``~~| STATUS: TOKEN |~~`` / ``- [ ] STATUS:…`` / ``[ ] STATUS:…`` /
         # ``1. [ ] STATUS:…`` / ``> [x] **STATUS:…**`` / ``STATUS: `TOKEN` `` /
         # multi-line ``<svg>\\n<text>STATUS:…</text>\\n</svg>`` /
-        # multi-line ``<img\\n  alt="STATUS:…"\\n/>`` headers update
-        # (normalize to ``**STATUS:…**``; whole SVG/img block replaced).
+        # multi-line ``<img\\n  alt="STATUS:…"\\n/>`` /
+        # mid-line ``<picture>…<img\\n  alt="STATUS:…"\\n/></picture>`` headers
+        # update (normalize to ``**STATUS:…**``; whole SVG/img block replaced).
         if _icml_ready_status_line_match(match_line):
             out_lines.append(f"**STATUS: {status}**")
             saw_status = True

@@ -7442,6 +7442,100 @@ def test_icml_ready_status_header_accepts_html_img_multiline_status() -> None:
     assert '  src="https://x.com/b.svg"' in demoted_deco
 
 
+def test_icml_ready_status_header_accepts_html_picture_img_multiline_status() -> None:
+    """Tick 478: mid-line ``<img`` after ``<picture>``/``<source>`` multiline.
+
+    Pre-478 Tick 477 required ``^<img`` at line start, so Notion / Docs /
+    Prettier exports that open the img mid-line after wrappers
+    (``<picture><source…><img\\n  alt="STATUS: READY"\\n  src="…"/>\\n</picture>``)
+    missed demote / G4 pack rewrite after Tick 469 single-line picture +
+    Tick 477 line-start multiline img.
+    """
+    from icml_env_checks import (
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _take_icml_status_multiline_img_block,
+    )
+
+    picture_ml = (
+        '<picture><source srcset="https://cdn.example/badge_(live).webp" '
+        'type="image/webp"><img\n'
+        '  alt="STATUS: READY"\n'
+        '  src="https://img.shields.io/badge/status-ready-green.svg"\n'
+        "/></picture>"
+    )
+    picture_title = (
+        "<picture><img\n"
+        '  title="**STATUS: READY**"\n'
+        '  src="https://cdn.example/badge_(live).svg"\n'
+        "></picture>"
+    )
+    figure_ml = (
+        "<figure><img\n"
+        '  aria-label="STATUS: READY"\n'
+        '  alt="badge"\n'
+        '  src="https://x.com/b.svg"\n'
+        "/></figure>"
+    )
+    picture_prog = (
+        '<picture><source srcset="a.webp"><img\n'
+        '  alt="STATUS: IN_PROGRESS"\n'
+        '  src="https://img.shields.io/badge/status-wip-yellow.svg"\n'
+        "/></picture>"
+    )
+    # Single-line picture+img still handled by Tick 469 (no multi-line take).
+    one_line = (
+        '<picture><img alt="STATUS: READY" '
+        'src="https://x.com/b.svg" /></picture>'
+    )
+
+    lines = picture_ml.splitlines()
+    taken = _take_icml_status_multiline_img_block(lines, 0)
+    assert taken is not None
+    n, collapsed = taken
+    assert n == 4
+    assert 'alt="STATUS: READY"' in collapsed
+    assert "<picture>" in collapsed.lower()
+    assert _take_icml_status_multiline_img_block([one_line], 0) is None
+    # Blank mid-tag must not collapse (Tick 477 parity).
+    assert (
+        _take_icml_status_multiline_img_block(
+            [
+                '<picture><source srcset="a.webp"><img',
+                "",
+                'alt="STATUS: READY"',
+                "/></picture>",
+            ],
+            0,
+        )
+        is None
+    )
+
+    assert _icml_ready_status_header(picture_ml + "\n") == "READY"
+    assert _icml_ready_status_header(picture_title + "\n") == "READY"
+    assert _icml_ready_status_header(figure_ml + "\n") == "READY"
+    assert _icml_ready_status_header(picture_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(one_line + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{picture_ml}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "Do not set STATUS: READY until criteria pass." in demoted
+    # Whole picture+img block replaced (not an inner-line rewrite).
+    assert "<img" not in demoted.lower()
+    assert "<picture" not in demoted.lower()
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+
 def test_icml_ready_status_header_accepts_html_img_alt_status() -> None:
     """Tick 468: HTML ``<img alt="STATUS:…">`` (Notion/Docs badge exports).
 
@@ -9289,6 +9383,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML html-img-multiline STATUS header (Tick 477)" in master
     assert (
         "test_icml_ready_status_header_accepts_html_img_multiline_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 478: mid-line ``<img`` after ``<picture>``/``<source>`` multiline.
+    assert "_ICML_STATUS_IMG_INLINE_OPEN_RE" in env_checks
+    assert "_ICML_STATUS_HTML_IMG_COMPLETE_RE" in env_checks
+    assert "ICML html-picture-img-multiline STATUS header (Tick 478)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_html_picture_img_multiline_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

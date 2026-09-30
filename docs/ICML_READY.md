@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 477: HTML img multiline STATUS (`<img\n  alt="STATUS: READY"\n  src="…"/>` / `<img\n  title="**STATUS: READY**"\n/>`) — collapses pretty-printed multi-line `<img …>` blocks before Tick 468–470 peels; demote/update replace the whole block. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 478: HTML picture/figure mid-line multiline img STATUS (`<picture><source…><img\n  alt="STATUS: READY"\n  src="…"/>\n</picture>` / `<figure><img\n  title="**STATUS: READY**"\n/>`) — `_take_icml_status_multiline_img_block` collapses mid-line `<img` opens after wrappers (Tick 477 required `^<img`); demote/update replace the whole block. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

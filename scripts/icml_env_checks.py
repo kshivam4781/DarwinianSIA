@@ -3020,7 +3020,12 @@ _ICML_STATUS_SVG_BLOCK_CLOSE_RE = re.compile(r"</svg\s*>", re.IGNORECASE)
 # Prettier / browser HTML format) open on one line and close later — Tick
 # 468–470 required a *full-line* ``<img …>``, so those stubs missed demote /
 # G4 pack rewrite after Tick 476 only collapsed multi-line ``<svg>``.
+# Tick 478: also collapse when ``<img`` opens *mid-line* after wrappers
+# (``<picture><source…><img\\n  alt="STATUS:…"\\n/></picture>``) — Tick 477
+# required ``^<img`` at line start, so picture/source-prefixed opens missed.
 _ICML_STATUS_IMG_BLOCK_OPEN_RE = re.compile(r"^<img\b", re.IGNORECASE)
+_ICML_STATUS_IMG_INLINE_OPEN_RE = re.compile(r"<img\b", re.IGNORECASE)
+_ICML_STATUS_HTML_IMG_COMPLETE_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 
 
 def _take_icml_status_multiline_svg_block(
@@ -3056,20 +3061,29 @@ def _take_icml_status_multiline_svg_block(
 def _take_icml_status_multiline_img_block(
     lines: list[str], start: int
 ) -> tuple[int, str] | None:
-    """Tick 477: if ``lines[start]`` opens a multi-line ``<img>``, return ``(n, collapsed)``.
+    """Tick 477/478: if ``lines[start]`` opens a multi-line ``<img>``, return ``(n, collapsed)``.
 
-    Single-line complete ``<img …>`` returns ``None`` (Tick 468–470 peel).
-    Incomplete blocks (no closing ``>`` / blank line mid-tag) return ``None``
-    so originals stay intact. Collapsed form joins stripped lines with a
-    single space so ``_peel_icml_status_html_img_alt`` can run.
+    Tick 477: line-start ``<img\\n  alt=…\\n/>`` collapses before Tick 468–470
+    peels. Tick 478: also collapse when ``<img`` opens *mid-line* after HTML
+    wrappers (``<picture><source…><img\\n  alt="STATUS:…"\\n/></picture>`` /
+    ``<figure><img\\n  title="STATUS:…"\\n></figure>``) — pre-478 required
+    ``^<img`` so picture/source-prefixed opens missed demote / G4 pack.
+
+    Single-line complete ``<img …>`` (bare or already wrapped) returns ``None``
+    (Tick 468–470 / 469 peel). Incomplete blocks (no closing ``>`` / blank
+    line mid-tag) return ``None`` so originals stay intact. Collapsed form
+    joins stripped lines with a single space so allowlist strip +
+    ``_peel_icml_status_html_img_alt`` can run.
     """
     if start < 0 or start >= len(lines):
         return None
     first = (lines[start] or "").strip()
-    if not _ICML_STATUS_IMG_BLOCK_OPEN_RE.match(first):
+    # Tick 478: mid-line ``<img`` after picture/source/figure wrappers.
+    if not _ICML_STATUS_IMG_INLINE_OPEN_RE.search(first):
         return None
-    # Already a single-line complete img → leave to existing peel.
-    if _ICML_STATUS_HTML_IMG_TAG_RE.match(first):
+    # Already a single-line complete img (bare ^<img…> or wrapped) → leave
+    # to existing Tick 468–470 / 469 peels.
+    if _ICML_STATUS_HTML_IMG_COMPLETE_RE.search(first):
         return None
     parts = [first]
     j = start + 1
@@ -3080,14 +3094,16 @@ def _take_icml_status_multiline_img_block(
             return None
         parts.append(raw_j.strip())
         collapsed = " ".join(p for p in parts if p)
-        if _ICML_STATUS_HTML_IMG_TAG_RE.match(collapsed):
+        # Tick 478: search (not ^match) so wrappers around the img still count
+        # as a complete multi-line block once ``<img …>`` closes.
+        if _ICML_STATUS_HTML_IMG_COMPLETE_RE.search(collapsed):
             return (j - start + 1, collapsed)
         j += 1
     return None
 
 
 def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476/477).
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–478).
 
     ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
@@ -4069,6 +4085,11 @@ def _demote_icml_ready_status(body: str) -> str:
     blocks as a single normalized header (replace the whole block — pre-477
     Tick 468–470 required a full-line ``<img>``, so Notion/Prettier
     multi-line badge exports missed demote after Tick 476 SVG-only collapse).
+
+    Tick 478: also rewrite multi-line ``<img`` that opens *mid-line* after
+    HTML wrappers (``<picture><source…><img\\n  alt="STATUS:…"\\n/></picture>``)
+    as a single normalized header — pre-478 Tick 477 required ``^<img``, so
+    picture/source-prefixed opens missed demote / G4 pack rewrite.
     """
     body = (body or "").lstrip("\ufeff")
     out: list[str] = []
