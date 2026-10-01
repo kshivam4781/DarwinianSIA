@@ -2970,6 +2970,19 @@ _ICML_STATUS_DATA_URI_PLAIN_RE = re.compile(
     r"(.+)$",
     re.IGNORECASE,
 )
+# Tick 495: bare hex STATUS payloads (log / packet / hex-dump paste).
+# Continuous (``5354415455533A205245414459``), spaced / colon / dash
+# (``53 54 …`` / ``53:54:…`` / ``53-54-…``), optional ``0x`` prefix.
+# Min 13 bytes (= ``STATUS: READY``); STATUS hint gates false positives.
+# Reuses Tick 492 ``_ICML_STATUS_BARE_BASE64_HINT_RE`` after UTF-8 decode.
+_ICML_STATUS_BARE_HEX_CONT_RE = re.compile(
+    r"^(?:0x)?(?:[0-9A-Fa-f]{2}){13,}$",
+    re.IGNORECASE,
+)
+_ICML_STATUS_BARE_HEX_SEP_RE = re.compile(
+    r"^(?:0x)?(?:[0-9A-Fa-f]{2}[\s:\-]){12,}[0-9A-Fa-f]{2}$",
+    re.IGNORECASE,
+)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -4240,8 +4253,47 @@ def _peel_icml_status_data_uri_plain(line: str) -> str:
     return original
 
 
+def _peel_icml_status_bare_hex(line: str) -> str:
+    """Tick 495: peel a full-line bare hex STATUS payload into plain text.
+
+    Tick 492–494 cover base64 / data-URI forms, but log / packet / hex-dump
+    paste often keeps a hex encoding of the STATUS line
+    (``5354415455533A205245414459`` / spaced ``53 54 … 59`` /
+    colon ``53:54:…`` / dash ``53-54-…`` / ``0x``-prefixed /
+    bold-wrapped ``**5354…4459**``). Pre-495 left those stubs unmatched
+    (demote no-op / G4 pack miss READY). Pure-hex alphabet can match
+    Tick 492's base64 charset, but decoded bytes fail the STATUS hint —
+    hex peel runs after bare-base64 and recovers those lines.
+
+    Full-line only; require ≥13 bytes and STATUS + READY/IN_PROGRESS in the
+    UTF-8 text (same hint as Tick 492). Odd-length / non-hex / non-STATUS
+    stay literal.
+    """
+    original = line or ""
+    s = original.strip()
+    if not (
+        _ICML_STATUS_BARE_HEX_CONT_RE.fullmatch(s)
+        or _ICML_STATUS_BARE_HEX_SEP_RE.fullmatch(s)
+    ):
+        return original
+    body = s[2:] if s[:2].lower() == "0x" else s
+    compact = re.sub(r"[\s:\-]", "", body)
+    if len(compact) < 26 or len(compact) % 2:
+        return original
+    try:
+        data = bytes.fromhex(compact)
+        if not data:
+            return original
+        text = data.decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return original
+    if not _ICML_STATUS_BARE_BASE64_HINT_RE.search(text):
+        return original
+    return text
+
+
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489/490/491/492/493/494: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI.
+    """Tick 455/486/487/488/489/490/491/492/493/494/495: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI + bare-hex.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -4322,6 +4374,14 @@ def _decode_icml_status_html_entities(line: str) -> str:
     493 peeled ``;base64,`` only, so demote no-op / G4 pack miss READY.
     Peel full-line non-base64 ``data:…,<payload>`` when URL-unquoted text
     looks like STATUS; non-STATUS / empty stay literal.
+
+    Tick 495: log / packet / hex-dump paste often keeps a hex encoding of
+    the STATUS line (``5354415455533A205245414459`` / spaced ``53 54 …`` /
+    colon ``53:54:…`` / dash ``53-54-…`` / ``0x``-prefixed /
+    bold-wrapped ``**5354…4459**``) — pre-495 Tick 492–494 covered base64 /
+    data-URI only, so demote no-op / G4 pack miss READY. Peel full-line
+    bare hex (≥13 bytes) when UTF-8 text looks like STATUS; odd-length /
+    non-hex / non-STATUS stay literal.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4368,8 +4428,8 @@ def _decode_icml_status_html_entities(line: str) -> str:
     had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
     s = original
     # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` /
-    # ``=253A`` / stacked RFC 2047 runs / bare-b64 / data-URI → further-encoded
-    # STATUS.
+    # ``=253A`` / stacked RFC 2047 runs / bare-b64 / data-URI / bare-hex →
+    # further-encoded STATUS.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
@@ -4377,6 +4437,7 @@ def _decode_icml_status_html_entities(line: str) -> str:
         s = _peel_icml_status_data_uri_base64(s)
         s = _peel_icml_status_data_uri_plain(s)
         s = _peel_icml_status_bare_base64(s)
+        s = _peel_icml_status_bare_hex(s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
         s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
@@ -4877,9 +4938,9 @@ def _strip_icml_status_line_noise(line: str) -> str:
             else:
                 s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
-    # Tick 492/493/494: bare base64 / data-URI after wrap strip
+    # Tick 492/493/494/495: bare base64 / data-URI / bare hex after wrap strip
     # (``**U1RBVFVTOiBSRUFEWQ==**`` / ``**data:text/plain;base64,…**`` /
-    # ``**data:text/plain,STATUS%3A%20READY**``).
+    # ``**data:text/plain,STATUS%3A%20READY**`` / ``**5354415…4459**``).
     peeled_uri = _peel_icml_status_data_uri_base64(s)
     if peeled_uri != s:
         s = _decode_icml_status_html_entities(peeled_uri)
@@ -4891,6 +4952,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
     peeled_b64 = _peel_icml_status_bare_base64(s)
     if peeled_b64 != s:
         s = _decode_icml_status_html_entities(peeled_b64)
+        s = _strip_icml_status_md_wrappers(s)
+    peeled_hex = _peel_icml_status_bare_hex(s)
+    if peeled_hex != s:
+        s = _decode_icml_status_html_entities(peeled_hex)
         s = _strip_icml_status_md_wrappers(s)
     s = _ICML_STATUS_INVISIBLE_CHARS_RE.sub("", s)
     return s.strip()

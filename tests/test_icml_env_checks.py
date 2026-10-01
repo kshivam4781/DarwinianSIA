@@ -9103,6 +9103,109 @@ def test_icml_ready_status_header_accepts_data_uri_plain_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_bare_hex_status() -> None:
+    """Tick 495: bare hex STATUS payload (log / packet / hex-dump paste).
+
+    Pre-495 Tick 492–494 covered base64 / data-URI only, so hex-encoded
+    STATUS (``5354415455533A205245414459`` / spaced ``53 54 …`` /
+    colon ``53:54:…`` / dash ``53-54-…`` / ``0x``-prefixed /
+    bold-wrapped ``**5354…4459**``) missed demote / G4 pack rewrite.
+    Non-STATUS hex and Tick 486–494 contracts stay untouched.
+    """
+    import base64
+
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_bare_base64,
+        _peel_icml_status_bare_hex,
+        _strip_icml_status_line_noise,
+    )
+
+    hex_ready = "STATUS: READY".encode("utf-8").hex().upper()
+    hex_ready_lower = hex_ready.lower()
+    hex_prog = "STATUS: IN_PROGRESS".encode("utf-8").hex().upper()
+    hex_spaced = " ".join(hex_ready[i : i + 2] for i in range(0, len(hex_ready), 2))
+    hex_colon = ":".join(hex_ready[i : i + 2] for i in range(0, len(hex_ready), 2))
+    hex_dash = "-".join(hex_ready[i : i + 2] for i in range(0, len(hex_ready), 2))
+    hex_0x = "0x" + hex_ready
+    hex_junk = "hello world!!".encode("utf-8").hex().upper()
+    bare_b64 = base64.b64encode(b"STATUS: READY").decode("ascii")
+
+    assert _peel_icml_status_bare_hex(hex_ready) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_ready_lower) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_bare_hex(hex_spaced) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_colon) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_dash) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_0x) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_junk) == hex_junk
+    # Tick 492 owns bare base64 — hex peeler must not claim it.
+    assert _peel_icml_status_bare_hex(bare_b64) == bare_b64
+    assert _peel_icml_status_bare_base64(bare_b64) == "STATUS: READY"
+    # Pure-hex alphabet may match base64 charset but fails STATUS hint.
+    assert _peel_icml_status_bare_base64(hex_ready) == hex_ready
+
+    assert _decode_icml_status_html_entities(hex_ready) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(hex_spaced) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(hex_colon) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(hex_prog) == "STATUS: IN_PROGRESS"
+    assert _decode_icml_status_html_entities(hex_junk) == hex_junk
+
+    assert _strip_icml_status_line_noise(hex_ready) == "STATUS: READY"
+    assert _strip_icml_status_line_noise(f"**{hex_ready}**") == "STATUS: READY"
+    assert _strip_icml_status_line_noise(hex_spaced) == "STATUS: READY"
+    assert _icml_ready_status_header(hex_ready + "\n") == "READY"
+    assert _icml_ready_status_header(hex_ready_lower + "\n") == "READY"
+    assert _icml_ready_status_header(hex_spaced + "\n") == "READY"
+    assert _icml_ready_status_header(hex_colon + "\n") == "READY"
+    assert _icml_ready_status_header(hex_dash + "\n") == "READY"
+    assert _icml_ready_status_header(hex_0x + "\n") == "READY"
+    assert _icml_ready_status_header(hex_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(f"**{hex_ready}**\n") == "READY"
+    assert _icml_ready_status_header(hex_junk + "\n") is None
+    # Tick 492 base64 path still works.
+    assert _icml_ready_status_header(bare_b64 + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{hex_ready}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert hex_ready not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_spaced = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{hex_spaced}\n"
+    )
+    demoted_spaced = _demote_icml_ready_status(prose_spaced)
+    assert _icml_ready_status_header(demoted_spaced) == "IN_PROGRESS"
+    assert hex_spaced not in demoted_spaced
+
+    prose_bold = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"**{hex_ready}**\n"
+    )
+    demoted_bold = _demote_icml_ready_status(prose_bold)
+    assert _icml_ready_status_header(demoted_bold) == "IN_PROGRESS"
+    assert hex_ready not in demoted_bold
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in demoted_bold.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -11199,6 +11302,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML data-URI plain STATUS header (Tick 494)" in master
     assert (
         "test_icml_ready_status_header_accepts_data_uri_plain_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 495: bare hex STATUS (log / packet / hex-dump paste).
+    assert "_ICML_STATUS_BARE_HEX_CONT_RE" in env_checks
+    assert "_ICML_STATUS_BARE_HEX_SEP_RE" in env_checks
+    assert "_peel_icml_status_bare_hex" in env_checks
+    assert "5354415455533A205245414459" in env_checks or "fromhex" in env_checks
+    assert "ICML bare-hex STATUS header (Tick 495)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_bare_hex_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

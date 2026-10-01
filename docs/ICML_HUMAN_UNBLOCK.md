@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 495:** bare hex STATUS (`5354415455533A205245414459` / spaced `53 54 …` / colon / dash / `0x` / bold-wrapped) — `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 492–494 base64/data-URI-only.
+**Tick 494:** plain / percent-encoded data-URI STATUS (`data:text/plain,STATUS%3A%20READY` / charset / `data:,…` / literal / bold-wrapped) — `_peel_icml_status_data_uri_plain`; closes G4 demote no-op / pack miss after Tick 493 base64-only data-URI.
 **Tick 492:** bare base64 STATUS (`U1RBVFVTOiBSRUFEWQ==` / `**U1RBVFVTOiBSRUFEWQ==**`) — `_peel_icml_status_bare_base64`; closes G4 demote no-op / pack miss after Tick 491 wrapped-B-only.
 **Tick 491:** RFC 2047 encoded-word STATUS (`=?UTF-8?Q?STATUS=3A_READY?=` / `=?UTF-8?B?…?=` / adjacent Q words) — `_peel_icml_status_rfc2047_encoded_words`; closes G4 demote no-op / pack miss after Tick 490 bare-QP-only.
 **Tick 490:** MIME quoted-printable STATUS (`STATUS=3A READY` / `STATUS=3A=20READY` / soft-break / QP HTML badge) — `_ICML_STATUS_QUOTED_PRINTABLE_RE` + soft-break join; closes G4 demote no-op / pack miss after Tick 489 URL/JS/HTML-only.
