@@ -1,5 +1,33 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-01T18:20Z — Tick 498 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-3182` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (Tick 497 public mirror already made HF optional). Separately, Gate 2 `## Next` still hard-coded **Accept HF access for Idavidrein/gpqa** as step 2 even after cold-boot rematerialize proved non-synthetic diamond + only NEBIUS in blockers — operators could chase HF while the PRIMARY path is Nebius-only. Highest leverage without paid spend: **NEBIUS-first Gate 2 Next when diamond ready**.
+
+### What we did
+**Tick 498 — Gate 2 Next NEBIUS-first when diamond ready (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `3182`
+2. Cold-boot wipe verified Tick 497: `--fetch-diamond` rematerializes via public mirror → `gpqa_not_synthetic=yes`; blockers = **NEBIUS only**
+3. `gate2_diamond_ready` + `gate2_next_markdown_lines` — when non-synthetic diamond / CSV notes present, Next leads with **NEBIUS_API_KEY** and drops the HF-accept step; otherwise prefer `--from-public-mirror` over HF-only
+4. G3 `--fetch-diamond` help + G4 refuse note aligned to Tick 497 mirror wording
+5. Focused tests green; secrets re-filed (NEBIUS required; HF optional); Portal Save skipped
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 497) | After (Tick 498) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Cold-boot G3 `--fetch-diamond` | works (Tick 497) | re-verified; NEBIUS-only blocker |
+| Gate2 Next when diamond ready | **Accept HF access** step 2 | **NEBIUS-first**; no HF-accept |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack. Optional: undraft+merge tip PR #337 / bootstrap #338; `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`.
+
 ## 2026-10-01T16:15Z — Tick 497 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

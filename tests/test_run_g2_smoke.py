@@ -442,7 +442,52 @@ def test_write_gate2_report(tmp_path: Path) -> None:
     assert "Gate 2 report" in text
     assert "ready_for_live" not in text.lower() or "Ready for live G2" in text
     assert out.with_suffix(".json").is_file()
+    # Diamond not ready → still offers public-mirror materialize (not HF-only).
+    assert "--from-public-mirror" in text
+    assert "Accept HF access for `Idavidrein/gpqa`" not in text
 
+
+def test_gate2_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
+    """Tick 498: non-synthetic diamond → Next leads with NEBIUS, no HF-accept step."""
+    from run_g2_smoke import (
+        PreflightReport,
+        CheckResult,
+        gate2_diamond_ready,
+        gate2_next_markdown_lines,
+        write_gate2_report,
+    )
+
+    report = PreflightReport(
+        timestamp="2026-10-01T18:20:00Z",
+        mode="preflight",
+        run_id=1850,
+        ready_for_dry_run=True,
+        ready_for_live=False,
+        command=["sia", "run", "--dry-run"],
+        blockers=["nebius_key: NEBIUS_API_KEY missing"],
+    )
+    report.checks.append(
+        CheckResult(
+            "gpqa_not_synthetic",
+            True,
+            "real/non-smoke diamond_questions.json present",
+        )
+    )
+    report.checks.append(CheckResult("nebius_key", False, "NEBIUS_API_KEY missing"))
+    report.notes.append("Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv")
+    assert gate2_diamond_ready(report) is True
+    next_text = "\n".join(gate2_next_markdown_lines(report))
+    assert "NEBIUS_API_KEY" in next_text
+    assert "Accept HF access" not in next_text
+    assert "--from-hf" not in next_text
+    assert "--live --run-id <unused> --fetch-diamond" in next_text
+
+    out = tmp_path / "gate2_report.md"
+    write_gate2_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    assert "Add **`NEBIUS_API_KEY`**" in text
+    assert "Accept HF access for `Idavidrein/gpqa`" not in text
+    assert "--from-hf" not in text
 
 def test_preflight_require_hf_for_diamond_blocks_without_hf(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

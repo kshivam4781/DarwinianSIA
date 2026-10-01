@@ -2141,8 +2141,9 @@ def main(argv: list[str] | None = None) -> int:
             ]:
                 report.notes.append(f"secrets: {b}")
             report.notes.append(
-                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
+                "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
+                f"({icml_human_required_secrets_phrase(for_fetch_diamond=True)}); "
+                "Tick 497 public mirror / --diamond-csv / local CSV skips HF."
             )
             write_gate4_report(report, args.report)
             print(

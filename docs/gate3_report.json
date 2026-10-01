@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T16:08:33Z",
+  "timestamp": "2026-10-01T18:14:43Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -10,9 +10,7 @@
     }
   ],
   "blockers": [
-    "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
-    "nebius_key: NEBIUS_API_KEY missing",
-    "hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+    "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
     {
@@ -22,8 +20,8 @@
     },
     {
       "name": "gpqa_not_synthetic",
-      "ok": false,
-      "detail": "synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3"
+      "ok": true,
+      "detail": "real/non-smoke diamond_questions.json present"
     },
     {
       "name": "anthropic_key",
@@ -36,9 +34,9 @@
       "detail": "NEBIUS_API_KEY missing"
     },
     {
-      "name": "hf_token",
-      "ok": false,
-      "detail": "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)"
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
     },
     {
       "name": "budget",
@@ -93,7 +91,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 496 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 497 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "commands": [
@@ -157,8 +155,9 @@
   "h2_by_d_run": {},
   "notes": [
     "Tick 377 hydrate: env=$0.0000 \u2265 ledger=$0.0000; no unbilled local completes",
+    "Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv",
     "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
-    "diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token."
+    "materialized diamond from CSV \u2192 ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']"
   ],
   "executed": false
 }

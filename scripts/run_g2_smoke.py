@@ -732,6 +732,66 @@ def refresh_g2_post_on_ledger_skip(
     return None, note
 
 
+def gate2_diamond_ready(report: PreflightReport) -> bool:
+    """True when preflight already has non-synthetic diamond (Tick 498)."""
+    by_name = {c.name: c.ok for c in report.checks}
+    if by_name.get("gpqa_not_synthetic"):
+        return True
+    # CSV / mirror path may pass before gpqa_not_synthetic is stamped.
+    for note in report.notes:
+        if "auto-wired --diamond-csv" in note or "materialized diamond from CSV" in note:
+            return True
+        if "public OpenAI" in note or "public mirror" in note.lower():
+            return True
+    return False
+
+
+def gate2_next_markdown_lines(report: PreflightReport) -> list[str]:
+    """Build Gate 2 ``## Next`` lines (Tick 498: NEBIUS-first when diamond ready).
+
+    Pre-498 always printed ``Accept HF access for Idavidrein/gpqa`` as step 2,
+    even after Tick 497 rematerialized non-synthetic diamond via the public
+    OpenAI mirror — operators chased HF while the only PRIMARY blocker was
+    ``NEBIUS_API_KEY``.
+    """
+    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    py = icml_python_cli()
+    lines = ["## Next", ""]
+    if gate2_diamond_ready(report):
+        lines.extend(
+            [
+                "1. Add **`NEBIUS_API_KEY`** to the cloud environment "
+                "(HF optional — Tick 497 public mirror / local "
+                "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
+                f"Full phrase: `{secrets_line}`.",
+                "2. Budget-check, then live G2 (unused integer run_id):",
+                f"   `{py} scripts/run_g2_smoke.py --live --run-id <unused> "
+                "--fetch-diamond`",
+                "3. Only then start live G3 B vs D pilot (Section 21.5).",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                f"1. Add `{secrets_line}` to the cloud environment "
+                "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
+                "2. Materialize diamond (prefer public mirror — no HF):",
+                f"   `{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
+                "--n 5 --force`",
+                "   or HF (optional): "
+                f"`{py} scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
+                "   or let the runner autowire: "
+                f"`{py} scripts/run_g2_smoke.py --live --run-id <unused> "
+                "--fetch-diamond`",
+                "3. Re-run live G2 after budget check (unused integer run_id).",
+                "4. Only then start live G3 B vs D pilot (Section 21.5).",
+                "",
+            ]
+        )
+    return lines
+
+
 def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResult] | None = None) -> None:
     lines = [
         "# Gate 2 report — GPQA smoke (Condition D)",
@@ -802,23 +862,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         )
         lines.append("")
 
-    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
-    py = icml_python_cli()
-    lines.extend(
-        [
-            "## Next",
-            "",
-            f"1. Add `{secrets_line}` to the cloud environment "
-            "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
-            "2. Accept HF access for `Idavidrein/gpqa` (or drop local "
-            "`gpqa_diamond.csv`), then either:",
-            f"   `{py} scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
-            f"   or `{py} scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`",
-            "3. Re-run live G2 after budget check (unused integer run_id).",
-            "4. Only then start live G3 B vs D pilot (Section 21.5).",
-            "",
-        ]
-    )
+    lines.extend(gate2_next_markdown_lines(report))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -913,7 +957,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Before preflight/live: replace synthetic smoke with real GPQA diamond "
-            "(HF_TOKEN + accepted Idavidrein/gpqa access, or --diamond-csv)."
+            "(public OpenAI simple-evals mirror auto-fetch — Tick 497; or "
+            "--diamond-csv; or HF_TOKEN + accepted Idavidrein/gpqa access)."
         ),
     )
     p.add_argument(

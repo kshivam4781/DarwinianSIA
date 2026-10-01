@@ -1313,7 +1313,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--fetch-diamond",
         action="store_true",
-        help="Materialize real GPQA diamond before preflight/live (HF or --diamond-csv)",
+        help="Materialize real GPQA diamond before preflight/live "
+        "(public OpenAI mirror — Tick 497; or --diamond-csv; or HF)",
     )
     p.add_argument("--diamond-csv", type=Path, default=None)
     p.add_argument("--diamond-n", type=int, default=DEFAULT_DIAMOND_N)
