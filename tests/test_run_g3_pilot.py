@@ -18,6 +18,8 @@ from run_g3_pilot import (  # noqa: E402
     PilotPlan,
     build_plans,
     build_sia_command,
+    gate3_diamond_ready,
+    gate3_next_markdown_lines,
     parse_int_list,
     run_preflight,
     score_pilot,
@@ -379,6 +381,39 @@ def test_write_gate3_report_preserves_offline_block(tmp_path: Path) -> None:
     payload = json.loads(out.with_suffix(".json").read_text())
     assert payload["ready_for_live"] is False
     assert payload["plans"][0]["b_run_id"] == 1201
+
+
+def test_gate3_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
+    """Tick 500: non-synthetic diamond → Next leads with NEBIUS, no HF chase."""
+    report = G3PreflightReport(
+        timestamp="2026-10-01T22:10:00Z",
+        mode="preflight",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=False,
+        blockers=["nebius_key: NEBIUS_API_KEY missing"],
+    )
+    report.checks.append(
+        CheckResult(
+            "gpqa_not_synthetic",
+            True,
+            "real/non-smoke diamond_questions.json present",
+        )
+    )
+    report.checks.append(CheckResult("nebius_key", False, "NEBIUS_API_KEY missing"))
+    report.notes.append("Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv")
+    assert gate3_diamond_ready(report) is True
+    next_text = "\n".join(gate3_next_markdown_lines(report))
+    assert "NEBIUS_API_KEY" in next_text
+    assert "Accept HF" not in next_text
+    assert "HF_TOKEN or local gpqa_diamond.csv" not in next_text
+    assert "--from-public-mirror" not in next_text
+    assert "run_g3_pilot.py --live" in next_text
+
+    out = tmp_path / "gate3_report.md"
+    write_gate3_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    assert "Add **`NEBIUS_API_KEY`**" in text
+    assert "HF_TOKEN or local gpqa_diamond.csv" not in text
 
 
 def test_main_preflight_refuses_live_without_keys(

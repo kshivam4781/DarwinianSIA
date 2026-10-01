@@ -643,12 +643,14 @@ if lines:
         print(f"  {i}. {line}")
 else:
     print(
-        "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) "
-        "per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+        "Human: add NEBIUS_API_KEY "
+        "(HF optional when diamond ready — Tick 497/500; else HF_TOKEN / "
+        "local gpqa_diamond.csv / public mirror) per docs/ICML_HUMAN_UNBLOCK.md "
+        "(ANTHROPIC optional under Nebius meta)"
     )
 PY
   else
-    echo "Human: add NEBIUS_API_KEY + (HF_TOKEN or local gpqa_diamond.csv) per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
+    echo "Human: add NEBIUS_API_KEY (HF optional when diamond ready — Tick 497/500) per docs/ICML_HUMAN_UNBLOCK.md (ANTHROPIC optional under Nebius meta)"
   fi
 }
 
@@ -670,7 +672,23 @@ case "$MODE" in
       exit 3
     fi
     if [[ "$CRON_LIVE_OK" -ne 1 ]]; then
-      echo "Refusing --live: need API keys + (HF_TOKEN or local diamond CSV) for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+      # Tick 500: when diamond already ready, refuse is NEBIUS-only (not HF chase).
+      _diamond_ready="$(python3 -c "
+import json
+from pathlib import Path
+p = Path('docs/icml_secrets_status.json')
+if not p.is_file():
+    print('false')
+else:
+    d = json.loads(p.read_text(encoding='utf-8'))
+    print('true' if d.get('diamond_ready') else 'false')
+" 2>/dev/null || echo false)"
+      if [[ "${_diamond_ready}" == "true" ]]; then
+        echo "Refusing --live: need NEBIUS_API_KEY (diamond already ready; HF optional — Tick 497/500; see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+      else
+        echo "Refusing --live: need API keys + (HF_TOKEN or local diamond CSV / public mirror) for --fetch-diamond (see docs/ICML_HUMAN_UNBLOCK.md)" >&2
+      fi
+      unset _diamond_ready
       echo "  secrets_ok_for_paid_sia=${SECRETS_OK} fetch_diamond_ok=${FETCH_DIAMOND_OK} diamond_csv=${DIAMOND_CSV:-none}" >&2
       run_preflight
       refresh_secrets_after_preflight

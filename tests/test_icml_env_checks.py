@@ -593,6 +593,33 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     assert merge_idx > 0
 
 
+def test_icml_preflight_diamond_ready_shared_helper() -> None:
+    """Tick 500: shared diamond-ready helper used by Gate2/G3/G4 Next."""
+    from icml_env_checks import icml_preflight_diamond_ready
+
+    assert icml_preflight_diamond_ready(gpqa_not_synthetic_ok=True) is True
+    assert (
+        icml_preflight_diamond_ready(
+            notes=["Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv"]
+        )
+        is True
+    )
+    assert (
+        icml_preflight_diamond_ready(
+            notes=["materialized diamond from CSV → ['/tmp/x']"]
+        )
+        is True
+    )
+    assert (
+        icml_preflight_diamond_ready(
+            notes=["fetched via public OpenAI simple-evals mirror"]
+        )
+        is True
+    )
+    assert icml_preflight_diamond_ready(notes=["unrelated note"]) is False
+    assert icml_preflight_diamond_ready() is False
+
+
 def test_secrets_status_human_next_nebius_first_when_diamond_ready(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

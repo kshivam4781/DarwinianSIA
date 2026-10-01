@@ -22,6 +22,8 @@ from run_g4_multiseed import (  # noqa: E402
     TABLE2_LIVE_H5_MARKER,
     build_g4_plans,
     demote_icml_ready_file,
+    gate4_diamond_ready,
+    gate4_next_markdown_lines,
     h2_skew_pass,
     h5_pass_count,
     h5_validity_pass,
@@ -904,6 +906,40 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert len(payload["plans"]) == 5
     assert "h2_by_d_run" in payload
     assert "ready_status" in payload
+
+
+def test_gate4_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
+    """Tick 500: non-synthetic diamond → Next leads with NEBIUS, no HF chase."""
+    from run_g4_multiseed import G4PreflightReport
+
+    report = G4PreflightReport(
+        timestamp="2026-10-01T22:10:00Z",
+        mode="preflight",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1200 + s, d_run_id=1300 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=False,
+    )
+    report.add(
+        "gpqa_not_synthetic",
+        True,
+        "real/non-smoke diamond_questions.json present",
+    )
+    report.add("nebius_key", False, "NEBIUS_API_KEY missing")
+    report.notes.append("materialized diamond from CSV → ['/workspace/SIA/...']")
+    assert gate4_diamond_ready(report) is True
+    next_text = "\n".join(gate4_next_markdown_lines(report))
+    assert "NEBIUS_API_KEY" in next_text
+    assert "HF_TOKEN or local gpqa_diamond.csv" not in next_text
+    assert "--from-public-mirror" not in next_text
+    assert "run_g4_multiseed.py --live" in next_text
+
+    out = tmp_path / "gate4_report.md"
+    write_gate4_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    assert "Add **`NEBIUS_API_KEY`**" in text
+    assert "HF_TOKEN or local gpqa_diamond.csv" not in text
 
 
 def test_write_gate4_report_h2_surfaces_preferred_share(tmp_path: Path) -> None:

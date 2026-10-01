@@ -99,6 +99,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_preflight_diamond_ready,
     icml_python_cli,
     icml_target_profile_cli_flags,
     probe_icml_meta_profile,
@@ -954,6 +955,70 @@ def _extract_offline_block(existing: str | None) -> str:
     )
 
 
+def gate3_diamond_ready(report: G3PreflightReport) -> bool:
+    """True when G3 preflight already has non-synthetic diamond (Tick 500)."""
+    by_name = {c.name: c.ok for c in report.checks}
+    return icml_preflight_diamond_ready(
+        gpqa_not_synthetic_ok=bool(by_name.get("gpqa_not_synthetic")),
+        notes=list(report.notes),
+    )
+
+
+def gate3_next_markdown_lines(report: G3PreflightReport) -> list[str]:
+    """Build Gate 3 ``## Next`` lines (Tick 500: NEBIUS-first when diamond ready).
+
+    Gate2 Tick 498 already dropped the HF-accept step when diamond was ready;
+    G3 ``## Next`` still always printed ``for_fetch_diamond=True`` secrets
+    (HF_TOKEN or CSV) even after rematerialize — operators could chase HF
+    while the only PRIMARY blocker was ``NEBIUS_API_KEY``.
+    """
+    diamond_ready = gate3_diamond_ready(report)
+    secrets_line = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
+    py = icml_python_cli()
+    lines = ["## Next", ""]
+    if diamond_ready:
+        lines.extend(
+            [
+                "1. Ensure live G2 smoke passed "
+                "(`scripts/run_g2_smoke.py --live ...`).",
+                "2. Add **`NEBIUS_API_KEY`** to the cloud environment "
+                "(HF optional — Tick 497 public mirror / local "
+                "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
+                f"Full phrase: `{secrets_line}`.",
+                "3. Budget-check, then:",
+                f"   `{py} scripts/run_g3_pilot.py --live --seeds 1 "
+                "--b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
+                "4. If pilot looks promising, G4 5-seed under remaining budget "
+                "(never parallel full GPQA).",
+                "5. Do **not** set `ICML_READY` STATUS: READY from offline / "
+                "preflight alone.",
+                "",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "1. Ensure live G2 smoke passed "
+                "(`scripts/run_g2_smoke.py --live ...`).",
+                f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
+                "3. Materialize diamond (prefer public mirror — no HF):",
+                f"   `{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
+                "--n 5 --force`",
+                "4. Budget-check, then:",
+                f"   `{py} scripts/run_g3_pilot.py --live --seeds 1 "
+                "--b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
+                "5. If pilot looks promising, G4 5-seed under remaining budget "
+                "(never parallel full GPQA).",
+                "6. Do **not** set `ICML_READY` STATUS: READY from offline / "
+                "preflight alone.",
+                "",
+            ]
+        )
+    return lines
+
+
 def write_gate3_report(
     report: G3PreflightReport,
     out: Path,
@@ -1075,21 +1140,7 @@ def write_gate3_report(
         )
         lines.append("")
 
-    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
-    py = icml_python_cli()
-    lines.extend(
-        [
-            "## Next",
-            "",
-            "1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`).",
-            f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
-            "3. Budget-check, then:",
-            f"   `{py} scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
-            "4. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).",
-            "5. Do **not** set `ICML_READY` STATUS: READY from offline / preflight alone.",
-            "",
-        ]
-    )
+    lines.extend(gate3_next_markdown_lines(report))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -1357,16 +1408,25 @@ def main(argv: list[str] | None = None) -> int:
                 require_hf_for_diamond=True,
                 allow_stale_tip=allow_stale,
             )
+            diamond_ready = bool(secrets_status.get("diamond_ready"))
+            phrase = icml_human_required_secrets_phrase(
+                for_fetch_diamond=not diamond_ready
+            )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need "
-                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
-                + ")"
+                f"fetch_diamond_ok=false (need {phrase})"
             ]:
                 report.notes.append(f"secrets: {b}")
-            report.notes.append(
-                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
-            )
+            if diamond_ready:
+                report.notes.append(
+                    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
+                    "(diamond already ready; HF optional — Tick 497/500)."
+                )
+            else:
+                report.notes.append(
+                    "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                    "or pass --diamond-csv / drop gpqa_diamond.csv / allow "
+                    "Tick 497 public mirror to skip HF."
+                )
             write_gate3_report(report, args.report)
             print(
                 "G3 refused --live --fetch-diamond "

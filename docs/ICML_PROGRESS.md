@@ -1,5 +1,33 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-01T22:12Z — Tick 500 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-9690` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Tick 498/499 fixed Gate2 Next + secrets `human_next`, but G3/G4 `## Next` and cron live-refuse still printed HF_TOKEN/CSV phrasing even when diamond was already ready — operators could chase HF while the only PRIMARY blocker is Nebius. Highest leverage without paid spend: **G3/G4 Next + cron refuse NEBIUS-first when diamond ready** (Gate2 Tick 498 / secrets Tick 499 parity).
+
+### What we did
+**Tick 500 — G3/G4 Next + cron refuse NEBIUS-first when diamond ready (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `9690`
+2. Shared `icml_preflight_diamond_ready` in `icml_env_checks.py`; Gate2 uses it
+3. `gate3_next_markdown_lines` / `gate4_next_markdown_lines` — NEBIUS-first when diamond ready; mirror materialize when not
+4. G3/G4 live-refuse notes + `icml_cron_entry.sh` refuse / human_next fallback diamond-aware
+5. Focused tests green (5); secrets re-filed (NEBIUS required; HF optional); Portal Save skipped
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 499) | After (Tick 500) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| G3/G4 `## Next` when diamond ready | HF_TOKEN or CSV phrasing | **NEBIUS-first**; no HF chase |
+| Cron live-refuse when diamond ready | "need API keys + HF/CSV" | **NEBIUS-only** message |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack. Optional: undraft+merge tip PR #337 / bootstrap #338; `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`.
+
 ## 2026-10-01T20:25Z — Tick 499 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

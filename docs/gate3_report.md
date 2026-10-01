@@ -73,7 +73,7 @@
 ## Next
 
 1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`).
-2. Add `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta) + (HF_TOKEN or local gpqa_diamond.csv or public OpenAI mirror auto-fetch — Tick 497)` (see `docs/ICML_HUMAN_UNBLOCK.md`).
+2. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 3. Budget-check, then:
    `python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`
 4. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).

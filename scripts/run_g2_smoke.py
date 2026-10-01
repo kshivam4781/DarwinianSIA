@@ -83,6 +83,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_preflight_diamond_ready,
     icml_python_cli,
     icml_target_profile_cli_flags,
     probe_icml_meta_profile,
@@ -733,17 +734,12 @@ def refresh_g2_post_on_ledger_skip(
 
 
 def gate2_diamond_ready(report: PreflightReport) -> bool:
-    """True when preflight already has non-synthetic diamond (Tick 498)."""
+    """True when preflight already has non-synthetic diamond (Tick 498/500)."""
     by_name = {c.name: c.ok for c in report.checks}
-    if by_name.get("gpqa_not_synthetic"):
-        return True
-    # CSV / mirror path may pass before gpqa_not_synthetic is stamped.
-    for note in report.notes:
-        if "auto-wired --diamond-csv" in note or "materialized diamond from CSV" in note:
-            return True
-        if "public OpenAI" in note or "public mirror" in note.lower():
-            return True
-    return False
+    return icml_preflight_diamond_ready(
+        gpqa_not_synthetic_ok=bool(by_name.get("gpqa_not_synthetic")),
+        notes=list(report.notes),
+    )
 
 
 def gate2_next_markdown_lines(report: PreflightReport) -> list[str]:
@@ -754,10 +750,13 @@ def gate2_next_markdown_lines(report: PreflightReport) -> list[str]:
     OpenAI mirror — operators chased HF while the only PRIMARY blocker was
     ``NEBIUS_API_KEY``.
     """
-    secrets_line = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    diamond_ready = gate2_diamond_ready(report)
+    secrets_line = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
     py = icml_python_cli()
     lines = ["## Next", ""]
-    if gate2_diamond_ready(report):
+    if diamond_ready:
         lines.extend(
             [
                 "1. Add **`NEBIUS_API_KEY`** to the cloud environment "

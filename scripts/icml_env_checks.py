@@ -343,6 +343,27 @@ def icml_human_required_secrets_phrase(
     return api
 
 
+def icml_preflight_diamond_ready(
+    *,
+    gpqa_not_synthetic_ok: bool | None = None,
+    notes: list[str] | None = None,
+) -> bool:
+    """True when preflight already has non-synthetic diamond (Tick 498/500).
+
+    Shared by Gate2/G3/G4 ``## Next`` builders so operators are not told to
+    chase HF after Tick 497 public-mirror / on-disk diamond materialize.
+    """
+    if gpqa_not_synthetic_ok:
+        return True
+    for note in notes or []:
+        low = note.lower()
+        if "auto-wired --diamond-csv" in note or "materialized diamond from csv" in low:
+            return True
+        if "public openai" in low or "public mirror" in low:
+            return True
+    return False
+
+
 def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
     """True when the resolved meta profile is loadable and coherent for ICML.
 

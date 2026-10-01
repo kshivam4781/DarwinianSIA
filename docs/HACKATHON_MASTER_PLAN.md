@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-01 (Section 21 ICML; Tick 499 secrets human_next NEBIUS-first when diamond ready; Tick 498 Gate2 Next NEBIUS-first; Tick 497 public GPQA diamond mirror; …)
+**Last updated:** 2026-10-01 (Section 21 ICML; Tick 500 G3/G4 Next + cron refuse NEBIUS-first when diamond ready; Tick 499 secrets human_next NEBIUS-first; Tick 498 Gate2 Next NEBIUS-first; Tick 497 public GPQA diamond mirror; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -949,6 +949,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML public GPQA diamond mirror (Tick 497) | **DONE** | OpenAI simple-evals CSV via `--from-public-mirror` / `ensure_diamond_csv_via_public_mirror`; autowire + secrets status; HF optional when mirror/CSV present; live blocker = NEBIUS only; focused tests |
 | ICML Gate2 Next NEBIUS-first (Tick 498) | **DONE** | `gate2_diamond_ready` + `gate2_next_markdown_lines` — drop HF-accept Next when diamond ready; G3 help + G4 refuse note mirror-aligned; cold-boot rematerialize re-verified |
 | ICML secrets human_next NEBIUS-first (Tick 499) | **DONE** | `diamond_ready` (CSV / mirror / non-synthetic on disk) drops HF-accept `human_next` + HF blocker; `fetch_diamond_ok` accepts on-disk non-synthetic; portal_save_target external_actions NEBIUS-first; Gate2 Tick 498 parity |
+| ICML G3/G4 Next + cron refuse NEBIUS-first (Tick 500) | **DONE** | Shared `icml_preflight_diamond_ready`; G3/G4 `## Next` NEBIUS-first when diamond ready; cron live-refuse + G3/G4 fetch refuse notes diamond-aware; focused tests |
 | ICML C-array/comma-hex STATUS header (Tick 496) | **DONE** | `_ICML_STATUS_BARE_HEX_COMMA_RE` + `_ICML_STATUS_BARE_HEX_0X_BYTE_RE` + `_ICML_STATUS_BARE_HEX_CARRAY_RE` extend `_peel_icml_status_bare_hex` — peel `53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped; leave Tick 495 contracts + non-STATUS untouched; closes demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only; focused C-array-hex + G4 demote/update + lock tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
@@ -1155,7 +1156,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on NEBIUS + HF/CSV (Anthropic optional under Tick 289 meta); Tick 268–475 stack ready; next: secrets (+ optional merge tip→main / AGENTS bootstrap), then `bash scripts/icml_cron_entry.sh` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on **NEBIUS_API_KEY** (HF optional via Tick 497 mirror; Anthropic optional under Tick 289 meta); Tick 268–500 stack ready; next: add NEBIUS, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
