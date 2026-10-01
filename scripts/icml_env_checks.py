@@ -114,6 +114,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
+from urllib.parse import unquote
 
 UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
@@ -2956,6 +2957,19 @@ _ICML_STATUS_DATA_URI_RE = re.compile(
     r"([A-Za-z0-9+/]{12,}={0,2})$",
     re.IGNORECASE,
 )
+# Tick 494: non-base64 / percent-encoded data-URI STATUS
+# (``data:text/plain,STATUS%3A%20READY`` / ``data:,STATUS:%20READY`` /
+# ``data:text/plain;charset=utf-8,STATUS%3A%20READY``). Tick 493 only peeled
+# ``;base64,`` forms — plain RFC 2397 payloads still missed demote / G4 pack.
+# Negative lookahead skips ``;base64`` so Tick 493 owns that path.
+_ICML_STATUS_DATA_URI_PLAIN_RE = re.compile(
+    r"^data:"
+    r"(?:[-\w.]+/[-\w.+]*)?"
+    r"(?:;(?!base64(?:;|,|=|$))[-\w.]+(?:=[-\w.]+)?)*"
+    r","
+    r"(.+)$",
+    re.IGNORECASE,
+)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -4170,8 +4184,9 @@ def _peel_icml_status_data_uri_base64(line: str) -> str:
     Pre-493 left those stubs unmatched (demote no-op / G4 pack miss READY).
 
     Full-line only; decode via ``_peel_icml_status_bare_base64`` so invalid /
-    non-STATUS payloads stay literal. Non-base64 ``data:text/plain,…`` and
-    non-data URLs stay untouched.
+    non-STATUS payloads stay literal. Non-base64 ``data:text/plain,…`` stay
+    for Tick 494 ``_peel_icml_status_data_uri_plain``; non-data URLs stay
+    untouched.
     """
     original = line or ""
     s = original.strip()
@@ -4185,8 +4200,48 @@ def _peel_icml_status_data_uri_base64(line: str) -> str:
     return peeled
 
 
+def _peel_icml_status_data_uri_plain(line: str) -> str:
+    """Tick 494: peel a full-line non-base64 ``data:…,<payload>`` STATUS.
+
+    Tick 493 peels ``data:…;base64,…`` only, so chat / email / Markdown badge
+    paste of percent-encoded or literal plain data URIs
+    (``data:text/plain,STATUS%3A%20READY`` /
+    ``data:text/plain;charset=utf-8,STATUS%3A%20READY`` /
+    ``data:,STATUS:%20READY`` / ``data:text/plain,STATUS: READY`` /
+    bold-wrapped ``**data:text/plain,STATUS%3A%20READY**``) still missed
+    demote / G4 pack rewrite. Pre-494 left those stubs unmatched.
+
+    Full-line only; URL-unquote the payload (RFC 2397), then accept only when
+    STATUS + READY/IN_PROGRESS appear (same hint as Tick 492). Also try bare
+    base64 on the raw payload when wrappers omitted ``;base64``. Non-STATUS /
+    empty payloads and ``;base64,`` forms (Tick 493) stay untouched.
+    """
+    original = line or ""
+    s = original.strip()
+    m = _ICML_STATUS_DATA_URI_PLAIN_RE.fullmatch(s)
+    if not m:
+        return original
+    payload = m.group(1)
+    if not payload:
+        return original
+    had_pct = "%" in payload
+    try:
+        decoded = unquote(payload, errors="strict")
+    except (ValueError, UnicodeDecodeError):
+        return original
+    if had_pct:
+        decoded = decoded.replace("+", " ")
+    if _ICML_STATUS_BARE_BASE64_HINT_RE.search(decoded):
+        return decoded
+    # Optional: ``data:text/plain,U1RBVFVTOiBSRUFEWQ==`` without ``;base64``.
+    peeled_b64 = _peel_icml_status_bare_base64(payload.strip())
+    if peeled_b64 != payload.strip():
+        return peeled_b64
+    return original
+
+
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489/490/491/492/493: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI.
+    """Tick 455/486/487/488/489/490/491/492/493/494: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -4256,7 +4311,17 @@ def _decode_icml_status_html_entities(line: str) -> str:
     bold-wrapped ``**data:…;base64,…**``) — pre-493 Tick 492 peeled bare
     base64 only, so demote no-op / G4 pack miss READY. Peel full-line
     ``data:…;base64,…`` only when the payload peels to STATUS; non-base64
-    data URIs / invalid / non-STATUS payloads stay literal.
+    data URIs stay for Tick 494; invalid / non-STATUS payloads stay literal.
+
+    Tick 494: chat / email / Markdown badge paste also uses *plain*
+    (non-base64) RFC 2397 data URIs with percent-encoded or literal STATUS
+    (``data:text/plain,STATUS%3A%20READY`` /
+    ``data:text/plain;charset=utf-8,STATUS%3A%20READY`` /
+    ``data:,STATUS:%20READY`` / ``data:text/plain,STATUS: READY`` /
+    bold-wrapped ``**data:text/plain,STATUS%3A%20READY**``) — pre-494 Tick
+    493 peeled ``;base64,`` only, so demote no-op / G4 pack miss READY.
+    Peel full-line non-base64 ``data:…,<payload>`` when URL-unquoted text
+    looks like STATUS; non-STATUS / empty stay literal.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4310,6 +4375,7 @@ def _decode_icml_status_html_entities(line: str) -> str:
         s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
         s = _peel_icml_status_rfc2047_encoded_words(s)
         s = _peel_icml_status_data_uri_base64(s)
+        s = _peel_icml_status_data_uri_plain(s)
         s = _peel_icml_status_bare_base64(s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
@@ -4811,11 +4877,16 @@ def _strip_icml_status_line_noise(line: str) -> str:
             else:
                 s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
-    # Tick 492/493: bare base64 / data-URI after wrap strip
-    # (``**U1RBVFVTOiBSRUFEWQ==**`` / ``**data:text/plain;base64,…**``).
+    # Tick 492/493/494: bare base64 / data-URI after wrap strip
+    # (``**U1RBVFVTOiBSRUFEWQ==**`` / ``**data:text/plain;base64,…**`` /
+    # ``**data:text/plain,STATUS%3A%20READY**``).
     peeled_uri = _peel_icml_status_data_uri_base64(s)
     if peeled_uri != s:
         s = _decode_icml_status_html_entities(peeled_uri)
+        s = _strip_icml_status_md_wrappers(s)
+    peeled_plain = _peel_icml_status_data_uri_plain(s)
+    if peeled_plain != s:
+        s = _decode_icml_status_html_entities(peeled_plain)
         s = _strip_icml_status_md_wrappers(s)
     peeled_b64 = _peel_icml_status_bare_base64(s)
     if peeled_b64 != s:

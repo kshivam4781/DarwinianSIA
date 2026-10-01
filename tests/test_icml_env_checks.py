@@ -8960,12 +8960,11 @@ def test_icml_ready_status_header_accepts_data_uri_base64_status() -> None:
     assert _decode_icml_status_html_entities(uri_qp) == "STATUS: READY"
     assert _peel_icml_status_data_uri_base64(uri_junk) == uri_junk
     assert _decode_icml_status_html_entities(uri_junk) == uri_junk
+    # Tick 493 base64 peeler still leaves plain data URIs untouched; Tick 494
+    # peels them via ``_peel_icml_status_data_uri_plain`` / decode.
     assert _peel_icml_status_data_uri_base64(uri_plain) == uri_plain
-    # URL percent peel still runs inside decode (Tick 489) — non-base64 data
-    # URIs are not STATUS headers even after ``%20`` → space.
-    decoded_plain = _decode_icml_status_html_entities(uri_plain)
-    assert decoded_plain == "data:text/plain,STATUS: READY"
-    assert _icml_ready_status_header(decoded_plain + "\n") is None
+    assert _decode_icml_status_html_entities(uri_plain) == "STATUS: READY"
+    assert _icml_ready_status_header(uri_plain + "\n") == "READY"
     # Tick 492 bare base64 contract unchanged.
     assert _peel_icml_status_bare_base64(bare_ready) == "STATUS: READY"
     assert _peel_icml_status_data_uri_base64(bare_ready) == bare_ready
@@ -8977,7 +8976,6 @@ def test_icml_ready_status_header_accepts_data_uri_base64_status() -> None:
     assert _icml_ready_status_header(f"**{uri_ready}**\n") == "READY"
     assert _icml_ready_status_header(uri_qp + "\n") == "READY"
     assert _icml_ready_status_header(uri_junk + "\n") is None
-    assert _icml_ready_status_header(uri_plain + "\n") is None
 
     prose = (
         "# Title\n\n"
@@ -9002,6 +9000,103 @@ def test_icml_ready_status_header_accepts_data_uri_base64_status() -> None:
     demoted_bold = _demote_icml_ready_status(prose_bold)
     assert _icml_ready_status_header(demoted_bold) == "IN_PROGRESS"
     assert uri_ready not in demoted_bold
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in demoted_bold.splitlines()
+    )
+
+
+def test_icml_ready_status_header_accepts_data_uri_plain_status() -> None:
+    """Tick 494: plain / percent-encoded data-URI STATUS (no ;base64).
+
+    Pre-494 Tick 493 peeled ``data:…;base64,…`` only, so chat / email /
+    Markdown badge paste of ``data:text/plain,STATUS%3A%20READY`` /
+    ``data:text/plain;charset=utf-8,STATUS%3A%20READY`` /
+    ``data:,STATUS:%20READY`` / ``data:text/plain,STATUS: READY`` /
+    bold-wrapped ``**data:text/plain,STATUS%3A%20READY**`` missed demote /
+    G4 pack rewrite. Non-STATUS plain data URIs and Tick 486–493 contracts
+    stay untouched.
+    """
+    import base64
+
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_data_uri_base64,
+        _peel_icml_status_data_uri_plain,
+        _strip_icml_status_line_noise,
+    )
+
+    uri_pct = "data:text/plain,STATUS%3A%20READY"
+    uri_charset = "data:text/plain;charset=utf-8,STATUS%3A%20READY"
+    uri_empty = "data:,STATUS:%20READY"
+    uri_literal = "data:text/plain,STATUS: READY"
+    uri_prog = "data:text/plain,STATUS%3A%20IN_PROGRESS"
+    uri_plus = "data:text/plain,STATUS%3A+READY"
+    uri_junk = "data:text/plain,hello%20world"
+    uri_b64 = (
+        "data:text/plain;base64,"
+        + base64.b64encode(b"STATUS: READY").decode("ascii")
+    )
+
+    assert _peel_icml_status_data_uri_plain(uri_pct) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_plain(uri_charset) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_plain(uri_empty) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_plain(uri_literal) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_plain(uri_prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_data_uri_plain(uri_plus) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_plain(uri_junk) == uri_junk
+    # Tick 493 owns ``;base64,`` — plain peeler must not claim it.
+    assert _peel_icml_status_data_uri_plain(uri_b64) == uri_b64
+    assert _peel_icml_status_data_uri_base64(uri_b64) == "STATUS: READY"
+    assert _peel_icml_status_data_uri_base64(uri_pct) == uri_pct
+
+    assert _decode_icml_status_html_entities(uri_pct) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(uri_charset) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(uri_empty) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(uri_prog) == "STATUS: IN_PROGRESS"
+    # Tick 489 may peel ``%20`` inside non-STATUS data URIs; wrapper stays
+    # (plain peeler refuses without STATUS hint).
+    decoded_junk = _decode_icml_status_html_entities(uri_junk)
+    assert decoded_junk == "data:text/plain,hello world"
+    assert _icml_ready_status_header(decoded_junk + "\n") is None
+
+    assert _strip_icml_status_line_noise(uri_pct) == "STATUS: READY"
+    assert _strip_icml_status_line_noise(f"**{uri_pct}**") == "STATUS: READY"
+    assert _icml_ready_status_header(uri_pct + "\n") == "READY"
+    assert _icml_ready_status_header(uri_charset + "\n") == "READY"
+    assert _icml_ready_status_header(uri_empty + "\n") == "READY"
+    assert _icml_ready_status_header(uri_literal + "\n") == "READY"
+    assert _icml_ready_status_header(uri_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(f"**{uri_pct}**\n") == "READY"
+    assert _icml_ready_status_header(uri_junk + "\n") is None
+    # Tick 493 base64 path still works.
+    assert _icml_ready_status_header(uri_b64 + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{uri_pct}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert uri_pct not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_bold = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"**{uri_pct}**\n"
+    )
+    demoted_bold = _demote_icml_ready_status(prose_bold)
+    assert _icml_ready_status_header(demoted_bold) == "IN_PROGRESS"
+    assert uri_pct not in demoted_bold
     assert any(
         ln.strip() == "**STATUS: IN_PROGRESS**"
         for ln in demoted_bold.splitlines()
@@ -11095,6 +11190,15 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML data-URI base64 STATUS header (Tick 493)" in master
     assert (
         "test_icml_ready_status_header_accepts_data_uri_base64_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 494: plain / percent-encoded data-URI STATUS (no ;base64).
+    assert "_ICML_STATUS_DATA_URI_PLAIN_RE" in env_checks
+    assert "_peel_icml_status_data_uri_plain" in env_checks
+    assert "STATUS%3A%20READY" in env_checks or "unquote" in env_checks
+    assert "ICML data-URI plain STATUS header (Tick 494)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_data_uri_plain_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

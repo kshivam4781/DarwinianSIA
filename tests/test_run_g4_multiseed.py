@@ -6053,6 +6053,82 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     assert data_uri_prog not in data_updated
     assert bare_prog_b64 not in data_updated
 
+    # (cz) Tick 494: plain / percent-encoded data-URI STATUS must demote.
+    plain_uri_ready = "data:text/plain,STATUS%3A%20READY"
+    plain_ready_path = tmp_path / "data_uri_plain_status.md"
+    plain_ready_path.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{plain_uri_ready}\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(plain_ready_path.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            plain_ready_path,
+            reason="data-URI plain READY",
+            timestamp="t",
+        )
+        is True
+    )
+    plain_text = plain_ready_path.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(plain_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in plain_text.splitlines()
+    )
+    assert plain_uri_ready not in plain_text
+
+    # (da) Tick 494: bold-wrapped plain data-URI IN_PROGRESS must update to READY.
+    plain_uri_prog = "data:text/plain;charset=utf-8,STATUS%3A%20IN_PROGRESS"
+    plain_upd = tmp_path / "update_data_uri_plain_status.md"
+    plain_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        f"**{plain_uri_prog}**\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_plain = update_icml_ready_from_g4(
+        ready_path=plain_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-10-01T10:20:00Z",
+        allow_ready=True,
+    )
+    assert status_plain == "READY"
+    plain_updated = plain_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(plain_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**" for ln in plain_updated.splitlines()
+    )
+    assert plain_uri_prog not in plain_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
