@@ -2900,6 +2900,11 @@ _ICML_STATUS_JS_ESCAPE_RE = re.compile(
     r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
     re.IGNORECASE,
 )
+# Tick 489: URL percent-encoding for STATUS (``%3A`` / ``%20`` / ``%3C``).
+# Same allowlist as Tick 488 so ``%41`` (``A``) stays literal and cannot
+# invent a false STATUS token. Iterate so ``%253A`` (double-encoded ``:``)
+# peels via ``%`` (0x25) → ``%3A`` → ``:``.
+_ICML_STATUS_URL_PERCENT_RE = re.compile(r"%([0-9a-fA-F]{2})", re.IGNORECASE)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -2933,6 +2938,13 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
         0x27,
         # Tick 488: ASCII space so ``STATUS\u003a\u0020READY`` peels.
         0x20,
+        # Tick 489: ``%`` so double-encoded ``%253A`` peels; ``=`` / ``/`` so
+        # URL-encoded HTML badges (``%3Cp%20title%3D%22STATUS%3A…``) rebuild;
+        # ``+`` so ``%2B`` form-urlencoded space peels before ``+``→space.
+        0x25,
+        0x3D,
+        0x2F,
+        0x2B,
     }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
@@ -3940,7 +3952,7 @@ _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488: decode HTML + JSON/JS escapes for STATUS headers.
+    """Tick 455/486/487/488/489: decode HTML + JSON/JS + URL escapes for STATUS.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -3969,6 +3981,14 @@ def _decode_icml_status_html_entities(line: str) -> str:
     ``\\u003cp title=\\u0022STATUS\\u003a READY\\u0022\\u003e…``) — pre-488
     HTML-entity-only decode left those stubs unmatched (demote no-op / G4
     pack miss READY). Peel allowlisted ``\\uXXXX`` / ``\\xXX`` only.
+
+    Tick 489: badge URLs / query strings / CMS link exports often percent-encode
+    the STATUS separator (and badge markup)
+    (``STATUS%3A%20READY`` / ``STATUS%3A+READY`` / ``STATUS%253A%20READY`` /
+    ``%3Cp%20title%3D%22STATUS%3A%20READY%22%3Ebadge%3C%2Fp%3E``) — pre-489
+    JS/HTML-only decode left those stubs unmatched (demote no-op / G4 pack
+    miss READY). Peel allowlisted ``%XX`` only; when the original line had any
+    ``%XX``, also treat ``+`` as space (form-urlencoded).
     """
 
     def _sub(m: re.Match) -> str:
@@ -3993,15 +4013,31 @@ def _decode_icml_status_html_entities(line: str) -> str:
             return chr(code)
         return m.group(0)
 
-    s = line or ""
-    # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` stacks are rare.
+    def _pct_sub(m: re.Match) -> str:
+        try:
+            code = int(m.group(1), 16)
+        except (TypeError, ValueError):
+            return m.group(0)
+        if code in _ICML_STATUS_HTML_CODEPOINTS:
+            return chr(code)
+        return m.group(0)
+
+    original = line or ""
+    had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
+    s = original
+    # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` stacks.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
         s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
+        s = _ICML_STATUS_URL_PERCENT_RE.sub(_pct_sub, s)
         if s == prev:
             break
+    # Form-urlencoded: ``STATUS%3A+READY`` → ``STATUS: READY`` (only when the
+    # original line used percent-encoding — leave bare ``STATUS: READY+x``).
+    if had_pct:
+        s = s.replace("+", " ")
     return s
 
 

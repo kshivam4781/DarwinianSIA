@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 488: JSON/JS unicode+hex STATUS escapes (`STATUS\u003a READY` / `STATUS\x3a READY` / `STATUS\u003a\u0020READY` / `\u003cp title=\u0022STATUS\u003a READY\u0022\u003e…` / `STATUS\uff1aREADY`) — `_ICML_STATUS_JS_ESCAPE_RE` + allowlisted codepoints (incl. `0x20` space); unknown `\u0041` untouched; Tick 486/487 HTML contracts preserved. Extends Tick 487 HTML-entity-only decode. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 489: URL percent-encoded STATUS (`STATUS%3A%20READY` / `STATUS%3A+READY` / `STATUS%253A%20READY` / `%3Cp%20title%3D%22STATUS%3A%20READY%22%3E…` / `STATUS%3AIN_PROGRESS`) — `_ICML_STATUS_URL_PERCENT_RE` + allowlisted `%XX` (colon/space/`%`/`=`/`/`/`+`/invisibles/`<>"'`); unknown `%41` untouched; form-urlencoded `+`→space only when `%XX` present; Tick 486–488 HTML/JS contracts preserved. Extends Tick 488 JS/HTML-only decode. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
