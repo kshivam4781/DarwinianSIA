@@ -8834,6 +8834,88 @@ def test_icml_ready_status_header_accepts_rfc2047_encoded_word_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_bare_base64_status() -> None:
+    """Tick 492: bare base64 STATUS payload (RFC 2047 wrappers stripped).
+
+    Pre-492 Tick 491 peeled ``=?UTF-8?B?…?=`` only, so email / log / chat
+    copy-paste of the payload alone (``U1RBVFVTOiBSRUFEWQ==`` /
+    ``**U1RBVFVTOiBSRUFEWQ==**`` / bold QP-inside-b64) missed demote / G4
+    pack rewrite. Invalid / non-STATUS base64 and QP mid-``=`` forms stay
+    literal; Tick 486–491 contracts preserved.
+    """
+    import base64
+
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_bare_base64,
+        _strip_icml_status_line_noise,
+    )
+
+    bare_ready = base64.b64encode(b"STATUS: READY").decode("ascii")
+    bare_prog = base64.b64encode(b"STATUS: IN_PROGRESS").decode("ascii")
+    bare_bold = base64.b64encode(b"**STATUS: READY**").decode("ascii")
+    bare_qp = base64.b64encode(b"STATUS=3A=20READY").decode("ascii")
+    junk = base64.b64encode(b"hello world!!").decode("ascii")
+    # Mid-string ``=`` is QP, not bare base64 (validate rejects).
+    qp_literal = "STATUS=3A=20READY"
+
+    assert _peel_icml_status_bare_base64(bare_ready) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(bare_ready) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(bare_prog) == "STATUS: IN_PROGRESS"
+    assert _decode_icml_status_html_entities(bare_bold) == "**STATUS: READY**"
+    assert _decode_icml_status_html_entities(bare_qp) == "STATUS: READY"
+    assert _peel_icml_status_bare_base64(junk) == junk
+    assert _decode_icml_status_html_entities(junk) == junk
+    # Tick 490 QP contract unchanged (not mistaken for bare base64).
+    assert _decode_icml_status_html_entities(qp_literal) == "STATUS: READY"
+    assert _peel_icml_status_bare_base64(qp_literal) == qp_literal
+    # Tick 491 wrapped B-encoding still works.
+    wrapped = (
+        "=?UTF-8?B?"
+        + base64.b64encode(b"STATUS: READY").decode("ascii")
+        + "?="
+    )
+    assert _decode_icml_status_html_entities(wrapped) == "STATUS: READY"
+
+    assert _strip_icml_status_line_noise(bare_ready) == "STATUS: READY"
+    assert _strip_icml_status_line_noise(f"**{bare_ready}**") == "STATUS: READY"
+    assert _icml_ready_status_header(bare_ready + "\n") == "READY"
+    assert _icml_ready_status_header(bare_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(f"**{bare_ready}**\n") == "READY"
+    assert _icml_ready_status_header(bare_qp + "\n") == "READY"
+    assert _icml_ready_status_header(junk + "\n") is None
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{bare_ready}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert bare_ready not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_bold = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"**{bare_ready}**\n"
+    )
+    demoted_bold = _demote_icml_ready_status(prose_bold)
+    assert _icml_ready_status_header(demoted_bold) == "IN_PROGRESS"
+    assert bare_ready not in demoted_bold
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in demoted_bold.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -10904,6 +10986,14 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML rfc2047-encoded-word STATUS header (Tick 491)" in master
     assert (
         "test_icml_ready_status_header_accepts_rfc2047_encoded_word_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 492: bare base64 STATUS payload (RFC 2047 wrappers stripped).
+    assert "_ICML_STATUS_BARE_BASE64_RE" in env_checks
+    assert "_peel_icml_status_bare_base64" in env_checks
+    assert "ICML bare-base64 STATUS header (Tick 492)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_bare_base64_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

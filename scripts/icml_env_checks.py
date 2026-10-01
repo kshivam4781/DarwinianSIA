@@ -2917,6 +2917,8 @@ _ICML_STATUS_QP_SOFT_BREAK_RE = re.compile(r"=\r?\n")
 # peeled bare QP ``=XX`` but left encoded-word wrappers + Q ``_``-as-space,
 # so demote no-op / G4 pack miss READY. Adjacent words may be whitespace-
 # separated (RFC 2047 §6.2); unknown charset / bad base64 stay literal.
+# Tick 492: also peel *bare* base64 payloads when wrappers were stripped
+# (``U1RBVFVTOiBSRUFEWQ==``) — see ``_peel_icml_status_bare_base64``.
 _ICML_STATUS_RFC2047_WORD_RE = re.compile(
     r"=\?([^?\s]*)\?([QBqb])\?([^?]*)\?="
 )
@@ -2935,6 +2937,13 @@ _ICML_STATUS_RFC2047_CHARSETS = frozenset(
         "latin-1",
         "latin1",
     }
+)
+# Tick 492: bare base64 STATUS payloads (MIME wrappers stripped on copy-paste).
+# Full-line only; mid-string ``=`` (QP forms) fails ``validate=True``.
+_ICML_STATUS_BARE_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{12,}={0,2}$")
+_ICML_STATUS_BARE_BASE64_HINT_RE = re.compile(
+    r"STATUS.{0,80}(?:READY|IN_PROGRESS)|(?:READY|IN_PROGRESS).{0,80}STATUS",
+    re.IGNORECASE | re.DOTALL,
 )
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
@@ -4106,8 +4115,41 @@ def _peel_icml_status_rfc2047_encoded_words(line: str) -> str:
     return _ICML_STATUS_RFC2047_RUN_RE.sub(_run_sub, line or "")
 
 
+def _peel_icml_status_bare_base64(line: str) -> str:
+    """Tick 492: peel a full-line bare base64 STATUS payload into plain text.
+
+    Tick 491 peels RFC 2047 ``=?UTF-8?B?…?=`` wrappers, but email / log /
+    chat copy-paste often drops the wrappers and leaves only the payload
+    (``U1RBVFVTOiBSRUFEWQ==`` / bold-wrapped ``**U1RBVFVTOiBSRUFEWQ==**``).
+    Pre-492 left those stubs unmatched (demote no-op / G4 pack miss READY).
+
+    Full-line only; require STATUS + READY/IN_PROGRESS in the decoded text
+    (plain or further-encoded). Invalid / non-STATUS base64 stays literal.
+    Mid-string ``=`` (e.g. QP ``STATUS=3A=20READY``) fails ``validate=True``.
+    """
+    original = line or ""
+    s = original.strip()
+    if not _ICML_STATUS_BARE_BASE64_RE.fullmatch(s):
+        return original
+    try:
+        pad = (-len(s)) % 4
+        data = base64.b64decode(s + ("=" * pad), validate=True)
+        if not data:
+            return original
+        text = data.decode("utf-8")
+    except (ValueError, UnicodeDecodeError, binascii.Error):
+        return original
+    if not _ICML_STATUS_BARE_BASE64_HINT_RE.search(text):
+        return original
+    # Preserve leading/trailing whitespace only when the whole strip matched.
+    if original == s:
+        return text
+    # Caller usually already stripped; keep decoded body.
+    return text
+
+
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489/490: decode HTML + JSON/JS + URL + QP escapes.
+    """Tick 455/486/487/488/489/490/491/492: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -4162,6 +4204,13 @@ def _decode_icml_status_html_entities(line: str) -> str:
     bare QP ``=XX`` but left ``=?…?=`` wrappers + Q ``_``-as-space, so demote
     no-op / G4 pack miss READY. Peel allowlisted charset Q/B words before
     QP ``=XX``; unknown charset / invalid base64 stay literal.
+
+    Tick 492: email / log / chat copy-paste often drops RFC 2047 wrappers and
+    leaves only the base64 payload (``U1RBVFVTOiBSRUFEWQ==`` /
+    ``**U1RBVFVTOiBSRUFEWQ==**`` after wrap strip) — pre-492 Tick 491 peeled
+    wrapped ``=?UTF-8?B?…?=`` only, so demote no-op / G4 pack miss READY.
+    Peel full-line bare base64 only when decoded text looks like STATUS;
+    invalid / non-STATUS base64 stay literal (QP mid-``=`` fails validate).
     """
 
     def _sub(m: re.Match) -> str:
@@ -4208,11 +4257,12 @@ def _decode_icml_status_html_entities(line: str) -> str:
     had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
     s = original
     # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` /
-    # ``=253A`` / stacked RFC 2047 runs.
+    # ``=253A`` / stacked RFC 2047 runs / bare-b64 → further-encoded STATUS.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
         s = _peel_icml_status_rfc2047_encoded_words(s)
+        s = _peel_icml_status_bare_base64(s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
         s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
@@ -4713,6 +4763,11 @@ def _strip_icml_status_line_noise(line: str) -> str:
             else:
                 s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
+    # Tick 492: bare base64 after wrap strip (``**U1RBVFVTOiBSRUFEWQ==**``).
+    peeled_b64 = _peel_icml_status_bare_base64(s)
+    if peeled_b64 != s:
+        s = _decode_icml_status_html_entities(peeled_b64)
+        s = _strip_icml_status_md_wrappers(s)
     s = _ICML_STATUS_INVISIBLE_CHARS_RE.sub("", s)
     return s.strip()
 

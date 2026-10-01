@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 492:** bare base64 STATUS (`U1RBVFVTOiBSRUFEWQ==` / `**U1RBVFVTOiBSRUFEWQ==**`) — `_peel_icml_status_bare_base64`; closes G4 demote no-op / pack miss after Tick 491 wrapped-B-only.
 **Tick 491:** RFC 2047 encoded-word STATUS (`=?UTF-8?Q?STATUS=3A_READY?=` / `=?UTF-8?B?…?=` / adjacent Q words) — `_peel_icml_status_rfc2047_encoded_words`; closes G4 demote no-op / pack miss after Tick 490 bare-QP-only.
 **Tick 490:** MIME quoted-printable STATUS (`STATUS=3A READY` / `STATUS=3A=20READY` / soft-break / QP HTML badge) — `_ICML_STATUS_QUOTED_PRINTABLE_RE` + soft-break join; closes G4 demote no-op / pack miss after Tick 489 URL/JS/HTML-only.
 **Tick 487:** double-escaped HTML STATUS (`STATUS&amp;#58; READY` / `STATUS&amp;colon;READY` / `&lt;p title=&quot;STATUS: READY&quot;&gt;…`) — `_ICML_STATUS_DOUBLE_AMP_RE` + iterative entity decode (also `&lt;`/`&gt;`/`&quot;`/`&apos;`); closes G4 demote no-op / pack miss after Tick 486 single-layer entities.
