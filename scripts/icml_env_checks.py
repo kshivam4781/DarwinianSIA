@@ -2905,6 +2905,11 @@ _ICML_STATUS_JS_ESCAPE_RE = re.compile(
 # invent a false STATUS token. Iterate so ``%253A`` (double-encoded ``:``)
 # peels via ``%`` (0x25) → ``%3A`` → ``:``.
 _ICML_STATUS_URL_PERCENT_RE = re.compile(r"%([0-9a-fA-F]{2})", re.IGNORECASE)
+# Tick 490: MIME quoted-printable for STATUS (``=3A`` / ``=20`` / ``=3C``).
+# Soft line breaks (``=\r?\n``) are removed before ``=XX`` peels. Unknown
+# ``=41`` stays literal (parity with Tick 489 ``%41``).
+_ICML_STATUS_QUOTED_PRINTABLE_RE = re.compile(r"=([0-9a-fA-F]{2})", re.IGNORECASE)
+_ICML_STATUS_QP_SOFT_BREAK_RE = re.compile(r"=\r?\n")
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -2945,6 +2950,8 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
         0x3D,
         0x2F,
         0x2B,
+        # Tick 490: same allowlist covers QP ``=3D`` / ``=2F`` / ``=25`` so
+        # double-encoded ``=253A`` and QP HTML badges rebuild (parity with %).
     }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
@@ -3501,18 +3508,67 @@ def _take_icml_status_multiline_inline_block(
     return None
 
 
+def _take_icml_status_qp_soft_break_block(
+    lines: list[str], start: int
+) -> tuple[int, str] | None:
+    """Tick 490: join MIME QP soft-broken STATUS lines (``STATUS=3A=\\n READY``).
+
+    Quoted-printable soft line breaks end a physical line with ``=`` then
+    continue on the next line with no inserted space. Pre-490 per-line scan
+    saw ``STATUS=3A=`` alone (no header match) and left the READY stub
+    poisoned after trust refuse / G4 pack miss. Require a ``STATUS`` cue so
+    prose/assignment lines ending in ``=`` are not joined.
+    """
+    if start < 0 or start >= len(lines):
+        return None
+    first = lines[start] or ""
+    if "STATUS" not in first.upper():
+        return None
+    stripped = first.rstrip("\r")
+    if not stripped.endswith("=") or stripped.endswith("=="):
+        return None
+    if stripped == "=":
+        return None
+    parts = [stripped[:-1]]
+    j = start + 1
+    max_extra = 6
+    while j < len(lines) and (j - start) <= max_extra:
+        raw_j = lines[j] or ""
+        if not raw_j.strip():
+            return None
+        rj = raw_j.rstrip("\r")
+        if len(rj) > 1 and rj.endswith("=") and not rj.endswith("=="):
+            parts.append(rj[:-1])
+            j += 1
+            continue
+        parts.append(rj)
+        collapsed = "".join(parts)
+        if _icml_ready_status_line_match(collapsed):
+            return (j - start + 1, collapsed)
+        return None
+    return None
+
+
 def _iter_icml_ready_status_units(text: str):
-    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–483).
+    """Yield ``(span_lines, match_line)`` STATUS scan units (Tick 476–483/490).
 
     ``span_lines`` keeps original pretty-printed lines for non-STATUS blocks;
     ``match_line`` is what ``_icml_ready_status_line_match`` sees (collapsed
     multi-line SVG / img / a-button / span-label / inline-format /
-    soft-wrapped md link-image or the single original line).
+    soft-wrapped md link-image / QP soft-break STATUS or the single original
+    line).
     """
     raw = (text or "").lstrip("\ufeff")
     lines = raw.splitlines()
     i = 0
     while i < len(lines):
+        # Tick 490: MIME QP soft-break STATUS before HTML / md collapses.
+        block = _take_icml_status_qp_soft_break_block(lines, i)
+        if block is not None:
+            n, collapsed = block
+            yield lines[i : i + n], collapsed
+            i += n
+            continue
         # Tick 480: soft-wrapped md link/image before HTML collapses.
         block = _take_icml_status_multiline_md_link_block(lines, i)
         if block is not None:
@@ -3952,7 +4008,7 @@ _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489: decode HTML + JSON/JS + URL escapes for STATUS.
+    """Tick 455/486/487/488/489/490: decode HTML + JSON/JS + URL + QP escapes.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -3989,6 +4045,16 @@ def _decode_icml_status_html_entities(line: str) -> str:
     JS/HTML-only decode left those stubs unmatched (demote no-op / G4 pack
     miss READY). Peel allowlisted ``%XX`` only; when the original line had any
     ``%XX``, also treat ``+`` as space (form-urlencoded).
+
+    Tick 490: email / MIME / CMS quoted-printable exports often encode the
+    STATUS separator (and badge markup) as ``=XX``
+    (``STATUS=3A READY`` / ``STATUS=3A=20READY`` / ``STATUS=3AIN_PROGRESS`` /
+    ``=3Cp title=3D=22STATUS=3A READY=22=3Ebadge=3C/p=3E`` /
+    soft-break ``STATUS=3A=\\n READY``) — pre-490 URL/JS/HTML-only decode
+    left those stubs unmatched (demote no-op / G4 pack miss READY). Peel
+    allowlisted ``=XX`` only after removing QP soft line breaks; unknown
+    ``=41`` stays literal. Bare ``STATUS: a=b`` / ``STATUS: READY=note``
+    without hex ``=XX`` stay untouched.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4022,16 +4088,28 @@ def _decode_icml_status_html_entities(line: str) -> str:
             return chr(code)
         return m.group(0)
 
+    def _qp_sub(m: re.Match) -> str:
+        try:
+            code = int(m.group(1), 16)
+        except (TypeError, ValueError):
+            return m.group(0)
+        if code in _ICML_STATUS_HTML_CODEPOINTS:
+            return chr(code)
+        return m.group(0)
+
     original = line or ""
     had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
     s = original
-    # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` stacks.
+    # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` /
+    # ``=253A`` stacks.
     for _ in range(8):
         prev = s
+        s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
         s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
         s = _ICML_STATUS_URL_PERCENT_RE.sub(_pct_sub, s)
+        s = _ICML_STATUS_QUOTED_PRINTABLE_RE.sub(_qp_sub, s)
         if s == prev:
             break
     # Form-urlencoded: ``STATUS%3A+READY`` → ``STATUS: READY`` (only when the
