@@ -98,6 +98,11 @@ pass ``--diamond-csv`` and mark ``fetch_diamond_ok`` without ``HF_TOKEN``.
 
 Tick 278: G2/G3/G4/pipeline ``--fetch-diamond`` auto-wires the same local CSV
 via ``autowire_diamond_csv`` (cron no longer the only path that skips HF).
+
+Tick 497: When no local CSV and no HF token, ``ensure_diamond_csv_via_public_mirror``
+downloads the OpenAI simple-evals public ``gpqa_diamond.csv`` into ``/tmp``
+(gitignored). Cron / ``--fetch-diamond`` then only need ``NEBIUS_API_KEY`` for
+``fetch_diamond_ok`` (HF optional). Never commit the CSV.
 """
 
 from __future__ import annotations
@@ -331,7 +336,10 @@ def icml_human_required_secrets_phrase(
             "(ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)"
         )
     if for_fetch_diamond:
-        return f"{api} + (HF_TOKEN or local gpqa_diamond.csv)"
+        return (
+            f"{api} + (HF_TOKEN or local gpqa_diamond.csv "
+            "or public OpenAI mirror auto-fetch — Tick 497)"
+        )
     return api
 
 
@@ -6506,24 +6514,72 @@ def resolve_diamond_csv_path(repo_root: Path | None = None) -> Path | None:
     return None
 
 
+def ensure_diamond_csv_via_public_mirror(
+    repo_root: Path | None = None,
+    *,
+    allow_network: bool | None = None,
+) -> Path | None:
+    """Tick 497: ensure a local diamond CSV, downloading the public mirror if needed.
+
+    Returns an existing path from ``resolve_diamond_csv_path`` when present.
+    Otherwise downloads OpenAI simple-evals ``gpqa_diamond.csv`` to
+    ``/tmp/gpqa_diamond.csv`` (never committed). Set
+    ``ICML_DISABLE_PUBLIC_DIAMOND_MIRROR=1`` to skip network.
+    """
+    existing = resolve_diamond_csv_path(repo_root)
+    if existing is not None:
+        return existing
+    if allow_network is None:
+        allow_network = os.environ.get("ICML_DISABLE_PUBLIC_DIAMOND_MIRROR", "").strip() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+    if not allow_network:
+        return None
+    # Lazy import keeps unit tests that never call this free of urllib side effects.
+    try:
+        from prepare_gpqa_diamond import (  # type: ignore
+            DEFAULT_PUBLIC_MIRROR_DEST,
+            download_gpqa_diamond_csv_public_mirror,
+        )
+    except ImportError:
+        scripts_dir = str((_REPO_ROOT / "scripts").resolve())
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        from prepare_gpqa_diamond import (  # type: ignore
+            DEFAULT_PUBLIC_MIRROR_DEST,
+            download_gpqa_diamond_csv_public_mirror,
+        )
+    try:
+        return download_gpqa_diamond_csv_public_mirror(DEFAULT_PUBLIC_MIRROR_DEST)
+    except Exception:
+        return None
+
+
 def autowire_diamond_csv(
     explicit: Path | None = None,
     *,
     fetch_diamond: bool = False,
     repo_root: Path | None = None,
 ) -> tuple[Path | None, bool]:
-    """Resolve ``--diamond-csv`` for ``--fetch-diamond`` (Tick 278).
+    """Resolve ``--diamond-csv`` for ``--fetch-diamond`` (Tick 278 / 497).
 
     Returns ``(path, auto_wired)``. When ``fetch_diamond`` is true and no
     explicit CSV was passed, falls back to ``resolve_diamond_csv_path`` so
-    G2/G3/G4/pipeline skip HF the same way cron does (Tick 277). Does **not**
-    invent a CSV when ``fetch_diamond`` is false (avoids surprise materialize).
+    G2/G3/G4/pipeline skip HF the same way cron does (Tick 277). Tick **497**:
+    if still missing, downloads the public OpenAI mirror into ``/tmp``. Does
+    **not** invent a CSV when ``fetch_diamond`` is false (avoids surprise
+    materialize).
     """
     if explicit is not None:
         return Path(explicit), False
     if not fetch_diamond:
         return None, False
     auto = resolve_diamond_csv_path(repo_root)
+    if auto is None:
+        auto = ensure_diamond_csv_via_public_mirror(repo_root)
     if auto is None:
         return None, False
     return auto, True
@@ -7088,17 +7144,37 @@ def suggested_open_git_pr_body(
     offline_ids = _offline_bvd_id_range_blurb()
     h2_blurb = _offline_bvd_h2_blurb()
     if fetch_diamond_ok is False:
-        primary = (
-            f"**PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local "
-            f"`gpqa_diamond.csv`) so cron can run live G2→G3→G4."
-        )
-        tick_lead = (
-            f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on NEBIUS + "
-            f"(HF_TOKEN or `gpqa_diamond.csv`). Offline PRIMARY/H5 green at "
-            f"{offline_ids} (D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, "
-            f"{h2_blurb}). STATUS remains "
-            f"IN_PROGRESS (not READY)."
-        )
+        load_icml_dotenv()
+        nebius = _secret_present("NEBIUS_API_KEY")
+        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
+        csv_ok = resolve_diamond_csv_path() is not None
+        # Tick 497: when CSV/mirror present, lead with NEBIUS-only ask.
+        if not nebius and (hf or csv_ok):
+            primary = (
+                "**PRIMARY blocker:** add `NEBIUS_API_KEY` (HF optional — "
+                "Tick 497 public diamond mirror / local `gpqa_diamond.csv`) "
+                "so cron can run live G2→G3→G4."
+            )
+            tick_lead = (
+                f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on "
+                f"**NEBIUS_API_KEY** (HF optional via Tick 497 public mirror). "
+                f"Offline PRIMARY/H5 green at {offline_ids} (D final **5/5**, "
+                f"gens30/cost30 **4/5**, H5 **5/5**, {h2_blurb}). STATUS remains "
+                f"IN_PROGRESS (not READY)."
+            )
+        else:
+            primary = (
+                f"**PRIMARY blocker:** add `NEBIUS_API_KEY` + (`HF_TOKEN` or local "
+                f"`gpqa_diamond.csv` / Tick 497 public mirror) so cron can run live "
+                f"G2→G3→G4."
+            )
+            tick_lead = (
+                f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on NEBIUS + "
+                f"(HF_TOKEN or `gpqa_diamond.csv` / public mirror). Offline "
+                f"PRIMARY/H5 green at {offline_ids} (D final **5/5**, "
+                f"gens30/cost30 **4/5**, H5 **5/5**, {h2_blurb}). STATUS remains "
+                f"IN_PROGRESS (not READY)."
+            )
     elif fetch_diamond_ok is True:
         primary = (
             "**Secrets OK** — next: `bash scripts/icml_cron_entry.sh` for live "
@@ -7112,7 +7188,7 @@ def suggested_open_git_pr_body(
     else:
         primary = (
             "Check `docs/icml_secrets_status.json` / `docs/ICML_HUMAN_UNBLOCK.md` "
-            "for NEBIUS + HF/CSV gates."
+            "for NEBIUS (+ optional HF/CSV / Tick 497 mirror) gates."
         )
         tick_lead = (
             f"Tick {tick}: check secrets status / human unblock. Offline "
@@ -7300,6 +7376,16 @@ def suggested_open_git_pr_title(
     """
     tick = local_tick if local_tick is not None else 0
     if fetch_diamond_ok is False:
+        # Tick 497: diamond CSV / public mirror often present; NEBIUS is the
+        # remaining paid-live blocker — avoid implying HF is still hard-required.
+        load_icml_dotenv()
+        nebius = _secret_present("NEBIUS_API_KEY")
+        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
+        csv_ok = resolve_diamond_csv_path() is not None
+        if not nebius and (hf or csv_ok):
+            return (
+                f"ICML Tick {tick}: add NEBIUS_API_KEY — live G2→G4 still blocked"
+            )
         return (
             f"ICML Tick {tick}: add NEBIUS+HF secrets — live G2→G4 still blocked"
         )
@@ -7780,10 +7866,18 @@ def collect_icml_secrets_status() -> dict:
     nebius = _secret_present("NEBIUS_API_KEY")
     hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
     diamond_csv = resolve_diamond_csv_path()
+    # Tick 497: if no local CSV and no HF, try the public OpenAI mirror once.
+    public_mirror_used = False
+    if diamond_csv is None and not hf:
+        mirrored = ensure_diamond_csv_via_public_mirror()
+        if mirrored is not None:
+            diamond_csv = mirrored
+            public_mirror_used = True
     diamond_csv_ok = diamond_csv is not None
     meta_needs_anthropic = icml_meta_requires_anthropic()
     secrets_ok = bool(nebius) and (bool(anthropic) if meta_needs_anthropic else True)
-    # HF needed for --fetch-diamond unless operator supplies CSV offline.
+    # HF needed for --fetch-diamond unless operator supplies CSV offline
+    # (or Tick 497 public mirror succeeds).
     fetch_diamond_ok = secrets_ok and (hf or diamond_csv_ok)
     # Tick 273/277: cron passes --fetch-diamond (optionally with --diamond-csv).
     cron_live_ok = fetch_diamond_ok
@@ -7796,7 +7890,8 @@ def collect_icml_secrets_status() -> dict:
         blockers.append(
             "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
             "(required for --fetch-diamond; or provide --diamond-csv / "
-            "drop gpqa_diamond.csv at /tmp or docs/private/)"
+            "drop gpqa_diamond.csv at /tmp or docs/private/; or allow "
+            "Tick 497 public OpenAI mirror fetch)"
         )
     main_has_tip = main_has_icml_tip_files()
     tip_pr = None if main_has_tip else resolve_icml_tip_pr()
@@ -7812,7 +7907,8 @@ def collect_icml_secrets_status() -> dict:
         f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
         "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
         "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
-        "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF)",
+        "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF; "
+        "or rely on Tick 497 public OpenAI simple-evals mirror auto-fetch)",
     ]
     # Tick 345–347: title/body edit paste when tip PR metadata lags (MCP won't rewrite).
     progress_path = _REPO_ROOT / "docs" / "ICML_PROGRESS.md"
@@ -7991,6 +8087,7 @@ def collect_icml_secrets_status() -> dict:
         "hf_token_present": hf,
         "diamond_csv_present": diamond_csv_ok,
         "diamond_csv_path": str(diamond_csv) if diamond_csv is not None else None,
+        "public_mirror_csv": public_mirror_used,
         "meta_requires_anthropic": meta_needs_anthropic,
         "meta_agent_profile": resolve_icml_meta_agent_profile(),
         "packages_bootstrapped_in_preflight": True,

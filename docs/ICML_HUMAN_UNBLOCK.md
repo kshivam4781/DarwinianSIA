@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
-**STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 497:** public OpenAI simple-evals `gpqa_diamond.csv` auto-fetch (`--from-public-mirror` / `ensure_diamond_csv_via_public_mirror`) — HF_TOKEN no longer hard-required when network works; diamond materialized non-synthetic; secrets blockers = NEBIUS only.
 **Tick 496:** C-array / comma / per-byte `0x` hex STATUS (`53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped) — extends `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only.
 **Tick 495:** bare hex STATUS (`5354415455533A205245414459` / spaced `53 54 …` / colon / dash / `0x` / bold-wrapped) — `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 492–494 base64/data-URI-only.
 **Tick 494:** plain / percent-encoded data-URI STATUS (`data:text/plain,STATUS%3A%20READY` / charset / `data:,…` / literal / bold-wrapped) — `_peel_icml_status_data_uri_plain`; closes G4 demote no-op / pack miss after Tick 493 base64-only data-URI.
@@ -63,10 +64,11 @@ only if you intentionally want Claude meta (then Anthropic becomes required agai
 
 Two human actions remain. Code/offline stack is ready (PRIMARY-shaped offline
 `1930–1934` / `1940–1944`, G2 dry-run green, python3-safe surfaces, recipe/shape locks).
+Tick **497** removed the HF hard-require when the public diamond mirror (or a local CSV) is available.
 
 | # | Action | Why |
 |---|--------|-----|
-| **1** | Add **`NEBIUS_API_KEY`** + (`**HF_TOKEN**` or local `gpqa_diamond.csv`) | Required for paid G2→G3→G4 / `--fetch-diamond` |
+| **1** | Add **`NEBIUS_API_KEY`** (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`) | Required for paid G2→G3→G4 |
 | **2** | **Undraft + Merge the latest tip PR into `main`** — concrete URL is in `docs/icml_secrets_status.json` / `docs/icml_tip_status.json` field `tip_pr_url` (refreshed each cron; Tick 330+). Tick **335** also exposes `tip_pr_mergeable` / `tip_pr_merge_state_status` (e.g. MERGEABLE/CLEAN). Tick **336** adds `tip_pr_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`). Tick **337–340** anti-churn: `tip_pr_commit_branch` / `tip_pr_anti_churn` — cron **and** tip recover `--apply` auto-checkout that branch (`icml_cron_entry` / `icml_boot_recover` / `icml_recover_tip` / `bash scripts/icml_checkout_tip_pr_branch.sh`); Tick **340** also writes `docs/icml_open_git_pr.json` and requires `open_git_pr branch=<tip_pr_commit_branch>` (**never omit** — MCP defaults to greenfield boot branch). **Do not open a new tip PR**; merge **#N** via copy-paste `gh` before next cron. Ignore older tip PRs. | Cron boots from **`main`**, which still has hackathon-era `AGENTS.md` and **no** `docs/ICML_*` / `scripts/icml_cron_entry.sh`. Until tip lands on `main`, every cron must chicken-egg recover tip from remote branches (works, but fragile). |
 
 **Tick 341–342 interim (optional, easier than full tip):** merge the **main-only AGENTS bootstrap** PR on branch `cursor/icml-main-agents-bootstrap` (1 file — chicken-egg recover + dual-unblock copy-paste). This is **not** a tip PR and does **not** replace merging tip **#337**; it only stops cron from injecting hackathon-era `AGENTS.md` with zero ICML recover instructions. Full tip files still require #337. **Tick 342:** `docs/icml_secrets_status.json` / tip status / `human_next` / pipeline Next now expose `agents_bootstrap_pr_url` + `agents_bootstrap_merge_commands` (copy-paste `gh pr ready` + `gh pr merge`) when that PR is open — cron logs no longer lead with tip #337 alone.

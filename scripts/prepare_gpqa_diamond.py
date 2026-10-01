@@ -11,7 +11,9 @@ Cloud live G2 is blocked when only the synthetic smoke fixture exists
 
 Sources (first match wins when using CLI defaults):
   1. ``--from-csv PATH`` — local/exported ``gpqa_diamond.csv``
-  2. ``--from-hf`` — download via ``huggingface_hub`` (needs ``HF_TOKEN`` /
+  2. ``--from-public-mirror`` — OpenAI simple-evals public Azure CSV
+     (no HF token; Tick 497). Same schema as official diamond export.
+  3. ``--from-hf`` — download via ``huggingface_hub`` (needs ``HF_TOKEN`` /
      ``HUGGINGFACE_HUB_TOKEN`` and accepted dataset access)
 
 **License:** GPQA forbids posting examples online. Do **not** commit
@@ -19,6 +21,7 @@ Sources (first match wins when using CLI defaults):
 
 Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/prepare_gpqa_diamond.py --from-csv /tmp/gpqa_diamond.csv --n 5
+  python3 scripts/prepare_gpqa_diamond.py --from-public-mirror --n 5 --force
   python3 scripts/prepare_gpqa_diamond.py --from-hf --n 5 --seed 1
   python3 scripts/prepare_gpqa_diamond.py --from-hf --roots SIA sia-upstream --force
 """
@@ -48,6 +51,13 @@ DEFAULT_ROOTS = ("SIA", "sia-upstream")
 HF_REPO_ID = "Idavidrein/gpqa"
 HF_FILENAME = "gpqa_diamond.csv"
 SOURCE_TAG = "gpqa_diamond"
+# OpenAI simple-evals hosts the same diamond CSV publicly (no HF gate).
+# Prefer local drop / HF when available; this unblocks cron when only NEBIUS
+# is missing HF (Tick 497). Never commit the downloaded file.
+PUBLIC_MIRROR_URL = (
+    "https://openaipublic.blob.core.windows.net/simple-evals/gpqa_diamond.csv"
+)
+DEFAULT_PUBLIC_MIRROR_DEST = Path("/tmp/gpqa_diamond.csv")
 
 
 def live_g2_next_steps_message() -> str:
@@ -197,6 +207,49 @@ def load_rows_from_csv(path: Path) -> list[dict[str, str]]:
     return rows
 
 
+def download_gpqa_diamond_csv_public_mirror(
+    dest: Path | None = None,
+    *,
+    url: str | None = None,
+    timeout_s: float = 120.0,
+    min_bytes: int = 64,
+) -> Path:
+    """Download ``gpqa_diamond.csv`` from the OpenAI simple-evals public mirror.
+
+    Tick 497: no ``HF_TOKEN`` required. Writes to ``/tmp/gpqa_diamond.csv`` by
+    default (gitignored). Does not overwrite an existing usable file.
+    """
+    import urllib.error
+    import urllib.request
+
+    out = Path(dest) if dest is not None else DEFAULT_PUBLIC_MIRROR_DEST
+    if out.is_file() and out.stat().st_size >= min_bytes:
+        return out.resolve()
+    mirror = (url or os.environ.get("ICML_GPQA_PUBLIC_MIRROR_URL") or PUBLIC_MIRROR_URL).strip()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(out.suffix + ".partial")
+    try:
+        with urllib.request.urlopen(mirror, timeout=timeout_s) as resp:
+            data = resp.read()
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise RuntimeError(
+            f"public GPQA diamond mirror download failed ({mirror}): {exc}"
+        ) from exc
+    if len(data) < min_bytes:
+        raise RuntimeError(
+            f"public GPQA diamond mirror returned too few bytes ({len(data)}) from {mirror}"
+        )
+    # Sanity: CSV header should mention Question.
+    head = data[:2048].decode("utf-8", errors="replace")
+    if "Question" not in head and "question" not in head:
+        raise RuntimeError(
+            f"public GPQA diamond mirror payload does not look like a CSV header: {mirror}"
+        )
+    tmp.write_bytes(data)
+    tmp.replace(out)
+    return out.resolve()
+
+
 def download_gpqa_diamond_csv(
     *,
     token: str | None = None,
@@ -207,7 +260,8 @@ def download_gpqa_diamond_csv(
     if not tok:
         raise RuntimeError(
             "HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated "
-            f"{HF_REPO_ID}. Accept dataset terms on HuggingFace, then set the token."
+            f"{HF_REPO_ID}. Accept dataset terms on HuggingFace, then set the token. "
+            "Or use --from-public-mirror / --from-csv (Tick 497)."
         )
     try:
         from huggingface_hub import hf_hub_download  # type: ignore
@@ -294,6 +348,23 @@ def materialize_from_hf(
     )
 
 
+def materialize_from_public_mirror(
+    roots: Sequence[str],
+    *,
+    n: int = 5,
+    seed: int = 1,
+    force: bool = False,
+    dest: Path | None = None,
+    url: str | None = None,
+    repo_root: Path | None = None,
+) -> list[str]:
+    """Tick 497: materialize diamond JSON from the public OpenAI CSV mirror."""
+    csv_path = download_gpqa_diamond_csv_public_mirror(dest=dest, url=url)
+    return materialize_from_csv(
+        csv_path, roots, n=n, seed=seed, force=force, repo_root=repo_root
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     src = parser.add_mutually_exclusive_group(required=True)
@@ -301,6 +372,11 @@ def main(argv: list[str] | None = None) -> int:
         "--from-csv",
         type=Path,
         help="Path to gpqa_diamond.csv (or compatible export)",
+    )
+    src.add_argument(
+        "--from-public-mirror",
+        action="store_true",
+        help="Download gpqa_diamond.csv from OpenAI simple-evals public mirror (no HF token)",
     )
     src.add_argument(
         "--from-hf",
@@ -326,6 +402,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional HF cache directory",
     )
+    parser.add_argument(
+        "--mirror-dest",
+        type=Path,
+        default=None,
+        help="Where to write public-mirror CSV (default /tmp/gpqa_diamond.csv)",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -336,6 +418,14 @@ def main(argv: list[str] | None = None) -> int:
                 n=args.n,
                 seed=args.seed,
                 force=args.force,
+            )
+        elif args.from_public_mirror:
+            wrote = materialize_from_public_mirror(
+                args.roots,
+                n=args.n,
+                seed=args.seed,
+                force=args.force,
+                dest=args.mirror_dest,
             )
         else:
             wrote = materialize_from_hf(

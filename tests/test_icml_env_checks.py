@@ -1880,6 +1880,73 @@ def test_autowire_diamond_csv_under_fetch_diamond(
     assert path3 is None and auto3 is False
 
 
+def test_autowire_diamond_csv_public_mirror_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 497: --fetch-diamond downloads public mirror when no local CSV/HF."""
+    from icml_env_checks import autowire_diamond_csv
+
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+    monkeypatch.delenv("SIA_DIAMOND_CSV", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    # Hide any real /tmp CSV so ensure path runs.
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
+    dest = tmp_path / "gpqa_diamond.csv"
+
+    def _fake_ensure(repo_root=None, *, allow_network=None):
+        dest.write_text(
+            "Question,Correct Answer,Incorrect Answer 1,Incorrect Answer 2,"
+            "Incorrect Answer 3\n" + ("Q?,A,B,C,D\n" * 3),
+            encoding="utf-8",
+        )
+        return dest.resolve()
+
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", _fake_ensure
+    )
+    path, auto = autowire_diamond_csv(None, fetch_diamond=True, repo_root=tmp_path)
+    assert auto is True
+    assert path == dest.resolve()
+
+
+def test_secrets_status_public_mirror_unblocks_hf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 497: NEBIUS + public-mirror CSV ⇒ fetch_diamond_ok without HF."""
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
+    dest = tmp_path / "gpqa_diamond.csv"
+
+    def _fake_ensure(repo_root=None, *, allow_network=None):
+        dest.write_text(
+            "Question,Correct Answer,Incorrect Answer 1,Incorrect Answer 2,"
+            "Incorrect Answer 3\n" + ("Q?,A,B,C,D\n" * 3),
+            encoding="utf-8",
+        )
+        return dest.resolve()
+
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", _fake_ensure
+    )
+    status = collect_icml_secrets_status()
+    assert status["public_mirror_csv"] is True
+    assert status["diamond_csv_present"] is True
+    assert status["hf_token_present"] is False
+    assert status["fetch_diamond_ok"] is True
+    assert status["blockers"] == []
+
+
 def test_fetch_diamond_ok_with_local_csv_skips_hf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1902,7 +1969,8 @@ def test_fetch_diamond_ok_with_local_csv_skips_hf(
     assert status["fetch_diamond_ok"] is True
     assert status["cron_live_ok"] is True
     assert status["blockers"] == []
-
+    # Existing local CSV ⇒ public_mirror_csv stays false.
+    assert status.get("public_mirror_csv") is False
 
 def test_load_icml_dotenv_fills_missing_secrets(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

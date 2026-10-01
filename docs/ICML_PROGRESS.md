@@ -1,5 +1,33 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-01T16:15Z — Tick 497 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-50ba` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY blocked on secrets. Prior ticks (450–496) spent on STATUS encoding peels that do not advance PRIMARY. Highest leverage: **remove the HF_TOKEN hard requirement** by auto-fetching the public OpenAI simple-evals `gpqa_diamond.csv` (same schema as official diamond; never commit). After materialize, `detect_gpqa_is_synthetic=False` and secrets blockers shrink to **NEBIUS_API_KEY only**.
+
+### What we did
+**Tick 497 — public GPQA diamond mirror (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `50ba`
+2. Downloaded public mirror → `/tmp/gpqa_diamond.csv`; materialized non-synthetic diamond under `SIA/` + `sia-upstream/`
+3. `prepare_gpqa_diamond.py --from-public-mirror` + `download_gpqa_diamond_csv_public_mirror`
+4. `ensure_diamond_csv_via_public_mirror` + `autowire_diamond_csv` / `collect_icml_secrets_status` wire-up; title helper prefers “add NEBIUS_API_KEY” when CSV present
+5. Focused tests green (14); secrets re-filed (NEBIUS primary; HF optional); Portal Save skipped
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 496) | After (Tick 497) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| GPQA synthetic smoke | **yes** (blocked live) | **no** (real diamond materialized) |
+| Secrets blockers | NEBIUS + HF/CSV | **NEBIUS only** |
+| Live GPQA | blocked | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack. Optional: undraft+merge tip PR #337 / bootstrap #338.
+
 ## 2026-10-01T14:17Z — Tick 496 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

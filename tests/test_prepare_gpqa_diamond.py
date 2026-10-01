@@ -128,3 +128,86 @@ def test_download_gpqa_diamond_csv_requires_token(monkeypatch: pytest.MonkeyPatc
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
     with pytest.raises(RuntimeError, match="HF_TOKEN"):
         download_gpqa_diamond_csv(token=None)
+
+
+def test_download_gpqa_diamond_csv_public_mirror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 497: public OpenAI mirror writes CSV without HF token."""
+    from prepare_gpqa_diamond import download_gpqa_diamond_csv_public_mirror
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self) -> bytes:
+            header = (
+                b"Question,Correct Answer,Incorrect Answer 1,"
+                b"Incorrect Answer 2,Incorrect Answer 3\n"
+            )
+            rows = b"Harness Q?,four,three,five,zero\n" * 40
+            return header + rows
+
+    def _urlopen(url, timeout=120.0):  # noqa: ARG001
+        assert "openaipublic.blob.core.windows.net" in url or url.startswith("http")
+        return _Resp()
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
+    dest = tmp_path / "gpqa_diamond.csv"
+    path = download_gpqa_diamond_csv_public_mirror(dest)
+    assert path == dest.resolve()
+    assert path.stat().st_size >= 64
+    # Second call reuses without network.
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no network")),
+    )
+    path2 = download_gpqa_diamond_csv_public_mirror(dest)
+    assert path2 == path
+
+
+def test_cli_from_public_mirror(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from prepare_gpqa_diamond import main as diamond_main
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self) -> bytes:
+            header = (
+                b"Question,Correct Answer,Incorrect Answer 1,"
+                b"Incorrect Answer 2,Incorrect Answer 3\n"
+            )
+            rows = b"Harness Q?,four,three,five,zero\n" * 40
+            return header + rows
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: _Resp())
+    # Minimal SIA/sia-upstream task dirs under tmp as repo root substitute:
+    # CLI uses REPO_ROOT fixed to workspace — materialize into a fake via --roots
+    # is relative to repo. Use materialize_from_public_mirror directly instead.
+    from prepare_gpqa_diamond import materialize_from_public_mirror
+
+    sia = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    sia.mkdir(parents=True)
+    (tmp_path / "SIA" / "sia" / "tasks" / "_shared").mkdir(parents=True)
+    dest = tmp_path / "mirror.csv"
+    wrote = materialize_from_public_mirror(
+        ["SIA"],
+        n=5,
+        seed=1,
+        force=True,
+        dest=dest,
+        repo_root=tmp_path,
+    )
+    assert wrote
+    assert not is_synthetic_smoke(sia)
+    # CLI flag is registered.
+    with pytest.raises(SystemExit):
+        diamond_main(["--help"])
+
