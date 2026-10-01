@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 491:** RFC 2047 encoded-word STATUS (`=?UTF-8?Q?STATUS=3A_READY?=` / `=?UTF-8?B?…?=` / adjacent Q words) — `_peel_icml_status_rfc2047_encoded_words`; closes G4 demote no-op / pack miss after Tick 490 bare-QP-only.
+**Tick 490:** MIME quoted-printable STATUS (`STATUS=3A READY` / `STATUS=3A=20READY` / soft-break / QP HTML badge) — `_ICML_STATUS_QUOTED_PRINTABLE_RE` + soft-break join; closes G4 demote no-op / pack miss after Tick 489 URL/JS/HTML-only.
 **Tick 487:** double-escaped HTML STATUS (`STATUS&amp;#58; READY` / `STATUS&amp;colon;READY` / `&lt;p title=&quot;STATUS: READY&quot;&gt;…`) — `_ICML_STATUS_DOUBLE_AMP_RE` + iterative entity decode (also `&lt;`/`&gt;`/`&quot;`/`&apos;`); closes G4 demote no-op / pack miss after Tick 486 single-layer entities.
 **Tick 486:** HTML-entity STATUS colons (`STATUS&#58; READY` / `STATUS&colon;READY` / `STATUS&#x3a; READY` / `STATUS&#xff1a;READY` / attr `title="STATUS&#58; READY"`) — `_decode_icml_status_html_entities` decodes `&colon;` / `&#58;` / `&#x3a;` / `&#xff1a;` (extends Tick 455 invisibles/nbsp-only); closes G4 demote no-op / pack miss on CMS/XSS-escaped colon stubs.
 **Tick 485:** unquoted HTML STATUS attrs (`<p title=STATUS:READY>badge</p>` / `<img alt=STATUS:READY src=…>`) — ATTR peels accept unquoted values; IN_ATTR requires READY/IN_PROGRESS token; closes demote no-op / pack miss after Tick 484 quoted-only.

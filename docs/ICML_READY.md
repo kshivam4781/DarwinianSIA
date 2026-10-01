@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 490: MIME quoted-printable STATUS (`STATUS=3A READY` / `STATUS=3A=20READY` / `STATUS=253A=20READY` / `=3Cp title=3D=22STATUS=3A READY=22=3E…` / soft-break `STATUS=3A=\n READY`) — `_ICML_STATUS_QUOTED_PRINTABLE_RE` + `_ICML_STATUS_QP_SOFT_BREAK_RE` + `_take_icml_status_qp_soft_break_block`; unknown `=41` untouched; Tick 486–489 HTML/JS/URL contracts preserved. Extends Tick 489 URL-percent-only decode. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 491: RFC 2047 encoded-word STATUS (`=?UTF-8?Q?STATUS=3A_READY?=` / `=?utf-8?q?STATUS=3A=20READY?=` / `=?UTF-8?B?U1RBVFVTOiBSRUFEWQ==?=` / adjacent `=?UTF-8?Q?STATUS=3A_?= =?UTF-8?Q?READY?=`) — `_ICML_STATUS_RFC2047_WORD_RE` + `_ICML_STATUS_RFC2047_RUN_RE` + `_peel_icml_status_rfc2047_encoded_words`; unknown charset / bad base64 untouched; Tick 486–490 HTML/JS/URL/QP contracts preserved. Extends Tick 490 bare-QP-only decode. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

@@ -8698,6 +8698,142 @@ def test_icml_ready_status_header_accepts_quoted_printable_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_rfc2047_encoded_word_status() -> None:
+    """Tick 491: RFC 2047 encoded-word STATUS (``=?UTF-8?Q?…?=`` / ``?B?``).
+
+    Pre-491 Tick 490 peeled bare QP ``=XX`` but left MIME encoded-word wrappers
+    + Q ``_``-as-space, so email / MIME gateway exports
+    (``=?UTF-8?Q?STATUS=3A_READY?=`` / ``=?utf-8?q?STATUS=3A=20READY?=`` /
+    ``=?UTF-8?B?U1RBVFVTOiBSRUFEWQ==?=`` / adjacent
+    ``=?UTF-8?Q?STATUS=3A_?= =?UTF-8?Q?READY?=`` / Q HTML badge) missed demote /
+    G4 pack rewrite. Unknown charset / invalid base64 stay literal; Tick
+    486–490 contracts preserved.
+    """
+    import base64
+
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_html_inline_title,
+        _peel_icml_status_rfc2047_encoded_words,
+        _strip_icml_status_line_noise,
+    )
+
+    q_ready = "=?UTF-8?Q?STATUS=3A_READY?="
+    q_ready_lower = "=?utf-8?q?STATUS=3A=20READY?="
+    # Literal underscore in IN_PROGRESS must be =5F (Q ``_`` is always space).
+    q_prog = "=?UTF-8?Q?STATUS=3A_IN=5FPROGRESS?="
+    q_adj = "=?UTF-8?Q?STATUS=3A_?= =?UTF-8?Q?READY?="
+    b_ready = "=?UTF-8?B?" + base64.b64encode(b"STATUS: READY").decode("ascii") + "?="
+    b_bold = (
+        "=?UTF-8?B?"
+        + base64.b64encode(b"**STATUS: READY**").decode("ascii")
+        + "?="
+    )
+    q_html = (
+        "=?UTF-8?Q?=3Cp_title=3D=22STATUS=3A_READY=22=3Ebadge=3C/p=3E?="
+    )
+    unknown_cs = "=?X-UNKNOWN?Q?STATUS=3A_READY?="
+    bad_b64 = "=?UTF-8?B?!!!!?="
+
+    assert _peel_icml_status_rfc2047_encoded_words(q_ready) == "STATUS=3A READY"
+    assert _decode_icml_status_html_entities(q_ready) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(q_ready_lower) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(q_prog) == "STATUS: IN_PROGRESS"
+    assert _decode_icml_status_html_entities(q_adj) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(b_ready) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(b_bold) == "**STATUS: READY**"
+    assert _decode_icml_status_html_entities(q_html) == (
+        '<p title="STATUS: READY">badge</p>'
+    )
+    assert (
+        _peel_icml_status_html_inline_title(
+            _decode_icml_status_html_entities(q_html)
+        )
+        == "STATUS: READY"
+    )
+    # Unknown charset stays wrapped (cannot invent STATUS); inner QP may still
+    # peel allowlisted =XX inside the literal word (Tick 490 contract).
+    assert _decode_icml_status_html_entities(unknown_cs) == (
+        "=?X-UNKNOWN?Q?STATUS:_READY?="
+    )
+    assert _decode_icml_status_html_entities(bad_b64) == bad_b64
+    assert _icml_ready_status_header(unknown_cs + "\n") is None
+    assert _icml_ready_status_header(bad_b64 + "\n") is None
+    # Tick 486–490 contracts unchanged.
+    assert _decode_icml_status_html_entities("STATUS=3A=20READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities("STATUS%3A%20READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities(r"STATUS\u003a READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities("STATUS&amp;#58; READY") == (
+        "STATUS: READY"
+    )
+    assert _decode_icml_status_html_entities("&amp;**STATUS: READY**") == (
+        "&amp;**STATUS: READY**"
+    )
+
+    assert _strip_icml_status_line_noise(q_ready) == "STATUS: READY"
+    assert _icml_ready_status_header(q_ready + "\n") == "READY"
+    assert _icml_ready_status_header(q_ready_lower + "\n") == "READY"
+    assert _icml_ready_status_header(q_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(q_adj + "\n") == "READY"
+    assert _icml_ready_status_header(b_ready + "\n") == "READY"
+    assert _icml_ready_status_header(b_bold + "\n") == "READY"
+    assert _icml_ready_status_header(q_html + "\n") == "READY"
+    assert _icml_ready_status_header(unknown_cs + "\n") is None
+    assert _icml_ready_status_header(bad_b64 + "\n") is None
+    # Prior Tick 486–490 forms unchanged.
+    assert _icml_ready_status_header("STATUS=3A=20READY\n") == "READY"
+    assert _icml_ready_status_header("STATUS%3A%20READY\n") == "READY"
+    assert _icml_ready_status_header(r"STATUS\u003a READY" + "\n") == "READY"
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{q_ready}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert "=?UTF-8?Q?" not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_b = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{b_ready}\n"
+    )
+    demoted_b = _demote_icml_ready_status(prose_b)
+    assert _icml_ready_status_header(demoted_b) == "IN_PROGRESS"
+    assert "=?UTF-8?B?" not in demoted_b
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted_b.splitlines()
+    )
+
+    prose_html = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{q_html}\n"
+    )
+    demoted_html = _demote_icml_ready_status(prose_html)
+    assert _icml_ready_status_header(demoted_html) == "IN_PROGRESS"
+    assert "=?UTF-8?Q?" not in demoted_html
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in demoted_html.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -10758,6 +10894,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML quoted-printable STATUS header (Tick 490)" in master
     assert (
         "test_icml_ready_status_header_accepts_quoted_printable_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 491: RFC 2047 encoded-word STATUS (=?UTF-8?Q?…?= / =?UTF-8?B?…?=).
+    assert "_ICML_STATUS_RFC2047_WORD_RE" in env_checks
+    assert "_ICML_STATUS_RFC2047_RUN_RE" in env_checks
+    assert "_peel_icml_status_rfc2047_encoded_words" in env_checks
+    assert "0x5F" in env_checks  # Q =5F → underscore for IN_PROGRESS
+    assert "ICML rfc2047-encoded-word STATUS header (Tick 491)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_rfc2047_encoded_word_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.

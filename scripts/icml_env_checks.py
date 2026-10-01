@@ -102,6 +102,8 @@ via ``autowire_diamond_csv`` (cron no longer the only path that skips HF).
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import os
 import re
@@ -2910,6 +2912,30 @@ _ICML_STATUS_URL_PERCENT_RE = re.compile(r"%([0-9a-fA-F]{2})", re.IGNORECASE)
 # ``=41`` stays literal (parity with Tick 489 ``%41``).
 _ICML_STATUS_QUOTED_PRINTABLE_RE = re.compile(r"=([0-9a-fA-F]{2})", re.IGNORECASE)
 _ICML_STATUS_QP_SOFT_BREAK_RE = re.compile(r"=\r?\n")
+# Tick 491: RFC 2047 encoded-word STATUS headers from email / MIME gateways
+# (``=?UTF-8?Q?STATUS=3A_READY?=`` / ``=?UTF-8?B?…?=``). Pre-491 Tick 490
+# peeled bare QP ``=XX`` but left encoded-word wrappers + Q ``_``-as-space,
+# so demote no-op / G4 pack miss READY. Adjacent words may be whitespace-
+# separated (RFC 2047 §6.2); unknown charset / bad base64 stay literal.
+_ICML_STATUS_RFC2047_WORD_RE = re.compile(
+    r"=\?([^?\s]*)\?([QBqb])\?([^?]*)\?="
+)
+_ICML_STATUS_RFC2047_RUN_RE = re.compile(
+    r"(?:=\?[^?\s]*\?[QBqb]\?[^?]*\?=)"
+    r"(?:\s+=\?[^?\s]*\?[QBqb]\?[^?]*\?=)*",
+    re.IGNORECASE,
+)
+_ICML_STATUS_RFC2047_CHARSETS = frozenset(
+    {
+        "utf-8",
+        "utf8",
+        "us-ascii",
+        "ascii",
+        "iso-8859-1",
+        "latin-1",
+        "latin1",
+    }
+)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -2952,6 +2978,9 @@ _ICML_STATUS_HTML_CODEPOINTS = frozenset(
         0x2B,
         # Tick 490: same allowlist covers QP ``=3D`` / ``=2F`` / ``=25`` so
         # double-encoded ``=253A`` and QP HTML badges rebuild (parity with %).
+        # Tick 491: underscore so RFC 2047 Q ``=5F`` rebuilds ``IN_PROGRESS``
+        # after ``_``→space (``STATUS=3A_IN=5FPROGRESS`` → ``STATUS: IN_PROGRESS``).
+        0x5F,
     }
 )
 # Formatting / block wrappers only — not arbitrary tags (avoid eating ``STATUS < 1``).
@@ -4007,6 +4036,76 @@ def _peel_icml_status_md_link(line: str) -> str | None:
 _ICML_STATUS_MD_PIPE_RE = re.compile(r"^\|+\s*([^|]*?)\s*\|+\s*$")
 
 
+def _normalize_icml_status_rfc2047_charset(charset: str) -> str | None:
+    """Map RFC 2047 charset token → codecs name, or None if disallowed."""
+    cs = (charset or "").strip().lower().replace("_", "-")
+    if cs not in _ICML_STATUS_RFC2047_CHARSETS:
+        return None
+    if cs in {"utf8", "utf-8"}:
+        return "utf-8"
+    if cs in {"us-ascii", "ascii"}:
+        return "ascii"
+    if cs in {"iso-8859-1", "latin-1", "latin1"}:
+        return "latin-1"
+    return cs
+
+
+def _decode_one_icml_status_rfc2047_word(
+    charset: str, encoding: str, payload: str
+) -> str | None:
+    """Decode one RFC 2047 encoded-word; None if charset/encoding unsupported.
+
+    Q-encoding: ``_`` → space; leave ``=XX`` for Tick 490 QP allowlist peel.
+    B-encoding: base64 → text in ``charset`` (strict). Unknown / invalid → None.
+    """
+    codec = _normalize_icml_status_rfc2047_charset(charset)
+    if codec is None:
+        return None
+    enc = (encoding or "").upper()
+    if enc == "Q":
+        # RFC 2047 §4.2: underscore is always space in Q encoded-words.
+        return (payload or "").replace("_", " ")
+    if enc == "B":
+        raw_b64 = (payload or "").strip()
+        if not raw_b64:
+            return None
+        try:
+            pad = (-len(raw_b64)) % 4
+            data = base64.b64decode(raw_b64 + ("=" * pad), validate=True)
+            if not data:
+                return None
+            return data.decode(codec)
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            return None
+    return None
+
+
+def _peel_icml_status_rfc2047_encoded_words(line: str) -> str:
+    """Tick 491: peel RFC 2047 encoded-word runs into plain STATUS text.
+
+    Email / MIME gateways wrap headers as ``=?charset?Q|B?…?=``. Adjacent
+    encoded-words may be separated by linear whitespace (RFC 2047 §6.2) —
+    join their payloads without that whitespace. If any word in a run fails
+    (unknown charset / bad base64), leave the whole run literal.
+    """
+
+    def _run_sub(m: re.Match) -> str:
+        run = m.group(0)
+        parts: list[str] = []
+        for wm in _ICML_STATUS_RFC2047_WORD_RE.finditer(run):
+            decoded = _decode_one_icml_status_rfc2047_word(
+                wm.group(1), wm.group(2), wm.group(3)
+            )
+            if decoded is None:
+                return run
+            parts.append(decoded)
+        if not parts:
+            return run
+        return "".join(parts)
+
+    return _ICML_STATUS_RFC2047_RUN_RE.sub(_run_sub, line or "")
+
+
 def _decode_icml_status_html_entities(line: str) -> str:
     """Tick 455/486/487/488/489/490: decode HTML + JSON/JS + URL + QP escapes.
 
@@ -4055,6 +4154,14 @@ def _decode_icml_status_html_entities(line: str) -> str:
     allowlisted ``=XX`` only after removing QP soft line breaks; unknown
     ``=41`` stays literal. Bare ``STATUS: a=b`` / ``STATUS: READY=note``
     without hex ``=XX`` stay untouched.
+
+    Tick 491: email / MIME gateways often wrap STATUS in RFC 2047 encoded-words
+    (``=?UTF-8?Q?STATUS=3A_READY?=`` / ``=?utf-8?q?STATUS=3A=20READY?=`` /
+    ``=?UTF-8?B?U1RBVFVTOiBSRUFEWQ==?=`` / adjacent
+    ``=?UTF-8?Q?STATUS=3A_?= =?UTF-8?Q?READY?=``) — pre-491 Tick 490 peeled
+    bare QP ``=XX`` but left ``=?…?=`` wrappers + Q ``_``-as-space, so demote
+    no-op / G4 pack miss READY. Peel allowlisted charset Q/B words before
+    QP ``=XX``; unknown charset / invalid base64 stay literal.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4101,10 +4208,11 @@ def _decode_icml_status_html_entities(line: str) -> str:
     had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
     s = original
     # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` /
-    # ``=253A`` stacks.
+    # ``=253A`` / stacked RFC 2047 runs.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
+        s = _peel_icml_status_rfc2047_encoded_words(s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
         s = _ICML_STATUS_JS_ESCAPE_RE.sub(_js_sub, s)
