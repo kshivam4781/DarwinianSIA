@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (+ HF/CSV).  
+**Tick 496:** C-array / comma / per-byte `0x` hex STATUS (`53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped) — extends `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only.
 **Tick 495:** bare hex STATUS (`5354415455533A205245414459` / spaced `53 54 …` / colon / dash / `0x` / bold-wrapped) — `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 492–494 base64/data-URI-only.
 **Tick 494:** plain / percent-encoded data-URI STATUS (`data:text/plain,STATUS%3A%20READY` / charset / `data:,…` / literal / bold-wrapped) — `_peel_icml_status_data_uri_plain`; closes G4 demote no-op / pack miss after Tick 493 base64-only data-URI.
 **Tick 492:** bare base64 STATUS (`U1RBVFVTOiBSRUFEWQ==` / `**U1RBVFVTOiBSRUFEWQ==**`) — `_peel_icml_status_bare_base64`; closes G4 demote no-op / pack miss after Tick 491 wrapped-B-only.

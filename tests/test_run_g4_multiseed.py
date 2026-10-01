@@ -6129,6 +6129,84 @@ def test_demote_icml_ready_header_only_despite_prose_and_indent(tmp_path: Path) 
     )
     assert plain_uri_prog not in plain_updated
 
+    # (db) Tick 496: C-array / comma / per-byte 0x hex STATUS must demote.
+    hex_0x_comma = ",".join(f"0x{b:02x}" for b in b"STATUS: READY")
+    hex_ready_path = tmp_path / "carray_hex_status.md"
+    hex_ready_path.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{hex_0x_comma}\n\n"
+        "- [x] Table 1 (primary metrics by seed)\n",
+        encoding="utf-8",
+    )
+    assert (
+        _icml_ready_status_header(hex_ready_path.read_text(encoding="utf-8"))
+        == "READY"
+    )
+    assert (
+        demote_icml_ready_file(
+            hex_ready_path,
+            reason="C-array hex READY",
+            timestamp="t",
+        )
+        is True
+    )
+    hex_text = hex_ready_path.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(hex_text) == "IN_PROGRESS"
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in hex_text.splitlines()
+    )
+    assert hex_0x_comma not in hex_text
+
+    # (dc) Tick 496: brace C-array IN_PROGRESS must update to READY.
+    hex_carray_prog = (
+        "{" + ", ".join(f"0x{b:02x}" for b in b"STATUS: IN_PROGRESS") + "}"
+    )
+    hex_upd = tmp_path / "update_carray_hex_status.md"
+    hex_upd.write_text(
+        "# ICML Thesis 1 — Ready checklist\n\n"
+        f"**{hex_carray_prog}**\n\n"
+        "## Criteria\n\n"
+        "### 1. PRIMARY — Condition D beats B\n"
+        "- [ ] D beats B on ≥3/5 seeds for gens-to-threshold (25% or 30%), **or**\n"
+        "- [ ] D beats B on ≥3/5 seeds for cost-to-threshold (≥15% fewer tokens/calls), **or**\n"
+        "- [ ] Non-trivial mean final accuracy gap (not ~1pp noise)\n\n"
+        "### 2. MECHANISM — H2 or case study\n"
+        "- [x] Documented case study (tie → contradiction → different DNA → fitness lift)\n"
+        "- [ ] Live API-run H2 DNA trait skew under contradiction bias\n\n"
+        "### 3. VALIDITY — H5\n"
+        "- [ ] Spearman ρ (`epistemic_value_t` vs `Δfitness_t+1`) > 0.3 on live / publishable runs\n\n"
+        "### 4. PAPER\n"
+        "- [x] Figure 1 draft (offline B vs D learning curves)\n"
+        "- [x] Figure 2 draft (H2 DNA histogram / case-study support)\n"
+        "- [ ] Table 1 (primary metrics by seed) — offline stub\n"
+        "- [ ] Table 2 (H2/H5 / cost) — offline stub\n"
+        "- [ ] Reproducible **live** run IDs listed in `docs/paper_artifacts.md`\n",
+        encoding="utf-8",
+    )
+    status_hex = update_icml_ready_from_g4(
+        ready_path=hex_upd,
+        comparison={
+            "primary_gens30_pass": True,
+            "primary_cost30_pass": False,
+            "d_wins_final": 4,
+        },
+        primary_pass=True,
+        h2_pass=True,
+        h5_pass=True,
+        paper_refreshed=True,
+        figures_written=["fig1.png"],
+        timestamp="2026-10-01T14:20:00Z",
+        allow_ready=True,
+    )
+    assert status_hex == "READY"
+    hex_updated = hex_upd.read_text(encoding="utf-8")
+    assert _icml_ready_status_header(hex_updated) == "READY"
+    assert any(
+        ln.strip() == "**STATUS: READY**" for ln in hex_updated.splitlines()
+    )
+    assert hex_carray_prog not in hex_updated
+
 
 def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

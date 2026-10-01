@@ -2975,12 +2975,26 @@ _ICML_STATUS_DATA_URI_PLAIN_RE = re.compile(
 # (``53 54 …`` / ``53:54:…`` / ``53-54-…``), optional ``0x`` prefix.
 # Min 13 bytes (= ``STATUS: READY``); STATUS hint gates false positives.
 # Reuses Tick 492 ``_ICML_STATUS_BARE_BASE64_HINT_RE`` after UTF-8 decode.
+# Tick 496: C-array / comma-hex / per-byte ``0xNN`` dumps
+# (``53,54,…`` / ``0x53,0x54,…`` / ``0x53 0x54 …`` / ``{0x53, 0x54, …}``).
 _ICML_STATUS_BARE_HEX_CONT_RE = re.compile(
     r"^(?:0x)?(?:[0-9A-Fa-f]{2}){13,}$",
     re.IGNORECASE,
 )
 _ICML_STATUS_BARE_HEX_SEP_RE = re.compile(
     r"^(?:0x)?(?:[0-9A-Fa-f]{2}[\s:\-]){12,}[0-9A-Fa-f]{2}$",
+    re.IGNORECASE,
+)
+_ICML_STATUS_BARE_HEX_COMMA_RE = re.compile(
+    r"^(?:[0-9A-Fa-f]{2},\s*){12,}[0-9A-Fa-f]{2}$",
+    re.IGNORECASE,
+)
+_ICML_STATUS_BARE_HEX_0X_BYTE_RE = re.compile(
+    r"^(?:0x[0-9A-Fa-f]{2}(?:,\s*|\s+)){12,}0x[0-9A-Fa-f]{2}$",
+    re.IGNORECASE,
+)
+_ICML_STATUS_BARE_HEX_CARRAY_RE = re.compile(
+    r"^\{(?:\s*(?:0x)?[0-9A-Fa-f]{2}\s*,){12,}\s*(?:0x)?[0-9A-Fa-f]{2}\s*,?\s*\}$",
     re.IGNORECASE,
 )
 _ICML_STATUS_HTML_NAMED = {
@@ -4254,7 +4268,7 @@ def _peel_icml_status_data_uri_plain(line: str) -> str:
 
 
 def _peel_icml_status_bare_hex(line: str) -> str:
-    """Tick 495: peel a full-line bare hex STATUS payload into plain text.
+    """Tick 495/496: peel a full-line bare hex STATUS payload into plain text.
 
     Tick 492–494 cover base64 / data-URI forms, but log / packet / hex-dump
     paste often keeps a hex encoding of the STATUS line
@@ -4265,19 +4279,39 @@ def _peel_icml_status_bare_hex(line: str) -> str:
     Tick 492's base64 charset, but decoded bytes fail the STATUS hint —
     hex peel runs after bare-base64 and recovers those lines.
 
+    Tick 496: C / debugger / Wireshark-style dumps often use commas or
+    per-byte ``0x`` prefixes
+    (``53,54,41,…`` / ``0x53,0x54,…`` / ``0x53 0x54 …`` /
+    ``{0x53, 0x54, …}``) — Tick 495 only matched continuous / space /
+    colon / dash / single leading ``0x``, so demote no-op / G4 pack miss
+    READY. Extend the same peeler; leave Tick 495 contracts + non-STATUS
+    untouched.
+
     Full-line only; require ≥13 bytes and STATUS + READY/IN_PROGRESS in the
     UTF-8 text (same hint as Tick 492). Odd-length / non-hex / non-STATUS
     stay literal.
     """
     original = line or ""
     s = original.strip()
-    if not (
+    matched = False
+    if (
         _ICML_STATUS_BARE_HEX_CONT_RE.fullmatch(s)
         or _ICML_STATUS_BARE_HEX_SEP_RE.fullmatch(s)
     ):
+        matched = True
+        body = s[2:] if s[:2].lower() == "0x" else s
+        compact = re.sub(r"[\s:\-]", "", body)
+    elif (
+        _ICML_STATUS_BARE_HEX_COMMA_RE.fullmatch(s)
+        or _ICML_STATUS_BARE_HEX_0X_BYTE_RE.fullmatch(s)
+        or _ICML_STATUS_BARE_HEX_CARRAY_RE.fullmatch(s)
+    ):
+        matched = True
+        body = s[1:-1].strip() if s.startswith("{") and s.endswith("}") else s
+        compact = re.sub(r"(?i)0x", "", body)
+        compact = re.sub(r"[\s,]", "", compact)
+    if not matched:
         return original
-    body = s[2:] if s[:2].lower() == "0x" else s
-    compact = re.sub(r"[\s:\-]", "", body)
     if len(compact) < 26 or len(compact) % 2:
         return original
     try:
@@ -4293,7 +4327,7 @@ def _peel_icml_status_bare_hex(line: str) -> str:
 
 
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489/490/491/492/493/494/495: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI + bare-hex.
+    """Tick 455/486/487/488/489/490/491/492/493/494/495/496: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI + bare-hex / C-array hex.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -4382,6 +4416,11 @@ def _decode_icml_status_html_entities(line: str) -> str:
     data-URI only, so demote no-op / G4 pack miss READY. Peel full-line
     bare hex (≥13 bytes) when UTF-8 text looks like STATUS; odd-length /
     non-hex / non-STATUS stay literal.
+
+    Tick 496: C / debugger dumps often use commas or per-byte ``0x``
+    (``53,54,…`` / ``0x53,0x54,…`` / ``0x53 0x54 …`` / ``{0x53, 0x54, …}``)
+    — Tick 495 continuous/space/colon/dash/single-``0x`` left those unmatched
+    (demote no-op / G4 pack miss READY). Same peeler; non-STATUS untouched.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4938,9 +4977,10 @@ def _strip_icml_status_line_noise(line: str) -> str:
             else:
                 s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
-    # Tick 492/493/494/495: bare base64 / data-URI / bare hex after wrap strip
-    # (``**U1RBVFVTOiBSRUFEWQ==**`` / ``**data:text/plain;base64,…**`` /
-    # ``**data:text/plain,STATUS%3A%20READY**`` / ``**5354415…4459**``).
+    # Tick 492/493/494/495/496: bare base64 / data-URI / bare hex / C-array hex
+    # after wrap strip (``**U1RBVFVTOiBSRUFEWQ==**`` /
+    # ``**data:text/plain;base64,…**`` / ``**data:text/plain,STATUS%3A%20READY**``
+    # / ``**5354415…4459**`` / ``**0x53,0x54,…**``).
     peeled_uri = _peel_icml_status_data_uri_base64(s)
     if peeled_uri != s:
         s = _decode_icml_status_html_entities(peeled_uri)

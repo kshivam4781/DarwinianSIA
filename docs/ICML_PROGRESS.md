@@ -1,5 +1,31 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-01T14:17Z — Tick 496 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-4b4f` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **secrets**. Separately, Tick 495 left a realistic STATUS hazard on C / debugger / Wireshark-style hex dumps that use *commas* or *per-byte `0x`* (`53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped) — Tick 495 peeled continuous / space / colon / dash / single leading `0x` only, so demote no-op / G4 pack miss READY. Highest leverage without paid spend: **C-array / comma-hex STATUS**.
+
+### What we did
+**Tick 496 — C-array / comma-hex STATUS (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `4b4f`
+2. `_ICML_STATUS_BARE_HEX_COMMA_RE` + `_ICML_STATUS_BARE_HEX_0X_BYTE_RE` + `_ICML_STATUS_BARE_HEX_CARRAY_RE` extend `_peel_icml_status_bare_hex` — full-line comma / per-byte `0x` / brace C-array hex only when UTF-8 text looks like STATUS; Tick 495 contracts + non-STATUS untouched; Tick 486–495 contracts preserved
+3. Focused tests + G4 demote/update + lock green
+4. Secrets re-filed via `request-environment-setup-actions`; Portal Save skipped
+5. STATUS remains IN_PROGRESS; secrets still required for live PRIMARY
+
+| Metric | Before (Tick 495) | After (Tick 496) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | unchanged (5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5) | unchanged |
+| `53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53,…}` / bold-wrapped demote/update | **miss** (header=None) | **demote/update normalize (whole block)** |
+| Live GPQA | blocked (NEBIUS + HF/CSV) | blocked |
+
+### Next recommended step
+Human: (1) add `NEBIUS_API_KEY` (+ `HF_TOKEN` or drop `gpqa_diamond.csv`) — **PRIMARY path**; (2) undraft+merge tip PR #337 and/or bootstrap #338; optional `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then: `bash scripts/icml_cron_entry.sh` → G2→G3→G4 + paper pack → STATUS READY when criteria pass.
+
 ## 2026-10-01T12:25Z — Tick 495 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

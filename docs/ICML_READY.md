@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 495: bare-hex STATUS (`5354415455533A205245414459` / spaced `53 54 …` / colon `53:54:…` / dash `53-54-…` / `0x`-prefixed / bold-wrapped) — `_ICML_STATUS_BARE_HEX_CONT_RE` + `_ICML_STATUS_BARE_HEX_SEP_RE` + `_peel_icml_status_bare_hex`; non-STATUS hex / Tick 492 bare-b64 untouched; Tick 486–494 HTML/JS/URL/QP/RFC2047/bare-b64/data-URI contracts preserved. Extends Tick 492–494 encoding peels. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
+_Tick 496: C-array / comma / per-byte `0x` hex STATUS (`53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped) — `_ICML_STATUS_BARE_HEX_COMMA_RE` + `_ICML_STATUS_BARE_HEX_0X_BYTE_RE` + `_ICML_STATUS_BARE_HEX_CARRAY_RE` extend `_peel_icml_status_bare_hex`; Tick 495 continuous/space/colon/dash/single-`0x` + Tick 486–495 contracts preserved. Extends Tick 495 hex-dump peels. Tip PR #337 remains the anti-churn head. Live PRIMARY still blocked on NEBIUS + HF/CSV._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

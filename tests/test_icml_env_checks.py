@@ -9206,6 +9206,99 @@ def test_icml_ready_status_header_accepts_bare_hex_status() -> None:
     )
 
 
+def test_icml_ready_status_header_accepts_carray_hex_status() -> None:
+    """Tick 496: C-array / comma / per-byte 0x hex STATUS payloads.
+
+    Pre-496 Tick 495 covered continuous / space / colon / dash / single
+    leading ``0x`` only, so C / debugger dumps
+    (``53,54,…`` / ``0x53,0x54,…`` / ``0x53 0x54 …`` /
+    ``{0x53, 0x54, …}`` / bold-wrapped) missed demote / G4 pack rewrite.
+    Tick 495 contracts + non-STATUS stay untouched.
+    """
+    from icml_env_checks import (
+        _decode_icml_status_html_entities,
+        _demote_icml_ready_status,
+        _icml_ready_richness,
+        _icml_ready_status_header,
+        _peel_icml_status_bare_hex,
+        _strip_icml_status_line_noise,
+    )
+
+    raw = b"STATUS: READY"
+    raw_prog = b"STATUS: IN_PROGRESS"
+    hex_comma = ",".join(f"{b:02x}" for b in raw)
+    hex_comma_sp = ", ".join(f"{b:02X}" for b in raw)
+    hex_0x_comma = ",".join(f"0x{b:02x}" for b in raw)
+    hex_0x_sp = " ".join(f"0x{b:02X}" for b in raw)
+    hex_carray = "{" + ", ".join(f"0x{b:02x}" for b in raw) + "}"
+    hex_carray_plain = "{" + ",".join(f"{b:02x}" for b in raw) + "}"
+    hex_prog = ",".join(f"0x{b:02x}" for b in raw_prog)
+    hex_cont = raw.hex().upper()  # Tick 495 contract
+    hex_junk = ",".join(f"{b:02x}" for b in b"hello world!!")
+
+    assert _peel_icml_status_bare_hex(hex_comma) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_comma_sp) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_0x_comma) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_0x_sp) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_carray) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_carray_plain) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_prog) == "STATUS: IN_PROGRESS"
+    assert _peel_icml_status_bare_hex(hex_cont) == "STATUS: READY"
+    assert _peel_icml_status_bare_hex(hex_junk) == hex_junk
+
+    assert _decode_icml_status_html_entities(hex_comma) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(hex_0x_comma) == "STATUS: READY"
+    assert _decode_icml_status_html_entities(hex_carray) == "STATUS: READY"
+    assert _strip_icml_status_line_noise(f"**{hex_0x_comma}**") == "STATUS: READY"
+    assert _strip_icml_status_line_noise(hex_carray) == "STATUS: READY"
+
+    assert _icml_ready_status_header(hex_comma + "\n") == "READY"
+    assert _icml_ready_status_header(hex_comma_sp + "\n") == "READY"
+    assert _icml_ready_status_header(hex_0x_comma + "\n") == "READY"
+    assert _icml_ready_status_header(hex_0x_sp + "\n") == "READY"
+    assert _icml_ready_status_header(hex_carray + "\n") == "READY"
+    assert _icml_ready_status_header(hex_carray_plain + "\n") == "READY"
+    assert _icml_ready_status_header(hex_prog + "\n") == "IN_PROGRESS"
+    assert _icml_ready_status_header(f"**{hex_0x_comma}**\n") == "READY"
+    assert _icml_ready_status_header(hex_junk + "\n") is None
+
+    prose = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{hex_0x_comma}\n"
+    )
+    assert _icml_ready_status_header(prose) == "READY"
+    demoted = _demote_icml_ready_status(prose)
+    assert _icml_ready_status_header(demoted) == "IN_PROGRESS"
+    assert hex_0x_comma not in demoted
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**" for ln in demoted.splitlines()
+    )
+    assert _icml_ready_richness(prose)[2] == 1
+
+    prose_carray = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"{hex_carray}\n"
+    )
+    demoted_c = _demote_icml_ready_status(prose_carray)
+    assert _icml_ready_status_header(demoted_c) == "IN_PROGRESS"
+    assert hex_carray not in demoted_c
+
+    prose_bold = (
+        "# Title\n\n"
+        "Do not set STATUS: READY until criteria pass.\n\n"
+        f"**{hex_comma}**\n"
+    )
+    demoted_bold = _demote_icml_ready_status(prose_bold)
+    assert _icml_ready_status_header(demoted_bold) == "IN_PROGRESS"
+    assert hex_comma not in demoted_bold
+    assert any(
+        ln.strip() == "**STATUS: IN_PROGRESS**"
+        for ln in demoted_bold.splitlines()
+    )
+
+
 def test_icml_ready_status_header_accepts_html_unquoted_attr_status() -> None:
     """Tick 485: unquoted HTML STATUS attrs on allowlisted a11y badges.
 
@@ -11312,6 +11405,16 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "ICML bare-hex STATUS header (Tick 495)" in master
     assert (
         "test_icml_ready_status_header_accepts_bare_hex_status"
+        in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    )
+    # Tick 496: C-array / comma / per-byte 0x hex STATUS.
+    assert "_ICML_STATUS_BARE_HEX_COMMA_RE" in env_checks
+    assert "_ICML_STATUS_BARE_HEX_0X_BYTE_RE" in env_checks
+    assert "_ICML_STATUS_BARE_HEX_CARRAY_RE" in env_checks
+    assert "0x53,0x54" in env_checks or "C-array" in env_checks
+    assert "ICML C-array/comma-hex STATUS header (Tick 496)" in master
+    assert (
+        "test_icml_ready_status_header_accepts_carray_hex_status"
         in (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     )
     # Tick 321: cold-cloud finish must bootstrap/SKIP pytest and always print ICML footer.
