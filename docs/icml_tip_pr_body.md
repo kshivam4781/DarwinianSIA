@@ -9,7 +9,7 @@
 3. Optional: undraft+merge tip PR #337 and/or bootstrap PR #338
 
 ## Test plan
-- [x] `pytest tests/test_icml_env_checks.py::test_suggested_open_git_pr_body_secrets_first_generic`
-- [x] `pytest tests/test_icml_env_checks.py::test_detect_gpqa_is_synthetic_and_secrets_auto_probe`
-- [x] `pytest tests/test_icml_env_checks.py::test_cron_refreshes_secrets_after_preflight`
+- [x] `pytest tests/test_icml_env_checks.py::test_icml_ready_status_header_accepts_data_uri_plain_status`
+- [x] `pytest tests/test_run_g4_multiseed.py::test_demote_icml_ready_header_only_despite_prose_and_indent`
+- [x] `pytest tests/test_icml_env_checks.py::test_env_example_and_section4_anthropic_optional`
 - [x] STATUS remains IN_PROGRESS until live PRIMARY criteria pass
