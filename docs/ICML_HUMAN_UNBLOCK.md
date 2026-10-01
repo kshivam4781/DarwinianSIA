@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 499:** secrets/cron `human_next` drops HF-accept when `diamond_ready` (CSV / mirror / non-synthetic on disk) — Gate2 Tick 498 parity for cron logs + `icml_secrets_status.json`.  
 **Tick 498:** Gate 2 `## Next` is NEBIUS-first when non-synthetic diamond is already present (drops hard-coded “Accept HF access” step). Cold-boot rematerialize re-verified.
 **Tick 497:** public OpenAI simple-evals `gpqa_diamond.csv` auto-fetch (`--from-public-mirror` / `ensure_diamond_csv_via_public_mirror`) — HF_TOKEN no longer hard-required when network works; diamond materialized non-synthetic; secrets blockers = NEBIUS only.
 **Tick 496:** C-array / comma / per-byte `0x` hex STATUS (`53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped) — extends `_peel_icml_status_bare_hex`; closes G4 demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only.

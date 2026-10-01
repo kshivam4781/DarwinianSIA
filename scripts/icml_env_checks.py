@@ -7874,11 +7874,16 @@ def collect_icml_secrets_status() -> dict:
             diamond_csv = mirrored
             public_mirror_used = True
     diamond_csv_ok = diamond_csv is not None
+    # Tick 499: non-synthetic on-disk diamond (e.g. prior mirror materialize)
+    # counts as diamond-ready even if the CSV path was cleaned — same idea as
+    # Gate2 ``gpqa_not_synthetic`` / Tick 498 NEBIUS-first Next.
+    gpqa_synth = detect_gpqa_is_synthetic()
+    diamond_ready = bool(diamond_csv_ok or gpqa_synth is False)
     meta_needs_anthropic = icml_meta_requires_anthropic()
     secrets_ok = bool(nebius) and (bool(anthropic) if meta_needs_anthropic else True)
-    # HF needed for --fetch-diamond unless operator supplies CSV offline
-    # (or Tick 497 public mirror succeeds).
-    fetch_diamond_ok = secrets_ok and (hf or diamond_csv_ok)
+    # HF needed for --fetch-diamond unless operator supplies CSV offline,
+    # Tick 497 public mirror succeeds, or non-synthetic diamond is already on disk.
+    fetch_diamond_ok = secrets_ok and (hf or diamond_ready)
     # Tick 273/277: cron passes --fetch-diamond (optionally with --diamond-csv).
     cron_live_ok = fetch_diamond_ok
     blockers: list[str] = []
@@ -7886,7 +7891,7 @@ def collect_icml_secrets_status() -> dict:
         blockers.append("ANTHROPIC_API_KEY missing")
     if not nebius:
         blockers.append("NEBIUS_API_KEY missing")
-    if not hf and not diamond_csv_ok:
+    if not hf and not diamond_ready:
         blockers.append(
             "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
             "(required for --fetch-diamond; or provide --diamond-csv / "
@@ -7897,19 +7902,29 @@ def collect_icml_secrets_status() -> dict:
     tip_pr = None if main_has_tip else resolve_icml_tip_pr()
     # Tick 342: surface interim AGENTS bootstrap PR when main still lacks tip.
     bootstrap_pr = None if main_has_tip else resolve_icml_agents_bootstrap_pr()
-    human_keys = icml_human_required_secrets_phrase(for_fetch_diamond=True)
+    # Tick 499: when diamond is already ready, phrase is NEBIUS-only (HF optional
+    # omitted) so cron human_next matches Gate2 Next — operators chase NEBIUS.
+    human_keys = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
     # Tick 343: PRIMARY-first ordering — secrets unblock live G2→G4; tip/bootstrap
     # merge is hygiene (chicken-egg recover still works). When diamond is blocked,
     # lead with secrets; when secrets+HF/CSV are OK but main lacks tip, lead with
     # bootstrap/tip merge (unchanged from Tick 342).
+    # Tick 499: drop hard-coded "Accept HuggingFace access" step when diamond
+    # ready (CSV / public mirror / non-synthetic on disk) — same operator trap
+    # Tick 498 fixed in Gate2 ## Next.
     secrets_lines = [
         f"Add {human_keys} to automation "
         f"{_AUTOMATION_URL} (or linked env {_ENV_DASHBOARD_URL})",
-        "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
-        "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
-        "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF; "
-        "or rely on Tick 497 public OpenAI simple-evals mirror auto-fetch)",
     ]
+    if not diamond_ready:
+        secrets_lines.append(
+            "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
+            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
+            "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF; "
+            "or rely on Tick 497 public OpenAI simple-evals mirror auto-fetch)"
+        )
     # Tick 345–347: title/body edit paste when tip PR metadata lags (MCP won't rewrite).
     progress_path = _REPO_ROOT / "docs" / "ICML_PROGRESS.md"
     local_tick: int | None = None
@@ -8071,7 +8086,10 @@ def collect_icml_secrets_status() -> dict:
             "(branch/title/description verbatim); "
             "Tick 352 call JSON / secrets JSON record ``cloud_boot_branch`` "
             "(MCP default when branch= omitted; Cloud Agent 'correct working "
-            "branch' does not override tip anti-churn)"
+            "branch' does not override tip anti-churn); "
+            "Tick 499: diamond_ready (CSV / public mirror / non-synthetic on "
+            "disk) drops HF-accept human_next step + HF blocker; secrets phrase "
+            "is NEBIUS-first when diamond already ready (Gate2 Tick 498 parity)"
         ),
         "automation_id": _AUTOMATION_ID,
         "automation_url": _AUTOMATION_URL,
@@ -8088,6 +8106,8 @@ def collect_icml_secrets_status() -> dict:
         "diamond_csv_present": diamond_csv_ok,
         "diamond_csv_path": str(diamond_csv) if diamond_csv is not None else None,
         "public_mirror_csv": public_mirror_used,
+        # Tick 499: CSV **or** non-synthetic on-disk diamond (Gate2 parity).
+        "diamond_ready": diamond_ready,
         "meta_requires_anthropic": meta_needs_anthropic,
         "meta_agent_profile": resolve_icml_meta_agent_profile(),
         "packages_bootstrapped_in_preflight": True,

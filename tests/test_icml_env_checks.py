@@ -531,9 +531,17 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("icml_env_checks.load_icml_dotenv", lambda: [])
     monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
     monkeypatch.setattr(
-        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: None
+        "icml_env_checks.resolve_diamond_csv_path", lambda *_a, **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: None
     )
     tip_pr = {
         "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
@@ -559,9 +567,12 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     )
     status = collect_icml_secrets_status()
     assert status["fetch_diamond_ok"] is False
+    assert status["diamond_ready"] is False
     assert status["main_has_icml_tip"] is False
     assert "NEBIUS" in status["human_next"][0]
     assert "automation" in status["human_next"][0].lower() or "Add" in status["human_next"][0]
+    # Diamond absent → HF-accept step still present (Tick 499 keeps it when not ready).
+    assert any("Accept HuggingFace access" in line for line in status["human_next"])
     # Tip/bootstrap still present, but after secrets (+ HF accept line).
     assert any("pull/338" in line for line in status["human_next"])
     assert any("#337" in line for line in status["human_next"])
@@ -580,6 +591,65 @@ def test_secrets_status_human_next_primary_first_when_diamond_blocked(
     assert any("pull/337" in s or "#337" in s for s in steps)
     merge_idx = next(i for i, s in enumerate(steps) if "Optional interim" in s or "pull/338" in s)
     assert merge_idx > 0
+
+
+def test_secrets_status_human_next_nebius_first_when_diamond_ready(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 499: drop HF-accept human_next when diamond CSV / non-synthetic ready."""
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("icml_env_checks.load_icml_dotenv", lambda: [])
+    monkeypatch.setattr("icml_env_checks.main_has_icml_tip_files", lambda **_k: False)
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nQ?,A\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: csv_path
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: False
+    )
+    tip_pr = {
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "number": 337,
+        "title": "ICML tip",
+        "is_draft": True,
+        "head_ref": "cursor/icml-epistemic-results-f49c",
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    monkeypatch.setattr("icml_env_checks.resolve_icml_tip_pr", lambda **_k: tip_pr)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr", lambda **_k: None
+    )
+    status = collect_icml_secrets_status()
+    assert status["diamond_ready"] is True
+    assert status["diamond_csv_present"] is True
+    assert status["fetch_diamond_ok"] is False  # NEBIUS still missing
+    assert "NEBIUS" in status["human_next"][0]
+    assert "HF_TOKEN" not in status["human_next"][0]
+    assert not any(
+        "Accept HuggingFace access" in line for line in status["human_next"]
+    )
+    assert "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing" not in status["blockers"]
+    assert status["blockers"] == ["NEBIUS_API_KEY missing"]
+
+    # Non-synthetic on disk without CSV also counts as diamond_ready.
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: None
+    )
+    status2 = collect_icml_secrets_status()
+    assert status2["diamond_csv_present"] is False
+    assert status2["diamond_ready"] is True
+    assert not any(
+        "Accept HuggingFace access" in line for line in status2["human_next"]
+    )
+    assert status2["blockers"] == ["NEBIUS_API_KEY missing"]
 
 
 def test_suggested_open_git_pr_body_secrets_first_generic() -> None:

@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 498: Gate 2 `## Next` is NEBIUS-first when non-synthetic diamond is already present (drops hard-coded HF-accept step that misled operators after Tick 497 public mirror). Cold-boot rematerialize re-verified — live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 499: secrets/cron `human_next` is NEBIUS-first when diamond is already ready (CSV / public mirror / non-synthetic on disk) — drops the hard-coded HF-accept step that Tick 498 fixed only in Gate2 Next. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
