@@ -2945,6 +2945,17 @@ _ICML_STATUS_BARE_BASE64_HINT_RE = re.compile(
     r"STATUS.{0,80}(?:READY|IN_PROGRESS)|(?:READY|IN_PROGRESS).{0,80}STATUS",
     re.IGNORECASE | re.DOTALL,
 )
+# Tick 493: ``data:[mediatype][;param…];base64,<payload>`` STATUS (chat / email /
+# Markdown badge paste keeps the data-URI wrapper after Tick 492 bare peel).
+_ICML_STATUS_DATA_URI_RE = re.compile(
+    r"^data:"
+    r"(?:[-\w.]+/[-\w.+]*)?"
+    r"(?:;[-\w.]+(?:=[-\w.]+)?)?"
+    r"(?:;[-\w.]+(?:=[-\w.]+)?)*"
+    r";base64,"
+    r"([A-Za-z0-9+/]{12,}={0,2})$",
+    re.IGNORECASE,
+)
 _ICML_STATUS_HTML_NAMED = {
     "nbsp": "\u00a0",
     "zerowidthspace": "\u200b",
@@ -4148,8 +4159,34 @@ def _peel_icml_status_bare_base64(line: str) -> str:
     return text
 
 
+def _peel_icml_status_data_uri_base64(line: str) -> str:
+    """Tick 493: peel a full-line ``data:…;base64,…`` STATUS payload.
+
+    Tick 492 peels bare base64 payloads, but chat / email / Markdown badge
+    paste often keeps the RFC 2397 data-URI wrapper
+    (``data:text/plain;base64,U1RBVFVTOiBSRUFEWQ==`` /
+    ``data:text/plain;charset=utf-8;base64,…`` /
+    ``data:;base64,…`` / bold-wrapped ``**data:…;base64,…**``).
+    Pre-493 left those stubs unmatched (demote no-op / G4 pack miss READY).
+
+    Full-line only; decode via ``_peel_icml_status_bare_base64`` so invalid /
+    non-STATUS payloads stay literal. Non-base64 ``data:text/plain,…`` and
+    non-data URLs stay untouched.
+    """
+    original = line or ""
+    s = original.strip()
+    m = _ICML_STATUS_DATA_URI_RE.fullmatch(s)
+    if not m:
+        return original
+    payload = m.group(1)
+    peeled = _peel_icml_status_bare_base64(payload)
+    if peeled == payload:
+        return original
+    return peeled
+
+
 def _decode_icml_status_html_entities(line: str) -> str:
-    """Tick 455/486/487/488/489/490/491/492: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64.
+    """Tick 455/486/487/488/489/490/491/492/493: decode HTML + JSON/JS + URL + QP + RFC2047 + bare-b64 + data-URI.
 
     Pre-455 ``_strip_icml_status_line_noise`` only removed Unicode ZWSP etc., so
     Notion/Docs HTML→Markdown exports of ``&#8203;**STATUS: READY**`` /
@@ -4211,6 +4248,15 @@ def _decode_icml_status_html_entities(line: str) -> str:
     wrapped ``=?UTF-8?B?…?=`` only, so demote no-op / G4 pack miss READY.
     Peel full-line bare base64 only when decoded text looks like STATUS;
     invalid / non-STATUS base64 stay literal (QP mid-``=`` fails validate).
+
+    Tick 493: chat / email / Markdown badge paste often keeps the RFC 2397
+    data-URI wrapper around that payload
+    (``data:text/plain;base64,U1RBVFVTOiBSRUFEWQ==`` /
+    ``data:text/plain;charset=utf-8;base64,…`` / ``data:;base64,…`` /
+    bold-wrapped ``**data:…;base64,…**``) — pre-493 Tick 492 peeled bare
+    base64 only, so demote no-op / G4 pack miss READY. Peel full-line
+    ``data:…;base64,…`` only when the payload peels to STATUS; non-base64
+    data URIs / invalid / non-STATUS payloads stay literal.
     """
 
     def _sub(m: re.Match) -> str:
@@ -4257,11 +4303,13 @@ def _decode_icml_status_html_entities(line: str) -> str:
     had_pct = bool(_ICML_STATUS_URL_PERCENT_RE.search(original))
     s = original
     # Bound iterations: ``&amp;amp;#58;`` / nested ``\\u003c`` / ``%253A`` /
-    # ``=253A`` / stacked RFC 2047 runs / bare-b64 → further-encoded STATUS.
+    # ``=253A`` / stacked RFC 2047 runs / bare-b64 / data-URI → further-encoded
+    # STATUS.
     for _ in range(8):
         prev = s
         s = _ICML_STATUS_QP_SOFT_BREAK_RE.sub("", s)
         s = _peel_icml_status_rfc2047_encoded_words(s)
+        s = _peel_icml_status_data_uri_base64(s)
         s = _peel_icml_status_bare_base64(s)
         s = _ICML_STATUS_DOUBLE_AMP_RE.sub("&", s)
         s = _ICML_STATUS_HTML_ENTITY_RE.sub(_sub, s)
@@ -4763,7 +4811,12 @@ def _strip_icml_status_line_noise(line: str) -> str:
             else:
                 s = _strip_icml_status_html_tags(s)
     s = _strip_icml_status_md_wrappers(s)
-    # Tick 492: bare base64 after wrap strip (``**U1RBVFVTOiBSRUFEWQ==**``).
+    # Tick 492/493: bare base64 / data-URI after wrap strip
+    # (``**U1RBVFVTOiBSRUFEWQ==**`` / ``**data:text/plain;base64,…**``).
+    peeled_uri = _peel_icml_status_data_uri_base64(s)
+    if peeled_uri != s:
+        s = _decode_icml_status_html_entities(peeled_uri)
+        s = _strip_icml_status_md_wrappers(s)
     peeled_b64 = _peel_icml_status_bare_base64(s)
     if peeled_b64 != s:
         s = _decode_icml_status_html_entities(peeled_b64)
