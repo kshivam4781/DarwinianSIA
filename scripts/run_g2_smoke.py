@@ -29,6 +29,11 @@ turnkey and hard-stops unsafe paid runs:
     Contradiction-Aware agenda and gen2 DNA must not carry committee
     technique_seeds (fair gen1→gen2 under Tick 403–405). Prevents G3/G4 burn
     if the delay-all gate regresses.
+  - Tick 509: dry-run ``--max-gen ≥3`` also requires Tick 407 gen≥3
+    Contradiction-Aware agenda (positive control that delay-all *lifted*).
+    Tick 406–508 only proved the fair gen2 *skip* — a never-steer regression
+    still PASSed G2 dry-run and could burn ~$19 on G3/G4 with D≈B. Live G2
+    stays max_gen=2 (budget smoke); use dry-run max_gen≥3 for the lift proof.
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -38,6 +43,7 @@ Modes:
 Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/run_g2_smoke.py --preflight-only --run-id 1850
   python3 scripts/run_g2_smoke.py --dry-run --run-id 1850
+  python3 scripts/run_g2_smoke.py --dry-run --max-gen 3 --run-id 1955
   python3 scripts/run_g2_smoke.py --live --run-id 1300 --seed 1
   python3 scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond
   python3 scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv /tmp/gpqa_diamond.csv
@@ -532,7 +538,23 @@ def _delay_all_gen2_checks(run_dir: Path) -> list[CheckResult]:
     ]
 
 
-def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
+def _steering_lift_gen3_checks(run_dir: Path) -> list[CheckResult]:
+    """Tick 509: prove delay-all *lifted* by gen≥3 (G3 Tick 407 positive control).
+
+    When a dry-run (or accidental live) artifact has ``gen_3/``, G2 post-checks
+    must refuse never-steer Condition D — otherwise Tick 406 fair-skip alone
+    PASSes and paid G3/G4 can burn with D≈B.
+    """
+    from run_g3_pilot import validate_g3_d_steering  # noqa: E402
+
+    return list(validate_g3_d_steering([run_dir]))
+
+
+def validate_g2_artifacts(
+    run_dir: Path,
+    *,
+    require_steering_lift: bool = False,
+) -> list[CheckResult]:
     checks: list[CheckResult] = []
     store = run_dir / "belief_store"
     checks.append(
@@ -594,6 +616,12 @@ def validate_g2_artifacts(run_dir: Path) -> list[CheckResult]:
     # under delay-all. Post-checks must prove Tick 403–405 gates so a regression
     # cannot burn ~$19 on G3/G4 while DNA/feedback look steered early.
     checks.extend(_delay_all_gen2_checks(run_dir))
+
+    # Tick 509: when gen≥3 exists (dry-run --max-gen ≥3) or caller requires
+    # the positive control, also prove delay-all lifted (Tick 407).
+    gen3_exists = (run_dir / "gen_3").is_dir()
+    if require_steering_lift or gen3_exists:
+        checks.extend(_steering_lift_gen3_checks(run_dir))
 
     # Tick 371: refuse G2 PASS when best fitness is missing/zero so the live
     # pipeline cannot auto-advance into paid G3/G4 after a silent 0% eval
@@ -943,6 +971,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--run-id", type=int, default=None, help="Unused integer run id")
     p.add_argument("--seed", type=int, default=None, help="RNG seed (default 42 dry / 1 live)")
     p.add_argument(
+        "--max-gen",
+        type=int,
+        default=None,
+        help=(
+            "Darwinian max_gen (default 2). Tick 509: dry-run may use ≥3 to prove "
+            "delay-all *lifted* (gen≥3 Contradiction-Aware agenda). Live G2 refuses "
+            "max_gen≠2 (budget smoke shape)."
+        ),
+    )
+    p.add_argument(
         "--report",
         type=Path,
         default=REPO_ROOT / "docs" / "gate2_report.md",
@@ -994,6 +1032,24 @@ def main(argv: list[str] | None = None) -> int:
         selected = "preflight"
         run_id = args.run_id if args.run_id is not None else DEFAULT_DRY_RUN_ID
         seed = args.seed if args.seed is not None else 42
+
+    max_gen = 2 if args.max_gen is None else int(args.max_gen)
+    if max_gen < 1:
+        print("G2 refuses max_gen < 1", file=sys.stderr)
+        return 2
+    # Tick 509: live G2 stays max_gen=2 (Section 21 smoke). Dry-run may raise
+    # max_gen to prove gen≥3 steering lift before paid G3.
+    if selected == "live" and max_gen != 2:
+        print(
+            "G2 live refuses max_gen≠2 (budget smoke shape); "
+            "use --dry-run --max-gen ≥3 for Tick 509 steering-lift proof",
+            file=sys.stderr,
+        )
+        return 2
+    require_steering_lift = selected == "dry-run" and max_gen >= 3
+    if require_steering_lift and max_gen < 3:
+        print("G2 dry-run steering-lift proof requires max_gen≥3", file=sys.stderr)
+        return 2
 
     # Tick 278: auto-wire local diamond CSV under --fetch-diamond (match cron).
     diamond_csv, csv_auto = autowire_diamond_csv(
@@ -1172,8 +1228,16 @@ def main(argv: list[str] | None = None) -> int:
         allow_stale_tip=allow_stale,
     )
     report.notes.extend(fetch_notes)
+    if require_steering_lift:
+        report.notes.append(
+            f"Tick 509: dry-run max_gen={max_gen} — post-checks require gen≥3 "
+            "Contradiction-Aware agenda (delay-all lift positive control)"
+        )
     report.command = build_sia_command(
-        run_id=run_id, seed=seed, dry_run=(selected != "live")
+        run_id=run_id,
+        seed=seed,
+        dry_run=(selected != "live"),
+        max_gen=max_gen,
     )
 
     if selected == "preflight":
@@ -1245,7 +1309,11 @@ def main(argv: list[str] | None = None) -> int:
         post.append(CheckResult("run_dir", False, f"run_{run_id} not found after sia"))
     else:
         post.append(CheckResult("run_dir", True, str(run_dir)))
-        post.extend(validate_g2_artifacts(run_dir))
+        post.extend(
+            validate_g2_artifacts(
+                run_dir, require_steering_lift=require_steering_lift
+            )
+        )
 
     g2_ok = all(c.ok for c in post)
     # Tick 379: direct live success must stamp ledger G2 so cross-VM cron

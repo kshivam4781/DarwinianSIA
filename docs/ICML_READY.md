@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 508: tip recover from greenfield `84b6` + public-mirror diamond rematerialize + NEBIUS secrets re-filed + G2 dry-run `run_1954` PASS (delay-all feedback/technique_seeds skip + nonzero fitness). Tick 507 shape-note heal unchanged. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 509: G2 dry-run `--max-gen ≥3` proves delay-all *lift* (gen≥3 Contradiction-Aware agenda) end-to-end — `run_1955` PASS (gen2 skip + gen3 lift + fitness). Closes never-steer false-green after Tick 406–508 skip-only proofs. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -317,6 +317,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 404 delay-all scoped feedback gate — `_resolve_cabs_feedback_addon` / `_create_offspring_with_feedback(apply_cabs_feedback=…)` skip contradiction-scoped agenda when delay-all defers DNA steering; unit test
 - [x] Tick 405 dry-run feedback fidelity + prior_live scrub — dry-run resolves CABS addon into `feedback_agent_prompt.txt`; `run_1952`; gate2 dry-run no longer stamps `prior_live_post`
 - [x] Tick 406 G2 delay-all post-checks — `validate_g2_artifacts` requires gen2 feedback lack Contradiction-Aware agenda + empty technique_seeds; dry-run `run_1953`
+- [x] Tick 509 G2 dry-run steering-lift — `--max-gen ≥3` + `validate_g2_artifacts(..., require_steering_lift=)` / auto `gen_3/` → Tick 407 positive control; dry-run `run_1955` PASS (gen2 skip + gen3 agenda lift)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

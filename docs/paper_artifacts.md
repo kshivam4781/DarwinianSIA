@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–416** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–508** live stack hardening (Tick 508: tip recover + G2 dry-run `run_1954` re-verify + NEBIUS secrets re-file; Tick 507: pipeline shape-note heal after secrets early-refuse; Tick 506: tip PR title/body NEBIUS-only when on-disk diamond ready; Tick 505–497 prior). No publishable **live** GPQA figures/tables yet (blocked on **NEBIUS_API_KEY**; HF optional via Tick 497 public diamond mirror / Tick 502–504 on-disk keep; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–416** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–509** live stack hardening (Tick 509: G2 dry-run `--max-gen ≥3` steering-lift `run_1955` PASS; Tick 508: tip recover + G2 dry-run `run_1954`; Tick 507 shape-note heal; Tick 506–497 prior). No publishable **live** GPQA figures/tables yet (blocked on **NEBIUS_API_KEY**; HF optional via Tick 497 public diamond mirror / Tick 502–504 on-disk keep; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
@@ -33,7 +33,7 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 
-Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1950. Preferred when keys + linked env present: `bash scripts/icml_cron_entry.sh` (Tick 271/308; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
+Reserve unused integer IDs; never overwrite. Next live IDs suggested: G2 D `1300`; G3 B `1201+`, D `1301+`; G4 B `1211–1215`, D `1311–1315` (Section 21.7); offline/harness next ≥1956. Preferred when keys + linked env present: `bash scripts/icml_cron_entry.sh` (Tick 271/308; serial G2→G3→G4 under one budget projection; auto paper pack). Manual fallbacks: G2 `run_g2_smoke.py --live --run-id 1300 --fetch-diamond`; G3 `run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`; G4 `run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`. Do **not** commit materialized `diamond_questions.json`.
 
 ## Table 1 — Primary (B vs D)
 

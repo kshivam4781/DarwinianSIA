@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T16:10Z — Tick 509 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-afcc` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Separately, Tick 406–508 G2 dry-run only proved delay-all *skip* at gen2 — a never-steer regression (CABS never applies after gen≥2) still PASSes G2 and can burn ~$19 on G3/G4 with D≈B. Tick 407 positive control existed for live G3 only. Highest leverage without paid spend: **end-to-end dry-run steering-lift proof at max_gen≥3**.
+
+### What we did
+**Tick 509 — G2 dry-run `--max-gen ≥3` steering-lift positive control (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `afcc`; rematerialized diamond after dry-run smoke; re-filed NEBIUS secrets request
+2. `validate_g2_artifacts(..., require_steering_lift=)` + auto-detect `gen_3/` → Tick 407 `validate_g3_d_steering` (agenda must appear by gen≥3)
+3. CLI `--max-gen` for dry-run only (live G2 still refuses max_gen≠2); evidence dry-run `run_1955` **PASS** — delay-all gen2 skip **and** gen3 agenda lift + fitness 0.2440
+4. Unit test `test_validate_g2_artifacts_steering_lift_gen3` (3 focused tests green with delay-all + G3 positive control)
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline/dry-run
+
+| Metric | Before (Tick 508) | After (Tick 509) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| G2 dry-run delay-all skip | PASS `1954` (max_gen=2) | PASS `1955` gen2 skip |
+| G2 dry-run delay-all **lift** | **unproven** end-to-end | **PASS** `1955` gen3 agenda |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T14:25Z — Tick 508 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

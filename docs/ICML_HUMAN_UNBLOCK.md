@@ -1,7 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
-**Tick 508:** tip recover from greenfield `84b6` + public-mirror diamond rematerialize + NEBIUS secrets re-filed + G2 dry-run `run_1954` PASS (delay-all + fitness). No further STATUS peels while secrets-blocked.  
+**Tick 509:** G2 dry-run `--max-gen ≥3` steering-lift positive control — `run_1955` PASS (gen2 delay-all skip + gen3 agenda lift). Closes never-steer false-green before paid G3. NEBIUS secrets re-filed.  
+**Tick 508:** tip recover from greenfield `84b6` + public-mirror diamond rematerialize + G2 dry-run `run_1954` PASS (delay-all skip). No further STATUS peels while secrets-blocked.  
 **Tick 507:** secrets early-refuse no longer wipes the Tick 296 pipeline shape note — `write_pipeline_report` / preflight+live stamp heal so G3/G4 recipe locks cannot false-refuse after NEBIUS arrives.  
 **Tick 506:** tip PR suggested title/body ask **NEBIUS-only** when on-disk non-synthetic diamond is ready (`icml_diamond_source_ready_for_nebius_only`) — closes NEBIUS+HF paste after CSV cleanup (Tick 499/502 diamond_ready parity for open_git_pr metadata).  
 **Tick 505:** UNKNOWN tip/bootstrap PR mergeability from `gh pr list` refreshes via `gh pr view` so `human_next` / secrets JSON can say MERGEABLE/CLEAN → undraft & merge now (closes vague UNKNOWN among 300+ drafts).  

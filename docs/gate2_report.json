@@ -1,10 +1,11 @@
 {
-  "timestamp": "2026-10-02T14:22:52Z",
+  "timestamp": "2026-10-02T16:08:15Z",
   "mode": "dry-run",
-  "run_id": 1954,
+  "run_id": 1955,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
+    "gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
     "nebius_key: NEBIUS_API_KEY missing"
   ],
   "checks": [
@@ -15,13 +16,13 @@
     },
     {
       "name": "gpqa_not_synthetic",
-      "ok": true,
-      "detail": "real/non-smoke diamond_questions.json present"
+      "ok": false,
+      "detail": "synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2"
     },
     {
       "name": "gpqa_smoke_or_real",
       "ok": true,
-      "detail": "non-smoke questions present"
+      "detail": "synthetic smoke OK for dry-run/preflight"
     },
     {
       "name": "anthropic_key",
@@ -46,7 +47,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1954 unused"
+      "detail": "run_1955 unused"
     },
     {
       "name": "per_run_venv",
@@ -71,7 +72,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 507 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 508 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "command": [
@@ -89,9 +90,9 @@
     "--elite_count",
     "1",
     "--max_gen",
-    "2",
+    "3",
     "--run_id",
-    "1954",
+    "1955",
     "--eval_subset",
     "5",
     "--no-web",
@@ -107,12 +108,12 @@
     {
       "name": "run_dir",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1954"
+      "detail": "/workspace/SIA/runs/run_1955"
     },
     {
       "name": "belief_store",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1954/belief_store"
+      "detail": "/workspace/SIA/runs/run_1955/belief_store"
     },
     {
       "name": "epistemic_value_jsonl",
@@ -127,7 +128,7 @@
     {
       "name": "scoped_mutation_bias",
       "ok": true,
-      "detail": "fields=['memory', 'tool_strategy']"
+      "detail": "fields=['memory', 'planning_style', 'tool_strategy']"
     },
     {
       "name": "delay_all_feedback_skip",
@@ -138,6 +139,16 @@
       "name": "delay_all_technique_seeds_skip",
       "ok": true,
       "detail": "gen2 n=2 DNA technique_seeds empty (delay-all)"
+    },
+    {
+      "name": "steering_applied_run_1955",
+      "ok": true,
+      "detail": "gen3 n=2 agenda in ['agent_0', 'agent_1'] (delay-all lifted)"
+    },
+    {
+      "name": "steering_applied_gen3",
+      "ok": true,
+      "detail": "Condition D n=1 gen\u22653 steering evidenced"
     },
     {
       "name": "nonzero_fitness",

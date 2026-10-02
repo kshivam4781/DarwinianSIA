@@ -355,6 +355,67 @@ def test_validate_g2_artifacts_delay_all_gates(tmp_path: Path) -> None:
     assert fair["delay_all_technique_seeds_skip"].ok is True
 
 
+def test_validate_g2_artifacts_steering_lift_gen3(tmp_path: Path) -> None:
+    """Tick 509: max_gen≥3 / gen_3 artifacts require delay-all lift (Tick 407)."""
+    run_dir = tmp_path / "run_1955"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True)
+    (store / "epistemic_value.jsonl").write_text(
+        json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n", encoding="utf-8"
+    )
+    (store / "contradictions.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "a": "selective", "b": "aggressive"}])
+        + "\n",
+        encoding="utf-8",
+    )
+    (store / "beliefs.json").write_text(
+        json.dumps([{"topic": "tool_strategy", "claim": "selective"}]) + "\n",
+        encoding="utf-8",
+    )
+    agent1 = run_dir / "gen_1" / "agent_0"
+    agent1.mkdir(parents=True)
+    (agent1 / "results.json").write_text(json.dumps({"accuracy": 0.25}), encoding="utf-8")
+    _write_fair_gen2_agent(run_dir, agenda=False, seeds=[])
+
+    # max_gen=2 path: no gen_3 → no steering_lift checks required
+    no_lift = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    assert not any(n.startswith("steering_applied_") for n in no_lift)
+
+    # require_steering_lift without gen_3 → fail (cannot prove lift)
+    forced = {
+        c.name: c
+        for c in validate_g2_artifacts(run_dir, require_steering_lift=True)
+    }
+    assert any(n.startswith("steering_applied_") for n in forced)
+    steer_forced = next(c for n, c in forced.items() if n.startswith("steering_applied_"))
+    assert steer_forced.ok is False
+
+    # gen_3 without agenda → auto-detected never-steer fail
+    agent3 = run_dir / "gen_3" / "agent_0"
+    agent3.mkdir(parents=True)
+    (agent3 / "feedback_agent_prompt.txt").write_text(
+        "# Dry-run: offspring\n### Darwinian Evolution Context\n",
+        encoding="utf-8",
+    )
+    never = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    steer_never = next(c for n, c in never.items() if n.startswith("steering_applied_"))
+    assert steer_never.ok is False
+    assert "never steered" in steer_never.detail or "lacks" in steer_never.detail
+
+    # gen_3 with Contradiction-Aware agenda → PASS lift
+    (agent3 / "feedback_agent_prompt.txt").write_text(
+        "## CABS: Contradiction-Aware Research Agenda\n"
+        "# Dry-run: offspring\n### Darwinian Evolution Context\n",
+        encoding="utf-8",
+    )
+    lifted = {c.name: c for c in validate_g2_artifacts(run_dir)}
+    steer_ok = next(c for n, c in lifted.items() if n.startswith("steering_applied_"))
+    assert steer_ok.ok is True
+    assert "delay-all lifted" in steer_ok.detail
+    assert lifted["delay_all_feedback_skip"].ok is True
+    assert lifted["delay_all_technique_seeds_skip"].ok is True
+
+
 def test_main_fetch_diamond_from_csv_clears_synthetic(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
