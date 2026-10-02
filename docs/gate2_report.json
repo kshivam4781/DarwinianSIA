@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-02T12:08:29Z",
-  "mode": "preflight",
-  "run_id": 1300,
+  "timestamp": "2026-10-02T14:22:52Z",
+  "mode": "dry-run",
+  "run_id": 1954,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -46,7 +46,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1954 unused"
     },
     {
       "name": "per_run_venv",
@@ -71,7 +71,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 506 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 507 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "command": [
@@ -91,7 +91,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1954",
     "--eval_subset",
     "5",
     "--no-web",
@@ -103,5 +103,46 @@
     "--target-agent-profile",
     "kimi-nebius-target"
   ],
-  "post": []
+  "post": [
+    {
+      "name": "run_dir",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1954"
+    },
+    {
+      "name": "belief_store",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1954/belief_store"
+    },
+    {
+      "name": "epistemic_value_jsonl",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "cabs_json",
+      "ok": true,
+      "detail": "contradictions/beliefs present"
+    },
+    {
+      "name": "scoped_mutation_bias",
+      "ok": true,
+      "detail": "fields=['memory', 'tool_strategy']"
+    },
+    {
+      "name": "delay_all_feedback_skip",
+      "ok": true,
+      "detail": "gen2 n=2 feedback prompts lack 'Contradiction-Aware Research Agenda' (delay-all)"
+    },
+    {
+      "name": "delay_all_technique_seeds_skip",
+      "ok": true,
+      "detail": "gen2 n=2 DNA technique_seeds empty (delay-all)"
+    },
+    {
+      "name": "nonzero_fitness",
+      "ok": true,
+      "detail": "best=0.2440 > min=0"
+    }
+  ]
 }

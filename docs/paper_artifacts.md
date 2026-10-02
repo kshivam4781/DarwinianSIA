@@ -1,6 +1,6 @@
 # ICML paper artifacts
 
-**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–416** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–507** live stack hardening (Tick 507: pipeline shape-note heal after secrets early-refuse; Tick 506: tip PR title/body NEBIUS-only when on-disk diamond ready; Tick 505: UNKNOWN tip PR mergeability refresh via `gh pr view`; Tick 504: auto-wired CSV keep-ondisk; Tick 503: CSV-autowire must not skip live `fetch_diamond_ok` refuse; Tick 502: on-disk non-synthetic diamond skips HF rematerialize; Tick 501: pipeline Next/refuse NEBIUS-first; Tick 500: G3/G4 Next + cron refuse NEBIUS-first; Tick 499: secrets human_next NEBIUS-first; Tick 498: Gate2 Next NEBIUS-first; Tick 497: public diamond mirror). No publishable **live** GPQA figures/tables yet (blocked on **NEBIUS_API_KEY**; HF optional via Tick 497 public diamond mirror / Tick 502–504 on-disk keep; tip still unmerged to `main`).
+**Status:** offline mechanism pack + synthetic B vs D pilot (**Tick 397–416** post-adoption H2 at live Nebius shape pop4×eval5×max_gen6; IDs `1930–1934` / `1940–1944`; Tick-396 `1910–1924` superseded) + GPQA CLI harness dry-run `run_1800` (Tick 21) + live G2/G3/G4 runners + paper pack + unified pipeline (Ticks 24–29) + Cursor env drafts + **Tick 265–508** live stack hardening (Tick 508: tip recover + G2 dry-run `run_1954` re-verify + NEBIUS secrets re-file; Tick 507: pipeline shape-note heal after secrets early-refuse; Tick 506: tip PR title/body NEBIUS-only when on-disk diamond ready; Tick 505–497 prior). No publishable **live** GPQA figures/tables yet (blocked on **NEBIUS_API_KEY**; HF optional via Tick 497 public diamond mirror / Tick 502–504 on-disk keep; tip still unmerged to `main`).
 
 ## Abstract (draft — do not claim READY)
 
@@ -29,6 +29,7 @@ We study whether a Contradiction-Aware Belief System (CABS) improves sample effi
 | D epistemic_full (offline Tick 396 steered H2) | 11/22/33/44/55 | 1920–1924 | Superseded by Tick 397; H2 was 4/5 (seed 22=0.44) |
 | B darwinian-only (offline Tick 397 post-adoption H2) | 11/22/33/44/55 | 1930–1934 | Exact Nebius live shape **pop4×eval5×elite2×max_gen6** |
 | D epistemic_full (offline Tick 397 post-adoption H2) | 11/22/33/44/55 | 1940–1944 | Same PRIMARY/H5; H2 floor gen≥3 + tail=2 → preferred **5/5**; case study `1940` |
+| D epistemic_full (G2 dry-run re-verify Tick 508) | 42 | 1954 | Harness PASS — delay-all feedback/technique_seeds skip + best fitness 0.2440; **not** live GPQA |
 | B darwinian-only | — | — | none yet (live) |
 | D epistemic_full | — | — | none yet (live) |
 

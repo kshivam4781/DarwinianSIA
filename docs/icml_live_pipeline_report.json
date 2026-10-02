@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-02T12:08:21Z",
+  "timestamp": "2026-10-02T14:21:03Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -50,8 +50,8 @@
     "fetch_diamond_ok=false \u2014 need NEBIUS_API_KEY (ANTHROPIC_API_KEY optional \u2014 Tick 289 Nebius pydantic-ai meta)"
   ],
   "notes": [
-    "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
-    "materialized diamond from CSV \u2192 ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']",
+    "Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv",
+    "Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)",
     "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
     "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
     "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"

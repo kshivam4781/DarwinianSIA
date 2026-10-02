@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 507: pipeline report always stamps Tick 296 shape note (`write_pipeline_report` / preflight+live stamp) so secrets early-refuse cannot poison G3/G4 `g3g4_recipes_match_live_shape` after NEBIUS arrives. Tick 506 NEBIUS-only tip PR title when ondisk diamond ready unchanged. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 508: tip recover from greenfield `84b6` + public-mirror diamond rematerialize + NEBIUS secrets re-filed + G2 dry-run `run_1954` PASS (delay-all feedback/technique_seeds skip + nonzero fitness). Tick 507 shape-note heal unchanged. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
