@@ -398,6 +398,28 @@ def icml_fetch_diamond_needs_hf(
     return True
 
 
+def icml_should_keep_ondisk_diamond(
+    *,
+    diamond_csv: Path | None,
+    csv_auto: bool = False,
+    repo_root: Path | None = None,
+) -> bool:
+    """Tick 504: keep on-disk non-synthetic diamond instead of rematerializing.
+
+    Auto-wired CSV (Tick 278 / public mirror) is a *fallback* for
+    ``fetch_diamond_ok`` / cold boots without HF — it must not force
+    ``materialize_from_csv(..., force=True)`` when diamond is already ready
+    (Tick 502 keep). Explicit ``--diamond-csv`` still rematerializes so
+    operators can refresh. Avoids false live refuse on partial trees
+    (``SIA/`` without ``sia-upstream/``) and mid-pipeline seed reshuffles.
+    """
+    if not icml_ondisk_nonsynthetic_gpqa(repo_root):
+        return False
+    if diamond_csv is None:
+        return True
+    return bool(csv_auto)
+
+
 def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
     """True when the resolved meta profile is loadable and coherent for ICML.
 

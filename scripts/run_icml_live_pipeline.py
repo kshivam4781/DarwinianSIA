@@ -124,6 +124,7 @@ from icml_env_checks import (  # noqa: E402
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_ondisk_nonsynthetic_gpqa,
+    icml_should_keep_ondisk_diamond,
     icml_python_cli,
     ledger_stage_complete,
     live_pipeline_next_steps,
@@ -1134,9 +1135,19 @@ def _fetch_diamond(
     diamond_csv: Path | None,
     diamond_n: int,
     seed: int,
+    csv_auto: bool = False,
 ) -> list[str]:
     notes: list[str] = []
-    if diamond_csv is not None:
+    # Tick 504: auto-wired CSV must not force rematerialize when ondisk ready.
+    if icml_should_keep_ondisk_diamond(
+        diamond_csv=diamond_csv, csv_auto=csv_auto, repo_root=REPO_ROOT
+    ):
+        notes.append(
+            "Tick 502/504: kept existing non-synthetic diamond; "
+            "skip rematerialize (auto-wired CSV is fallback only; "
+            "pass explicit --diamond-csv to force refresh; HF optional)"
+        )
+    elif diamond_csv is not None:
         # Tick 282: bootstrap huggingface_hub before materialize (CSV still
         # benefits from uv/SIA path consistency).
         deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
@@ -1482,6 +1493,7 @@ def run_live_stack(
     fetch_diamond: bool,
     diamond_csv: Path | None,
     diamond_n: int,
+    csv_auto: bool = False,
 ) -> int:
     """Execute G2→G3→G4 serially. Returns process exit code.
 
@@ -1574,7 +1586,10 @@ def run_live_stack(
     if fetch_diamond or diamond_csv is not None:
         try:
             notes = _fetch_diamond(
-                diamond_csv=diamond_csv, diamond_n=diamond_n, seed=1
+                diamond_csv=diamond_csv,
+                diamond_n=diamond_n,
+                seed=1,
+                csv_auto=csv_auto,
             )
             report.notes.extend(notes)
         except Exception as exc:
@@ -2039,6 +2054,7 @@ def main(argv: list[str] | None = None) -> int:
                         diamond_csv=args.diamond_csv,
                         diamond_n=args.diamond_n,
                         seed=1,
+                        csv_auto=csv_auto,
                     )
                 )
             except Exception as exc:
@@ -2078,6 +2094,7 @@ def main(argv: list[str] | None = None) -> int:
         fetch_diamond=args.fetch_diamond,
         diamond_csv=args.diamond_csv,
         diamond_n=args.diamond_n,
+        csv_auto=csv_auto,
     )
     report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
     # Recompute ready_for_live hint from whether we completed without blockers on keys.

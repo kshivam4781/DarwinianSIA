@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T06:15Z — Tick 504 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-45b4` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Separately, Tick 502 kept on-disk diamond only when `diamond_csv is None`; Tick 278/497 **auto-wired** `/tmp` CSV still forced `materialize_from_csv(..., force=True)` even when non-synthetic diamond was already on disk — G3/G4 Tick-275 tests failed (exit 3 on missing `sia-upstream` under partial fixtures) and live would reshuffle questions mid-pipeline. Highest leverage without paid spend: **keep ondisk when CSV is only auto-wired** (explicit `--diamond-csv` still rematerializes).
+
+### What we did
+**Tick 504 — auto-wired CSV must not rematerialize when ondisk ready (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `45b4`; rematerialized diamond via public mirror; re-filed NEBIUS secrets request
+2. `icml_should_keep_ondisk_diamond` — keep when ondisk ready and (`diamond_csv is None` or `csv_auto`)
+3. G2/G3/G4 + pipeline `_fetch_diamond`: use helper; thread `csv_auto` into pipeline live stack
+4. Updated obsolete Tick-275 HF-refuse tests → Tick 502/504 keep-ondisk; added G2/G3/G4 CSV-autowire refuse + keep tests; helper unit test
+5. Focused suite **8/8**; STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 503) | After (Tick 504) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| `--live --fetch-diamond` + auto-wired CSV + ondisk ready | force rematerialize (partial tree → exit 3) | **keep ondisk**; no rematerialize |
+| Explicit `--diamond-csv` | rematerialize | rematerialize (unchanged) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack. Optional: undraft+merge tip PR #337 / bootstrap #338; `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`.
+
 ## 2026-10-02T04:10Z — Tick 503 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

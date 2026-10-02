@@ -606,13 +606,19 @@ def test_write_gate3_report_surfaces_h2_and_mean_gap(tmp_path: Path) -> None:
 def test_main_live_fetch_diamond_refuses_without_hf(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 275: G3 --live --fetch-diamond exits 4 before materialize without HF."""
+    """Tick 275→504: with on-disk diamond, missing HF must not force rematerialize.
+
+    After Tick 502/504, NEBIUS + on-disk non-synthetic diamond means
+    ``fetch_diamond_ok`` without HF. Auto-wired ``/tmp`` CSV must not force
+    ``materialize_from_csv`` (partial trees / seed reshuffle). Keep ondisk.
+    """
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
     monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
 
     import run_g3_pilot as mod
 
@@ -639,13 +645,114 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     monkeypatch.setattr(mod, "_runs_dir", lambda: tmp_path / "runs")
     monkeypatch.setattr(mod, "_sia_runs_dir", lambda: tmp_path / "SIA" / "runs")
 
+    # Host may have /tmp/gpqa_diamond.csv (Tick 497) — simulate auto-wire.
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8")
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (csv_path, True))
+    monkeypatch.setattr(
+        mod,
+        "collect_icml_secrets_status",
+        lambda: {
+            "fetch_diamond_ok": True,
+            "diamond_ready": True,
+            "blockers": [],
+            "secrets_ok_for_paid_sia": True,
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 504,
+            "remote_tip_tick": 504,
+            "blockers": [],
+        },
+    )
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        "icml_env_checks.committed_g3g4_recipes_match_live_shape",
+        lambda **k: (True, "ok"),
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.committed_offline_bvd_matches_live_shape",
+        lambda **k: (True, "ok"),
+    )
+
     called: list[str] = []
 
-    def boom(*_a, **_k):
+    def boom_csv(*_a, **_k):
+        called.append("csv")
+        raise AssertionError("must not rematerialize from auto-wired CSV when ondisk ready")
+
+    def boom_hf(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF when ondisk ready")
+
+    monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
+    monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
+    # Short-circuit live sia — we only assert fetch keep path.
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+    report_path = tmp_path / "docs" / "gate3_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--seeds",
+            "1",
+            "--b-run-ids",
+            "1201",
+            "--d-run-ids",
+            "1301",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 502/504" in text or "kept existing non-synthetic" in text
+    # Must not be the old Tick-275 HF-missing exit 4.
+    assert rc != 4 or "HF_TOKEN" not in text
+
+
+def test_main_live_fetch_diamond_refuse_csv_autowire_without_nebius(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 503/504: CSV auto-wire clears require_hf but missing NEBIUS still refuses."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+
+    import run_g3_pilot as mod
+
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8")
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (csv_path, True))
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom_csv(*_a, **_k):
+        called.append("csv")
+        raise AssertionError("must not materialize when NEBIUS missing")
+
+    def boom_hf(*_a, **_k):
         called.append("hf")
         raise AssertionError("must not materialize from HF")
 
-    monkeypatch.setattr(mod, "materialize_from_hf", boom)
+    monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
+    monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
     report_path = tmp_path / "docs" / "gate3_report.md"
     rc = mod.main(
         [
@@ -664,7 +771,7 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert rc == 4
     assert called == []
     text = report_path.read_text(encoding="utf-8")
-    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+    assert "NEBIUS" in text
 
 
 def _write_complete_run(run_dir: Path) -> None:

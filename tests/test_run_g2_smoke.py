@@ -770,8 +770,120 @@ def test_main_live_fetch_diamond_skips_hf_when_ondisk_nonsynthetic(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "Tick 502" in text
-    assert "skip HF rematerialize" in text
+    assert "skip" in text and "rematerialize" in text
     # Live may still fail other preflight bits; must not be the HF-missing exit 4.
+    assert rc != 4 or "HF_TOKEN" not in text
+
+
+def test_main_live_fetch_diamond_keeps_ondisk_when_csv_autowired(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 504: auto-wired CSV + ondisk ready ⇒ keep ondisk (no rematerialize)."""
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+
+    import run_g2_smoke as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    (task / "data" / "private").mkdir(parents=True)
+    (task / "data" / "public").mkdir(parents=True)
+    rows = [
+        {
+            "domain": "physics",
+            "Question": "Real diamond Q1?",
+            "correct_answer_letter": "A",
+            "choices": {"A": "a", "B": "b", "C": "c", "D": "d"},
+        }
+    ]
+    payload = json.dumps(rows)
+    (task / "data" / "private" / "diamond_questions.json").write_text(
+        payload, encoding="utf-8"
+    )
+    (task / "data" / "public" / "diamond_questions.json").write_text(
+        payload, encoding="utf-8"
+    )
+
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text(
+        "Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8"
+    )
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom_csv(*_a, **_k):
+        called.append("csv")
+        raise AssertionError("must not rematerialize from auto-wired CSV")
+
+    def boom_hf(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF")
+
+    monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
+    monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (csv_path, True))
+    monkeypatch.setattr(
+        mod,
+        "collect_icml_secrets_status",
+        lambda: {
+            "fetch_diamond_ok": True,
+            "diamond_ready": True,
+            "blockers": [],
+            "secrets_ok_for_paid_sia": True,
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 504,
+            "remote_tip_tick": 504,
+            "blockers": [],
+        },
+    )
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"returncode": 0})(),
+    )
+    monkeypatch.setattr(
+        mod,
+        "validate_g2_artifacts",
+        lambda *a, **k: [
+            mod.CheckResult("belief_store", True, "ok"),
+            mod.CheckResult("best_fitness_nonzero", True, "0.2"),
+        ],
+    )
+    monkeypatch.setattr(
+        mod, "_run_dir_for", lambda rid: tmp_path / "runs" / f"run_{rid}"
+    )
+    (tmp_path / "runs" / "run_1300").mkdir(parents=True)
+
+    report_path = tmp_path / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 502/504" in text or "auto-wired CSV is fallback" in text
     assert rc != 4 or "HF_TOKEN" not in text
 
 

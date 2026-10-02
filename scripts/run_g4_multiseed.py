@@ -133,6 +133,7 @@ from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_meta_requires_anthropic,
     icml_ondisk_nonsynthetic_gpqa,
+    icml_should_keep_ondisk_diamond,
     icml_preflight_diamond_ready,
     icml_python_cli,
     probe_icml_meta_profile,
@@ -2225,7 +2226,16 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.fetch_diamond or args.diamond_csv is not None:
         ondisk_ready = icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
-        if args.diamond_csv is not None:
+        # Tick 504: auto-wired CSV must not force rematerialize when ondisk ready.
+        if icml_should_keep_ondisk_diamond(
+            diamond_csv=args.diamond_csv, csv_auto=csv_auto, repo_root=REPO_ROOT
+        ):
+            fetch_notes.append(
+                "Tick 502/504: kept existing non-synthetic diamond; "
+                "skip rematerialize (auto-wired CSV is fallback only; "
+                "pass explicit --diamond-csv to force refresh; HF optional)"
+            )
+        elif args.diamond_csv is not None:
             deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
             fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
             try:

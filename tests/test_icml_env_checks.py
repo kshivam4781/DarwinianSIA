@@ -40,6 +40,7 @@ from icml_env_checks import (  # noqa: E402
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
     icml_ondisk_nonsynthetic_gpqa,
+    icml_should_keep_ondisk_diamond,
     icml_python_cli,
     icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
@@ -665,6 +666,49 @@ def test_icml_fetch_diamond_needs_hf_skips_ondisk_nonsynthetic(
     assert (
         icml_fetch_diamond_needs_hf(
             fetch_diamond=True, diamond_csv=None, repo_root=tmp_path
+        )
+        is False
+    )
+
+
+def test_icml_should_keep_ondisk_diamond_csv_auto(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 504: keep ondisk when CSV is auto-wired; rematerialize if explicit."""
+    assert (
+        icml_should_keep_ondisk_diamond(
+            diamond_csv=None, csv_auto=False, repo_root=tmp_path
+        )
+        is False
+    )
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa" / "data"
+    (task / "private").mkdir(parents=True)
+    rows = [
+        {
+            "domain": "physics",
+            "Question": "Real diamond Q1?",
+            "correct_answer_letter": "A",
+        }
+    ]
+    (task / "private" / "diamond_questions.json").write_text(
+        json.dumps(rows), encoding="utf-8"
+    )
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    assert (
+        icml_should_keep_ondisk_diamond(
+            diamond_csv=None, csv_auto=False, repo_root=tmp_path
+        )
+        is True
+    )
+    assert (
+        icml_should_keep_ondisk_diamond(
+            diamond_csv=csv_path, csv_auto=True, repo_root=tmp_path
+        )
+        is True
+    )
+    assert (
+        icml_should_keep_ondisk_diamond(
+            diamond_csv=csv_path, csv_auto=False, repo_root=tmp_path
         )
         is False
     )

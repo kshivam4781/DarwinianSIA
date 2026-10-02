@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-02 (Section 21 ICML; Tick 503 CSV-autowire live secrets refuse; Tick 502 on-disk non-synthetic diamond skips HF rematerialize; Tick 501 pipeline Next/refuse NEBIUS-first when diamond ready; Tick 500 G3/G4 Next + cron refuse NEBIUS-first; Tick 499 secrets human_next NEBIUS-first; Tick 498 Gate2 Next NEBIUS-first; Tick 497 public GPQA diamond mirror; …)
+**Last updated:** 2026-10-02 (Section 21 ICML; Tick 504 auto-wired CSV keep-ondisk; Tick 503 CSV-autowire live secrets refuse; Tick 502 on-disk non-synthetic diamond skips HF rematerialize; Tick 501 pipeline Next/refuse NEBIUS-first when diamond ready; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -953,6 +953,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML pipeline Next/refuse NEBIUS-first (Tick 501) | **DONE** | `live_pipeline_next_steps(diamond_ready=)` NEBIUS-first; drop aggregate HF hard-require for `fetch_diamond_ok` + diamond-aware phrase; live `--fetch-diamond` refuse notes NEBIUS-first; Gate2/G3/G4/secrets Tick 498–500 parity; focused tests |
 | ICML on-disk diamond skips HF rematerialize (Tick 502) | **DONE** | `icml_ondisk_nonsynthetic_gpqa` + `icml_fetch_diamond_needs_hf`; G2/G3/G4/pipeline keep non-synthetic on-disk diamond under `--fetch-diamond` (no force HF); Tick 499 diamond_ready parity; focused tests |
 | ICML CSV-autowire live secrets refuse (Tick 503) | **DONE** | Pipeline/G2/G3/G4 `--live --fetch-diamond` always checks `fetch_diamond_ok` even when CSV/public-mirror auto-wire cleared `require_hf`; NEBIUS-first notes when diamond ready; focused tests |
+| ICML auto-wired CSV keep-ondisk (Tick 504) | **DONE** | `icml_should_keep_ondisk_diamond`: auto-wired CSV must not force rematerialize when ondisk ready (explicit `--diamond-csv` still refreshes); G2/G3/G4/pipeline; focused tests 8/8 |
 | ICML C-array/comma-hex STATUS header (Tick 496) | **DONE** | `_ICML_STATUS_BARE_HEX_COMMA_RE` + `_ICML_STATUS_BARE_HEX_0X_BYTE_RE` + `_ICML_STATUS_BARE_HEX_CARRAY_RE` extend `_peel_icml_status_bare_hex` — peel `53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped; leave Tick 495 contracts + non-STATUS untouched; closes demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only; focused C-array-hex + G4 demote/update + lock tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |
@@ -1159,7 +1160,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML tip-apply paper-pack park/reinject (Tick 427) | **DONE** | Prepare parks companions into `docs/icml_paper_pack_stash.json` across tip `--apply` (pre-427 refused → tip recover blocked mid-tick); reinject + durable commit; focused tests 9/9 |
 | ICML consume durable stashes after push (Tick 428) | **DONE** | `consume_durable_stashes_after_commit` after successful tip push (keep on push fail); closes stale READY/spend reinject over demoted tip HEAD; focused durable/tip tests 20/20 |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
-| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on **NEBIUS_API_KEY** (HF optional via Tick 497 mirror / Tick 502 on-disk keep / Tick 503 CSV-autowire refuse parity; Anthropic optional under Tick 289 meta); Tick 268–503 stack ready; next: add NEBIUS, then `bash scripts/icml_cron_entry.sh` |
+| ICML B vs D multi-seed GPQA | **NOT DONE** | Blocked on **NEBIUS_API_KEY** (HF optional via Tick 497 mirror / Tick 502–504 on-disk keep / Tick 503 CSV-autowire refuse parity; Anthropic optional under Tick 289 meta); Tick 268–504 stack ready; next: add NEBIUS, then `bash scripts/icml_cron_entry.sh` |
 | H2 DNA trait skew evidence | **PARTIAL** | Unit + dry-run + offline post-steer/post-adoption case study (`run_1940` gen3 0.75 / post-adoption 0.875) + Tick 396–398 H2 windows (offline preferred **5/5**); need live API |
 | Non-constant epistemic_value (H5) | **DONE (offline)** | Age-decay + flow + steering opportunity (`cabs_inline.py`) |
 | H5 Spearman ρ validity | **PARTIAL** | Offline Tick 397 **5/5** ρ>0.3 (`1940–1944`, mean forward Δ, gen≥2, horizon=2); live required |
