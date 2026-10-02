@@ -141,6 +141,11 @@ def test_preflight_live_ready_with_keys_and_real_gpqa(
             "blockers": [],
         },
     )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
+    )
 
     plans = build_g4_plans(
         [1, 2, 3, 4, 5],
@@ -197,6 +202,11 @@ def test_preflight_refuses_stale_recipe_or_offline_bvd(
             "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
             "blockers": [],
         },
+    )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
     )
     monkeypatch.setattr(
         mod,
@@ -287,6 +297,11 @@ def test_preflight_refuses_stale_tip(
             ],
         },
     )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
+    )
 
     plans = build_g4_plans(
         [1, 2, 3, 4, 5],
@@ -305,6 +320,77 @@ def test_preflight_refuses_stale_tip(
     names2 = {c.name: c.ok for c in report2.checks}
     assert names2["tip_ok_for_live"] is True
     assert any("allow-stale-tip" in n for n in report2.notes)
+
+
+def test_preflight_refuses_without_steering_lift_proof(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 511: direct G4 --live refuses when durable lift proof missing."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-ant")
+    monkeypatch.setenv("NEBIUS_API_KEY", "test-neb")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("SIA_G4_PAIR_ESTIMATE_USD", "3")
+
+    import run_g4_multiseed as mod
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    pub = task / "data" / "public"
+    priv = task / "data" / "private"
+    pub.mkdir(parents=True)
+    priv.mkdir(parents=True)
+    rows = [
+        {
+            "id": i,
+            "Question": f"Real science question {i}?",
+            "options": {"A": "a", "B": "b", "C": "c", "D": "d"},
+            "correct_answer_letter": "A",
+            "domain": "physics",
+            "source": "gpqa_diamond",
+        }
+        for i in range(15)
+    ]
+    (pub / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (priv / "diamond_questions.json").write_text(json.dumps(rows), encoding="utf-8")
+    (pub / "task.md").write_text("# GPQA", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(
+        mod, "committed_g3g4_recipes_match_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod, "committed_offline_bvd_matches_live_shape", lambda **_k: (True, [])
+    )
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *_a, **_k: {
+            "tip_ok_for_live": True,
+            "local_tick": 511,
+            "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-test",
+            "blockers": [],
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (False, "missing gate2_steering_lift_proof.json"),
+    )
+
+    plans = build_g4_plans(
+        [1, 2, 3, 4, 5],
+        [1211, 1212, 1213, 1214, 1215],
+        [1311, 1312, 1313, 1314, 1315],
+    )
+    report = run_preflight(mode="live", plans=plans, pair_estimate_usd=3.0)
+    assert report.ready_for_live is False
+    names = {c.name: c.ok for c in report.checks}
+    assert names["g2_steering_lift"] is False
+    assert names["tip_ok_for_live"] is True
+    assert names["nebius_key"] is True
+    assert any("Tick 511" in n for n in report.notes)
 
 
 def test_budget_projection_blocks_five_pairs_over_ceiling(
@@ -1179,6 +1265,11 @@ def test_main_live_fetch_diamond_refuses_without_hf(
             "blockers": [],
         },
     )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
+    )
     monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **k: (True, "ok"))
     monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **k: (True, "ok"))
     monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
@@ -1381,6 +1472,11 @@ def test_g4_preflight_resume_skips_complete_run_ids(
         [1211, 1212, 1213, 1214, 1215],
         [1311, 1312, 1313, 1314, 1315],
     )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
+    )
     report = run_preflight(mode="preflight", plans=plans)
     names = {c.name: c for c in report.checks}
     assert names["run_ids_free"].ok is True
@@ -1438,6 +1534,11 @@ def test_g4_preflight_hydrates_budget_from_unbilled_local(
         mod,
         "write_icml_tip_status",
         lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 377},
+    )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
     )
 
     for rid in (1211, 1311):
@@ -1854,6 +1955,11 @@ def test_g4_live_ledger_skip_refreshes_paper_pack(
         mod,
         "write_icml_tip_status",
         lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 381},
+    )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
     )
 
     refreshed: list[str] = []
@@ -6415,6 +6521,11 @@ def test_g4_live_ledger_skip_exits_4_on_thin_h2_refuse(
         mod,
         "write_icml_tip_status",
         lambda *a, **k: {"tip_ok_for_live": True, "local_tick": 416},
+    )
+    monkeypatch.setattr(
+        mod,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (True, "durable proof: run_1955 (test stub Tick 511)"),
     )
 
     def _fake_refresh(report: G4PreflightReport, **_kw):

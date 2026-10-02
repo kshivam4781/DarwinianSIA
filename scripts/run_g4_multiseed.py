@@ -15,6 +15,9 @@ Hard stops (never violate):
   - ``--live`` refuses when local ICML tip lags remote tip (Tick 305; same
     tip lineage guard as pipeline Tick 269 — use ``--allow-stale-tip`` only
     for recovery)
+  - Tick 511: ``--live`` refuses without durable
+    ``docs/gate2_steering_lift_proof.json`` (Tick 509/510 delay-all *lift*;
+    closes pipeline-only Tick 510 bypass via direct ``run_g4_multiseed.py --live``)
   - refuses incomplete/corrupt existing run dirs (never overwrite)
   - Tick 375: completed B/D run IDs are resume-skipped (not blockers) so a
     mid-stack crash can finish remaining pairs without picking new IDs
@@ -141,6 +144,7 @@ from icml_env_checks import (  # noqa: E402
     probe_per_run_venv_capable,
     write_icml_tip_status,
 )
+from run_g2_smoke import ensure_g2_steering_lift_proof  # noqa: E402
 from run_g3_pilot import (  # noqa: E402
     CheckResult,
     PilotPlan,
@@ -436,6 +440,32 @@ def run_preflight(
         )
     report.add("tip_ok_for_live", tip_ok, tip_detail)
 
+    # Tick 511: durable Tick 509/510 steering-lift proof on direct G4 --live
+    # (pipeline-only Tick 510 left `run_g4_multiseed.py --live` able to burn
+    # ~$15 without gen≥3 delay-all *lift*). Trust durable sidecar only —
+    # pipeline auto-runs dry-run max_gen≥3 when missing.
+    lift_ok, lift_detail = ensure_g2_steering_lift_proof(
+        repo_root=REPO_ROOT,
+        auto_run=False,
+    )
+    report.add(
+        "g2_steering_lift",
+        lift_ok,
+        lift_detail
+        if lift_ok
+        else (
+            f"{lift_detail} — need docs/gate2_steering_lift_proof.json "
+            "(dry-run --max-gen ≥3 delay-all lift; Tick 509/510/511)"
+        ),
+    )
+    if lift_ok:
+        report.notes.append(f"Tick 511: G4 steering-lift proof OK — {lift_detail}")
+    else:
+        report.notes.append(
+            "Tick 511: refuse direct G4 --live without durable "
+            "gate2_steering_lift_proof.json (closes Tick 510 pipeline-only bypass)"
+        )
+
     by_name = {c.name: c.ok for c in report.checks}
     live_needed_list = [
         "gpqa_layout",
@@ -452,6 +482,7 @@ def run_preflight(
         "g3g4_recipes_match_live_shape",
         "offline_bvd_matches_live_shape",
         "tip_ok_for_live",
+        "g2_steering_lift",
     ]
     if require_hf_for_diamond:
         live_needed_list.append("hf_token")
@@ -1327,7 +1358,8 @@ def gate4_next_markdown_lines(report: G4PreflightReport) -> list[str]:
     if diamond_ready:
         lines.extend(
             [
-                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4.",
+                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4, "
+                "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
                 "2. Add **`NEBIUS_API_KEY`** to the cloud environment "
                 "(HF optional — Tick 497 public mirror / local "
                 "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
@@ -1345,7 +1377,8 @@ def gate4_next_markdown_lines(report: G4PreflightReport) -> list[str]:
     else:
         lines.extend(
             [
-                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4.",
+                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4, "
+                "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
                 f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
                 "3. Materialize diamond (prefer public mirror — no HF):",
                 f"   `{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "

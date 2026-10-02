@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 510: durable `gate2_steering_lift_proof.json` + pipeline hard gate — refuse `--live` unless Tick 509 dry-run `--max-gen ≥3` delay-all *lift* survives gate2 preflight rewrite (bootstrapped `run_1955`). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 511: G3/G4 direct `--live` require durable `gate2_steering_lift_proof.json` (closes Tick 510 pipeline-only bypass). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

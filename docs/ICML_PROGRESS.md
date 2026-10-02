@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T20:15Z — Tick 511 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-2c5d` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Tick 510 gated the unified pipeline only — direct `run_g3_pilot.py --live` / `run_g4_multiseed.py --live` could still burn ~$3–$15 without durable Tick 509 gen≥3 delay-all *lift* proof. Highest leverage without paid spend: **close that G3/G4 bypass**.
+
+### What we did
+**Tick 511 — G3/G4 direct `--live` require durable steering-lift proof (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `2c5d`
+2. `run_g3_pilot.run_preflight` + `run_g4_multiseed.run_preflight`: check `g2_steering_lift` via `ensure_g2_steering_lift_proof(auto_run=False)` → required for `ready_for_live`
+3. Gate3/Gate4 `## Next` mention durable proof; Section 12 / HUMAN_UNBLOCK / paper_artifacts updated
+4. Focused tests: G3/G4 refuse-without-proof + live-ready / stale-tip / recipe suites green
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline/dry-run
+
+| Metric | Before (Tick 510) | After (Tick 511) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Pipeline `--live` without lift proof | refuses (Tick 510) | unchanged |
+| Direct G3/G4 `--live` without lift proof | **could spend** | **refuses** (`g2_steering_lift`) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T18:20Z — Tick 510 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
