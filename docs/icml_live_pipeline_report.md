@@ -1,7 +1,7 @@
 # ICML live pipeline report — G2 → G3 → G4
 
-**Timestamp:** 2026-10-02T04:09:21Z
-**Mode:** `live`
+**Timestamp:** 2026-10-02T12:08:21Z
+**Mode:** `preflight`
 **Ready for live stack:** no
 **ICML_READY:** IN_PROGRESS
 
@@ -22,6 +22,9 @@
 
 | Stage | Attempted | OK | Exit | Detail |
 |-------|-----------|----|------|--------|
+| G2 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
+| G3 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
+| G4 | yes | yes | 0 | preflight invoked (+fetch-diamond) |
 
 ## G3→G4 gate
 
@@ -29,12 +32,18 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Blockers
 
-- secrets: NEBIUS_API_KEY missing
+- G2: nebius_key: NEBIUS_API_KEY missing
+- G3: nebius_key: NEBIUS_API_KEY missing
+- G4: nebius_key: NEBIUS_API_KEY missing
+- fetch_diamond_ok=false — need NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)
 
 ## Notes
 
-- Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv
-- Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md (diamond already ready; HF optional — Tick 497/501/503).
+- runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
+- materialized diamond from CSV → ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']
+- Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6
+- Tick 299: committed G3/G4 recipes match live shape 5/4/2/6
+- Tick 300–301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)
 
 ## Next
 
@@ -43,4 +52,4 @@ G3 promising: n/a (G3 not scored this run)
 3. Portal Save of `docs/icml_portal_save_target.json` is **optional** (Tick 265–267: uv + runtime deps bootstrap in preflight).
 4. Do **not** set STATUS: READY from offline / preflight alone.
 5. Optional interim (easier than full tip): merge main-only AGENTS chicken-egg bootstrap PR #338 https://github.com/kshivam4781/DarwinianSIA/pull/338 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts) (branch `cursor/icml-main-agents-bootstrap`; Tick 341–342; 1-file — **not** a tip PR; does not replace merging the tip). Copy-paste: `gh pr ready 338 --repo kshivam4781/DarwinianSIA && gh pr merge 338 --repo kshivam4781/DarwinianSIA --merge`. Agents: tip anti-churn tip PR is unchanged — still commit/`open_git_pr` on `tip_pr_commit_branch` only.
-6. Merge the latest ICML tip PR into `main` so cron inherits `docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–340 dual unblock; `main` still has hackathon-era AGENTS without tip files). See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock. Concrete tip PR: #337 https://github.com/kshivam4781/DarwinianSIA/pull/337 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts). Copy-paste: `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Agents/cron: do NOT open a new tip PR — checkout `cursor/icml-epistemic-results-f49c` (tip_pr_commit_branch; Tick 338–339 cron + tip recover --apply auto-checkout via icml_cron_entry / icml_boot_recover / icml_recover_tip) and push here so PR #337 updates (bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr branch=`cursor/icml-epistemic-results-f49c` — Tick 340: NEVER omit branch=; open_git_pr defaults to the greenfield boot branch and would open a new tip PR; see docs/icml_open_git_pr.json; Tick 344: also pass title=`suggested_open_git_pr_title` from that JSON when tip_pr_title_stale — stale titles look superseded among 300+ drafts; secrets-first title when fetch_diamond_ok is false; Tick 348–349: also pass description= from `open_git_pr_description` in `docs/icml_open_git_pr.json` (or `docs/icml_tip_pr_body.md`) when tip_pr_body_stale; Tick 350: prefer verbatim `docs/icml_open_git_pr_call.json` (branch/title/description); Tick 352: call JSON records ``cloud_boot_branch`` / ``omit_branch_opens_pr_on``; Tick 352: this run's cloud_boot_branch=`cursor/bc-2735462b-b736-489f-919f-71cff202b562-433f` — omitting branch= opens a NEW tip PR on `cursor/bc-2735462b-b736-489f-919f-71cff202b562-433f` (not `cursor/icml-epistemic-results-f49c`); Cloud Agent 'correct working branch' does NOT override tip anti-churn. Tick 345–347: if GitHub title/body stays stale, copy-paste `tip_pr_title_edit_commands` (`gh pr edit --title [--body-file docs/icml_tip_pr_body.md]`) — open_git_pr MCP does not rewrite title or body). Merge before next cron (~2h). Older tip PRs are superseded; merge only #337.
+6. Merge the latest ICML tip PR into `main` so cron inherits `docs/ICML_*` + `scripts/icml_cron_entry.sh` (Tick 327–340 dual unblock; `main` still has hackathon-era AGENTS without tip files). See `docs/ICML_HUMAN_UNBLOCK.md` Dual human unblock. Concrete tip PR: #337 https://github.com/kshivam4781/DarwinianSIA/pull/337 — GitHub MERGEABLE/CLEAN: undraft & merge now (no conflicts). Copy-paste: `gh pr ready 337 --repo kshivam4781/DarwinianSIA && gh pr merge 337 --repo kshivam4781/DarwinianSIA --merge`. Agents/cron: do NOT open a new tip PR — checkout `cursor/icml-epistemic-results-f49c` (tip_pr_commit_branch; Tick 338–339 cron + tip recover --apply auto-checkout via icml_cron_entry / icml_boot_recover / icml_recover_tip) and push here so PR #337 updates (bash scripts/icml_checkout_tip_pr_branch.sh; open_git_pr branch=`cursor/icml-epistemic-results-f49c` — Tick 340: NEVER omit branch=; open_git_pr defaults to the greenfield boot branch and would open a new tip PR; see docs/icml_open_git_pr.json; Tick 344: also pass title=`suggested_open_git_pr_title` from that JSON when tip_pr_title_stale — stale titles look superseded among 300+ drafts; secrets-first title when fetch_diamond_ok is false; Tick 348–349: also pass description= from `open_git_pr_description` in `docs/icml_open_git_pr.json` (or `docs/icml_tip_pr_body.md`) when tip_pr_body_stale; Tick 350: prefer verbatim `docs/icml_open_git_pr_call.json` (branch/title/description); Tick 352: call JSON records ``cloud_boot_branch`` / ``omit_branch_opens_pr_on``; Tick 352: this run's cloud_boot_branch=`cursor/icml-epistemic-results-da81` — omitting branch= opens a NEW tip PR on `cursor/icml-epistemic-results-da81` (not `cursor/icml-epistemic-results-f49c`); Cloud Agent 'correct working branch' does NOT override tip anti-churn. Tick 345–347: if GitHub title/body stays stale, copy-paste `tip_pr_title_edit_commands` (`gh pr edit --title [--body-file docs/icml_tip_pr_body.md]`) — open_git_pr MCP does not rewrite title or body). Merge before next cron (~2h). Older tip PRs are superseded; merge only #337.

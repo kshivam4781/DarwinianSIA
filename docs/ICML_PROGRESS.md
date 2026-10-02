@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T12:15Z — Tick 507 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-da81` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Separately, secrets early-refuse rewrote `docs/icml_live_pipeline_report.md` **without** the Tick 296 shape note (`eval_subset=… pop=… elite=… max_gen=…`). G3/G4 / pipeline `committed_g3g4_recipes_match_live_shape` then failed mid-preflight and would refuse `--live` even after NEBIUS arrives (recipe lock exit 3). Highest leverage without paid spend: **always stamp Tick-shape note on every pipeline report write + before G3/G4 recipe locks**.
+
+### What we did
+**Tick 507 — pipeline shape-note heal after secrets early-refuse (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `da81`; rematerialized diamond via public mirror CSV; confirmed NEBIUS still missing
+2. `pipeline_tick296_shape_note` / `ensure_notes_have_shape_note` / `stamp_pipeline_report_shape_note` — `write_pipeline_report` always stamps; preflight/live stack stamp on-disk before G3/G4; live `--live` recipe check heals missing note first
+3. Focused tests `test_write_pipeline_report` + `test_write_pipeline_report_stamps_shape_note_after_secrets_wipe` (3/3 with H2 surface)
+4. Preflight after fix: recipe blockers gone; only NEBIUS remains
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 506) | After (Tick 507) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Pipeline report after secrets early-refuse | **missing** Tick-shape note | **always stamped** |
+| G3/G4 `g3g4_recipes_match_live_shape` after wipe | **NO** (missing note) | **yes** after stamp |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); recipe lock no longer false-red |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T10:15Z — Tick 506 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

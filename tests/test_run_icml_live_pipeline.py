@@ -1800,9 +1800,124 @@ def test_write_pipeline_report(tmp_path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     assert "G2 → G3 → G4" in text
     assert "anthropic_key" in text
+    # Tick 507: every write stamps Tick-shape note (secrets early-refuse heal).
+    assert "eval_subset=" in text and "pop=" in text and "max_gen=" in text
     sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
     assert sidecar["ready_for_live"] is False
     assert sidecar["stages"][0]["name"] == "G2"
+    assert any("Tick 296 G3/G4 shape:" in n for n in sidecar["notes"])
+
+
+def test_write_pipeline_report_stamps_shape_note_after_secrets_wipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 507: secrets early-refuse must not leave recipe lock without shape note."""
+    from run_icml_live_pipeline import (
+        ensure_notes_have_shape_note,
+        stamp_pipeline_report_shape_note,
+    )
+    from icml_env_checks import (
+        committed_g3g4_recipes_match_live_shape,
+        icml_g3g4_live_shape,
+    )
+
+    monkeypatch.delenv("ICML_META_AGENT_PROFILE", raising=False)
+    monkeypatch.delenv("SIA_META_AGENT_PROFILE", raising=False)
+    for key in (
+        "SIA_G3G4_EVAL_SUBSET",
+        "SIA_G3G4_POPULATION_SIZE",
+        "SIA_G3G4_ELITE_COUNT",
+        "SIA_G3G4_MAX_GEN",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    shape = icml_g3g4_live_shape()
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    # Minimal gate3/4 + Section 21.7 fixtures matching live shape.
+    cmd = [
+        "python",
+        "-m",
+        "sia",
+        "run",
+        "--task",
+        "gpqa",
+        "--darwinian",
+        "--population_size",
+        str(shape["population_size"]),
+        "--elite_count",
+        str(shape["elite_count"]),
+        "--max_gen",
+        str(shape["max_gen"]),
+        "--run_id",
+        "1201",
+        "--eval_subset",
+        str(shape["eval_subset"]),
+        "--no-web",
+        "--seed",
+        "1",
+    ]
+    for name in ("gate3_report.json", "gate4_report.json"):
+        (docs / name).write_text(
+            json.dumps({"commands": [cmd, cmd]}, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    b_line = (
+        "sia run --task gpqa --darwinian "
+        f"--population_size {shape['population_size']} "
+        f"--elite_count {shape['elite_count']} "
+        f"--max_gen {shape['max_gen']} --run_id 1201 "
+        f"--eval_subset {shape['eval_subset']} --no-web --seed 1"
+    )
+    d_line = b_line.replace("1201", "1301") + " --cabs --cabs-inline"
+    (docs / "HACKATHON_MASTER_PLAN.md").write_text(
+        "### 21.7 Suggested cheap GPQA commands (after keys + budget check)\n\n"
+        f"{b_line}\n\n"
+        f"{d_line}\n\n"
+        "### 21.8 Artifact paths\n",
+        encoding="utf-8",
+    )
+    # Poisoned report: secrets early-refuse without Tick-shape note (pre-507).
+    pipeline_md = docs / "icml_live_pipeline_report.md"
+    pipeline_md.write_text(
+        "# ICML live pipeline report — G2 → G3 → G4\n\n"
+        "**Mode:** `live`\n\n"
+        "## Blockers\n\n"
+        "- secrets: NEBIUS_API_KEY missing\n\n"
+        "## Notes\n\n"
+        "- Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md\n",
+        encoding="utf-8",
+    )
+    ok_poisoned, problems = committed_g3g4_recipes_match_live_shape(
+        repo_root=tmp_path
+    )
+    assert not ok_poisoned
+    assert any("missing Tick-shape note" in p for p in problems)
+
+    # Heal via stamp (as live --live recipe check / preflight stack do).
+    assert stamp_pipeline_report_shape_note(pipeline_md) is True
+    text = pipeline_md.read_text(encoding="utf-8")
+    assert f"eval_subset={shape['eval_subset']}" in text
+    assert f"pop={shape['population_size']}" in text
+    ok_healed, problems2 = committed_g3g4_recipes_match_live_shape(
+        repo_root=tmp_path
+    )
+    assert ok_healed, problems2
+
+    # write_pipeline_report also heals notes on a wiped early-refuse write.
+    report = PipelineReport(
+        timestamp="2026-10-02T12:00:00Z",
+        mode="live",
+        budget=project_budget(),
+        ready_for_live=False,
+        blockers=["secrets: NEBIUS_API_KEY missing"],
+        notes=["Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md"],
+    )
+    wiped = tmp_path / "wiped_pipeline.md"
+    write_pipeline_report(report, wiped)
+    assert "Tick 296 G3/G4 shape:" in wiped.read_text(encoding="utf-8")
+    ensure_notes_have_shape_note(report.notes)
+    assert sum("Tick 296 G3/G4 shape:" in n for n in report.notes) == 1
 
 
 def test_write_pipeline_report_surfaces_g3_h2_and_mean_gap(tmp_path: Path) -> None:

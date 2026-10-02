@@ -985,7 +985,93 @@ def refresh_g4_paper_pack_on_resume(
     )
 
 
+_PIPELINE_SHAPE_NOTE_RE = re.compile(
+    r"eval_subset\s*=\s*(\d+)\s+pop\s*=\s*(\d+)\s+"
+    r"elite\s*=\s*(\d+)\s+max_gen\s*=\s*(\d+)",
+    re.IGNORECASE,
+)
+
+
+def pipeline_tick296_shape_note(*, profile: str | None = None) -> str:
+    """Canonical Tick 296 G3/G4 shape note (recipe lock + operator docs)."""
+    shape = icml_g3g4_live_shape(profile)
+    return (
+        "Tick 296 G3/G4 shape: "
+        f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
+        f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
+    )
+
+
+def ensure_notes_have_shape_note(
+    notes: list[str], *, profile: str | None = None
+) -> str:
+    """Tick 507: keep Tick-shape note in report.notes (idempotent).
+
+    Secrets early-refuse used to write a short pipeline report without this
+    note; G3/G4 ``committed_g3g4_recipes_match_live_shape`` then failed even
+    after NEBIUS arrived. Always stamp the live shape into notes before write.
+    """
+    line = pipeline_tick296_shape_note(profile=profile)
+    expected = icml_g3g4_live_shape(profile)
+    for i, note in enumerate(notes):
+        match = _PIPELINE_SHAPE_NOTE_RE.search(note or "")
+        if match is None:
+            continue
+        got = {
+            "eval_subset": int(match.group(1)),
+            "population_size": int(match.group(2)),
+            "elite_count": int(match.group(3)),
+            "max_gen": int(match.group(4)),
+        }
+        if got == expected:
+            return line
+        notes[i] = line
+        return line
+    notes.append(line)
+    return line
+
+
+def stamp_pipeline_report_shape_note(
+    path: Path, *, profile: str | None = None
+) -> bool:
+    """Tick 507: ensure on-disk pipeline report has the Tick-shape note.
+
+    Returns True when the file was created or amended. Leaves a *wrong* note
+    alone so ``committed_g3g4_recipes_match_live_shape`` can still catch drift.
+    """
+    line = pipeline_tick296_shape_note(profile=profile)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+        match = _PIPELINE_SHAPE_NOTE_RE.search(text)
+        if match is not None:
+            # Present (correct or stale) — leave alone; recipe lock catches drift.
+            return False
+        if "## Notes" in text:
+            # Insert immediately after the Notes heading.
+            parts = text.split("## Notes", 1)
+            text = (
+                parts[0]
+                + "## Notes\n\n"
+                + f"- {line}\n"
+                + parts[1].lstrip("\n")
+            )
+        else:
+            text = text.rstrip() + f"\n\n## Notes\n\n- {line}\n"
+        path.write_text(text, encoding="utf-8")
+        return True
+    path.write_text(
+        "# ICML live pipeline report — G2 → G3 → G4\n\n"
+        f"## Notes\n\n- {line}\n",
+        encoding="utf-8",
+    )
+    return True
+
+
 def write_pipeline_report(report: PipelineReport, path: Path) -> None:
+    # Tick 507: every write (incl. secrets early-refuse) keeps the shape note so
+    # the next --live recipe lock cannot fail on a wiped report.
+    ensure_notes_have_shape_note(report.notes)
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# ICML live pipeline report — G2 → G3 → G4",
@@ -1255,10 +1341,11 @@ def run_preflight_stack(
         report.notes.append(
             f"Tick 372: G2 resume re-validation failed — {detail}"
         )
-    report.notes.append(
-        "Tick 296 G3/G4 shape: "
-        f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
-        f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
+    # Tick 507: stamp shape note into notes + on-disk report *before* G3/G4
+    # preflight so mid-stack recipe locks do not fail on a secrets-wiped file.
+    ensure_notes_have_shape_note(report.notes)
+    stamp_pipeline_report_shape_note(
+        REPO_ROOT / "docs" / "icml_live_pipeline_report.md"
     )
     # Tick 376: bill remaining pairs only; include partial-stage spend from sync.
     g3_need = 0 if resume.get("g3_done") else remaining_seed_pairs(g3_b_ids, g3_d_ids)
@@ -1513,10 +1600,10 @@ def run_live_stack(
         "--max-gen",
         str(shape["max_gen"]),
     ]
-    report.notes.append(
-        "Tick 296 G3/G4 shape: "
-        f"eval_subset={shape['eval_subset']} pop={shape['population_size']} "
-        f"elite={shape['elite_count']} max_gen={shape['max_gen']}"
+    # Tick 507: stamp before paid G3/G4 so recipe locks see the shape note.
+    ensure_notes_have_shape_note(report.notes)
+    stamp_pipeline_report_shape_note(
+        REPO_ROOT / "docs" / "icml_live_pipeline_report.md"
     )
     g3_b_ids = g3.parse_int_list(g3_b)
     g3_d_ids = g3.parse_int_list(g3_d)
@@ -2005,7 +2092,10 @@ def main(argv: list[str] | None = None) -> int:
     # Tick 299: refuse --live when committed recipes drift from live shape
     # (Tick 298 lock was unit-tested only; cron could still spend on a tip
     # whose Section 21.7 / pipeline note lagged a shape change).
+    # Tick 507: heal missing note from prior secrets early-refuse before the lock.
     if selected == "live":
+        ensure_notes_have_shape_note(report.notes)
+        stamp_pipeline_report_shape_note(args.report)
         recipes_ok, recipe_problems = committed_g3g4_recipes_match_live_shape(
             repo_root=REPO_ROOT
         )
