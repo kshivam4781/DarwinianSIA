@@ -556,10 +556,22 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
 
     import run_g2_smoke as mod
 
     monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    # Isolate from host /tmp/gpqa_diamond.csv + public mirror (Tick 502 VM noise).
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (None, False))
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: None
+    )
     (tmp_path / "docs").mkdir()
     called: list[str] = []
 
@@ -583,6 +595,114 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert called == []
     text = report_path.read_text(encoding="utf-8")
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+
+
+def test_main_live_fetch_diamond_skips_hf_when_ondisk_nonsynthetic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 502: on-disk non-synthetic diamond ⇒ no HF rematerialize under --fetch-diamond."""
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+
+    import run_g2_smoke as mod
+
+    # Non-synthetic GPQA layout (no CSV, no HF).
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    (task / "data" / "private").mkdir(parents=True)
+    (task / "data" / "public").mkdir(parents=True)
+    rows = [
+        {
+            "domain": "physics",
+            "Question": "Real diamond Q1?",
+            "correct_answer_letter": "A",
+            "choices": {"A": "a", "B": "b", "C": "c", "D": "d"},
+        }
+    ]
+    payload = json.dumps(rows)
+    (task / "data" / "private" / "diamond_questions.json").write_text(
+        payload, encoding="utf-8"
+    )
+    (task / "data" / "public" / "diamond_questions.json").write_text(
+        payload, encoding="utf-8"
+    )
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom_hf(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF when ondisk ready")
+
+    def boom_csv(*_a, **_k):
+        called.append("csv")
+        raise AssertionError("must not materialize from CSV when none wired")
+
+    monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
+    monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (None, False))
+    # Tip status OK so ready_for_live is not blocked on tip lineage.
+    monkeypatch.setattr(
+        mod,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 502,
+            "remote_tip_tick": 502,
+            "blockers": [],
+        },
+    )
+    # Avoid real uv/profile probes failing the assert path — we only care that
+    # HF was not called and notes mention Tick 502 keep.
+    monkeypatch.setattr(mod, "probe_per_run_venv_capable", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", lambda **k: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_meta_profile", lambda: (True, "ok"))
+    monkeypatch.setattr(mod, "probe_icml_target_profile_nebius", lambda: (True, "ok"))
+    monkeypatch.setattr(
+        mod,
+        "ensure_deps_before_diamond_fetch",
+        lambda **k: (_ for _ in ()).throw(AssertionError("deps only for HF/CSV")),
+    )
+
+    # Short-circuit sia run — if we reach live, return success without subprocess.
+    monkeypatch.setattr(
+        mod.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"returncode": 0})(),
+    )
+    monkeypatch.setattr(
+        mod,
+        "validate_g2_artifacts",
+        lambda *a, **k: [
+            mod.CheckResult("belief_store", True, "ok"),
+            mod.CheckResult("best_fitness_nonzero", True, "0.2"),
+        ],
+    )
+    monkeypatch.setattr(mod, "_run_dir_for", lambda rid: tmp_path / "runs" / f"run_{rid}")
+    (tmp_path / "runs" / "run_1300").mkdir(parents=True)
+
+    report_path = tmp_path / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "Tick 502" in text
+    assert "skip HF rematerialize" in text
+    # Live may still fail other preflight bits; must not be the HF-missing exit 4.
+    assert rc != 4 or "HF_TOKEN" not in text
 
 
 def test_main_fetch_diamond_bootstraps_deps_before_hf(

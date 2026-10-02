@@ -34,10 +34,12 @@ from icml_env_checks import (  # noqa: E402
     persist_direct_gate_stage_spend,
     direct_gate_ledger_skip,
     icml_diamond_n_for_stack,
+    icml_fetch_diamond_needs_hf,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_ondisk_nonsynthetic_gpqa,
     icml_python_cli,
     icml_target_profile_cli_flags,
     is_ephemeral_icml_path,
@@ -618,6 +620,54 @@ def test_icml_preflight_diamond_ready_shared_helper() -> None:
     )
     assert icml_preflight_diamond_ready(notes=["unrelated note"]) is False
     assert icml_preflight_diamond_ready() is False
+
+
+def test_icml_fetch_diamond_needs_hf_skips_ondisk_nonsynthetic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 502: on-disk non-synthetic diamond ⇒ HF not required for --fetch-diamond."""
+    # No layout → needs HF when fetch + no CSV.
+    assert (
+        icml_fetch_diamond_needs_hf(
+            fetch_diamond=True, diamond_csv=None, repo_root=tmp_path
+        )
+        is True
+    )
+    assert (
+        icml_fetch_diamond_needs_hf(
+            fetch_diamond=True,
+            diamond_csv=tmp_path / "gpqa_diamond.csv",
+            repo_root=tmp_path,
+        )
+        is False
+    )
+    assert (
+        icml_fetch_diamond_needs_hf(
+            fetch_diamond=False, diamond_csv=None, repo_root=tmp_path
+        )
+        is False
+    )
+
+    # Build a non-synthetic GPQA layout under SIA/.
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa" / "data"
+    (task / "private").mkdir(parents=True)
+    rows = [
+        {
+            "domain": "physics",
+            "Question": "Real diamond Q1?",
+            "correct_answer_letter": "A",
+        }
+    ]
+    (task / "private" / "diamond_questions.json").write_text(
+        json.dumps(rows), encoding="utf-8"
+    )
+    assert icml_ondisk_nonsynthetic_gpqa(tmp_path) is True
+    assert (
+        icml_fetch_diamond_needs_hf(
+            fetch_diamond=True, diamond_csv=None, repo_root=tmp_path
+        )
+        is False
+    )
 
 
 def test_secrets_status_human_next_nebius_first_when_diamond_ready(

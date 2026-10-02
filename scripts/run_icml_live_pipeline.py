@@ -123,6 +123,7 @@ from icml_env_checks import (  # noqa: E402
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
     icml_human_required_secrets_phrase,
+    icml_ondisk_nonsynthetic_gpqa,
     icml_python_cli,
     ledger_stage_complete,
     live_pipeline_next_steps,
@@ -1135,15 +1136,11 @@ def _fetch_diamond(
     seed: int,
 ) -> list[str]:
     notes: list[str] = []
-    # Tick 282: bootstrap huggingface_hub before HF materialize (CSV still
-    # benefits from uv/SIA path consistency).
-    deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
-    notes.append(f"runtime deps before diamond: {deps_detail}")
-    if not deps_ok and diamond_csv is None:
-        raise RuntimeError(
-            f"runtime deps failed before HF materialize: {deps_detail}"
-        )
     if diamond_csv is not None:
+        # Tick 282: bootstrap huggingface_hub before materialize (CSV still
+        # benefits from uv/SIA path consistency).
+        deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+        notes.append(f"runtime deps before diamond: {deps_detail}")
         wrote = materialize_from_csv(
             diamond_csv,
             ["SIA", "sia-upstream"],
@@ -1153,7 +1150,20 @@ def _fetch_diamond(
             repo_root=REPO_ROOT,
         )
         notes.append(f"materialized diamond from CSV → {wrote}")
+    elif icml_ondisk_nonsynthetic_gpqa(REPO_ROOT):
+        # Tick 502: Tick 499 diamond_ready parity — do not force HF rematerialize
+        # when non-synthetic diamond is already on disk (CSV path may be gone).
+        notes.append(
+            "Tick 502: kept existing non-synthetic diamond; "
+            "skip HF rematerialize (HF optional when diamond ready)"
+        )
     else:
+        deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+        notes.append(f"runtime deps before diamond: {deps_detail}")
+        if not deps_ok:
+            raise RuntimeError(
+                f"runtime deps failed before HF materialize: {deps_detail}"
+            )
         wrote = materialize_from_hf(
             ["SIA", "sia-upstream"],
             n=diamond_n,

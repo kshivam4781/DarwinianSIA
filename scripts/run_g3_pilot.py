@@ -96,9 +96,11 @@ from icml_env_checks import (  # noqa: E402
     direct_gate_ledger_skip,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
+    icml_fetch_diamond_needs_hf,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_ondisk_nonsynthetic_gpqa,
     icml_preflight_diamond_ready,
     icml_python_cli,
     icml_target_profile_cli_flags,
@@ -1395,10 +1397,15 @@ def main(argv: list[str] | None = None) -> int:
         args.diamond_csv, fetch_diamond=bool(args.fetch_diamond), repo_root=REPO_ROOT
     )
     args.diamond_csv = diamond_csv
-    require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+    # Tick 502: on-disk non-synthetic diamond also skips HF (Tick 499 diamond_ready).
+    require_hf = icml_fetch_diamond_needs_hf(
+        fetch_diamond=bool(args.fetch_diamond),
+        diamond_csv=args.diamond_csv,
+        repo_root=REPO_ROOT,
+    )
     allow_stale = bool(args.allow_stale_tip)
 
-    # Tick 275/278: refuse --live --fetch-diamond without HF/CSV before materialize.
+    # Tick 275/278/502: refuse --live --fetch-diamond without HF/CSV/ondisk before materialize.
     if selected == "live" and require_hf:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
@@ -1408,25 +1415,17 @@ def main(argv: list[str] | None = None) -> int:
                 require_hf_for_diamond=True,
                 allow_stale_tip=allow_stale,
             )
-            diamond_ready = bool(secrets_status.get("diamond_ready"))
-            phrase = icml_human_required_secrets_phrase(
-                for_fetch_diamond=not diamond_ready
-            )
+            phrase = icml_human_required_secrets_phrase(for_fetch_diamond=True)
             for b in secrets_status.get("blockers") or [
                 f"fetch_diamond_ok=false (need {phrase})"
             ]:
                 report.notes.append(f"secrets: {b}")
-            if diamond_ready:
-                report.notes.append(
-                    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
-                    "(diamond already ready; HF optional — Tick 497/500)."
-                )
-            else:
-                report.notes.append(
-                    "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                    "or pass --diamond-csv / drop gpqa_diamond.csv / allow "
-                    "Tick 497 public mirror to skip HF."
-                )
+            report.notes.append(
+                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
+                "or pass --diamond-csv / drop gpqa_diamond.csv / keep on-disk "
+                "non-synthetic diamond / allow Tick 497 public mirror to skip HF "
+                "(Tick 502)."
+            )
             write_gate3_report(report, args.report)
             print(
                 "G3 refused --live --fetch-diamond "
@@ -1443,30 +1442,11 @@ def main(argv: list[str] | None = None) -> int:
             f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
         )
     if args.fetch_diamond or args.diamond_csv is not None:
-        # Tick 282: bootstrap huggingface_hub (+ uv/SIA) BEFORE materialize.
-        deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
-        fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
-        if not deps_ok and args.diamond_csv is None:
-            fetch_notes.append(
-                "runtime_deps failed before HF materialize — "
-                "cannot import/bootstrap huggingface_hub"
-            )
-            if selected == "live":
-                print(
-                    f"G3 live refused — runtime deps before diamond failed: {deps_detail}",
-                    file=sys.stderr,
-                )
-                report = run_preflight(
-                    mode=selected,
-                    plans=plans,
-                    require_hf_for_diamond=require_hf,
-                    allow_stale_tip=allow_stale,
-                )
-                report.notes.extend(fetch_notes)
-                write_gate3_report(report, args.report)
-                return 3
-        try:
-            if args.diamond_csv is not None:
+        ondisk_ready = icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
+        if args.diamond_csv is not None:
+            deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+            fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
+            try:
                 wrote = materialize_from_csv(
                     args.diamond_csv,
                     ["SIA", "sia-upstream"],
@@ -1476,7 +1456,50 @@ def main(argv: list[str] | None = None) -> int:
                     repo_root=REPO_ROOT,
                 )
                 fetch_notes.append(f"materialized diamond from CSV → {wrote}")
-            else:
+            except Exception as exc:
+                fetch_notes.append(f"diamond fetch failed: {exc}")
+                if selected == "live":
+                    print(
+                        f"G3 live refused — --fetch-diamond failed: {exc}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        plans=plans,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    write_gate3_report(report, args.report)
+                    return 3
+        elif ondisk_ready:
+            fetch_notes.append(
+                "Tick 502: kept existing non-synthetic diamond; "
+                "skip HF rematerialize (HF optional when diamond ready)"
+            )
+        else:
+            deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+            fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
+            if not deps_ok:
+                fetch_notes.append(
+                    "runtime_deps failed before HF materialize — "
+                    "cannot import/bootstrap huggingface_hub"
+                )
+                if selected == "live":
+                    print(
+                        f"G3 live refused — runtime deps before diamond failed: {deps_detail}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        plans=plans,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    write_gate3_report(report, args.report)
+                    return 3
+            try:
                 wrote = materialize_from_hf(
                     ["SIA", "sia-upstream"],
                     n=args.diamond_n,
@@ -1485,19 +1508,22 @@ def main(argv: list[str] | None = None) -> int:
                     repo_root=REPO_ROOT,
                 )
                 fetch_notes.append(f"materialized diamond from HF → {wrote}")
-        except Exception as exc:
-            fetch_notes.append(f"diamond fetch failed: {exc}")
-            if selected == "live":
-                print(f"G3 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
-                report = run_preflight(
-                    mode=selected,
-                    plans=plans,
-                    require_hf_for_diamond=require_hf,
-                    allow_stale_tip=allow_stale,
-                )
-                report.notes.extend(fetch_notes)
-                write_gate3_report(report, args.report)
-                return 3
+            except Exception as exc:
+                fetch_notes.append(f"diamond fetch failed: {exc}")
+                if selected == "live":
+                    print(
+                        f"G3 live refused — --fetch-diamond failed: {exc}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        plans=plans,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    write_gate3_report(report, args.report)
+                    return 3
 
     report = run_preflight(
         mode=selected,

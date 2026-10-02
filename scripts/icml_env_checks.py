@@ -364,6 +364,40 @@ def icml_preflight_diamond_ready(
     return False
 
 
+def icml_ondisk_nonsynthetic_gpqa(repo_root: Path | None = None) -> bool:
+    """True when a GPQA tree exists and is non-synthetic (Tick 502).
+
+    Tick **499** already treated this as ``diamond_ready`` for secrets /
+    ``fetch_diamond_ok``, but G2/G3/G4 ``--live --fetch-diamond`` still set
+    ``require_hf`` whenever ``--diamond-csv`` was absent and then
+    ``materialize_from_hf(..., force=True)`` — so a prior CSV/mirror
+    materialize whose CSV path was cleaned would false-fail live on missing
+    HF even with only ``NEBIUS_API_KEY`` needed. Use this to skip HF require
+    and rematerialize.
+    """
+    return detect_gpqa_is_synthetic(repo_root) is False
+
+
+def icml_fetch_diamond_needs_hf(
+    *,
+    fetch_diamond: bool,
+    diamond_csv: Path | None,
+    repo_root: Path | None = None,
+) -> bool:
+    """True when ``--fetch-diamond`` still requires ``HF_TOKEN`` (Tick 502).
+
+    False when a CSV is wired **or** non-synthetic diamond is already on disk
+    (Tick 499 ``diamond_ready`` parity). Does not invent a CSV.
+    """
+    if not fetch_diamond:
+        return False
+    if diamond_csv is not None:
+        return False
+    if icml_ondisk_nonsynthetic_gpqa(repo_root):
+        return False
+    return True
+
+
 def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
     """True when the resolved meta profile is loadable and coherent for ICML.
 

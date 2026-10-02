@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 501: pipeline `## Next` + live `--fetch-diamond` refuse are NEBIUS-first when diamond is already ready (`live_pipeline_next_steps(diamond_ready=)`; aggregate uses `fetch_diamond_ok` not hard HF; Gate2/G3/G4/secrets Tick 498–500 parity). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 502: G2/G3/G4/pipeline `--live --fetch-diamond` keeps on-disk non-synthetic diamond and skips HF rematerialize (`icml_fetch_diamond_needs_hf` / `icml_ondisk_nonsynthetic_gpqa`; Tick 499 `diamond_ready` parity on the fetch path). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -409,6 +409,10 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 496 C-array/comma-hex STATUS header — `53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` peel
 - [x] Tick 497 public GPQA diamond mirror — OpenAI simple-evals CSV (`--from-public-mirror` / `ensure_diamond_csv_via_public_mirror`); HF optional when mirror/CSV present; live blocker = NEBIUS only
 - [x] Tick 498 Gate2 Next NEBIUS-first — `gate2_diamond_ready` / `gate2_next_markdown_lines` drop HF-accept Next when diamond ready; cold-boot rematerialize re-verified
+- [x] Tick 499 secrets human_next NEBIUS-first — `diamond_ready` drops HF-accept `human_next` + HF blocker; `fetch_diamond_ok` accepts on-disk non-synthetic
+- [x] Tick 500 G3/G4 Next + cron refuse NEBIUS-first — shared `icml_preflight_diamond_ready`; diamond-aware refuse notes
+- [x] Tick 501 pipeline Next/refuse NEBIUS-first — `live_pipeline_next_steps(diamond_ready=)`; aggregate `fetch_diamond_ok` (no hard HF)
+- [x] Tick 502 on-disk diamond skips HF rematerialize — `icml_fetch_diamond_needs_hf` / `icml_ondisk_nonsynthetic_gpqa`; G2/G3/G4/pipeline keep non-synthetic under `--fetch-diamond`
 - [ ] Live API-run H2 DNA trait skew under contradiction bias
 - Evidence: unit + dry-run G1 + scoped feedback + fitness-weighted order + preferred anchoring + bias-aware/delayed XO + tempered early mutation + delay-all mutation bias + compressed fitness scale + ε-greedy/live harvest + directed explore + H5 protocol + cost-to-threshold + **post-steering** offline case study + G2 preflight + diamond fetcher + G3 sequential runner + G4 5-seed runner + G4 paper-pack + unified live pipeline + Cursor env drafts + Tick 32 uv / per_run_venv + Tick 33 Portal Save pointer + Tick 34 SystemExit-safe probe + Tick 35–264 uv drafts + **Tick 265 Astral uv bootstrap** + **Tick 266 runtime-deps bootstrap** + **Tick 267 secrets-only gate verified** + **Tick 268 secrets-first status/unblock** + **Tick 269 tip lineage recover/refuse** + **Tick 270 main-boot bash tip recover** + **Tick 271 single cron entry** + **Tick 272 lineage chicken-egg tip pick** + **Tick 273 cron HF live gate** + **Tick 274 pipeline HF gate** + **Tick 275 G2/G3/G4 HF gate** + **Tick 276 preflight `--fetch-diamond` propagation** + **Tick 277 `.env` + CSV unlock** + **Tick 278 runner CSV autowire** + **Tick 286 ephemeral-dirt tip recover + zero ledger** + **Tick 287 host pandas-free GPQA eval_subset** + **Tick 303–306 shape locks / offline CLI defaults / G2+G3+G4 tip guards** + **Tick 422–496 durable commit/push/rebase/conflict-merge + STATUS peels through C-array-hex** + **Tick 497 public diamond mirror** + **Tick 498 Gate2 Next NEBIUS-first**; live GPQA still pending (**NEBIUS_API_KEY**; HF/CSV optional via Tick 497 mirror; Portal Save optional)
 

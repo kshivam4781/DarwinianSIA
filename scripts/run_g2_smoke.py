@@ -80,9 +80,11 @@ from icml_env_checks import (  # noqa: E402
     persist_direct_gate_stage_spend,
     persist_prior_live_stash_from_working_tree,
     direct_gate_ledger_skip,
+    icml_fetch_diamond_needs_hf,
     icml_human_required_secrets_phrase,
     icml_meta_profile_cli_flags,
     icml_meta_requires_anthropic,
+    icml_ondisk_nonsynthetic_gpqa,
     icml_preflight_diamond_ready,
     icml_python_cli,
     icml_target_profile_cli_flags,
@@ -997,11 +999,16 @@ def main(argv: list[str] | None = None) -> int:
         args.diamond_csv, fetch_diamond=bool(args.fetch_diamond), repo_root=REPO_ROOT
     )
     args.diamond_csv = diamond_csv
-    require_hf = bool(args.fetch_diamond) and args.diamond_csv is None
+    # Tick 502: on-disk non-synthetic diamond also skips HF (Tick 499 diamond_ready).
+    require_hf = icml_fetch_diamond_needs_hf(
+        fetch_diamond=bool(args.fetch_diamond),
+        diamond_csv=args.diamond_csv,
+        repo_root=REPO_ROOT,
+    )
     allow_stale = bool(args.allow_stale_tip)
 
-    # Tick 275/278: refuse --live --fetch-diamond without HF/CSV before materialize
-    # (match pipeline/cron fetch_diamond_ok; CSV path skips HF).
+    # Tick 275/278/502: refuse --live --fetch-diamond without HF/CSV/ondisk before materialize
+    # (match pipeline/cron fetch_diamond_ok; CSV or on-disk non-synthetic skips HF).
     if selected == "live" and require_hf:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
@@ -1020,7 +1027,8 @@ def main(argv: list[str] | None = None) -> int:
             report.notes.append(
                 "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
                 f"({icml_human_required_secrets_phrase(for_fetch_diamond=True)}); "
-                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
+                "or pass --diamond-csv / drop gpqa_diamond.csv / keep on-disk "
+                "non-synthetic diamond to skip HF (Tick 502)."
             )
             report.command = build_sia_command(
                 run_id=run_id, seed=seed, dry_run=False
@@ -1041,33 +1049,12 @@ def main(argv: list[str] | None = None) -> int:
             f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
         )
     if args.fetch_diamond or args.diamond_csv is not None:
-        # Tick 282: bootstrap huggingface_hub (+ uv/SIA) BEFORE materialize.
-        deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
-        fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
-        if not deps_ok and args.diamond_csv is None:
-            fetch_notes.append(
-                "runtime_deps failed before HF materialize — "
-                "cannot import/bootstrap huggingface_hub"
-            )
-            if selected == "live":
-                print(
-                    f"G2 live refused — runtime deps before diamond failed: {deps_detail}",
-                    file=sys.stderr,
-                )
-                report = run_preflight(
-                    mode=selected,
-                    run_id=run_id,
-                    require_hf_for_diamond=require_hf,
-                    allow_stale_tip=allow_stale,
-                )
-                report.notes.extend(fetch_notes)
-                report.command = build_sia_command(
-                    run_id=run_id, seed=seed, dry_run=False
-                )
-                write_gate2_report(report, args.report)
-                return 3
-        try:
-            if args.diamond_csv is not None:
+        ondisk_ready = icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
+        if args.diamond_csv is not None:
+            # Tick 282: bootstrap huggingface_hub (+ uv/SIA) BEFORE materialize.
+            deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+            fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
+            try:
                 wrote = materialize_from_csv(
                     args.diamond_csv,
                     ["SIA", "sia-upstream"],
@@ -1077,7 +1064,57 @@ def main(argv: list[str] | None = None) -> int:
                     repo_root=REPO_ROOT,
                 )
                 fetch_notes.append(f"materialized diamond from CSV → {wrote}")
-            else:
+            except Exception as exc:
+                fetch_notes.append(f"diamond fetch failed: {exc}")
+                if selected == "live":
+                    print(
+                        f"G2 live refused — --fetch-diamond failed: {exc}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        run_id=run_id,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    report.command = build_sia_command(
+                        run_id=run_id, seed=seed, dry_run=False
+                    )
+                    write_gate2_report(report, args.report)
+                    return 3
+        elif ondisk_ready:
+            fetch_notes.append(
+                "Tick 502: kept existing non-synthetic diamond; "
+                "skip HF rematerialize (HF optional when diamond ready)"
+            )
+        else:
+            # Tick 282: bootstrap huggingface_hub (+ uv/SIA) BEFORE materialize.
+            deps_ok, deps_detail = ensure_deps_before_diamond_fetch(allow_install=True)
+            fetch_notes.append(f"runtime deps before diamond: {deps_detail}")
+            if not deps_ok:
+                fetch_notes.append(
+                    "runtime_deps failed before HF materialize — "
+                    "cannot import/bootstrap huggingface_hub"
+                )
+                if selected == "live":
+                    print(
+                        f"G2 live refused — runtime deps before diamond failed: {deps_detail}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        run_id=run_id,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    report.command = build_sia_command(
+                        run_id=run_id, seed=seed, dry_run=False
+                    )
+                    write_gate2_report(report, args.report)
+                    return 3
+            try:
                 wrote = materialize_from_hf(
                     ["SIA", "sia-upstream"],
                     n=args.diamond_n,
@@ -1086,23 +1123,25 @@ def main(argv: list[str] | None = None) -> int:
                     repo_root=REPO_ROOT,
                 )
                 fetch_notes.append(f"materialized diamond from HF → {wrote}")
-        except Exception as exc:
-            fetch_notes.append(f"diamond fetch failed: {exc}")
-            if selected == "live":
-                print(f"G2 live refused — --fetch-diamond failed: {exc}", file=sys.stderr)
-                # Still write a preflight report for the tick.
-                report = run_preflight(
-                    mode=selected,
-                    run_id=run_id,
-                    require_hf_for_diamond=require_hf,
-                    allow_stale_tip=allow_stale,
-                )
-                report.notes.extend(fetch_notes)
-                report.command = build_sia_command(
-                    run_id=run_id, seed=seed, dry_run=False
-                )
-                write_gate2_report(report, args.report)
-                return 3
+            except Exception as exc:
+                fetch_notes.append(f"diamond fetch failed: {exc}")
+                if selected == "live":
+                    print(
+                        f"G2 live refused — --fetch-diamond failed: {exc}",
+                        file=sys.stderr,
+                    )
+                    report = run_preflight(
+                        mode=selected,
+                        run_id=run_id,
+                        require_hf_for_diamond=require_hf,
+                        allow_stale_tip=allow_stale,
+                    )
+                    report.notes.extend(fetch_notes)
+                    report.command = build_sia_command(
+                        run_id=run_id, seed=seed, dry_run=False
+                    )
+                    write_gate2_report(report, args.report)
+                    return 3
 
     report = run_preflight(
         mode=selected,
