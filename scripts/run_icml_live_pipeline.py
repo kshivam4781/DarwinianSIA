@@ -77,7 +77,12 @@ Hard stops (delegated to gate runners; never violate here either):
   - Tick 417: ledger-skip always-refuse on recomputed PRIMARY/H5/H2 fail
     (pipeline resume parity) + ``demote_icml_ready_file`` so disk READY
     cannot survive sidecar trust refuse (report-only demotion left STATUS poisoned).
-
+  - Tick 510: refuse ``--live`` (and clear preflight ``ready_for_live``) unless
+    durable ``docs/gate2_steering_lift_proof.json`` proves Tick 509 dry-run
+    ``--max-gen ≥3`` delay-all *lift* (gen≥3 Contradiction-Aware agenda).
+    ``ensure_g2_steering_lift_proof`` auto-runs that dry-run when missing so
+    cron cannot burn ~$19 on a never-steer regression that still PASSed
+    max_gen=2 skip-only G2.
 Modes:
   --preflight-only   chain G2/G3/G4 preflights + budget projection; no API
   --live             G2 → (pass) G3 → (promising + budget) G4 paper pack
@@ -1302,6 +1307,11 @@ def run_preflight_stack(
     Tick 299: after G2/G3/G4 gate writers refresh, enforce
     ``committed_g3g4_recipes_match_live_shape`` so stale Section 21.7 /
     pipeline notes cannot green-light a live stack (Tick 298 was tests-only).
+
+    Tick 510: before gate preflights, ``ensure_g2_steering_lift_proof``
+    (auto-run dry-run ``--max-gen ≥3`` when durable proof missing) so
+    ``ready_for_live`` cannot go true without Tick 509 delay-all *lift*
+    evidence that survives the subsequent gate2 preflight rewrite.
     """
     if diamond_n is None:
         diamond_n = icml_diamond_n_for_stack()
@@ -1347,6 +1357,29 @@ def run_preflight_stack(
     stamp_pipeline_report_shape_note(
         REPO_ROOT / "docs" / "icml_live_pipeline_report.md"
     )
+    # Tick 510: durable Tick 509 steering-lift proof (gen≥3 agenda) before
+    # gate preflights rewrite gate2_report. Auto-runs dry-run max_gen=3 when
+    # missing so the next secrets-unblocked cron cannot burn ~$19 on never-steer.
+    lift_ok, lift_detail = g2.ensure_g2_steering_lift_proof(
+        repo_root=REPO_ROOT, auto_run=True
+    )
+    report.add_stage(
+        StageResult(
+            name="G2_steering_lift",
+            attempted=True,
+            exit_code=0 if lift_ok else 4,
+            ok=lift_ok,
+            detail=lift_detail,
+        )
+    )
+    if lift_ok:
+        report.notes.append(f"Tick 510: steering-lift proof OK — {lift_detail}")
+    else:
+        report.blockers.append(f"steering_lift: {lift_detail}")
+        report.notes.append(
+            "Tick 510: refuse live without durable gate2_steering_lift_proof.json "
+            "(dry-run --max-gen ≥3 delay-all lift; Tick 509 positive control)"
+        )
     # Tick 376: bill remaining pairs only; include partial-stage spend from sync.
     g3_need = 0 if resume.get("g3_done") else remaining_seed_pairs(g3_b_ids, g3_d_ids)
     g4_need = 0 if resume.get("g4_done") else remaining_seed_pairs(g4_b_ids, g4_d_ids)
@@ -1483,6 +1516,11 @@ def run_preflight_stack(
     # Tick 372: failed G2 post-run gates must clear live readiness even when
     # gate sidecars look green (occupied-ID blockers alone are easy to miss).
     if resume.get("g2_gates_failed"):
+        report.ready_for_live = False
+
+    # Tick 510: missing durable steering-lift proof clears live readiness even
+    # when gate sidecars look green (live G2 max_gen=2 never re-proves lift).
+    if any(b.startswith("steering_lift:") for b in report.blockers):
         report.ready_for_live = False
 
     # Tick 269: tip lineage status (cron often boots from main).
@@ -2130,6 +2168,30 @@ def main(argv: list[str] | None = None) -> int:
             write_pipeline_report(report, args.report)
             print(
                 f"Pipeline refused --live (stale offline Bvd shape) → {args.report}"
+            )
+            for b in report.blockers:
+                print(f"  BLOCK: {b}")
+            return 3
+
+        # Tick 510: require durable Tick 509 steering-lift proof before paid
+        # G2→G3→G4. Auto-run dry-run max_gen≥3 when missing (no API spend).
+        lift_ok, lift_detail = g2.ensure_g2_steering_lift_proof(
+            repo_root=REPO_ROOT, auto_run=True
+        )
+        if lift_ok:
+            report.notes.append(f"Tick 510: steering-lift proof OK — {lift_detail}")
+        else:
+            report.blockers.append(f"steering_lift: {lift_detail}")
+            report.notes.append(
+                "Tick 510: refuse --live without durable "
+                "gate2_steering_lift_proof.json (dry-run --max-gen ≥3 "
+                "delay-all lift; closes never-steer burn after skip-only G2)"
+            )
+            report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
+            write_pipeline_report(report, args.report)
+            print(
+                f"Pipeline refused --live (missing steering-lift proof) → "
+                f"{args.report}"
             )
             for b in report.blockers:
                 print(f"  BLOCK: {b}")

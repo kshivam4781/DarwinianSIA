@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-02T16:08:15Z",
+  "tick": 510,
+  "source": "bootstrap_gate2_report",
+  "mode": "dry-run",
+  "run_id": 1955,
+  "max_gen": 3,
+  "ok": true,
+  "detail": "delay-all skip + gen\u22653 lift + nonzero fitness",
+  "post": [
+    {
+      "name": "run_dir",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1955"
+    },
+    {
+      "name": "belief_store",
+      "ok": true,
+      "detail": "/workspace/SIA/runs/run_1955/belief_store"
+    },
+    {
+      "name": "epistemic_value_jsonl",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "cabs_json",
+      "ok": true,
+      "detail": "contradictions/beliefs present"
+    },
+    {
+      "name": "scoped_mutation_bias",
+      "ok": true,
+      "detail": "fields=['memory', 'planning_style', 'tool_strategy']"
+    },
+    {
+      "name": "delay_all_feedback_skip",
+      "ok": true,
+      "detail": "gen2 n=2 feedback prompts lack 'Contradiction-Aware Research Agenda' (delay-all)"
+    },
+    {
+      "name": "delay_all_technique_seeds_skip",
+      "ok": true,
+      "detail": "gen2 n=2 DNA technique_seeds empty (delay-all)"
+    },
+    {
+      "name": "steering_applied_run_1955",
+      "ok": true,
+      "detail": "gen3 n=2 agenda in ['agent_0', 'agent_1'] (delay-all lifted)"
+    },
+    {
+      "name": "steering_applied_gen3",
+      "ok": true,
+      "detail": "Condition D n=1 gen\u22653 steering evidenced"
+    },
+    {
+      "name": "nonzero_fitness",
+      "ok": true,
+      "detail": "best=0.2440 > min=0"
+    }
+  ],
+  "required_checks": [
+    "delay_all_feedback_skip",
+    "delay_all_technique_seeds_skip",
+    "steering_applied_gen3",
+    "nonzero_fitness"
+  ]
+}

@@ -1561,3 +1561,121 @@ def test_g2_live_ledger_skip_refuses_without_post(
         ]
     )
     assert rc == 4
+
+
+def _steering_lift_pass_post() -> list[dict]:
+    return [
+        {"name": "run_dir", "ok": True, "detail": "/tmp/run_1955"},
+        {
+            "name": "delay_all_feedback_skip",
+            "ok": True,
+            "detail": "gen2 n=2 feedback prompts lack agenda",
+        },
+        {
+            "name": "delay_all_technique_seeds_skip",
+            "ok": True,
+            "detail": "gen2 n=2 DNA technique_seeds empty",
+        },
+        {
+            "name": "steering_applied_gen3",
+            "ok": True,
+            "detail": "Condition D n=1 gen≥3 steering evidenced",
+        },
+        {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2440 > min=0"},
+    ]
+
+
+def test_steering_lift_proof_roundtrip_and_bootstrap(tmp_path: Path) -> None:
+    """Tick 510: durable proof sidecar + gate2 dry-run bootstrap."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    post = _steering_lift_pass_post()
+    assert mod.post_checks_satisfy_steering_lift(post)[0] is True
+
+    path = mod.write_steering_lift_proof(
+        run_id=1955,
+        post=post,
+        source="unit",
+        repo_root=tmp_path,
+    )
+    assert path.name == mod.STEERING_LIFT_PROOF_NAME
+    ok, detail = mod.steering_lift_proof_ok(tmp_path)
+    assert ok is True
+    assert "1955" in detail
+
+    # Bootstrap from gate2_report when durable proof missing
+    path.unlink()
+    assert mod.steering_lift_proof_ok(tmp_path)[0] is False
+    (docs / "gate2_report.json").write_text(
+        json.dumps(
+            {
+                "timestamp": "2026-10-02T16:08:15Z",
+                "mode": "dry-run",
+                "run_id": 1955,
+                "post": post,
+            }
+        ),
+        encoding="utf-8",
+    )
+    boot_ok, boot_detail = mod.maybe_bootstrap_steering_lift_proof_from_gate2(tmp_path)
+    assert boot_ok is True
+    assert mod.steering_lift_proof_ok(tmp_path)[0] is True
+    assert "1955" in boot_detail
+
+
+def test_ensure_steering_lift_proof_without_autorun_uses_durable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 510: ensure trusts durable sidecar; does not invoke sia."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    mod.write_steering_lift_proof(
+        run_id=1955,
+        post=_steering_lift_pass_post(),
+        source="unit",
+        repo_root=tmp_path,
+    )
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod,
+        "main",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("sia must not run")),
+    )
+    ok, detail = mod.ensure_g2_steering_lift_proof(
+        repo_root=tmp_path, auto_run=True
+    )
+    assert ok is True
+    assert "durable" in detail
+
+
+def test_write_gate2_report_persists_steering_lift_proof(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 510: dry-run write_gate2_report also stamps durable lift proof."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod, "persist_prior_live_stash_from_working_tree", lambda *_a, **_k: None
+    )
+    report = mod.PreflightReport(
+        timestamp="2026-10-02T18:00:00Z",
+        mode="dry-run",
+        run_id=1956,
+        ready_for_dry_run=True,
+    )
+    report.command = ["python3", "-m", "sia", "run", "--dry-run"]
+    post = [
+        mod.CheckResult(c["name"], c["ok"], c["detail"])
+        for c in _steering_lift_pass_post()
+    ]
+    mod.write_gate2_report(report, docs / "gate2_report.md", post=post)
+    ok, detail = mod.steering_lift_proof_ok(tmp_path)
+    assert ok is True
+    assert "1956" in detail

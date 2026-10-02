@@ -34,6 +34,12 @@ turnkey and hard-stops unsafe paid runs:
     Tick 406–508 only proved the fair gen2 *skip* — a never-steer regression
     still PASSed G2 dry-run and could burn ~$19 on G3/G4 with D≈B. Live G2
     stays max_gen=2 (budget smoke); use dry-run max_gen≥3 for the lift proof.
+  - Tick 510: durable ``docs/gate2_steering_lift_proof.json`` + pipeline hard
+    gate. Tick 509 made the lift proof runnable, but cron ``--preflight-only``
+    rewrites ``gate2_report`` and live G2 stays max_gen=2 — so a never-steer
+    regression could still reach paid G3 without a surviving gen≥3 proof.
+    ``ensure_g2_steering_lift_proof`` auto-runs dry-run max_gen≥3 when missing;
+    the live pipeline refuses spend without a PASS sidecar.
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -104,6 +110,15 @@ from icml_env_checks import (  # noqa: E402
 DEFAULT_BUDGET_CEILING = 20.0
 DEFAULT_LIVE_RUN_ID = 1300
 DEFAULT_DRY_RUN_ID = 1850
+# Tick 510: durable gen≥3 delay-all *lift* proof (survives gate2 preflight rewrite).
+DEFAULT_STEERING_LIFT_RUN_ID = 1956
+STEERING_LIFT_PROOF_NAME = "gate2_steering_lift_proof.json"
+STEERING_LIFT_REQUIRED_CHECKS = (
+    "delay_all_feedback_skip",
+    "delay_all_technique_seeds_skip",
+    "steering_applied_gen3",
+    "nonzero_fitness",
+)
 
 
 @dataclass
@@ -177,6 +192,273 @@ def _run_dir_for(run_id: int) -> Path | None:
         if path.exists():
             return path
     return None
+
+
+def steering_lift_proof_path(repo_root: Path | None = None) -> Path:
+    """Tick 510: durable sidecar path (not wiped by gate2 preflight)."""
+    root = repo_root if repo_root is not None else REPO_ROOT
+    return root / "docs" / STEERING_LIFT_PROOF_NAME
+
+
+def _post_as_check_dicts(post) -> list[dict]:
+    """Normalize post checks to ``[{name, ok, detail}, ...]``."""
+    if post is None:
+        return []
+    out: list[dict] = []
+    if isinstance(post, dict):
+        # Rare: name → {ok, detail} map
+        for name, val in post.items():
+            if isinstance(val, dict):
+                out.append(
+                    {
+                        "name": str(name),
+                        "ok": bool(val.get("ok")),
+                        "detail": str(val.get("detail") or ""),
+                    }
+                )
+            elif isinstance(val, CheckResult):
+                out.append(asdict(val))
+        return out
+    for item in post:
+        if isinstance(item, CheckResult):
+            out.append(asdict(item))
+        elif isinstance(item, dict) and item.get("name"):
+            out.append(
+                {
+                    "name": str(item["name"]),
+                    "ok": bool(item.get("ok")),
+                    "detail": str(item.get("detail") or ""),
+                }
+            )
+    return out
+
+
+def post_checks_satisfy_steering_lift(post) -> tuple[bool, str]:
+    """True when post-run checks prove delay-all skip + gen≥3 lift + fitness."""
+    checks = {c["name"]: c for c in _post_as_check_dicts(post)}
+    missing = [n for n in STEERING_LIFT_REQUIRED_CHECKS if n not in checks]
+    if missing:
+        # Accept run-scoped steering_applied_run_* as alias for gen3 aggregate.
+        if "steering_applied_gen3" in missing:
+            run_scoped = [
+                n
+                for n, c in checks.items()
+                if n.startswith("steering_applied_run_") and c.get("ok")
+            ]
+            if run_scoped:
+                missing = [n for n in missing if n != "steering_applied_gen3"]
+                checks["steering_applied_gen3"] = checks[run_scoped[0]]
+        if missing:
+            return False, f"missing post checks: {missing}"
+    failed = [
+        n for n in STEERING_LIFT_REQUIRED_CHECKS if not checks.get(n, {}).get("ok")
+    ]
+    if failed:
+        details = "; ".join(
+            f"{n}: {checks[n].get('detail') or 'FAIL'}" for n in failed
+        )
+        return False, f"steering-lift post FAIL ({details})"
+    return True, "delay-all skip + gen≥3 lift + nonzero fitness"
+
+
+def write_steering_lift_proof(
+    *,
+    run_id: int,
+    post,
+    timestamp: str | None = None,
+    source: str = "dry-run",
+    repo_root: Path | None = None,
+) -> Path:
+    """Persist Tick 509/510 steering-lift PASS so preflight cannot wipe it."""
+    root = repo_root if repo_root is not None else REPO_ROOT
+    ok, detail = post_checks_satisfy_steering_lift(post)
+    if not ok:
+        raise ValueError(f"refuse to write steering-lift proof: {detail}")
+    path = steering_lift_proof_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "timestamp": timestamp or _utc_now(),
+        "tick": 510,
+        "source": source,
+        "mode": "dry-run",
+        "run_id": int(run_id),
+        "max_gen": 3,
+        "ok": True,
+        "detail": detail,
+        "post": _post_as_check_dicts(post),
+        "required_checks": list(STEERING_LIFT_REQUIRED_CHECKS),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def load_steering_lift_proof(repo_root: Path | None = None) -> dict | None:
+    path = steering_lift_proof_path(repo_root)
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def steering_lift_proof_ok(repo_root: Path | None = None) -> tuple[bool, str]:
+    """Tick 510: durable proof sidecar documents a PASS gen≥3 lift dry-run."""
+    data = load_steering_lift_proof(repo_root)
+    if not data:
+        return False, f"missing {STEERING_LIFT_PROOF_NAME}"
+    if not data.get("ok"):
+        return False, f"proof sidecar ok=false ({data.get('detail') or 'no detail'})"
+    post_ok, post_detail = post_checks_satisfy_steering_lift(data.get("post"))
+    if not post_ok:
+        return False, f"proof sidecar post invalid: {post_detail}"
+    run_id = data.get("run_id")
+    return True, f"run_{run_id} {post_detail}"
+
+
+def maybe_bootstrap_steering_lift_proof_from_gate2(
+    repo_root: Path | None = None,
+) -> tuple[bool, str]:
+    """If gate2_report.json still holds a dry-run lift PASS, durable-ize it."""
+    root = repo_root if repo_root is not None else REPO_ROOT
+    ok, detail = steering_lift_proof_ok(root)
+    if ok:
+        return True, detail
+    gate2 = root / "docs" / "gate2_report.json"
+    if not gate2.is_file():
+        return False, "no gate2_report.json to bootstrap"
+    try:
+        data = json.loads(gate2.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return False, f"gate2_report unreadable: {exc}"
+    if str(data.get("mode") or "") != "dry-run":
+        return False, f"gate2 mode={data.get('mode')!r} (want dry-run lift)"
+    post = data.get("post") or []
+    post_ok, post_detail = post_checks_satisfy_steering_lift(post)
+    if not post_ok:
+        return False, f"gate2 dry-run post not lift-PASS: {post_detail}"
+    run_id = int(data.get("run_id") or DEFAULT_STEERING_LIFT_RUN_ID)
+    write_steering_lift_proof(
+        run_id=run_id,
+        post=post,
+        timestamp=str(data.get("timestamp") or _utc_now()),
+        source="bootstrap_gate2_report",
+        repo_root=root,
+    )
+    return True, f"bootstrapped run_{run_id} ({post_detail})"
+
+
+def next_free_steering_lift_run_id(
+    start: int = DEFAULT_STEERING_LIFT_RUN_ID,
+    *,
+    limit: int = 50,
+) -> int:
+    """Pick an unused integer run id for a fresh lift dry-run (never overwrite)."""
+    for rid in range(int(start), int(start) + int(limit)):
+        if _run_dir_for(rid) is None:
+            return rid
+    raise RuntimeError(
+        f"no free steering-lift run_id in [{start}, {start + limit})"
+    )
+
+
+def ensure_g2_steering_lift_proof(
+    *,
+    repo_root: Path | None = None,
+    auto_run: bool = True,
+    run_id: int | None = None,
+) -> tuple[bool, str]:
+    """Tick 510: require Tick 509 dry-run max_gen≥3 PASS before paid G3/G4.
+
+    Order:
+      1. Trust durable ``gate2_steering_lift_proof.json`` when post checks PASS
+      2. Bootstrap from current ``gate2_report.json`` dry-run lift post (if any)
+      3. Re-validate an existing run dir with ``gen_3/`` when present
+      4. Optionally auto-run ``--dry-run --max-gen 3`` on a free run_id
+    """
+    root = repo_root if repo_root is not None else REPO_ROOT
+    ok, detail = steering_lift_proof_ok(root)
+    if ok:
+        return True, f"durable proof: {detail}"
+
+    boot_ok, boot_detail = maybe_bootstrap_steering_lift_proof_from_gate2(root)
+    if boot_ok:
+        return True, f"bootstrapped: {boot_detail}"
+
+    # Re-validate on-disk run with gen_3 (ephemeral VMs often lose runs/).
+    candidates: list[int] = []
+    if run_id is not None:
+        candidates.append(int(run_id))
+    for base in (_runs_dir(), _sia_runs_dir()):
+        if not base.is_dir():
+            continue
+        for child in sorted(base.glob("run_*"), reverse=True):
+            if not (child / "gen_3").is_dir():
+                continue
+            try:
+                candidates.append(int(child.name.split("_", 1)[1]))
+            except (IndexError, ValueError):
+                continue
+    seen: set[int] = set()
+    for rid in candidates:
+        if rid in seen:
+            continue
+        seen.add(rid)
+        run_dir = _run_dir_for(rid)
+        if run_dir is None:
+            continue
+        post = [CheckResult("run_dir", True, str(run_dir))]
+        post.extend(validate_g2_artifacts(run_dir, require_steering_lift=True))
+        post_ok, post_detail = post_checks_satisfy_steering_lift(post)
+        if post_ok:
+            write_steering_lift_proof(
+                run_id=rid,
+                post=post,
+                source="revalidate_run_dir",
+                repo_root=root,
+            )
+            return True, f"revalidated run_{rid}: {post_detail}"
+
+    if not auto_run:
+        return False, (
+            "no durable Tick 509 steering-lift proof "
+            f"(run `python3 scripts/run_g2_smoke.py --dry-run --max-gen 3 "
+            f"--run-id <free>`; last: {detail})"
+        )
+
+    try:
+        lift_id = (
+            int(run_id)
+            if run_id is not None and _run_dir_for(int(run_id)) is None
+            else next_free_steering_lift_run_id()
+        )
+    except RuntimeError as exc:
+        return False, str(exc)
+
+    rc = main(
+        [
+            "--dry-run",
+            "--max-gen",
+            "3",
+            "--run-id",
+            str(lift_id),
+        ]
+    )
+    if rc != 0:
+        return False, f"auto dry-run max_gen=3 run_{lift_id} exited {rc}"
+    ok2, detail2 = steering_lift_proof_ok(root)
+    if ok2:
+        return True, f"auto-ran run_{lift_id}: {detail2}"
+    # Dry-run may have written gate2 post but failed write_steering_lift_proof
+    # if an older code path — bootstrap once more.
+    boot2_ok, boot2_detail = maybe_bootstrap_steering_lift_proof_from_gate2(root)
+    if boot2_ok:
+        return True, f"auto-ran run_{lift_id} then bootstrap: {boot2_detail}"
+    return False, (
+        f"auto dry-run run_{lift_id} finished but proof still missing "
+        f"({detail2})"
+    )
 
 
 def _find_sia_python() -> list[str]:
@@ -948,6 +1230,22 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
     # Tick 405: only when prior_live_post is present (live-stamped or preserved).
     if prior_live_post is not None:
         persist_prior_live_stash_from_working_tree(REPO_ROOT)
+    # Tick 510: durable gen≥3 steering-lift proof survives the next preflight
+    # rewrite of gate2_report (live G2 stays max_gen=2 and would otherwise lose
+    # the Tick 509 positive control before paid G3).
+    if post is not None and report.mode == "dry-run":
+        post_ok, _post_detail = post_checks_satisfy_steering_lift(post)
+        if post_ok:
+            try:
+                write_steering_lift_proof(
+                    run_id=int(report.run_id),
+                    post=post,
+                    timestamp=report.timestamp,
+                    source="gate2_dry_run_write",
+                    repo_root=REPO_ROOT,
+                )
+            except ValueError:
+                pass  # should not happen after post_ok; keep gate2 write intact
 
 
 def main(argv: list[str] | None = None) -> int:

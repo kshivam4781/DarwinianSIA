@@ -2572,3 +2572,105 @@ def test_load_g3_metrics_for_g4_trusts_prior_live_metrics(
     assert h2["run_1301"]["preferred_share"] == 0.6
     assert "prior_live_metrics" in src
     assert g3_pilot_promising(comparison, h5) is True
+
+
+def test_live_refuses_without_steering_lift_proof(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 510: --live refuses when durable steering-lift proof missing/fails."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g2, "REPO_ROOT", tmp_path)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-02T18:00Z — Tick 510 (test)\n", encoding="utf-8"
+    )
+    (docs / "ICML_READY.md").write_text("**STATUS: IN_PROGRESS**\n", encoding="utf-8")
+    _seed_recipe_lock_docs(docs, stale=False)
+
+    monkeypatch.setattr(
+        g2,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (False, "missing gate2_steering_lift_proof.json"),
+    )
+    called: list[str] = []
+
+    def boom(*_a, **_k):
+        called.append("g2")
+        return 0
+
+    monkeypatch.setattr(pipe.g2, "main", boom)
+    rc = pipe.main(["--live", "--report", str(docs / "pipe.md")])
+    assert rc == 3
+    assert called == []
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "steering_lift" in text.lower() or "steering-lift" in text.lower()
+
+
+def test_preflight_stack_blocks_without_steering_lift_proof(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 510: preflight clears ready_for_live when lift proof ensure fails."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+
+    import run_icml_live_pipeline as pipe
+    import run_g2_smoke as g2
+    import run_g3_pilot as g3
+    import run_g4_multiseed as g4
+    from prepare_gpqa_smoke_data import prepare_task_tree
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-02T18:00Z — Tick 510 (test)\n", encoding="utf-8"
+    )
+    _seed_recipe_lock_docs(docs, stale=False)
+
+    task = tmp_path / "SIA" / "sia" / "tasks" / "gpqa"
+    task.mkdir(parents=True)
+    prepare_task_tree(task, n=5)
+
+    for mod in (pipe, g2, g3, g4):
+        monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(g2, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g2, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g3, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g3, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(g4, "_task_dir", lambda root_name="SIA": task)
+    monkeypatch.setattr(g4, "_run_dir_for", lambda rid: None)
+    monkeypatch.setattr(
+        g2,
+        "ensure_g2_steering_lift_proof",
+        lambda **_k: (False, "missing gate2_steering_lift_proof.json"),
+    )
+
+    report = PipelineReport(
+        timestamp="2026-10-02T18:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+    )
+    run_preflight_stack(
+        report,
+        g2_run_id=1300,
+        g3_seeds="1",
+        g3_b="1201",
+        g3_d="1301",
+        g4_seeds="1,2,3,4,5",
+        g4_b="1211,1212,1213,1214,1215",
+        g4_d="1311,1312,1313,1314,1315",
+    )
+    assert report.ready_for_live is False
+    assert any(b.startswith("steering_lift:") for b in report.blockers)
+    assert any(s.name == "G2_steering_lift" and not s.ok for s in report.stages)
