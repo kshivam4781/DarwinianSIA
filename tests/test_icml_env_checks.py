@@ -947,6 +947,57 @@ def test_suggested_open_git_pr_title_secrets_first_when_stale() -> None:
     )
 
 
+def test_suggested_open_git_pr_title_nebius_only_when_ondisk_diamond(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 506: on-disk non-synthetic diamond → NEBIUS-only tip PR title/body.
+
+    Tick 497–499 already treated CSV / mirror / on-disk as diamond_ready for
+    secrets human_next, and Tick 502 kept on-disk trees on live fetch. Tip PR
+    title/body helpers still required HF or a CSV path — after CSV cleanup with
+    diamond remaining on disk they said NEBIUS+HF while blockers were NEBIUS-only.
+    """
+    from icml_env_checks import (
+        icml_diamond_source_ready_for_nebius_only,
+        suggested_open_git_pr_body,
+        suggested_open_git_pr_title,
+    )
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda repo_root=None: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.icml_ondisk_nonsynthetic_gpqa",
+        lambda repo_root=None: True,
+    )
+    assert icml_diamond_source_ready_for_nebius_only() is True
+    title = suggested_open_git_pr_title(local_tick=506, fetch_diamond_ok=False)
+    assert title == (
+        "ICML Tick 506: add NEBIUS_API_KEY — live G2→G4 still blocked"
+    )
+    assert "NEBIUS+HF" not in title
+    body = suggested_open_git_pr_body(
+        local_tick=506, fetch_diamond_ok=False, tip_pr_number=337
+    )
+    assert "NEBIUS_API_KEY" in body
+    assert "HF optional" in body or "on-disk" in body.lower()
+    assert "NEBIUS + (HF_TOKEN" not in body
+
+    monkeypatch.setattr(
+        "icml_env_checks.icml_ondisk_nonsynthetic_gpqa",
+        lambda repo_root=None: False,
+    )
+    assert icml_diamond_source_ready_for_nebius_only() is False
+    cold = suggested_open_git_pr_title(local_tick=506, fetch_diamond_ok=False)
+    assert "NEBIUS+HF" in cold
+
+
+
 def test_tip_pr_body_stale_independent_of_title() -> None:
     """Tick 347: title-fresh + body-stale still emits --body-file paste."""
     from icml_env_checks import (
@@ -11909,6 +11960,13 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "_gh_pr_view_mergeability" in env_checks
     assert "ICML UNKNOWN tip PR mergeability refresh (Tick 505)" in master
     assert "Tick 505" in unblock
+    # Tick 506: tip PR title/body NEBIUS-only when on-disk diamond ready.
+    assert "icml_diamond_source_ready_for_nebius_only" in env_checks
+    assert "ICML tip PR title NEBIUS-only ondisk (Tick 506)" in master
+    assert "Tick 506" in unblock
+    assert "test_suggested_open_git_pr_title_nebius_only_when_ondisk_diamond" in (
+        root / "tests" / "test_icml_env_checks.py"
+    ).read_text(encoding="utf-8")
     # Tick 336: gh copy-paste merge commands + tip-PR churn warning.
     assert "_tip_pr_merge_commands" in env_checks
     assert "tip_pr_merge_commands" in env_checks

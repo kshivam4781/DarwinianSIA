@@ -7313,18 +7313,18 @@ def suggested_open_git_pr_body(
     if fetch_diamond_ok is False:
         load_icml_dotenv()
         nebius = _secret_present("NEBIUS_API_KEY")
-        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
-        csv_ok = resolve_diamond_csv_path() is not None
-        # Tick 497: when CSV/mirror present, lead with NEBIUS-only ask.
-        if not nebius and (hf or csv_ok):
+        # Tick 497/506: when CSV / mirror / on-disk non-synthetic present, lead
+        # with NEBIUS-only ask (Tick 499/502 diamond_ready parity).
+        if not nebius and icml_diamond_source_ready_for_nebius_only():
             primary = (
                 "**PRIMARY blocker:** add `NEBIUS_API_KEY` (HF optional — "
-                "Tick 497 public diamond mirror / local `gpqa_diamond.csv`) "
-                "so cron can run live G2→G3→G4."
+                "Tick 497 public diamond mirror / local `gpqa_diamond.csv` / "
+                "Tick 502–504 on-disk keep) so cron can run live G2→G3→G4."
             )
             tick_lead = (
                 f"Tick {tick}: live G2→G4 **PRIMARY** still blocked on "
-                f"**NEBIUS_API_KEY** (HF optional via Tick 497 public mirror). "
+                f"**NEBIUS_API_KEY** (HF optional via Tick 497 public mirror / "
+                f"Tick 502–504 on-disk keep). "
                 f"Offline PRIMARY/H5 green at {offline_ids} (D final **5/5**, "
                 f"gens30/cost30 **4/5**, H5 **5/5**, {h2_blurb}). STATUS remains "
                 f"IN_PROGRESS (not READY)."
@@ -7529,10 +7529,35 @@ def parse_tick_from_pr_body(body: str | None) -> int | None:
     return parse_tick_from_pr_title(body)
 
 
+def icml_diamond_source_ready_for_nebius_only(
+    *,
+    repo_root: Path | None = None,
+) -> bool:
+    """True when tip PR title/body should ask NEBIUS-only (Tick 506).
+
+    Tick **497–499** made HF optional when CSV / public mirror / non-synthetic
+    on-disk diamond is already present, and Tick **502** taught live
+    ``--fetch-diamond`` to keep on-disk trees. Tip PR ``suggested_open_git_pr_*``
+    helpers still keyed only on ``HF_TOKEN`` or ``resolve_diamond_csv_path()`` —
+    after a CSV path was cleaned (or never persisted) while GPQA diamond stayed
+    on disk, titles/bodies still said **NEBIUS+HF** and operators chased HF
+    while ``docs/icml_secrets_status.json`` blockers were NEBIUS-only.
+    """
+    load_icml_dotenv()
+    if _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN"):
+        return True
+    if resolve_diamond_csv_path(repo_root=repo_root) is not None:
+        return True
+    if icml_ondisk_nonsynthetic_gpqa(repo_root):
+        return True
+    return False
+
+
 def suggested_open_git_pr_title(
     *,
     local_tick: int | None,
     fetch_diamond_ok: bool | None = None,
+    repo_root: Path | None = None,
 ) -> str:
     """Tick 344: secrets-first tip PR title when live PRIMARY is still blocked.
 
@@ -7543,13 +7568,14 @@ def suggested_open_git_pr_title(
     """
     tick = local_tick if local_tick is not None else 0
     if fetch_diamond_ok is False:
-        # Tick 497: diamond CSV / public mirror often present; NEBIUS is the
-        # remaining paid-live blocker — avoid implying HF is still hard-required.
+        # Tick 497/506: diamond CSV / public mirror / on-disk non-synthetic often
+        # present; NEBIUS is the remaining paid-live blocker — avoid implying HF
+        # is still hard-required (Tick 499/502 diamond_ready parity).
         load_icml_dotenv()
         nebius = _secret_present("NEBIUS_API_KEY")
-        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
-        csv_ok = resolve_diamond_csv_path() is not None
-        if not nebius and (hf or csv_ok):
+        if not nebius and icml_diamond_source_ready_for_nebius_only(
+            repo_root=repo_root
+        ):
             return (
                 f"ICML Tick {tick}: add NEBIUS_API_KEY — live G2→G4 still blocked"
             )
@@ -7590,17 +7616,19 @@ def build_icml_open_git_pr_hint(
         load_icml_dotenv()
         nebius = _secret_present("NEBIUS_API_KEY")
         anthropic = _secret_present("ANTHROPIC_API_KEY")
-        hf = _secret_present("HF_TOKEN") or _secret_present("HUGGINGFACE_HUB_TOKEN")
-        csv_ok = resolve_diamond_csv_path(repo_root=root) is not None
+        # Tick 506: include on-disk non-synthetic (Tick 499/502 diamond_ready).
+        diamond_src = icml_diamond_source_ready_for_nebius_only(repo_root=root)
         meta_needs = icml_meta_requires_anthropic()
         secrets_ok = bool(nebius) and (bool(anthropic) if meta_needs else True)
-        fetch_diamond_ok = bool(secrets_ok and (hf or csv_ok))
+        fetch_diamond_ok = bool(secrets_ok and diamond_src)
     tip_title = str(pr.get("title") or "")
     tip_body = str(pr.get("body") or "")
     title_tick = parse_tick_from_pr_title(tip_title)
     body_tick = parse_tick_from_pr_body(tip_body)
     suggested = suggested_open_git_pr_title(
-        local_tick=local_tick, fetch_diamond_ok=fetch_diamond_ok
+        local_tick=local_tick,
+        fetch_diamond_ok=fetch_diamond_ok,
+        repo_root=root,
     )
     title_stale = bool(
         local_tick is not None

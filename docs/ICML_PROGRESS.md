@@ -1,5 +1,31 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T10:15Z — Tick 506 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-6478` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Separately, Tick 497–499 / 502 made HF optional when CSV / public mirror / on-disk non-synthetic diamond is present, but tip PR `suggested_open_git_pr_title` / `suggested_open_git_pr_body` still required `HF_TOKEN` or a live CSV path — after CSV cleanup with diamond remaining on disk, GitHub title/body paste still said **NEBIUS+HF** while secrets blockers were NEBIUS-only. Highest leverage without paid spend: **NEBIUS-only tip PR metadata when on-disk diamond ready** (Tick 499/502 diamond_ready parity).
+
+### What we did
+**Tick 506 — tip PR title/body NEBIUS-only when on-disk diamond ready (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `6478`; rematerialized diamond via public mirror CSV; re-filed NEBIUS secrets request
+2. `icml_diamond_source_ready_for_nebius_only` (HF ∪ CSV ∪ `icml_ondisk_nonsynthetic_gpqa`) drives NEBIUS-only tip PR title/body + open_git_pr hint auto-detect
+3. Focused test `test_suggested_open_git_pr_title_nebius_only_when_ondisk_diamond` + lock assertions; docs/Section 12 / READY / HUMAN_UNBLOCK / paper status
+4. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 505) | After (Tick 506) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| tip PR title when ondisk diamond, no CSV, no HF | **NEBIUS+HF** | **NEBIUS_API_KEY only** |
+| tip PR body PRIMARY ask (same case) | NEBIUS + HF phrasing | **NEBIUS-only + HF optional / on-disk keep** |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional now that tip is MERGEABLE/CLEAN: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T08:15Z — Tick 505 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

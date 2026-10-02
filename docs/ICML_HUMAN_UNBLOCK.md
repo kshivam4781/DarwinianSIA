@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 506:** tip PR suggested title/body ask **NEBIUS-only** when on-disk non-synthetic diamond is ready (`icml_diamond_source_ready_for_nebius_only`) — closes NEBIUS+HF paste after CSV cleanup (Tick 499/502 diamond_ready parity for open_git_pr metadata).  
 **Tick 505:** UNKNOWN tip/bootstrap PR mergeability from `gh pr list` refreshes via `gh pr view` so `human_next` / secrets JSON can say MERGEABLE/CLEAN → undraft & merge now (closes vague UNKNOWN among 300+ drafts).  
 **Tick 504:** auto-wired CSV must not force rematerialize when on-disk non-synthetic diamond is ready (`icml_should_keep_ondisk_diamond`; explicit `--diamond-csv` still refreshes).  
 **Tick 503:** G2/G3/G4/pipeline `--live --fetch-diamond` refuses when `fetch_diamond_ok` is false even if CSV/public-mirror auto-wire cleared `require_hf` (closes enter-live-then-fail-on-keys path).  
