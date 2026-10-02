@@ -2052,6 +2052,84 @@ def test_live_fetch_diamond_refuse_nebius_first_when_diamond_ready(
     assert "diamond already ready" in text.lower() or "HF optional" in text
 
 
+def test_live_fetch_diamond_refuse_when_csv_autowired_but_nebius_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 503: CSV auto-wire must not skip fetch_diamond_ok refuse (NEBIUS).
+
+    Tick 497 public-mirror autowire sets ``args.diamond_csv``, which previously
+    bypassed the early ``diamond_csv is None`` refuse and entered ``run_live_stack``
+    only to fail inside G2. Refuse at the pipeline gate instead.
+    """
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8")
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: csv_path
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: False
+    )
+    monkeypatch.setattr(
+        pipe,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 503,
+            "remote_tip_tick": 503,
+            "blockers": [],
+        },
+    )
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-02 — Tick 503 (test)\n", encoding="utf-8"
+    )
+    # Production path: autowire returns the CSV (public mirror / local drop).
+    monkeypatch.setattr(
+        pipe, "autowire_diamond_csv", lambda *a, **k: (csv_path, True)
+    )
+    monkeypatch.setattr(
+        pipe,
+        "_fetch_diamond",
+        lambda **_k: (_ for _ in ()).throw(AssertionError("must not fetch")),
+    )
+    monkeypatch.setattr(
+        pipe,
+        "run_live_stack",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not live")),
+    )
+    called: list[str] = []
+    monkeypatch.setattr(pipe.g2, "main", lambda *_a, **_k: called.append("g2") or 0)
+
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "NEBIUS" in text
+    assert "diamond already ready" in text.lower() or "HF optional" in text
+    assert "Add HF_TOKEN (+ API keys)" not in text
+
+
 def test_live_refuses_stale_g3g4_recipes(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

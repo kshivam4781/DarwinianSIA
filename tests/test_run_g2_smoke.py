@@ -597,6 +597,64 @@ def test_main_live_fetch_diamond_refuses_without_hf(
     assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
 
 
+def test_main_live_fetch_diamond_refuse_csv_autowire_without_nebius(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 503: CSV auto-wire clears require_hf but missing NEBIUS still refuses."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+
+    import run_g2_smoke as mod
+
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8")
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (csv_path, True))
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: csv_path
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: False
+    )
+    (tmp_path / "docs").mkdir()
+    called: list[str] = []
+
+    def boom_csv(*_a, **_k):
+        called.append("csv")
+        raise AssertionError("must not materialize when NEBIUS missing")
+
+    def boom_hf(*_a, **_k):
+        called.append("hf")
+        raise AssertionError("must not materialize from HF")
+
+    monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
+    monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
+    report_path = tmp_path / "docs" / "gate2_report.md"
+    rc = mod.main(
+        [
+            "--live",
+            "--run-id",
+            "1300",
+            "--fetch-diamond",
+            "--report",
+            str(report_path),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = report_path.read_text(encoding="utf-8")
+    assert "NEBIUS" in text
+    assert "diamond already ready" in text.lower() or "HF optional" in text
+
+
 def test_main_live_fetch_diamond_skips_hf_when_ondisk_nonsynthetic(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -646,6 +704,18 @@ def test_main_live_fetch_diamond_skips_hf_when_ondisk_nonsynthetic(
     monkeypatch.setattr(mod, "materialize_from_hf", boom_hf)
     monkeypatch.setattr(mod, "materialize_from_csv", boom_csv)
     monkeypatch.setattr(mod, "autowire_diamond_csv", lambda *a, **k: (None, False))
+    # Tick 503: early live refuse always collects secrets (even when require_hf is
+    # false). Avoid host git via the subprocess.run stub below.
+    monkeypatch.setattr(
+        mod,
+        "collect_icml_secrets_status",
+        lambda: {
+            "fetch_diamond_ok": True,
+            "diamond_ready": True,
+            "blockers": [],
+            "secrets_ok_for_paid_sia": True,
+        },
+    )
     # Tip status OK so ready_for_live is not blocked on tip lineage.
     monkeypatch.setattr(
         mod,

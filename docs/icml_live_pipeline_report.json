@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-10-02T00:19:58Z",
-  "mode": "preflight",
+  "timestamp": "2026-10-02T04:09:21Z",
+  "mode": "live",
   "ready_for_live": false,
   "budget": {
     "spent": 0.0,
@@ -17,43 +17,13 @@
     "skip_g3": false,
     "skip_g4": false
   },
-  "stages": [
-    {
-      "name": "G2",
-      "attempted": true,
-      "exit_code": 0,
-      "ok": true,
-      "skipped_reason": null,
-      "detail": "preflight invoked (+fetch-diamond)"
-    },
-    {
-      "name": "G3",
-      "attempted": true,
-      "exit_code": 0,
-      "ok": true,
-      "skipped_reason": null,
-      "detail": "preflight invoked (+fetch-diamond)"
-    },
-    {
-      "name": "G4",
-      "attempted": true,
-      "exit_code": 0,
-      "ok": true,
-      "skipped_reason": null,
-      "detail": "preflight invoked (+fetch-diamond)"
-    }
-  ],
+  "stages": [],
   "blockers": [
-    "G2: nebius_key: NEBIUS_API_KEY missing",
-    "G3: nebius_key: NEBIUS_API_KEY missing",
-    "G4: nebius_key: NEBIUS_API_KEY missing"
+    "secrets: NEBIUS_API_KEY missing"
   ],
   "notes": [
-    "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
-    "materialized diamond from CSV \u2192 ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']",
-    "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
-    "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
-    "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"
+    "Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv",
+    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md (diamond already ready; HF optional \u2014 Tick 497/501/503)."
   ],
   "g3_promising": null,
   "g3_comparison": null,

@@ -1007,29 +1007,40 @@ def main(argv: list[str] | None = None) -> int:
     )
     allow_stale = bool(args.allow_stale_tip)
 
-    # Tick 275/278/502: refuse --live --fetch-diamond without HF/CSV/ondisk before materialize
-    # (match pipeline/cron fetch_diamond_ok; CSV or on-disk non-synthetic skips HF).
-    if selected == "live" and require_hf:
+    # Tick 275/278/502/503: refuse --live --fetch-diamond without fetch_diamond_ok
+    # before materialize. Tick **503**: CSV / public-mirror auto-wire makes
+    # ``require_hf`` false, but missing NEBIUS still means fetch_diamond_ok=false
+    # — do not enter paid live materialize/preflight only to fail on keys.
+    if selected == "live" and args.fetch_diamond:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
+            diamond_ready = bool(secrets_status.get("diamond_ready")) or (
+                args.diamond_csv is not None
+            ) or icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
+            phrase = icml_human_required_secrets_phrase(
+                for_fetch_diamond=not diamond_ready
+            )
             report = run_preflight(
                 mode=selected,
                 run_id=run_id,
-                require_hf_for_diamond=True,
+                require_hf_for_diamond=require_hf and not diamond_ready,
                 allow_stale_tip=allow_stale,
             )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need "
-                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
-                + ")"
+                f"fetch_diamond_ok=false (need {phrase})"
             ]:
                 report.notes.append(f"secrets: {b}")
-            report.notes.append(
-                "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
-                f"({icml_human_required_secrets_phrase(for_fetch_diamond=True)}); "
-                "or pass --diamond-csv / drop gpqa_diamond.csv / keep on-disk "
-                "non-synthetic diamond to skip HF (Tick 502)."
-            )
+            if diamond_ready:
+                report.notes.append(
+                    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
+                    "(diamond already ready; HF optional — Tick 497/502/503)."
+                )
+            else:
+                report.notes.append(
+                    "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
+                    f"({phrase}); or pass --diamond-csv / drop gpqa_diamond.csv / "
+                    "keep on-disk non-synthetic diamond to skip HF (Tick 502)."
+                )
             report.command = build_sia_command(
                 run_id=run_id, seed=seed, dry_run=False
             )

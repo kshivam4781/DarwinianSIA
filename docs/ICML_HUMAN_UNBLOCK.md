@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 503:** G2/G3/G4/pipeline `--live --fetch-diamond` refuses when `fetch_diamond_ok` is false even if CSV/public-mirror auto-wire cleared `require_hf` (closes enter-live-then-fail-on-keys path).  
 **Tick 501:** pipeline `## Next` (`live_pipeline_next_steps`) + live `--fetch-diamond` refuse notes are NEBIUS-first when `diamond_ready` — Gate2/G3/G4/secrets Tick 498–500 parity for `docs/icml_live_pipeline_report.md`.  
 **Tick 500:** G3/G4 `## Next` + cron live-refuse NEBIUS-first when diamond ready (shared `icml_preflight_diamond_ready`).  
 **Tick 499:** secrets/cron `human_next` drops HF-accept when `diamond_ready` (CSV / mirror / non-synthetic on disk) — Gate2 Tick 498 parity for cron logs + `icml_secrets_status.json`.  

@@ -2176,26 +2176,39 @@ def main(argv: list[str] | None = None) -> int:
     )
     allow_stale = bool(args.allow_stale_tip)
 
-    # Tick 275/278/502: refuse --live --fetch-diamond without HF/CSV/ondisk before materialize.
-    if selected == "live" and require_hf:
+    # Tick 275/278/502/503: refuse --live --fetch-diamond without fetch_diamond_ok
+    # before materialize. Tick **503**: CSV auto-wire clears require_hf but missing
+    # NEBIUS still blocks paid live — refuse early (NEBIUS-first when diamond ready).
+    if selected == "live" and args.fetch_diamond:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
+            diamond_ready = bool(secrets_status.get("diamond_ready")) or (
+                args.diamond_csv is not None
+            ) or icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
+            phrase = icml_human_required_secrets_phrase(
+                for_fetch_diamond=not diamond_ready
+            )
             report = run_preflight(
                 mode=selected,
                 plans=plans,
-                require_hf_for_diamond=True,
+                require_hf_for_diamond=require_hf and not diamond_ready,
                 allow_stale_tip=allow_stale,
             )
-            phrase = icml_human_required_secrets_phrase(for_fetch_diamond=True)
             for b in secrets_status.get("blockers") or [
                 f"fetch_diamond_ok=false (need {phrase})"
             ]:
                 report.notes.append(f"secrets: {b}")
-            report.notes.append(
-                "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
-                f"({phrase}); Tick 497 public mirror / --diamond-csv / "
-                "local CSV / on-disk non-synthetic diamond skips HF (Tick 502)."
-            )
+            if diamond_ready:
+                report.notes.append(
+                    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
+                    "(diamond already ready; HF optional — Tick 497/502/503)."
+                )
+            else:
+                report.notes.append(
+                    "Add secrets per docs/ICML_HUMAN_UNBLOCK.md "
+                    f"({phrase}); Tick 497 public mirror / --diamond-csv / "
+                    "local CSV / on-disk non-synthetic diamond skips HF (Tick 502)."
+                )
             write_gate4_report(report, args.report)
             print(
                 "G4 refused --live --fetch-diamond "

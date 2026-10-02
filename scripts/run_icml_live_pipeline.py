@@ -1403,14 +1403,19 @@ def run_preflight_stack(
         REPO_ROOT / "docs" / "icml_secrets_status.json",
         gpqa_is_synthetic=True if synthetic else None,
     )
-    # Tick 274/276/501: --fetch-diamond without CSV → aggregate fetch_diamond_ok.
+    # Tick 274/276/501/503: --fetch-diamond → aggregate fetch_diamond_ok.
     # Tick 501: do **not** hard-require HF_TOKEN when diamond is already ready
     # (CSV / public mirror / non-synthetic on disk) — NEBIUS-first parity with
-    # Gate2 Tick 498 / secrets Tick 499 / G3/G4 Tick 500. Individual gates may
-    # still surface require_hf when they did not receive --diamond-csv.
-    if fetch_diamond and diamond_csv is None:
+    # Gate2 Tick 498 / secrets Tick 499 / G3/G4 Tick 500.
+    # Tick **503**: also gate when CSV was auto-wired (Tick 497 mirror) but
+    # NEBIUS is still missing — ``diamond_csv is not None`` must not skip the
+    # paid-live secrets check (otherwise preflight looks diamond-ready while
+    # ``ready_for_live`` stays true until a child gate fails).
+    if fetch_diamond:
         if not secrets_status.get("fetch_diamond_ok"):
-            diamond_ready = bool(secrets_status.get("diamond_ready"))
+            diamond_ready = bool(secrets_status.get("diamond_ready")) or (
+                diamond_csv is not None
+            )
             report.blockers.append(
                 "fetch_diamond_ok=false — need "
                 + icml_human_required_secrets_phrase(
@@ -1942,17 +1947,18 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  BLOCK: {b}")
             return 3
 
-    # Tick 274/278/501: refuse --live --fetch-diamond without fetch_diamond_ok.
+    # Tick 274/278/501/503: refuse --live --fetch-diamond without fetch_diamond_ok.
     # Tick 501: when diamond already ready, refuse notes are NEBIUS-first (no HF
     # chase). Local CSV / public-mirror auto-wire skips HF.
-    if (
-        selected == "live"
-        and args.fetch_diamond
-        and args.diamond_csv is None
-    ):
+    # Tick **503**: do **not** skip this refuse when CSV was auto-wired — missing
+    # NEBIUS still means fetch_diamond_ok=false; entering run_live_stack only to
+    # fail inside G2 wastes materialize/preflight and muddies exit codes.
+    if selected == "live" and args.fetch_diamond:
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
-            diamond_ready = bool(secrets_status.get("diamond_ready"))
+            diamond_ready = bool(secrets_status.get("diamond_ready")) or (
+                args.diamond_csv is not None
+            )
             phrase = icml_human_required_secrets_phrase(
                 for_fetch_diamond=not diamond_ready
             )
@@ -1963,7 +1969,7 @@ def main(argv: list[str] | None = None) -> int:
             if diamond_ready:
                 report.notes.append(
                     "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
-                    "(diamond already ready; HF optional — Tick 497/501)."
+                    "(diamond already ready; HF optional — Tick 497/501/503)."
                 )
             else:
                 report.notes.append(
