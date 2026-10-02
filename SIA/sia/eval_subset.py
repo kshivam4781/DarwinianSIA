@@ -6,11 +6,29 @@ import json
 import os
 import shutil
 from pathlib import Path
-
-import pandas as pd
+from typing import Any
 
 from sia.io_utils import write_text
 from sia.layout import Names
+
+
+def _require_pandas() -> Any:
+    """Lazy-import pandas (Tick 287).
+
+    Host ``python -m sia`` on Cursor/cloud images often lacks pandas even after
+    the per-run venv install. GPQA subset materialize/eval is JSON-only and must
+    not hard-fail on ``import pandas`` at module load — otherwise every
+    ``--eval_subset`` G2/G3/G4 dry-run and live run aborts before Darwinian.
+    LawBench paths still need pandas and import it here.
+    """
+    try:
+        import pandas as pd
+    except ModuleNotFoundError as exc:  # pragma: no cover - exercised via GPQA path
+        raise ModuleNotFoundError(
+            "pandas is required for LawBench eval_subset; install pandas or use "
+            "task gpqa (JSON-only, no pandas)."
+        ) from exc
+    return pd
 
 
 def materialize_subset_dataset(
@@ -63,6 +81,7 @@ def _copy_static_public_files(public_src: str, public_dst: str, skip: set[str]) 
 
 
 def _materialize_lawbench_subset(public_src: str, public_dst: str, n: int) -> None:
+    pd = _require_pandas()
     test_src = os.path.join(public_src, "test.csv")
     test_df = pd.read_csv(test_src).head(n)
     _copy_static_public_files(public_src, public_dst, skip={"test.csv"})
@@ -114,6 +133,7 @@ def evaluate_gen_dir_subset(gen_directory: str, task_dir: str, subset_size: int)
 
 
 def _evaluate_lawbench_subset(gen: Path, task_dir: str, n: int) -> dict:
+    pd = _require_pandas()
     truth_path = Path(task_dir) / "data" / "private" / "test.csv"
     truth = pd.read_csv(truth_path)
     public_test = Path(task_dir) / Names.DATA_PUBLIC / "test.csv"
@@ -141,6 +161,42 @@ def _evaluate_lawbench_subset(gen: Path, task_dir: str, n: int) -> dict:
         "n_total": len(correct),
         "eval_subset": n,
     }
+
+
+# Cost / token keys written by GPQA reference + evolved target agents into
+# ``results/submission.json``. Tick 290: subset eval must copy these into
+# ``results.json`` so PRIMARY cost-to-threshold and budget reconcile see live
+# spend (previously accuracy-only results.json dropped all metering).
+_GPQA_COST_SCALAR_KEYS = (
+    "total_input_tokens",
+    "total_output_tokens",
+    "total_reasoning_tokens",
+    "total_cost_usd",
+    "total_questions",
+    "errors",
+    "model",
+)
+
+
+def cost_fields_from_submission(submission: dict) -> dict:
+    """Extract token/USD metering from a GPQA submission payload.
+
+    Returns a dict suitable for merging into ``results.json``. Includes
+    ``details`` when present so per-question token rows remain available to
+    ``scripts/epistemic_results._agent_eval_cost`` / budget helpers.
+    """
+    if not isinstance(submission, dict):
+        return {}
+    out: dict = {}
+    for key in _GPQA_COST_SCALAR_KEYS:
+        val = submission.get(key)
+        if isinstance(val, (int, float, str)):
+            out[key] = val
+    details = submission.get("details")
+    if isinstance(details, list) and details:
+        # Keep detail rows that carry answers and/or cost fields.
+        out["details"] = details
+    return out
 
 
 def _evaluate_gpqa_subset(gen: Path, task_dir: str, n: int) -> dict:
@@ -193,9 +249,12 @@ def _evaluate_gpqa_subset(gen: Path, task_dir: str, n: int) -> dict:
         if submission_answers.get(qid) == letter:
             correct += 1
     total = len(correct_answers)
-    return {
+    results = {
         "accuracy": correct / total if total else 0.0,
         "n_correct": correct,
         "n_total": total,
         "eval_subset": n,
     }
+    # Tick 290: preserve live metering from submission.json (tokens/USD).
+    results.update(cost_fields_from_submission(submission))
+    return results
