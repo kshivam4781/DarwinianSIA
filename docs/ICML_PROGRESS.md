@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T22:08Z — Tick 512 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-03ff` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Separately, Tick 509–511 durable lift proof was **not refreshing** after PASS dry-run `--max-gen ≥3`: `_post_as_check_dicts` used `isinstance(..., run_g2_smoke.CheckResult)` and **dropped** `run_g3_pilot.CheckResult` rows from `validate_g3_d_steering`, so `post_checks_satisfy_steering_lift` failed and `write_gate2_report` never overwrote bootstrap `run_1955`. Highest leverage without paid spend: **fix foreign CheckResult drop + refresh proof from tip HEAD `run_1956`**.
+
+### What we did
+**Tick 512 — durable lift-proof foreign CheckResult fix + run_1956 refresh (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `03ff`; rematerialized diamond via public mirror; re-filed NEBIUS secrets request
+2. `_post_as_check_dicts` duck-types foreign CheckResult; `_steering_lift_gen3_checks` re-wraps into local CheckResult
+3. Dry-run Condition D `--max-gen 3` `run_1956` PASS (gen2 delay-all skip + gen3 agenda lift + fitness 0.2440); durable `gate2_steering_lift_proof.json` now `source=gate2_dry_run_write` / `run_id=1956`
+4. Unit tests: foreign CheckResult satisfy + write_gate2_report refreshes stale bootstrap proof (4/4 green)
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline/dry-run
+
+| Metric | Before (Tick 511) | After (Tick 512) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Durable lift proof after PASS dry-run | **stuck** on bootstrap `1955` | **refreshed** `run_1956` (`gate2_dry_run_write`) |
+| Foreign G3 CheckResult in lift post | **dropped** | **accepted** (duck-type + re-wrap) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T20:15Z — Tick 511 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 512:** durable lift-proof foreign CheckResult fix — PASS dry-run `run_1956` now refreshes `gate2_steering_lift_proof.json` (was stuck on bootstrap `1955`). NEBIUS secrets re-filed.
 **Tick 511:** G3/G4 direct `--live` require durable `gate2_steering_lift_proof.json` (closes Tick 510 pipeline-only bypass). NEBIUS secrets re-filed.  
 **Tick 510:** durable `gate2_steering_lift_proof.json` + pipeline hard gate — refuse `--live` without Tick 509 gen≥3 delay-all *lift* surviving gate2 preflight rewrite (bootstrapped `run_1955`). NEBIUS secrets re-filed.  
 **Tick 509:** G2 dry-run `--max-gen ≥3` steering-lift positive control — `run_1955` PASS (gen2 delay-all skip + gen3 agenda lift). Closes never-steer false-green before paid G3. NEBIUS secrets re-filed.  

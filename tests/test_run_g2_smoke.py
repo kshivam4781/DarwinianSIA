@@ -1679,3 +1679,110 @@ def test_write_gate2_report_persists_steering_lift_proof(
     ok, detail = mod.steering_lift_proof_ok(tmp_path)
     assert ok is True
     assert "1956" in detail
+
+
+def test_post_checks_accept_foreign_checkresult_dataclass() -> None:
+    """Tick 512: G3 CheckResult rows must count toward steering-lift proof.
+
+    ``validate_g3_d_steering`` returns ``run_g3_pilot.CheckResult``. Dropping
+    those rows left durable proof stuck on bootstrap ``run_1955`` after a PASS
+    dry-run ``run_1956``.
+    """
+    from dataclasses import dataclass
+
+    import run_g2_smoke as mod
+
+    @dataclass
+    class ForeignCheckResult:
+        name: str
+        ok: bool
+        detail: str
+
+    post = [
+        mod.CheckResult("run_dir", True, "/tmp/run_1956"),
+        mod.CheckResult(
+            "delay_all_feedback_skip", True, "gen2 n=2 feedback prompts lack agenda"
+        ),
+        mod.CheckResult(
+            "delay_all_technique_seeds_skip",
+            True,
+            "gen2 n=2 DNA technique_seeds empty",
+        ),
+        # Foreign class — historically dropped by isinstance(local CheckResult).
+        ForeignCheckResult(
+            "steering_applied_run_1956",
+            True,
+            "gen3 n=2 agenda in ['agent_0', 'agent_1']",
+        ),
+        ForeignCheckResult(
+            "steering_applied_gen3",
+            True,
+            "Condition D n=1 gen≥3 steering evidenced",
+        ),
+        mod.CheckResult("nonzero_fitness", True, "best=0.2440 > min=0"),
+    ]
+    ok, detail = mod.post_checks_satisfy_steering_lift(post)
+    assert ok is True, detail
+    names = [c["name"] for c in mod._post_as_check_dicts(post)]
+    assert "steering_applied_gen3" in names
+    assert "steering_applied_run_1956" in names
+
+
+def test_write_gate2_report_refreshes_proof_with_foreign_gen3_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 512: dry-run report with mixed CheckResult classes refreshes proof."""
+    from dataclasses import dataclass
+
+    import run_g2_smoke as mod
+
+    @dataclass
+    class ForeignCheckResult:
+        name: str
+        ok: bool
+        detail: str
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod, "persist_prior_live_stash_from_working_tree", lambda *_a, **_k: None
+    )
+    # Stale bootstrap proof must be overwritten by dry-run write.
+    mod.write_steering_lift_proof(
+        run_id=1955,
+        post=_steering_lift_pass_post(),
+        source="bootstrap_stale",
+        repo_root=tmp_path,
+    )
+    report = mod.PreflightReport(
+        timestamp="2026-10-02T22:04:56Z",
+        mode="dry-run",
+        run_id=1956,
+        ready_for_dry_run=True,
+    )
+    report.command = ["python3", "-m", "sia", "run", "--dry-run", "--max_gen", "3"]
+    post = [
+        mod.CheckResult("run_dir", True, "/tmp/run_1956"),
+        mod.CheckResult(
+            "delay_all_feedback_skip", True, "gen2 n=2 feedback prompts lack agenda"
+        ),
+        mod.CheckResult(
+            "delay_all_technique_seeds_skip",
+            True,
+            "gen2 n=2 DNA technique_seeds empty",
+        ),
+        ForeignCheckResult(
+            "steering_applied_gen3",
+            True,
+            "Condition D n=1 gen≥3 steering evidenced",
+        ),
+        mod.CheckResult("nonzero_fitness", True, "best=0.2440 > min=0"),
+    ]
+    mod.write_gate2_report(report, docs / "gate2_report.md", post=post)
+    ok, detail = mod.steering_lift_proof_ok(tmp_path)
+    assert ok is True, detail
+    assert "1956" in detail
+    payload = json.loads((docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8"))
+    assert payload["run_id"] == 1956
+    assert payload["source"] == "gate2_dry_run_write"

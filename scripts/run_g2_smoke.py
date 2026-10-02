@@ -201,10 +201,37 @@ def steering_lift_proof_path(repo_root: Path | None = None) -> Path:
 
 
 def _post_as_check_dicts(post) -> list[dict]:
-    """Normalize post checks to ``[{name, ok, detail}, ...]``."""
+    """Normalize post checks to ``[{name, ok, detail}, ...]``.
+
+    Tick 512: duck-type foreign ``CheckResult`` dataclasses (e.g.
+    ``run_g3_pilot.CheckResult`` from ``validate_g3_d_steering``). A strict
+    ``isinstance(..., run_g2_smoke.CheckResult)`` dropped gen≥3 lift rows, so
+    ``post_checks_satisfy_steering_lift`` returned False after a PASS dry-run
+    and ``write_gate2_report`` never refreshed ``gate2_steering_lift_proof.json``.
+    """
     if post is None:
         return []
     out: list[dict] = []
+
+    def _one(item) -> dict | None:
+        if isinstance(item, dict) and item.get("name"):
+            return {
+                "name": str(item["name"]),
+                "ok": bool(item.get("ok")),
+                "detail": str(item.get("detail") or ""),
+            }
+        # Local + foreign CheckResult dataclasses / duck-typed rows.
+        name = getattr(item, "name", None)
+        if name is None:
+            return None
+        if isinstance(item, CheckResult):
+            return asdict(item)
+        return {
+            "name": str(name),
+            "ok": bool(getattr(item, "ok", False)),
+            "detail": str(getattr(item, "detail", "") or ""),
+        }
+
     if isinstance(post, dict):
         # Rare: name → {ok, detail} map
         for name, val in post.items():
@@ -216,20 +243,18 @@ def _post_as_check_dicts(post) -> list[dict]:
                         "detail": str(val.get("detail") or ""),
                     }
                 )
-            elif isinstance(val, CheckResult):
-                out.append(asdict(val))
+            else:
+                converted = _one(val)
+                if converted is not None:
+                    # Preserve map key as name when value lacks one.
+                    converted.setdefault("name", str(name))
+                    converted["name"] = str(name)
+                    out.append(converted)
         return out
     for item in post:
-        if isinstance(item, CheckResult):
-            out.append(asdict(item))
-        elif isinstance(item, dict) and item.get("name"):
-            out.append(
-                {
-                    "name": str(item["name"]),
-                    "ok": bool(item.get("ok")),
-                    "detail": str(item.get("detail") or ""),
-                }
-            )
+        converted = _one(item)
+        if converted is not None:
+            out.append(converted)
     return out
 
 
@@ -826,10 +851,22 @@ def _steering_lift_gen3_checks(run_dir: Path) -> list[CheckResult]:
     When a dry-run (or accidental live) artifact has ``gen_3/``, G2 post-checks
     must refuse never-steer Condition D — otherwise Tick 406 fair-skip alone
     PASSes and paid G3/G4 can burn with D≈B.
+
+    Tick 512: re-wrap ``run_g3_pilot.CheckResult`` into local ``CheckResult`` so
+    downstream ``isinstance(..., CheckResult)`` callers stay consistent.
     """
     from run_g3_pilot import validate_g3_d_steering  # noqa: E402
 
-    return list(validate_g3_d_steering([run_dir]))
+    wrapped: list[CheckResult] = []
+    for row in validate_g3_d_steering([run_dir]):
+        wrapped.append(
+            CheckResult(
+                name=str(getattr(row, "name", "steering_applied_gen3")),
+                ok=bool(getattr(row, "ok", False)),
+                detail=str(getattr(row, "detail", "") or ""),
+            )
+        )
+    return wrapped
 
 
 def validate_g2_artifacts(

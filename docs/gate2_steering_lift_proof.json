@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-10-02T16:08:15Z",
+  "timestamp": "2026-10-02T22:06:48Z",
   "tick": 510,
-  "source": "bootstrap_gate2_report",
+  "source": "gate2_dry_run_write",
   "mode": "dry-run",
-  "run_id": 1955,
+  "run_id": 1956,
   "max_gen": 3,
   "ok": true,
   "detail": "delay-all skip + gen\u22653 lift + nonzero fitness",
@@ -11,12 +11,12 @@
     {
       "name": "run_dir",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1955"
+      "detail": "/workspace/SIA/runs/run_1956"
     },
     {
       "name": "belief_store",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1955/belief_store"
+      "detail": "/workspace/SIA/runs/run_1956/belief_store"
     },
     {
       "name": "epistemic_value_jsonl",
@@ -44,7 +44,7 @@
       "detail": "gen2 n=2 DNA technique_seeds empty (delay-all)"
     },
     {
-      "name": "steering_applied_run_1955",
+      "name": "steering_applied_run_1956",
       "ok": true,
       "detail": "gen3 n=2 agenda in ['agent_0', 'agent_1'] (delay-all lifted)"
     },
