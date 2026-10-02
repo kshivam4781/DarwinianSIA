@@ -1633,6 +1633,63 @@ def test_open_git_pr_call_json_atomic_mcp_args(tmp_path) -> None:
     assert not out.exists()
 
 
+def test_refresh_pr_mergeability_unknown_via_gh_pr_view(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 505: UNKNOWN/null mergeable refreshes via gh pr view; MERGEABLE untouched."""
+    from icml_env_checks import (
+        _mergeability_needs_refresh,
+        refresh_pr_mergeability,
+    )
+
+    assert _mergeability_needs_refresh(None)
+    assert _mergeability_needs_refresh("")
+    assert _mergeability_needs_refresh("UNKNOWN")
+    assert not _mergeability_needs_refresh("MERGEABLE")
+    assert not _mergeability_needs_refresh("CONFLICTING")
+
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **_k):
+        calls.append(list(cmd))
+        class R:
+            returncode = 0
+            stdout = json.dumps(
+                {"mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN"}
+            )
+            stderr = ""
+
+        return R()
+
+    monkeypatch.setattr("icml_env_checks.subprocess.run", fake_run)
+
+    unknown = {
+        "number": 337,
+        "url": "https://github.com/kshivam4781/DarwinianSIA/pull/337",
+        "mergeable": "UNKNOWN",
+        "merge_state_status": "UNKNOWN",
+    }
+    out = refresh_pr_mergeability(unknown)
+    assert out is unknown
+    assert unknown["mergeable"] == "MERGEABLE"
+    assert unknown["merge_state_status"] == "CLEAN"
+    assert calls and "view" in calls[0] and "337" in calls[0]
+
+    calls.clear()
+    already = {
+        "number": 337,
+        "mergeable": "MERGEABLE",
+        "merge_state_status": "CLEAN",
+    }
+    refresh_pr_mergeability(already)
+    assert calls == []  # no gh call when already known
+
+    null_pr = {"number": 338, "mergeable": None, "merge_state_status": None}
+    refresh_pr_mergeability(null_pr)
+    assert null_pr["mergeable"] == "MERGEABLE"
+    assert null_pr["merge_state_status"] == "CLEAN"
+
+
 def test_tip_pr_mergeability_note_and_merge_next() -> None:
     """Tick 335–337/351: MERGEABLE/CLEAN + gh copy-paste + anti-churn in human_next."""
     from icml_env_checks import (
@@ -11847,6 +11904,11 @@ def test_env_example_and_section4_anthropic_optional() -> None:
     assert "Tick 335" in unblock
     assert "MERGEABLE" in unblock or "mergeability" in unblock.lower()
     assert "ICML tip PR mergeability in human_next (Tick 335)" in master
+    # Tick 505: UNKNOWN mergeability refresh via gh pr view.
+    assert "refresh_pr_mergeability" in env_checks
+    assert "_gh_pr_view_mergeability" in env_checks
+    assert "ICML UNKNOWN tip PR mergeability refresh (Tick 505)" in master
+    assert "Tick 505" in unblock
     # Tick 336: gh copy-paste merge commands + tip-PR churn warning.
     assert "_tip_pr_merge_commands" in env_checks
     assert "tip_pr_merge_commands" in env_checks

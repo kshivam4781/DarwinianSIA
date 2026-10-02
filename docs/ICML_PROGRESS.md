@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T08:15Z — Tick 505 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-18ec` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Separately, tip PR #337 `human_next` / secrets JSON often showed `tip_pr_mergeable=UNKNOWN` after `gh pr list` (GitHub still computing), so dual-unblock copy-paste did not say **undraft & merge now** even when REST/`gh pr view` already reported MERGEABLE/CLEAN. Highest leverage without paid spend: **refresh UNKNOWN tip/bootstrap mergeability via `gh pr view`**.
+
+### What we did
+**Tick 505 — UNKNOWN tip PR mergeability refresh via `gh pr view` (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `18ec`; rematerialized diamond via public mirror; re-filed NEBIUS secrets request
+2. `refresh_pr_mergeability` + `_gh_pr_view_mergeability` — when list returns UNKNOWN/null, refresh via `gh pr view`
+3. Wired into `_gh_pr_list_for_head` (tip + AGENTS bootstrap); G3 keep-ondisk parity test
+4. Focused suite green; secrets status now shows tip **MERGEABLE/CLEAN → undraft & merge now**
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 504) | After (Tick 505) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| tip_pr_mergeable after list UNKNOWN | stayed UNKNOWN | **MERGEABLE/CLEAN** via `gh pr view` |
+| human_next tip merge line | "GitHub UNKNOWN" | **undraft & merge now (no conflicts)** |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional now that tip is MERGEABLE/CLEAN: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-02T06:15Z — Tick 504 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

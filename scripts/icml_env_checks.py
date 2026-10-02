@@ -6706,6 +6706,94 @@ def _branch_from_tip_ref(tip_ref: str | None) -> str | None:
     return None
 
 
+# Shared with tip/bootstrap merge copy-paste (Tick 336+) and Tick 505 view refresh.
+_ICML_GITHUB_REPO = "kshivam4781/DarwinianSIA"
+
+
+def _mergeability_needs_refresh(mergeable: str | None) -> bool:
+    """True when GitHub has not yet computed mergeability (Tick 505)."""
+    raw = str(mergeable or "").strip().upper()
+    return raw in {"", "UNKNOWN", "NONE", "NULL"}
+
+
+def _gh_pr_view_mergeability(
+    number: int,
+    *,
+    repo_root: Path | None = None,
+) -> tuple[str | None, str | None]:
+    """Tick 505: ``gh pr view`` refresh for mergeable / mergeStateStatus.
+
+    ``gh pr list --json mergeable`` often returns ``UNKNOWN`` on the first poll
+    after a push (GitHub still computing). ``gh pr view <n>`` forces a fresher
+    read so ``human_next`` can say MERGEABLE/CLEAN → undraft & merge now
+    instead of a vague UNKNOWN among 300+ draft tip PRs.
+    """
+    root = repo_root or _REPO_ROOT
+    try:
+        proc = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(int(number)),
+                "--repo",
+                _ICML_GITHUB_REPO,
+                "--json",
+                "mergeable,mergeStateStatus",
+            ],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None, None
+    if proc.returncode != 0:
+        return None, None
+    try:
+        data = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError:
+        return None, None
+    if not isinstance(data, dict):
+        return None, None
+    mergeable = data.get("mergeable")
+    merge_state = data.get("mergeStateStatus")
+    return (
+        str(mergeable) if mergeable is not None else None,
+        str(merge_state) if merge_state is not None else None,
+    )
+
+
+def refresh_pr_mergeability(
+    pr: dict | None,
+    *,
+    repo_root: Path | None = None,
+) -> dict | None:
+    """Tick 505: in-place refresh when list/view left mergeable UNKNOWN/null.
+
+    Returns the same dict (mutated) or ``None`` when ``pr`` is empty. Leaves
+    CONFLICTING/MERGEABLE untouched. Never raises.
+    """
+    if not pr or not isinstance(pr, dict):
+        return pr
+    if not _mergeability_needs_refresh(pr.get("mergeable")):  # type: ignore[arg-type]
+        return pr
+    number = pr.get("number")
+    if number is None:
+        return pr
+    try:
+        n = int(number)
+    except (TypeError, ValueError):
+        return pr
+    mergeable, merge_state = _gh_pr_view_mergeability(n, repo_root=repo_root)
+    if mergeable is not None:
+        pr["mergeable"] = str(mergeable)
+    if merge_state is not None:
+        pr["merge_state_status"] = str(merge_state)
+    return pr
+
+
 def _gh_pr_list_for_head(
     branch: str,
     *,
@@ -6758,22 +6846,23 @@ def _gh_pr_list_for_head(
             continue
         mergeable = row.get("mergeable")
         merge_state = row.get("mergeStateStatus")
-        out.append(
-            {
-                "url": str(url),
-                "number": int(number),
-                "title": str(row.get("title") or ""),
-                # Tick 347: body for independent tip_pr_body_stale detection.
-                "body": str(row.get("body") or ""),
-                "is_draft": bool(row.get("isDraft")),
-                "head_ref": str(row.get("headRefName") or branch),
-                # Tick 335: optional; may be None if gh omits fields.
-                "mergeable": str(mergeable) if mergeable is not None else None,
-                "merge_state_status": (
-                    str(merge_state) if merge_state is not None else None
-                ),
-            }
-        )
+        pr = {
+            "url": str(url),
+            "number": int(number),
+            "title": str(row.get("title") or ""),
+            # Tick 347: body for independent tip_pr_body_stale detection.
+            "body": str(row.get("body") or ""),
+            "is_draft": bool(row.get("isDraft")),
+            "head_ref": str(row.get("headRefName") or branch),
+            # Tick 335: optional; may be None if gh omits fields.
+            "mergeable": str(mergeable) if mergeable is not None else None,
+            "merge_state_status": (
+                str(merge_state) if merge_state is not None else None
+            ),
+        }
+        # Tick 505: list often returns UNKNOWN; refresh via gh pr view.
+        refresh_pr_mergeability(pr, repo_root=root)
+        out.append(pr)
     return out
 
 
@@ -6844,6 +6933,10 @@ def resolve_icml_tip_pr(
 
     Tick 335: also surfaces ``mergeable`` / ``merge_state_status`` from
     ``gh`` so ``human_next`` can say MERGEABLE/CLEAN vs CONFLICTING.
+
+    Tick 505: when ``gh pr list`` leaves mergeable UNKNOWN/null, refresh via
+    ``gh pr view`` (forces GitHub mergeability computation) so dual-unblock
+    ``human_next`` can say undraft & merge now instead of vague UNKNOWN.
     """
     root = repo_root or _REPO_ROOT
     candidates = list_remote_icml_tip_candidates(repo_root=root, fetch=False)
@@ -6952,9 +7045,6 @@ def _tip_pr_mergeability_note(pr: dict) -> str:
     if mergeable == "CONFLICTING" or state in {"DIRTY", "UNSTABLE"}:
         return f" — GitHub {label}: rebase onto main before merge"
     return f" — GitHub {label}"
-
-
-_ICML_GITHUB_REPO = "kshivam4781/DarwinianSIA"
 
 
 def _tip_pr_merge_commands(pr: dict | None) -> list[str]:

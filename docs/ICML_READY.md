@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 504: auto-wired CSV must not force rematerialize when on-disk non-synthetic diamond is ready (Tick 502 keep parity; explicit `--diamond-csv` still refreshes). Tick 503 CSV-autowire live secrets refuse unchanged. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 505: refresh UNKNOWN tip/bootstrap PR mergeability via `gh pr view` so human_next can say MERGEABLE/CLEAN → undraft & merge now (closes vague UNKNOWN after `gh pr list`). Tick 504 auto-wired CSV keep-ondisk unchanged. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
