@@ -1696,7 +1696,12 @@ def test_preflight_stack_not_ready_without_keys(
 def test_preflight_stack_fetch_diamond_surfaces_hf_in_gates(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 276: --fetch-diamond preflight requires HF in gate2/3/4 + aggregate."""
+    """Tick 276/501: --fetch-diamond preflight without CSV surfaces diamond gap.
+
+    Individual gates still require HF when they lack --diamond-csv. Aggregate
+    uses fetch_diamond_ok + diamond-aware phrase (Tick 501 — no hard HF-only
+    blocker when secrets collect already sees diamond_ready).
+    """
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
@@ -1733,13 +1738,19 @@ def test_preflight_stack_fetch_diamond_surfaces_hf_in_gates(
     monkeypatch.setattr(g4, "_task_dir", lambda root_name="SIA": task)
     monkeypatch.setattr(g4, "_run_dir_for", lambda rid: None)
 
-    # Avoid real HF calls during preflight materialize attempts.
+    # Avoid real HF / public-mirror during unit test (force diamond not ready).
     def _no_hf(*_a, **_k):
         raise RuntimeError("HF unavailable in unit test")
 
     monkeypatch.setattr(g2, "materialize_from_hf", _no_hf)
     monkeypatch.setattr(g3, "materialize_from_hf", _no_hf)
     monkeypatch.setattr(g4, "materialize_from_hf", _no_hf)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda *a, **k: None
+    )
 
     report = PipelineReport(
         timestamp="2026-08-30T12:00:00Z",
@@ -1758,8 +1769,8 @@ def test_preflight_stack_fetch_diamond_surfaces_hf_in_gates(
         fetch_diamond=True,
     )
     assert report.ready_for_live is False
-    # Aggregate pipeline blocker.
-    assert any("HF_TOKEN" in b for b in report.blockers)
+    # Aggregate pipeline blocker (Tick 501: fetch_diamond_ok phrase, not hard HF).
+    assert any("fetch_diamond_ok" in b for b in report.blockers)
     # Individual gates must also require HF (require_hf_for_diamond).
     for name in ("gate2_report.json", "gate3_report.json", "gate4_report.json"):
         data = json.loads((tmp_path / "docs" / name).read_text(encoding="utf-8"))
@@ -1900,20 +1911,46 @@ def test_live_refuses_over_budget(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 def test_live_fetch_diamond_refuses_without_hf(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Tick 274: --live --fetch-diamond refuses on API keys without HF_TOKEN."""
+    """Tick 274/501: --live --fetch-diamond refuses when fetch_diamond_ok is false.
+
+    With NEBIUS present but no HF/CSV/mirror (diamond not ready), refuse notes
+    still mention diamond/HF. When diamond_ready, refuse is NEBIUS-first (covered
+    separately via live_pipeline_next_steps).
+    """
     monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
     monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setenv("NEBIUS_API_KEY", "nb-test")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ICML_DIAMOND_CSV", raising=False)
+    monkeypatch.delenv("SIA_DIAMOND_CSV", raising=False)
 
     import run_icml_live_pipeline as pipe
 
     monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: True
+    )
+    monkeypatch.setattr(
+        pipe,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 501,
+            "remote_tip_tick": 501,
+            "blockers": [],
+        },
+    )
     docs = tmp_path / "docs"
     docs.mkdir()
-    # Tip OK so we reach the HF gate (not tip refuse).
+    # Tip OK so we reach the fetch_diamond gate (not tip refuse).
     (docs / "ICML_PROGRESS.md").write_text(
         "## 2026-08-30 — Tick 274 (test)\n", encoding="utf-8"
     )
@@ -1930,6 +1967,10 @@ def test_live_fetch_diamond_refuses_without_hf(
         "_fetch_diamond",
         lambda **_k: (_ for _ in ()).throw(AssertionError("must not fetch")),
     )
+    # Prevent autowire from finding host /tmp CSV.
+    monkeypatch.setattr(
+        pipe, "autowire_diamond_csv", lambda *a, **k: (None, False)
+    )
     rc = pipe.main(
         [
             "--live",
@@ -1941,7 +1982,74 @@ def test_live_fetch_diamond_refuses_without_hf(
     assert rc == 4
     assert called == []
     text = (docs / "pipe.md").read_text(encoding="utf-8")
-    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower()
+    assert "HF_TOKEN" in text or "fetch_diamond" in text.lower() or "gpqa_diamond" in text
+
+
+def test_live_fetch_diamond_refuse_nebius_first_when_diamond_ready(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tick 501: live refuse notes are NEBIUS-first when diamond already ready."""
+    monkeypatch.setenv("SIA_BUDGET_SPENT_USD", "0")
+    monkeypatch.setenv("SIA_BUDGET_CEILING_USD", "20")
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+
+    import run_icml_live_pipeline as pipe
+
+    monkeypatch.setattr(pipe, "REPO_ROOT", tmp_path)
+    csv_path = tmp_path / "gpqa_diamond.csv"
+    csv_path.write_text("Question,Correct Answer\nx,y\n" + ("z,w\n" * 20), encoding="utf-8")
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda **_k: csv_path
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror", lambda **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: False
+    )
+    monkeypatch.setattr(
+        pipe,
+        "write_icml_tip_status",
+        lambda *a, **k: {
+            "tip_ok_for_live": True,
+            "local_tick": 501,
+            "remote_tip_tick": 501,
+            "blockers": [],
+        },
+    )
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-02 — Tick 501 (test)\n", encoding="utf-8"
+    )
+    # Force the no-CSV live refuse path (autowire none) while secrets see diamond_ready.
+    monkeypatch.setattr(pipe, "autowire_diamond_csv", lambda *a, **k: (None, False))
+    monkeypatch.setattr(
+        pipe,
+        "_fetch_diamond",
+        lambda **_k: (_ for _ in ()).throw(AssertionError("must not fetch")),
+    )
+    called: list[str] = []
+    monkeypatch.setattr(pipe.g2, "main", lambda *_a, **_k: called.append("g2") or 0)
+
+    rc = pipe.main(
+        [
+            "--live",
+            "--fetch-diamond",
+            "--report",
+            str(docs / "pipe.md"),
+        ]
+    )
+    assert rc == 4
+    assert called == []
+    text = (docs / "pipe.md").read_text(encoding="utf-8")
+    assert "NEBIUS" in text
+    # Refuse note must not lead operators to chase HF when diamond is ready.
+    assert "Add HF_TOKEN (+ API keys)" not in text
+    assert "diamond already ready" in text.lower() or "HF optional" in text
 
 
 def test_live_refuses_stale_g3g4_recipes(

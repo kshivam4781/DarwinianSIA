@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-01 (Section 21 ICML; Tick 500 G3/G4 Next + cron refuse NEBIUS-first when diamond ready; Tick 499 secrets human_next NEBIUS-first; Tick 498 Gate2 Next NEBIUS-first; Tick 497 public GPQA diamond mirror; …)
+**Last updated:** 2026-10-02 (Section 21 ICML; Tick 501 pipeline Next/refuse NEBIUS-first when diamond ready; Tick 500 G3/G4 Next + cron refuse NEBIUS-first; Tick 499 secrets human_next NEBIUS-first; Tick 498 Gate2 Next NEBIUS-first; Tick 497 public GPQA diamond mirror; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -950,6 +950,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML Gate2 Next NEBIUS-first (Tick 498) | **DONE** | `gate2_diamond_ready` + `gate2_next_markdown_lines` — drop HF-accept Next when diamond ready; G3 help + G4 refuse note mirror-aligned; cold-boot rematerialize re-verified |
 | ICML secrets human_next NEBIUS-first (Tick 499) | **DONE** | `diamond_ready` (CSV / mirror / non-synthetic on disk) drops HF-accept `human_next` + HF blocker; `fetch_diamond_ok` accepts on-disk non-synthetic; portal_save_target external_actions NEBIUS-first; Gate2 Tick 498 parity |
 | ICML G3/G4 Next + cron refuse NEBIUS-first (Tick 500) | **DONE** | Shared `icml_preflight_diamond_ready`; G3/G4 `## Next` NEBIUS-first when diamond ready; cron live-refuse + G3/G4 fetch refuse notes diamond-aware; focused tests |
+| ICML pipeline Next/refuse NEBIUS-first (Tick 501) | **DONE** | `live_pipeline_next_steps(diamond_ready=)` NEBIUS-first; drop aggregate HF hard-require for `fetch_diamond_ok` + diamond-aware phrase; live `--fetch-diamond` refuse notes NEBIUS-first; Gate2/G3/G4/secrets Tick 498–500 parity; focused tests |
 | ICML C-array/comma-hex STATUS header (Tick 496) | **DONE** | `_ICML_STATUS_BARE_HEX_COMMA_RE` + `_ICML_STATUS_BARE_HEX_0X_BYTE_RE` + `_ICML_STATUS_BARE_HEX_CARRAY_RE` extend `_peel_icml_status_bare_hex` — peel `53,54,…` / `0x53,0x54,…` / `0x53 0x54 …` / `{0x53, 0x54, …}` / bold-wrapped; leave Tick 495 contracts + non-STATUS untouched; closes demote no-op / pack miss after Tick 495 continuous/space/colon/dash/single-`0x`-only; focused C-array-hex + G4 demote/update + lock tests |
 | ICML consume only redundant durable stashes (Tick 429) | **DONE** | Keep unique mid-tick paper-pack/budget/prior_live stashes after failed reinject on tip-synced commit-noop; only unlink when payload matches HEAD; focused durable/tip tests 16/16 |
 | Cost-to-threshold PRIMARY (b) | **DONE (offline)** | Tick 22: tokens/USD preferred, else eval-calls; `primary_cost30_pass` offline |

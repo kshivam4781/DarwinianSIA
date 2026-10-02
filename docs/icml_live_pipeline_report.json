@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T16:08:17Z",
+  "timestamp": "2026-10-02T00:19:58Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -44,19 +44,13 @@
     }
   ],
   "blockers": [
-    "G2: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 replace with real GPQA diamond before paid G2",
     "G2: nebius_key: NEBIUS_API_KEY missing",
-    "G2: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
-    "G3: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G3",
     "G3: nebius_key: NEBIUS_API_KEY missing",
-    "G3: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
-    "G4: gpqa_not_synthetic: synthetic smoke fixture detected \u2014 fetch real GPQA diamond before paid G4",
-    "G4: nebius_key: NEBIUS_API_KEY missing",
-    "G4: hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)",
-    "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond / cron auto-live)"
+    "G4: nebius_key: NEBIUS_API_KEY missing"
   ],
   "notes": [
-    "diamond fetch failed (preflight continues): HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.",
+    "runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)",
+    "materialized diamond from CSV \u2192 ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']",
     "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
     "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
     "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"

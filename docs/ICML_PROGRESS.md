@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-02T00:18Z — Tick 501 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-4e03` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY**. Tick 498–500 fixed Gate2/G3/G4 Next + secrets `human_next` + cron refuse NEBIUS-first when diamond ready, but **pipeline** `## Next` (`live_pipeline_next_steps`) and live `--fetch-diamond` refuse notes still hard-coded HF_TOKEN chase — and aggregate preflight still hard-required HF when `--diamond-csv` was absent even if diamond was already ready. Operators reading `docs/icml_live_pipeline_report.md` could chase HF while the only PRIMARY blocker is Nebius. Highest leverage without paid spend: **pipeline Next/refuse + aggregate fetch_diamond_ok NEBIUS-first when diamond ready** (Gate2/G3/G4/secrets Tick 498–500 parity).
+
+### What we did
+**Tick 501 — pipeline Next/refuse NEBIUS-first when diamond ready (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `4e03`
+2. `live_pipeline_next_steps(..., diamond_ready=)` — NEBIUS-only when diamond ready; HF/CSV phrasing only when not
+3. Pipeline aggregate preflight: drop hard HF_TOKEN require; use `fetch_diamond_ok` + diamond-aware `icml_human_required_secrets_phrase`
+4. Live `--fetch-diamond` refuse notes NEBIUS-first when diamond ready
+5. Focused tests green (next_steps + preflight aggregate + live refuse); secrets re-filed (NEBIUS required; HF optional); Portal Save skipped
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 500) | After (Tick 501) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Pipeline `## Next` when diamond ready | HF_TOKEN or CSV phrasing | **NEBIUS-first**; no HF chase |
+| Pipeline live-refuse when diamond ready | "Add HF_TOKEN (+ API keys)" | **NEBIUS-only** note |
+| Aggregate preflight HF hard-require | HF_TOKEN missing when no CSV | **fetch_diamond_ok** + diamond-aware phrase |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS) |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack. Optional: undraft+merge tip PR #337 / bootstrap #338; `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`.
+
 ## 2026-10-01T22:12Z — Tick 500 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

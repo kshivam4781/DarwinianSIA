@@ -8319,12 +8319,17 @@ def live_pipeline_next_steps(
     tip_ref: str | None = None,
     fetch_diamond_ok: bool | None = None,
     main_has_icml_tip: bool | None = None,
+    diamond_ready: bool | None = None,
 ) -> list[str]:
-    """Human-facing Next bullets — tip + secrets + HF + cron entry (Tick 268–274/328).
+    """Human-facing Next bullets — tip + secrets + HF + cron entry (Tick 268–274/328/501).
 
     Tick 274: do **not** claim live-ready on Anthropic+Nebius alone — cron and
-    ``--live --fetch-diamond`` also need ``HF_TOKEN`` (``fetch_diamond_ok``).
+    ``--live --fetch-diamond`` also need diamond (``fetch_diamond_ok``).
     Tick 328: when ``main`` lacks tip files, prepend merge tip→main (dual unblock).
+    Tick **501**: when ``diamond_ready`` (CSV / public mirror / non-synthetic on
+    disk), secrets-missing Next is **NEBIUS-first** — no HF-accept chase
+    (Gate2 Tick 498 / secrets Tick 499 / G3/G4 Tick 500 parity for pipeline
+    ``## Next``).
     """
     steps: list[str] = []
     if main_has_icml_tip is None:
@@ -8357,7 +8362,8 @@ def live_pipeline_next_steps(
                 "(`fetch_diamond_ok=false`): add `HF_TOKEN` + accept HF "
                 "`Idavidrein/gpqa`, **or** drop a real `gpqa_diamond.csv` at "
                 "`/tmp/gpqa_diamond.csv` / `docs/private/gpqa_diamond.csv` / "
-                f"`$ICML_DIAMOND_CSV`. Add HF to {_AUTOMATION_URL}. "
+                f"`$ICML_DIAMOND_CSV`, **or** rely on Tick 497 public OpenAI "
+                f"mirror auto-fetch. Add HF/CSV to {_AUTOMATION_URL}. "
                 "See `docs/ICML_HUMAN_UNBLOCK.md`.",
                 "Next cron (or now): `bash scripts/icml_cron_entry.sh` — stays "
                 "preflight-only until `fetch_diamond_ok`.",
@@ -8390,22 +8396,41 @@ def live_pipeline_next_steps(
         )
         return steps
 
-    # Tick 343: secrets missing → PRIMARY-first (secrets before tip/bootstrap).
-    steps.extend(
-        [
-            "Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`) "
-            "to automation "
-            f"{_AUTOMATION_URL} (or linked env dashboard). "
-            "`ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta "
-            "(required only if `ICML_META_AGENT_PROFILE=default-meta`). "
-            "Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.",
-            "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
-            "tip and runs live when `fetch_diamond_ok` (else preflight only).",
-            "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
-            "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
-            "Do **not** set STATUS: READY from offline / preflight alone.",
-        ]
-    )
+    # Tick 343/501: secrets missing → PRIMARY-first (secrets before tip/bootstrap).
+    # When diamond already ready, do not chase HF (Tick 498–500 parity).
+    if diamond_ready:
+        steps.extend(
+            [
+                "Add `NEBIUS_API_KEY` "
+                "(ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta) "
+                "to automation "
+                f"{_AUTOMATION_URL} (or linked env dashboard). "
+                "Diamond already ready (CSV / public mirror / non-synthetic on "
+                "disk) — HF optional (Tick 497/501). See `docs/ICML_HUMAN_UNBLOCK.md`.",
+                "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
+                "tip and runs live when `fetch_diamond_ok` (else preflight only).",
+                "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
+                "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
+                "Do **not** set STATUS: READY from offline / preflight alone.",
+            ]
+        )
+    else:
+        steps.extend(
+            [
+                "Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv` "
+                "**or** Tick 497 public OpenAI mirror) "
+                "to automation "
+                f"{_AUTOMATION_URL} (or linked env dashboard). "
+                "`ANTHROPIC_API_KEY` is optional with Tick 289 Nebius pydantic-ai meta "
+                "(required only if `ICML_META_AGENT_PROFILE=default-meta`). "
+                "Accept HF `Idavidrein/gpqa` if using HF. See `docs/ICML_HUMAN_UNBLOCK.md`.",
+                "Next cron (or now): `bash scripts/icml_cron_entry.sh` — auto-recovers "
+                "tip and runs live when `fetch_diamond_ok` (else preflight only).",
+                "Portal Save of `docs/icml_portal_save_target.json` is **optional** "
+                "(Tick 265–267: uv + runtime deps bootstrap in preflight).",
+                "Do **not** set STATUS: READY from offline / preflight alone.",
+            ]
+        )
     steps.extend(merge_steps)
     steps.extend(tip_stale_steps)
     return steps

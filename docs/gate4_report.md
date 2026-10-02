@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-10-01T16:08:39Z
+**Timestamp:** 2026-10-02T00:20:17Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -10,10 +10,10 @@
 | Check | OK | Detail |
 |-------|----|--------|
 | `gpqa_layout` | yes | ok |
-| `gpqa_not_synthetic` | NO | synthetic smoke fixture detected — fetch real GPQA diamond before paid G4 |
+| `gpqa_not_synthetic` | yes | real/non-smoke diamond_questions.json present |
 | `anthropic_key` | yes | optional (Nebius meta; ANTHROPIC unused) |
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
-| `hf_token` | NO | HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond) |
+| `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 estimate=$2.80/pair × 5 remaining (of 5 planned) → projected=$14.00 |
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 5 seed pair(s); runner executes B then D serially (no parallel GPQA) |
@@ -24,7 +24,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 496 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `tip_ok_for_live` | yes | local Tick 501 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
 
 ### Planned seed pairs
 
@@ -51,22 +51,20 @@
 
 ## Blockers (live G4)
 
-- gpqa_not_synthetic: synthetic smoke fixture detected — fetch real GPQA diamond before paid G4
 - nebius_key: NEBIUS_API_KEY missing
-- hf_token: HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing (required for --fetch-diamond)
 
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
 - runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
-- diamond fetch failed: HF_TOKEN / HUGGINGFACE_HUB_TOKEN required to download gated Idavidrein/gpqa. Accept dataset terms on HuggingFace, then set the token.
+- materialized diamond from CSV → ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']
 
 **Live G4 status:** NOT RUN this tick
 
 ## Next
 
 1. Ensure live G2 smoke + G3 pilot passed before spending on G4.
-2. Add `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta) + (HF_TOKEN or local gpqa_diamond.csv)` (see `docs/ICML_HUMAN_UNBLOCK.md`).
+2. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:
    `python3 scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`
 4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY (or recover via `--refresh-paper-from-runs`).

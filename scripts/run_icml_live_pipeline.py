@@ -10,7 +10,8 @@ Hard stops (delegated to gate runners; never violate here either):
   - no two GPQA jobs in parallel
   - no --focus weights / no LawBench
   - refuse without NEBIUS_API_KEY for --live (ANTHROPIC optional under Nebius meta; Tick 289/292)
-  - refuse --live --fetch-diamond without HF_TOKEN (Tick 274; match cron)
+  - refuse --live --fetch-diamond without fetch_diamond_ok (Tick 274/501;
+    NEBIUS + diamond ready via CSV/mirror/on-disk; HF optional when ready)
   - refuse synthetic smoke for --live (fetch real diamond once, n=15)
   - never overwrite existing run IDs
   - project full-stack spend ≤ SIA_BUDGET_CEILING_USD (~$20)
@@ -1072,7 +1073,8 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         lines.extend(["", "## Notes", ""])
         for n in report.notes:
             lines.append(f"- {n}")
-    # Tick 268–274: tip lineage + secrets-first Next (HF required for --fetch-diamond).
+    # Tick 268–274/501: tip lineage + secrets-first Next (diamond via
+    # CSV/mirror/on-disk; HF optional when diamond_ready — Tick 497/501).
     tip_blocker = any(
         b.lower().startswith("tip:") or "ICML_PROGRESS" in b for b in report.blockers
     )
@@ -1095,6 +1097,7 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         tip_ref=tip_ref,
         fetch_diamond_ok=fetch_diamond_ok,
         main_has_icml_tip=secrets_status.get("main_has_icml_tip"),
+        diamond_ready=bool(secrets_status.get("diamond_ready")),
     )
     lines.extend(["", "## Next", ""])
     for i, step in enumerate(next_lines, start=1):
@@ -1390,20 +1393,19 @@ def run_preflight_stack(
         REPO_ROOT / "docs" / "icml_secrets_status.json",
         gpqa_is_synthetic=True if synthetic else None,
     )
-    # Tick 274/276: intended cron live path is --fetch-diamond → surface HF.
-    # CSV path / preflight without --fetch-diamond skips the aggregate HF demand
-    # (individual gates already got require_hf when fetch_args were passed).
+    # Tick 274/276/501: --fetch-diamond without CSV → aggregate fetch_diamond_ok.
+    # Tick 501: do **not** hard-require HF_TOKEN when diamond is already ready
+    # (CSV / public mirror / non-synthetic on disk) — NEBIUS-first parity with
+    # Gate2 Tick 498 / secrets Tick 499 / G3/G4 Tick 500. Individual gates may
+    # still surface require_hf when they did not receive --diamond-csv.
     if fetch_diamond and diamond_csv is None:
-        if not secrets_status.get("hf_token_present"):
-            report.blockers.append(
-                "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
-                "(required for --fetch-diamond / cron auto-live)"
-            )
-            report.ready_for_live = False
-        elif not secrets_status.get("fetch_diamond_ok"):
+        if not secrets_status.get("fetch_diamond_ok"):
+            diamond_ready = bool(secrets_status.get("diamond_ready"))
             report.blockers.append(
                 "fetch_diamond_ok=false — need "
-                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
+                + icml_human_required_secrets_phrase(
+                    for_fetch_diamond=not diamond_ready
+                )
             )
             report.ready_for_live = False
 
@@ -1930,9 +1932,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  BLOCK: {b}")
             return 3
 
-    # Tick 274/278: refuse --live --fetch-diamond without HF/CSV (match cron).
-    # Avoids attempting HF materialize (or confusing "keys OK" next-steps) on
-    # Anthropic+Nebius-only partial secrets. Local CSV auto-wire skips HF.
+    # Tick 274/278/501: refuse --live --fetch-diamond without fetch_diamond_ok.
+    # Tick 501: when diamond already ready, refuse notes are NEBIUS-first (no HF
+    # chase). Local CSV / public-mirror auto-wire skips HF.
     if (
         selected == "live"
         and args.fetch_diamond
@@ -1940,16 +1942,25 @@ def main(argv: list[str] | None = None) -> int:
     ):
         secrets_status = collect_icml_secrets_status()
         if not secrets_status.get("fetch_diamond_ok"):
+            diamond_ready = bool(secrets_status.get("diamond_ready"))
+            phrase = icml_human_required_secrets_phrase(
+                for_fetch_diamond=not diamond_ready
+            )
             for b in secrets_status.get("blockers") or [
-                "fetch_diamond_ok=false (need "
-                + icml_human_required_secrets_phrase(for_fetch_diamond=True)
-                + ")"
+                f"fetch_diamond_ok=false (need {phrase})"
             ]:
                 report.blockers.append(f"secrets: {b}")
-            report.notes.append(
-                "Add HF_TOKEN (+ API keys) per docs/ICML_HUMAN_UNBLOCK.md; "
-                "or pass --diamond-csv / drop gpqa_diamond.csv to skip HF."
-            )
+            if diamond_ready:
+                report.notes.append(
+                    "Add NEBIUS_API_KEY per docs/ICML_HUMAN_UNBLOCK.md "
+                    "(diamond already ready; HF optional — Tick 497/501)."
+                )
+            else:
+                report.notes.append(
+                    f"Add {phrase} per docs/ICML_HUMAN_UNBLOCK.md; "
+                    "or pass --diamond-csv / drop gpqa_diamond.csv / rely on "
+                    "Tick 497 public mirror."
+                )
             report.icml_ready_status = _read_icml_ready_status(args.icml_ready)
             write_pipeline_report(report, args.report)
             print(

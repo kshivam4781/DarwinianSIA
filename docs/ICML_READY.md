@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 500: G3/G4 `## Next` + cron live-refuse are NEBIUS-first when diamond is already ready (shared `icml_preflight_diamond_ready`; Gate2 Tick 498 / secrets Tick 499 parity). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 501: pipeline `## Next` + live `--fetch-diamond` refuse are NEBIUS-first when diamond is already ready (`live_pipeline_next_steps(diamond_ready=)`; aggregate uses `fetch_diamond_ok` not hard HF; Gate2/G3/G4/secrets Tick 498–500 parity). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

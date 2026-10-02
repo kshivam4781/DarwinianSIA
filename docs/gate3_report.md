@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-01T18:14:43Z
+**Timestamp:** 2026-10-02T00:20:11Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -44,7 +44,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 497 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `tip_ok_for_live` | yes | local Tick 501 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
 
 ### Planned seed pairs
 
@@ -64,7 +64,6 @@
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv
 - runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
 - materialized diamond from CSV → ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']
 

@@ -2112,6 +2112,30 @@ def test_live_pipeline_next_steps_requires_fetch_diamond_ok() -> None:
     assert "icml_cron_entry.sh" in full[1]
 
 
+def test_live_pipeline_next_steps_nebius_first_when_diamond_ready() -> None:
+    """Tick 501: pipeline ## Next is NEBIUS-only when diamond already ready."""
+    ready = live_pipeline_next_steps(
+        secrets_ok=False,
+        fetch_diamond_ok=False,
+        main_has_icml_tip=True,
+        diamond_ready=True,
+    )
+    assert "NEBIUS_API_KEY" in ready[0]
+    assert "HF_TOKEN" not in ready[0]
+    assert "Accept HF" not in ready[0]
+    assert "Diamond already ready" in ready[0]
+    assert "icml_cron_entry.sh" in ready[1]
+
+    not_ready = live_pipeline_next_steps(
+        secrets_ok=False,
+        fetch_diamond_ok=False,
+        main_has_icml_tip=True,
+        diamond_ready=False,
+    )
+    assert "NEBIUS_API_KEY" in not_ready[0]
+    assert "HF_TOKEN" in not_ready[0] or "gpqa_diamond.csv" in not_ready[0]
+
+
 def test_write_icml_secrets_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
