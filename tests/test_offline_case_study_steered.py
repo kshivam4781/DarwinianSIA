@@ -256,6 +256,105 @@ def test_maybe_figures_bootstraps_runtime_deps(tmp_path: Path, monkeypatch):
     assert called == [{"allow_install": True}]
 
 
+def test_maybe_figures_repo_relative_paths(tmp_path: Path, monkeypatch):
+    """Tick 521: offline Figs emit repo-relative paths (Tick 302/519/520 parity)."""
+    import types
+    import sys
+
+    import offline_bvd_case_study as mod
+
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok")
+    )
+    monkeypatch.setattr(
+        mod,
+        "summarize_run",
+        lambda _p: {
+            "learning_curve": {
+                "1": {"best": 0.1},
+                "2": {"best": 0.2},
+            },
+            "h2": {
+                "field": "tool_strategy",
+                "preferred_value": "selective",
+                "preferred_share": 0.75,
+                "counts": {"selective": 3, "aggressive": 1},
+            },
+        },
+    )
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+
+    class _Plt:
+        def subplots(self, *a, **k):  # noqa: ANN001, ARG002
+            class _Fig:
+                def tight_layout(self):
+                    return None
+
+                def savefig(self, path, *a, **k):  # noqa: ANN001, ARG002
+                    Path(path).parent.mkdir(parents=True, exist_ok=True)
+                    Path(path).write_bytes(b"\x89PNG\r\n\x1a\n")
+
+            class _Ax:
+                def plot(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def bar(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_title(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def grid(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def legend(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            return _Fig(), _Ax()
+
+        def close(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", _Plt())
+
+    figures_dir = tmp_path / "docs" / "figures"
+    # Absolute figures_dir under repo (default rematerialize shape).
+    d_run = tmp_path / "runs" / "run_1940"
+    d_run.mkdir(parents=True)
+    written = mod._maybe_figures([], [d_run], figures_dir)
+    assert written == [
+        "docs/figures/fig1_learning_curves.png",
+        "docs/figures/fig2_mechanism.png",
+    ]
+    assert not any(p.startswith("/") for p in written)
+    assert (figures_dir / "fig1_learning_curves.png").is_file()
+    assert (figures_dir / "fig2_mechanism.png").is_file()
+
+
+def test_repo_relative_figure_path_fallback_outside_repo(tmp_path: Path) -> None:
+    """Tick 521: outside-repo figures fall back to str(path)."""
+    from offline_bvd_case_study import _repo_relative_figure_path
+
+    outside = tmp_path / "elsewhere" / "fig1_learning_curves.png"
+    outside.parent.mkdir(parents=True)
+    outside.write_bytes(b"x")
+    got = _repo_relative_figure_path(outside)
+    assert got == str(outside)
+
+
 def test_offline_compare_brief_uses_preferred_share_not_in_bias():
     """Tick 365: D_h2_share is preferred_share (MECHANISM), not pool membership."""
     from offline_bvd_case_study import _brief_h2_fields

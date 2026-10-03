@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 520: `epistemic_results._maybe_write_figures` now emits repo-relative `docs/figures/…` paths (Tick 302/519 parity; closes absolute `/workspace/…` leak from `--figures-dir` summaries); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 521: `offline_bvd_case_study._maybe_figures` now uses named `_repo_relative_figure_path` (Tick 302/519/520 trilogy; closes missing in-repo absolute-path unit test for offline rematerialize); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

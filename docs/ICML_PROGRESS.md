@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T16:10Z — Tick 521 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-cc69` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Separately, Tick 519/520 named `_repo_relative_figure_path` + unit-tested absolute in-repo `figures_dir` for live G4 and `epistemic_results`, but offline rematerialize (`offline_bvd_case_study._maybe_figures`) still used an inline `relative_to(ROOT)` try/except without a named helper or in-repo absolute-path unit test — the Tick 517 bootstrap tests use `tmp_path` outside the repo (fallback `str(path)` path). A regression to bare `str(path)` could leak `/workspace/...` into `offline_bvd_summary.json` / paper locks without the same source lock. Highest leverage without paid spend / STATUS-peel churn: **offline Figs named helper + in-repo absolute-path unit test + rematerialize**.
+
+### What we did
+**Tick 521 — offline_bvd Figs repo-relative helper (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `cc69`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `_repo_relative_figure_path` in `offline_bvd_case_study.py`; `_maybe_figures` now uses it (Tick 302/519/520 trilogy)
+3. Unit tests: `test_maybe_figures_repo_relative_paths` + fallback + source lock; focused suite green (4/4)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock)
+5. Refreshed durable lift proof `local_run_present=false` / `tick=521` (no new dry-run; Tick 514 VM-ephemeral-safe)
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 520) | After (Tick 521) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Offline `_maybe_figures` paths | inline `relative_to` (no named helper / no in-repo abs unit test) | **named** `_repo_relative_figure_path` + unit test |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (520) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T14:04Z — Tick 520 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

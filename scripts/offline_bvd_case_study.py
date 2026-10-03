@@ -25,6 +25,26 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "SIA"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+
+def _repo_relative_figure_path(path: Path, *, repo_root: Path | None = None) -> str:
+    """Return a portable repo-relative path for figure lists.
+
+    Tick 521: ``_maybe_figures`` historically used an inline
+    ``relative_to(ROOT)`` try/except (Tick 302). Live G4 (Tick 519) and
+    ``epistemic_results`` (Tick 520) named the helper ``_repo_relative_figure_path``
+    and unit-tested absolute ``figures_dir`` under the repo. Offline rematerialize
+    still lacked that named helper + in-repo absolute-path unit test, so a
+    regression to bare ``str(path)`` could leak ``/workspace/...`` into
+    ``offline_bvd_summary.json`` / paper locks without the same source lock.
+    Prefer ``docs/figures/figN_….png``; fall back to ``str(path)`` outside repo.
+    """
+    root = (repo_root or ROOT).resolve()
+    try:
+        return str(path.resolve().relative_to(root))
+    except ValueError:
+        return str(path)
+
+
 from epistemic_results import (  # noqa: E402
     H2_DEFAULT_TAIL_GENERATIONS,
     compare_b_vs_d,
@@ -588,11 +608,8 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
-    # Tick 302: store repo-relative paths so summary locks are portable.
-    try:
-        written.append(str(path.resolve().relative_to(ROOT.resolve())))
-    except ValueError:
-        written.append(str(path))
+    # Tick 302/521: store repo-relative paths so summary locks are portable.
+    written.append(_repo_relative_figure_path(path))
 
     # Fig 2 from first D run primary H2 (Tick 362: prefer auto-resolved field,
     # typically tool_strategy — not hard-coded h2_memory / memory alleles).
@@ -628,10 +645,7 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
             fig.tight_layout()
             fig.savefig(path, dpi=120)
             plt.close(fig)
-            try:
-                written.append(str(path.resolve().relative_to(ROOT.resolve())))
-            except ValueError:
-                written.append(str(path))
+            written.append(_repo_relative_figure_path(path))
     return written
 
 

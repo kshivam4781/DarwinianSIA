@@ -296,6 +296,26 @@ def test_epistemic_results_figures_repo_relative_paths() -> None:
     assert "test_maybe_write_figures_repo_relative_paths" in tests
 
 
+def test_offline_bvd_figures_repo_relative_paths() -> None:
+    """Tick 521: offline rematerialize Figs emit repo-relative paths (Tick 302/519/520)."""
+    root = Path(__file__).resolve().parents[1]
+    offline_cs = (root / "scripts" / "offline_bvd_case_study.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def _repo_relative_figure_path" in offline_cs
+    assert "Tick 521" in offline_cs
+    fn_idx = offline_cs.find("def _maybe_figures")
+    next_def = offline_cs.find("\ndef ", fn_idx + 1)
+    body = offline_cs[fn_idx:next_def]
+    assert "_repo_relative_figure_path" in body
+    assert "written.append(str(path))" not in body
+    tests = (root / "tests" / "test_offline_case_study_steered.py").read_text(
+        encoding="utf-8"
+    )
+    assert "test_maybe_figures_repo_relative_paths" in tests
+    assert "test_repo_relative_figure_path_fallback_outside_repo" in tests
+
+
 def test_ensure_deps_before_diamond_fetch_delegates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
