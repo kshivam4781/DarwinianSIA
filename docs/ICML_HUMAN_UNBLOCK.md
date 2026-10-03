@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 522:** `repo_relative_figure_path` consolidated into `icml_env_checks` (single source for Tick 519–521 trilogy); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 521:** `offline_bvd_case_study` Figs use named `_repo_relative_figure_path` (Tick 302/519/520 trilogy; closes missing in-repo absolute-path unit test for offline rematerialize); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 520:** `epistemic_results` Figs emit repo-relative `docs/figures/…` paths (Tick 302/519 parity; closes absolute `/workspace/…` leak from `--figures-dir` summaries); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 519:** live G4 Figs emit repo-relative `docs/figures/…` paths (Tick 302 offline parity; closes absolute `/workspace/…` leak into paper pack / durable ledgers); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

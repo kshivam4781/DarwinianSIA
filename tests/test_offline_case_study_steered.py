@@ -345,13 +345,13 @@ def test_maybe_figures_repo_relative_paths(tmp_path: Path, monkeypatch):
 
 
 def test_repo_relative_figure_path_fallback_outside_repo(tmp_path: Path) -> None:
-    """Tick 521: outside-repo figures fall back to str(path)."""
-    from offline_bvd_case_study import _repo_relative_figure_path
+    """Tick 521/522: outside-repo figures fall back to str(path)."""
+    from icml_env_checks import repo_relative_figure_path
 
     outside = tmp_path / "elsewhere" / "fig1_learning_curves.png"
     outside.parent.mkdir(parents=True)
     outside.write_bytes(b"x")
-    got = _repo_relative_figure_path(outside)
+    got = repo_relative_figure_path(outside)
     assert got == str(outside)
 
 

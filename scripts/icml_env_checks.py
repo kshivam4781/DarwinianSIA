@@ -868,6 +868,26 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     return ensure_icml_runtime_deps(allow_install=allow_install)
 
 
+def repo_relative_figure_path(
+    path: Path | str, *, repo_root: Path | None = None
+) -> str:
+    """Return a portable repo-relative path for paper-pack figure lists.
+
+    Tick 522: Tick 519 (live G4), Tick 520 (``epistemic_results``), and Tick 521
+    (offline Bvd) each shipped a private ``_repo_relative_figure_path`` copy.
+    Three identical helpers can drift (one writer regresses to bare ``str(path)``
+    while source locks only cover that file). Canonicalize here so offline /
+    live / epistemic Figs all emit ``docs/figures/figN_….png`` when under the
+    repo, and fall back to ``str(path)`` outside the repo (tmp / absolute outs).
+    """
+    root = (repo_root or _REPO_ROOT).resolve()
+    p = Path(path)
+    try:
+        return str(p.resolve().relative_to(root))
+    except ValueError:
+        return str(p)
+
+
 def estimate_usd_from_tokens(data: dict) -> float | None:
     """Estimate USD from token fields using Nebius Kimi-K2.6 rates (Tick 291).
 

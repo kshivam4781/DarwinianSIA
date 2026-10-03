@@ -137,6 +137,7 @@ from icml_env_checks import (  # noqa: E402
     icml_meta_requires_anthropic,
     icml_ondisk_nonsynthetic_gpqa,
     icml_should_keep_ondisk_diamond,
+    repo_relative_figure_path,
     icml_preflight_diamond_ready,
     icml_python_cli,
     probe_icml_meta_profile,
@@ -161,6 +162,9 @@ from run_g3_pilot import (  # noqa: E402
     run_sequential_live,
     score_pilot,
 )
+
+# Tick 522: canonical helper in icml_env_checks (Tick 519–521 trilogy → one source).
+_repo_relative_figure_path = repo_relative_figure_path
 
 DEFAULT_BUDGET_CEILING = 20.0
 # Tick 293: Nebius budget-fit pair estimate so 5 pairs + G2/G3 fit under ~$20.
@@ -775,23 +779,6 @@ def _replace_marked_block(text: str, start_m: str, end_m: str, body: str) -> str
     return text[:start] + start_m + "\n" + body.rstrip() + "\n" + text[end:]
 
 
-def _repo_relative_figure_path(path: Path, *, repo_root: Path | None = None) -> str:
-    """Return a portable repo-relative path for paper-pack figure lists.
-
-    Tick 519: live ``write_live_bvd_figures`` historically appended ``str(path)``
-    which is absolute when ``figures_dir`` defaults to ``REPO_ROOT / docs /
-    figures``. Absolute ``/workspace/...`` paths then leaked into
-    ``paper_artifacts`` / gate4 ``figures_written`` / durable ledgers — breaking
-    Tick 302 offline relative-path portability across VMs. Prefer
-    ``docs/figures/figN_….png``; fall back to ``str(path)`` when outside the repo.
-    """
-    root = (repo_root or REPO_ROOT).resolve()
-    try:
-        return str(path.resolve().relative_to(root))
-    except ValueError:
-        return str(path)
-
-
 def write_live_bvd_figures(
     *,
     comparison: dict[str, Any],
@@ -806,8 +793,10 @@ def write_live_bvd_figures(
     ``ImportError`` → ``[]`` would leave Live Table paper pack without Figs 1–2
     after NEBIUS arrives.
 
-    Tick 519: emit repo-relative figure paths (Tick 302 offline parity) so Live
-    Table paper pack / durable ledgers do not store absolute ``/workspace/...``.
+    Tick 519/522: emit repo-relative figure paths via shared
+    ``icml_env_checks.repo_relative_figure_path`` (Tick 302 offline parity; Tick 522
+    consolidates the Tick 519–521 private copies) so Live Table paper pack /
+    durable ledgers do not store absolute ``/workspace/...``.
     """
     written: list[str] = []
     # Tick 518: paper-pack figure path must not assume preflight already ran.
@@ -869,7 +858,7 @@ def write_live_bvd_figures(
         fig.tight_layout()
         fig.savefig(path, dpi=120)
         plt.close(fig)
-        written.append(_repo_relative_figure_path(path))
+        written.append(_repo_relative_figure_path(path, repo_root=REPO_ROOT))
 
     # Fig 2: pooled DNA trait counts across Condition D runs.
     # Tick 363: title field = majority of auto-resolved H2 fields (Tick 361),
@@ -916,7 +905,7 @@ def write_live_bvd_figures(
         fig.tight_layout()
         fig.savefig(path, dpi=120)
         plt.close(fig)
-        written.append(_repo_relative_figure_path(path))
+        written.append(_repo_relative_figure_path(path, repo_root=REPO_ROOT))
     return written
 
 

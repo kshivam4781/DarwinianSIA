@@ -623,12 +623,11 @@ def test_maybe_write_figures_repo_relative_paths(
 
 
 def test_repo_relative_figure_path_fallback_outside_repo(tmp_path: Path) -> None:
-    """Tick 520: outside-repo figures fall back to str(path)."""
-    from epistemic_results import _repo_relative_figure_path
+    """Tick 520/522: outside-repo figures fall back to str(path)."""
+    from icml_env_checks import repo_relative_figure_path
 
     outside = tmp_path / "elsewhere" / "fig1_learning_curves.png"
     outside.parent.mkdir(parents=True)
     outside.write_bytes(b"x")
-    # REPO_ROOT is the real workspace; outside tmp is not under it.
-    got = _repo_relative_figure_path(outside)
+    got = repo_relative_figure_path(outside)
     assert got == str(outside)
