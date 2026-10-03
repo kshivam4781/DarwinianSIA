@@ -243,6 +243,22 @@ def test_runtime_pip_packages_include_matplotlib() -> None:
     assert "matplotlib" in _RUNTIME_PIP_PACKAGES
 
 
+def test_offline_bvd_figures_call_ensure_runtime_deps() -> None:
+    """Tick 517: offline rematerialize path must invoke ensure before Figs."""
+    root = Path(__file__).resolve().parents[1]
+    offline_cs = (root / "scripts" / "offline_bvd_case_study.py").read_text(
+        encoding="utf-8"
+    )
+    epi = (root / "scripts" / "epistemic_results.py").read_text(encoding="utf-8")
+    assert "ensure_icml_runtime_deps" in offline_cs
+    assert "Tick 517" in offline_cs
+    assert "ensure_icml_runtime_deps" in epi
+    assert "Tick 517" in epi
+    assert "test_maybe_figures_bootstraps_runtime_deps" in (
+        root / "tests" / "test_offline_case_study_steered.py"
+    ).read_text(encoding="utf-8")
+
+
 def test_ensure_deps_before_diamond_fetch_delegates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

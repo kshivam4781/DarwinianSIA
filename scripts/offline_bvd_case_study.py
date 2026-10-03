@@ -32,7 +32,10 @@ from epistemic_results import (  # noqa: E402
     resolve_h2_min_generation,
     summarize_run,
 )
-from icml_env_checks import icml_g3g4_live_shape  # noqa: E402
+from icml_env_checks import (  # noqa: E402
+    ensure_icml_runtime_deps,
+    icml_g3g4_live_shape,
+)
 from sia.config import Config  # noqa: E402
 from sia.context_manager import ContextManager  # noqa: E402
 from sia.evolution.cabs_bridge import load_mutation_bias  # noqa: E402
@@ -531,6 +534,16 @@ def _write_case_study_md(case: dict, compare: dict, path: Path) -> None:
 
 def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> list[str]:
     written: list[str] = []
+    # Tick 517: cold-boot rematerialize goes through this script, not G2/G3/G4
+    # preflight — so Tick 516's matplotlib entry in ``ensure_icml_runtime_deps``
+    # never ran. Bootstrap runtime deps here before the import attempt.
+    deps_ok, deps_detail = ensure_icml_runtime_deps(allow_install=True)
+    if not deps_ok:
+        print(
+            f"WARNING: ensure_icml_runtime_deps failed ({deps_detail}); "
+            "Figs 1–2 may be skipped if matplotlib is missing.",
+            file=sys.stderr,
+        )
     try:
         import matplotlib
 
@@ -539,6 +552,7 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
     except ImportError as exc:
         # Tick 515: cold boots often lack matplotlib; silent empty ``figures``
         # emptied offline_bvd_summary and broke committed_offline_bvd shape locks.
+        # Tick 517: ensure_icml_runtime_deps should have installed it; WARN if not.
         print(
             f"WARNING: matplotlib unavailable ({exc}); skipping Figs 1–2. "
             "Install matplotlib (pip install matplotlib) and re-run this script.",

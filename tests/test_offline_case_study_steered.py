@@ -82,6 +82,12 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
     }
     monkeypatch.setattr("offline_bvd_case_study.summarize_run", lambda _p: fake)
 
+    # Tick 517: figure path bootstraps runtime deps; keep unit test offline.
+    monkeypatch.setattr(
+        "offline_bvd_case_study.ensure_icml_runtime_deps",
+        lambda **_k: (True, "mocked"),
+    )
+
     captured: dict[str, object] = {}
 
     class _Ax:
@@ -157,6 +163,11 @@ def test_maybe_figures_warns_when_matplotlib_missing(tmp_path: Path, monkeypatch
 
     from offline_bvd_case_study import _maybe_figures
 
+    monkeypatch.setattr(
+        "offline_bvd_case_study.ensure_icml_runtime_deps",
+        lambda **_k: (True, "mocked ok"),
+    )
+
     real_import = builtins.__import__
 
     def _boom(name, *args, **kwargs):  # noqa: ANN001
@@ -175,6 +186,74 @@ def test_maybe_figures_warns_when_matplotlib_missing(tmp_path: Path, monkeypatch
     err = capsys.readouterr().err
     assert "matplotlib unavailable" in err
     assert "skipping Figs 1–2" in err
+
+
+def test_maybe_figures_bootstraps_runtime_deps(tmp_path: Path, monkeypatch):
+    """Tick 517: offline rematerialize calls ensure_icml_runtime_deps before Figs."""
+    import types
+    import sys
+
+    from offline_bvd_case_study import _maybe_figures
+
+    called: list[dict] = []
+
+    def _fake_ensure(*, allow_install: bool = True) -> tuple[bool, str]:
+        called.append({"allow_install": allow_install})
+        return True, "bootstrapped matplotlib"
+
+    monkeypatch.setattr("offline_bvd_case_study.ensure_icml_runtime_deps", _fake_ensure)
+    monkeypatch.setattr(
+        "offline_bvd_case_study.summarize_run",
+        lambda _p: {"learning_curve": {}, "h2": {}},
+    )
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+
+    class _Plt:
+        def subplots(self, *a, **k):  # noqa: ANN001, ARG002
+            class _Fig:
+                def tight_layout(self):
+                    return None
+
+                def savefig(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            class _Ax:
+                def plot(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def bar(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_title(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def grid(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def legend(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            return _Fig(), _Ax()
+
+        def close(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", _Plt())
+
+    _maybe_figures([], [], tmp_path / "figs")
+    assert called == [{"allow_install": True}]
 
 
 def test_offline_compare_brief_uses_preferred_share_not_in_bias():

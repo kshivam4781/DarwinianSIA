@@ -749,6 +749,23 @@ def compare_b_vs_d(b_runs: list[Path], d_runs: list[Path]) -> dict[str, Any]:
 
 def _maybe_write_figures(summary: dict[str, Any], out_dir: Path) -> list[str]:
     written: list[str] = []
+    # Tick 517: bootstrap matplotlib via ensure_icml_runtime_deps (parity with
+    # offline_bvd_case_study) so cold-boot figure paths do not WARN-skip.
+    try:
+        from icml_env_checks import ensure_icml_runtime_deps
+
+        deps_ok, deps_detail = ensure_icml_runtime_deps(allow_install=True)
+        if not deps_ok:
+            print(
+                f"WARNING: ensure_icml_runtime_deps failed ({deps_detail}); "
+                "figures may be skipped if matplotlib is missing.",
+                file=sys.stderr,
+            )
+    except Exception as exc:  # noqa: BLE001 — best-effort bootstrap
+        print(
+            f"WARNING: ensure_icml_runtime_deps unavailable ({exc})",
+            file=sys.stderr,
+        )
     try:
         import matplotlib
 
