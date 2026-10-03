@@ -1,5 +1,33 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T04:05Z — Tick 515 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-390c` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Separately, cold boot had **no** offline run dirs `1930–1944` (gitignored / VM-ephemeral) and matplotlib missing — rematerializing the pilot silently wrote `figures: []`, which breaks `committed_offline_bvd_matches_live_shape`. Highest leverage without paid spend / STATUS-peel churn: **rematerialize offline Bvd + regenerate Figs 1–2 + warn (not silent) when matplotlib is missing**.
+
+### What we did
+**Tick 515 — cold-boot offline Bvd rematerialize + matplotlib figure warn (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `390c`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Re-ran `scripts/offline_bvd_case_study.py` for seeds 11/22/33/44/55 → `SIA/runs/run_1930–1934` / `1940–1944`; metrics **unchanged** (PRIMARY/H5/H2 lock)
+3. Installed matplotlib; regenerated Figs 1–2; restored `docs/offline_bvd_summary.json` figures list + shape lock
+4. `_maybe_figures` / `_maybe_write_figures` now WARN on ImportError; `matplotlib` in `pyproject.toml` `[dev]`/`[paper]` + `.cursor/environment.json` install
+5. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 514) | After (Tick 515) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Offline run dirs on cold boot | missing (`1930–1944`) | **present** under `SIA/runs/` |
+| Figs 1–2 on rematerialize w/o matplotlib | silent `figures: []` (shape lock fail) | **WARN** + matplotlib in install; figures restored |
+| Diamond on cold boot | rematerialized (514) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T02:10Z — Tick 514 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

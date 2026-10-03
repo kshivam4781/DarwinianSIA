@@ -536,7 +536,14 @@ def _maybe_figures(b_runs: list[Path], d_runs: list[Path], out_dir: Path) -> lis
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-    except ImportError:
+    except ImportError as exc:
+        # Tick 515: cold boots often lack matplotlib; silent empty ``figures``
+        # emptied offline_bvd_summary and broke committed_offline_bvd shape locks.
+        print(
+            f"WARNING: matplotlib unavailable ({exc}); skipping Figs 1–2. "
+            "Install matplotlib (pip install matplotlib) and re-run this script.",
+            file=sys.stderr,
+        )
         return written
 
     out_dir.mkdir(parents=True, exist_ok=True)

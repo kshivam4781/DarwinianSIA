@@ -150,6 +150,33 @@ def test_offline_fig2_uses_primary_h2_field_not_memory(tmp_path: Path, monkeypat
     assert list(colors)[0] != list(colors)[1]
 
 
+def test_maybe_figures_warns_when_matplotlib_missing(tmp_path: Path, monkeypatch, capsys):
+    """Tick 515: missing matplotlib must WARN (not silent empty figures list)."""
+    import builtins
+    import sys
+
+    from offline_bvd_case_study import _maybe_figures
+
+    real_import = builtins.__import__
+
+    def _boom(name, *args, **kwargs):  # noqa: ANN001
+        if name == "matplotlib" or name.startswith("matplotlib."):
+            raise ImportError("matplotlib deliberately missing for Tick 515 test")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _boom)
+    # Drop any already-imported matplotlib so ImportError path is hit.
+    for key in list(sys.modules):
+        if key == "matplotlib" or key.startswith("matplotlib."):
+            monkeypatch.delitem(sys.modules, key, raising=False)
+
+    written = _maybe_figures([], [], tmp_path / "figs")
+    assert written == []
+    err = capsys.readouterr().err
+    assert "matplotlib unavailable" in err
+    assert "skipping Figs 1–2" in err
+
+
 def test_offline_compare_brief_uses_preferred_share_not_in_bias():
     """Tick 365: D_h2_share is preferred_share (MECHANISM), not pool membership."""
     from offline_bvd_case_study import _brief_h2_fields

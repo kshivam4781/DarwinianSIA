@@ -754,7 +754,13 @@ def _maybe_write_figures(summary: dict[str, Any], out_dir: Path) -> list[str]:
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-    except ImportError:
+    except ImportError as exc:
+        # Tick 515: do not silently drop Figs 1–2 on cold boots without matplotlib
+        print(
+            f"WARNING: matplotlib unavailable ({exc}); skipping figures. "
+            "Install matplotlib and re-run with --figures-dir.",
+            file=sys.stderr,
+        )
         return written
 
     out_dir.mkdir(parents=True, exist_ok=True)
