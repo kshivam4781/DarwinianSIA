@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T20:08Z — Tick 523 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-18e2` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 519–522 closed figure-path `/workspace/...` leaks, but durable G2 / steering-lift post-check details still embedded absolute `run_dir` / `belief_store` paths (`/workspace/SIA/runs/run_1957`) in committed `docs/gate2_report.*` + `docs/gate2_steering_lift_proof.json`. Highest leverage without paid spend / STATUS-peel churn: **repo-relative G2/lift-proof path details + rematerialize**.
+
+### What we did
+**Tick 523 — durable G2/lift-proof repo-relative path details (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `18e2`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Generalized `icml_env_checks.repo_relative_path` (figure name kept as alias); G2 `validate` / `write_gate2_report` / `write_steering_lift_proof` / cold-boot `refresh_steering_lift_proof_local_run_flag` now emit/sanitize repo-relative `SIA/runs/…` details
+3. Unit tests: path rewrite + belief_store detail + write/refresh proof sanitize + source locks; focused suite green (10/10)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); figures remain repo-relative
+5. Refreshed durable lift proof `local_run_present=false` / `tick=523` + sanitized gate2 report post paths (no new dry-run; Tick 514 VM-ephemeral-safe)
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 522) | After (Tick 523) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Lift-proof `run_dir` / `belief_store` | absolute `/workspace/SIA/runs/…` | **repo-relative** `SIA/runs/…` |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (522) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T18:16Z — Tick 522 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

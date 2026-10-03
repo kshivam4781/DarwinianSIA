@@ -1892,3 +1892,155 @@ def test_write_gate2_report_refreshes_proof_with_foreign_gen3_rows(
     payload = json.loads((docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8"))
     assert payload["run_id"] == 1956
     assert payload["source"] == "gate2_dry_run_write"
+
+
+def test_repo_relative_detail_rewrites_absolute_in_repo_paths(tmp_path: Path) -> None:
+    """Tick 523: absolute in-repo paths become repo-relative; prose unchanged."""
+    import run_g2_smoke as mod
+
+    root = Path(__file__).resolve().parents[1]
+    abs_run = root / "SIA" / "runs" / "run_1957"
+    got = mod._repo_relative_detail(abs_run, repo_root=root)
+    assert got == "SIA/runs/run_1957"
+    assert not got.startswith("/")
+    assert mod._repo_relative_detail("present", repo_root=root) == "present"
+    assert (
+        mod._repo_relative_detail("best=0.2440 > min=0", repo_root=root)
+        == "best=0.2440 > min=0"
+    )
+    outside = tmp_path / "elsewhere" / "run_x"
+    outside.parent.mkdir(parents=True)
+    assert mod._repo_relative_detail(outside, repo_root=root) == str(outside)
+
+
+def test_validate_g2_belief_store_detail_repo_relative(tmp_path: Path) -> None:
+    """Tick 523: belief_store post detail is repo-relative when under REPO_ROOT."""
+    import run_g2_smoke as mod
+
+    # Place run under real repo so relative_to(REPO_ROOT) succeeds.
+    run_dir = mod.REPO_ROOT / "SIA" / "runs" / "run_1958_tick523_unit"
+    store = run_dir / "belief_store"
+    store.mkdir(parents=True, exist_ok=True)
+    try:
+        (store / "epistemic_value.jsonl").write_text(
+            json.dumps({"generation": 1, "epistemic_value": 1.0}) + "\n",
+            encoding="utf-8",
+        )
+        (store / "contradictions.json").write_text("[]\n", encoding="utf-8")
+        (store / "beliefs.json").write_text("[]\n", encoding="utf-8")
+        _write_fair_gen2_agent(run_dir)
+        checks = {c.name: c for c in validate_g2_artifacts(run_dir)}
+        assert checks["belief_store"].ok
+        detail = checks["belief_store"].detail
+        assert detail == "SIA/runs/run_1958_tick523_unit/belief_store"
+        assert "/workspace" not in detail
+    finally:
+        import shutil
+
+        shutil.rmtree(run_dir, ignore_errors=True)
+
+
+def test_write_steering_lift_proof_normalizes_absolute_post_paths(
+    tmp_path: Path,
+) -> None:
+    """Tick 523: durable lift proof rewrites absolute run_dir/belief_store details."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    root = Path(__file__).resolve().parents[1]
+    abs_run = str(root / "SIA" / "runs" / "run_1957")
+    abs_store = str(root / "SIA" / "runs" / "run_1957" / "belief_store")
+    post = [
+        {"name": "run_dir", "ok": True, "detail": abs_run},
+        {"name": "belief_store", "ok": True, "detail": abs_store},
+        {
+            "name": "delay_all_feedback_skip",
+            "ok": True,
+            "detail": "gen2 n=2 feedback prompts lack agenda",
+        },
+        {
+            "name": "delay_all_technique_seeds_skip",
+            "ok": True,
+            "detail": "gen2 n=2 DNA technique_seeds empty",
+        },
+        {
+            "name": "steering_applied_gen3",
+            "ok": True,
+            "detail": "Condition D n=1 gen≥3 steering evidenced",
+        },
+        {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2440 > min=0"},
+    ]
+    path = mod.write_steering_lift_proof(
+        run_id=1957,
+        post=post,
+        source="unit_tick523",
+        repo_root=tmp_path,
+        tick=523,
+    )
+    data = json.loads(path.read_text(encoding="utf-8"))
+    by_name = {row["name"]: row["detail"] for row in data["post"]}
+    assert by_name["run_dir"] == "SIA/runs/run_1957"
+    assert by_name["belief_store"] == "SIA/runs/run_1957/belief_store"
+    assert "/workspace" not in by_name["run_dir"]
+    assert by_name["nonzero_fitness"] == "best=0.2440 > min=0"
+
+
+def test_refresh_steering_lift_proof_rewrites_absolute_paths(tmp_path: Path) -> None:
+    """Tick 523: cold-boot refresh sanitizes absolute paths without a new dry-run."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    root = Path(__file__).resolve().parents[1]
+    abs_run = str(root / "SIA" / "runs" / "run_1957")
+    payload = {
+        "timestamp": "2026-10-03T14:03:47Z",
+        "tick": 522,
+        "source": "gate2_dry_run_write",
+        "mode": "dry-run",
+        "run_id": 1957,
+        "max_gen": 3,
+        "ok": True,
+        "detail": "delay-all skip + gen≥3 lift",
+        "post": [
+            {"name": "run_dir", "ok": True, "detail": abs_run},
+            {
+                "name": "belief_store",
+                "ok": True,
+                "detail": abs_run + "/belief_store",
+            },
+            {
+                "name": "delay_all_feedback_skip",
+                "ok": True,
+                "detail": "gen2 n=2 feedback prompts lack agenda",
+            },
+            {
+                "name": "delay_all_technique_seeds_skip",
+                "ok": True,
+                "detail": "gen2 n=2 DNA technique_seeds empty",
+            },
+            {
+                "name": "steering_applied_gen3",
+                "ok": True,
+                "detail": "Condition D n=1 gen≥3 steering evidenced",
+            },
+            {"name": "nonzero_fitness", "ok": True, "detail": "best=0.2440 > min=0"},
+        ],
+        "required_checks": list(mod.STEERING_LIFT_REQUIRED_CHECKS),
+        "local_run_present": True,
+        "vm_ephemeral_safe": True,
+    }
+    (docs / mod.STEERING_LIFT_PROOF_NAME).write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+    )
+    ok, detail = mod.refresh_steering_lift_proof_local_run_flag(tmp_path, tick=523)
+    assert ok is True, detail
+    data = json.loads(
+        (docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8")
+    )
+    assert data["tick"] == 523
+    assert data["local_run_present"] is False
+    by_name = {row["name"]: row["detail"] for row in data["post"]}
+    assert by_name["run_dir"] == "SIA/runs/run_1957"
+    assert "/workspace" not in json.dumps(data["post"])

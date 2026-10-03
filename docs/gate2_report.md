@@ -44,8 +44,8 @@
 
 | Check | OK | Detail |
 |-------|----|--------|
-| `run_dir` | yes | /workspace/SIA/runs/run_1957 |
-| `belief_store` | yes | /workspace/SIA/runs/run_1957/belief_store |
+| `run_dir` | yes | SIA/runs/run_1957 |
+| `belief_store` | yes | SIA/runs/run_1957/belief_store |
 | `epistemic_value_jsonl` | yes | present |
 | `cabs_json` | yes | contradictions/beliefs present |
 | `scoped_mutation_bias` | yes | fields=['memory', 'planning_style', 'tool_strategy'] |

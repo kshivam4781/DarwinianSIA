@@ -107,12 +107,12 @@
     {
       "name": "run_dir",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1957"
+      "detail": "SIA/runs/run_1957"
     },
     {
       "name": "belief_store",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1957/belief_store"
+      "detail": "SIA/runs/run_1957/belief_store"
     },
     {
       "name": "epistemic_value_jsonl",

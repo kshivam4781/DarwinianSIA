@@ -107,6 +107,7 @@ from icml_env_checks import (  # noqa: E402
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    repo_relative_path,
     write_icml_tip_status,
 )
 
@@ -203,7 +204,37 @@ def steering_lift_proof_path(repo_root: Path | None = None) -> Path:
     return root / "docs" / STEERING_LIFT_PROOF_NAME
 
 
-def _post_as_check_dicts(post) -> list[dict]:
+def _repo_relative_detail(detail: str | Path, *, repo_root: Path | None = None) -> str:
+    """Tick 523: store portable paths in durable G2 / lift-proof details.
+
+    Absolute ``/workspace/...`` details broke cross-VM portability of
+    ``docs/gate2_report.*`` and ``docs/gate2_steering_lift_proof.json`` the same
+    way bare ``str(path)`` leaked into Figs before Tick 519–522. Non-path
+    details (e.g. ``present``, fitness strings) round-trip unchanged.
+
+    Prefer ``repo_root`` when the path lives under it (unit tests / alt
+    checkouts); otherwise fall back to ``REPO_ROOT`` so a durable proof
+    written under a tmp ``docs/`` root still strips absolute in-repo paths.
+    """
+    text = str(detail or "")
+    if not text:
+        return text
+    # Only rewrite absolute path-looking details (or Path objects).
+    p = Path(detail) if isinstance(detail, Path) else Path(text)
+    if not (isinstance(detail, Path) or p.is_absolute() or text.startswith(("/", "\\"))):
+        return text
+    resolved = p.resolve()
+    for root in (repo_root, REPO_ROOT):
+        if root is None:
+            continue
+        try:
+            return str(resolved.relative_to(Path(root).resolve()))
+        except ValueError:
+            continue
+    return str(p)
+
+
+def _post_as_check_dicts(post, *, repo_root: Path | None = None) -> list[dict]:
     """Normalize post checks to ``[{name, ok, detail}, ...]``.
 
     Tick 512: duck-type foreign ``CheckResult`` dataclasses (e.g.
@@ -211,28 +242,40 @@ def _post_as_check_dicts(post) -> list[dict]:
     ``isinstance(..., run_g2_smoke.CheckResult)`` dropped gen≥3 lift rows, so
     ``post_checks_satisfy_steering_lift`` returned False after a PASS dry-run
     and ``write_gate2_report`` never refreshed ``gate2_steering_lift_proof.json``.
+
+    Tick 523: normalize absolute in-repo path details to repo-relative form so
+    durable JSON does not embed ``/workspace/...``.
     """
     if post is None:
         return []
     out: list[dict] = []
+    root = repo_root if repo_root is not None else REPO_ROOT
 
     def _one(item) -> dict | None:
         if isinstance(item, dict) and item.get("name"):
             return {
                 "name": str(item["name"]),
                 "ok": bool(item.get("ok")),
-                "detail": str(item.get("detail") or ""),
+                "detail": _repo_relative_detail(
+                    str(item.get("detail") or ""), repo_root=root
+                ),
             }
         # Local + foreign CheckResult dataclasses / duck-typed rows.
         name = getattr(item, "name", None)
         if name is None:
             return None
         if isinstance(item, CheckResult):
-            return asdict(item)
+            row = asdict(item)
+            row["detail"] = _repo_relative_detail(
+                str(row.get("detail") or ""), repo_root=root
+            )
+            return row
         return {
             "name": str(name),
             "ok": bool(getattr(item, "ok", False)),
-            "detail": str(getattr(item, "detail", "") or ""),
+            "detail": _repo_relative_detail(
+                str(getattr(item, "detail", "") or ""), repo_root=root
+            ),
         }
 
     if isinstance(post, dict):
@@ -243,7 +286,9 @@ def _post_as_check_dicts(post) -> list[dict]:
                     {
                         "name": str(name),
                         "ok": bool(val.get("ok")),
-                        "detail": str(val.get("detail") or ""),
+                        "detail": _repo_relative_detail(
+                            str(val.get("detail") or ""), repo_root=root
+                        ),
                     }
                 )
             else:
@@ -355,6 +400,8 @@ def write_steering_lift_proof(
     path.parent.mkdir(parents=True, exist_ok=True)
     rid = int(run_id)
     local_present = local_steering_lift_run_present(rid, root)
+    # Tick 523: persist repo-relative path details (no /workspace/... leaks).
+    post_dicts = _post_as_check_dicts(post, repo_root=root)
     payload = {
         "timestamp": timestamp or _utc_now(),
         "tick": _resolve_steering_lift_proof_tick(root, tick),
@@ -364,7 +411,7 @@ def write_steering_lift_proof(
         "max_gen": 3,
         "ok": True,
         "detail": detail,
-        "post": _post_as_check_dicts(post),
+        "post": post_dicts,
         "required_checks": list(STEERING_LIFT_REQUIRED_CHECKS),
         # Tick 514: honest cold-boot flag — JSON proof is authoritative.
         "local_run_present": local_present,
@@ -414,6 +461,8 @@ def refresh_steering_lift_proof_local_run_flag(
     data["vm_ephemeral_safe"] = True
     data["local_run_flag_refreshed_at"] = _utc_now()
     data["tick"] = _resolve_steering_lift_proof_tick(root, tick)
+    # Tick 523: rewrite absolute path details on cold-boot refresh (no dry-run).
+    data["post"] = _post_as_check_dicts(data.get("post"), repo_root=root)
     # Keep prior detail; annotate when run dir is gone on this VM.
     if not local_present:
         data["detail"] = (
@@ -556,7 +605,13 @@ def ensure_g2_steering_lift_proof(
         run_dir = _run_dir_for(rid)
         if run_dir is None:
             continue
-        post = [CheckResult("run_dir", True, str(run_dir))]
+        post = [
+            CheckResult(
+                "run_dir",
+                True,
+                _repo_relative_detail(run_dir, repo_root=root),
+            )
+        ]
         post.extend(validate_g2_artifacts(run_dir, require_steering_lift=True))
         post_ok, post_detail = post_checks_satisfy_steering_lift(post)
         if post_ok:
@@ -1003,7 +1058,9 @@ def validate_g2_artifacts(
         CheckResult(
             "belief_store",
             store.is_dir(),
-            str(store) if store.is_dir() else "missing belief_store/",
+            _repo_relative_detail(store)
+            if store.is_dir()
+            else "missing belief_store/",
         )
     )
     epi = store / "epistemic_value.jsonl"
@@ -1307,6 +1364,8 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
             lines.append(f"- {n}")
         lines.append("")
     if post is not None:
+        # Tick 523: durable MD/JSON must not embed absolute /workspace/... paths.
+        post_dicts = _post_as_check_dicts(post)
         lines.extend(
             [
                 "## Post-run artifact validation",
@@ -1315,10 +1374,15 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
                 "|-------|----|--------|",
             ]
         )
-        for c in post:
-            lines.append(f"| `{c.name}` | {'yes' if c.ok else 'NO'} | {c.detail} |")
+        for c in post_dicts:
+            lines.append(
+                f"| `{c['name']}` | {'yes' if c['ok'] else 'NO'} | {c['detail']} |"
+            )
         lines.append("")
-        g2_pass = all(c.ok for c in post) and report.mode in {"dry-run", "live"}
+        g2_pass = all(c["ok"] for c in post_dicts) and report.mode in {
+            "dry-run",
+            "live",
+        }
         if report.mode == "live" and g2_pass:
             lines.append("**G2 live status:** PASS")
         elif report.mode == "dry-run" and g2_pass:
@@ -1327,6 +1391,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
             lines.append("**G2 status:** FAIL / incomplete")
         lines.append("")
     else:
+        post_dicts = []
         lines.append(
             "**G2 live status:** NOT RUN this tick"
             if report.mode == "preflight"
@@ -1349,7 +1414,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         # Tick 405: only *live* post becomes prior_live_post. Dry-run must not
         # poison pipeline G2→G3 trust / committed prior_live evidence
         # (Tick 384–389).
-        prior_live_post = [asdict(c) for c in post]
+        prior_live_post = post_dicts
     elif report.mode == "dry-run":
         # Preserve a real live prior if the previous sidecar was live or a
         # preflight that already carried prior_live_post. Scrub dry-run→dry-run
@@ -1358,20 +1423,20 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         if prev_mode == "live":
             preserved, _src = _live_post_from_gate2_sidecar(existing)
             if preserved:
-                prior_live_post = [asdict(c) for c in preserved]
+                prior_live_post = _post_as_check_dicts(preserved)
         elif prev_mode != "dry-run" and isinstance(
             existing.get("prior_live_post"), (list, dict)
         ):
-            prior_live_post = existing.get("prior_live_post")
+            prior_live_post = _post_as_check_dicts(existing.get("prior_live_post"))
         # else: leave None (do not carry dry-run post as prior_live)
     else:
         preserved, _src = _live_post_from_gate2_sidecar(existing)
         if preserved:
-            prior_live_post = [asdict(c) for c in preserved]
+            prior_live_post = _post_as_check_dicts(preserved)
         elif isinstance(existing.get("prior_live_post"), list):
-            prior_live_post = existing.get("prior_live_post")
+            prior_live_post = _post_as_check_dicts(existing.get("prior_live_post"))
         elif isinstance(existing.get("prior_live_post"), dict):
-            prior_live_post = existing.get("prior_live_post")
+            prior_live_post = _post_as_check_dicts(existing.get("prior_live_post"))
     payload = {
         "timestamp": report.timestamp,
         "mode": report.mode,
@@ -1381,7 +1446,7 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         "blockers": report.blockers,
         "checks": [asdict(c) for c in report.checks],
         "command": report.command,
-        "post": [asdict(c) for c in (post or [])],
+        "post": post_dicts,
     }
     if prior_live_post is not None:
         payload["prior_live_post"] = prior_live_post
@@ -1766,7 +1831,13 @@ def main(argv: list[str] | None = None) -> int:
     if run_dir is None:
         post.append(CheckResult("run_dir", False, f"run_{run_id} not found after sia"))
     else:
-        post.append(CheckResult("run_dir", True, str(run_dir)))
+        post.append(
+            CheckResult(
+                "run_dir",
+                True,
+                _repo_relative_detail(run_dir),
+            )
+        )
         post.extend(
             validate_g2_artifacts(
                 run_dir, require_steering_lift=require_steering_lift

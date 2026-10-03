@@ -266,8 +266,9 @@ def test_live_g4_figures_call_ensure_runtime_deps() -> None:
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     assert "def write_live_bvd_figures" in g4
     assert "Tick 518" in g4
-    assert "def repo_relative_figure_path" in env
-    assert "Tick 522" in env
+    assert "def repo_relative_path" in env
+    assert "repo_relative_figure_path = repo_relative_path" in env
+    assert "Tick 522" in env or "Tick 523" in env
     assert "def _repo_relative_figure_path" not in g4
     assert "repo_relative_figure_path" in g4
     assert "Tick 519" in g4
@@ -288,11 +289,12 @@ def test_epistemic_results_figures_repo_relative_paths() -> None:
     root = Path(__file__).resolve().parents[1]
     epi = (root / "scripts" / "epistemic_results.py").read_text(encoding="utf-8")
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
-    assert "def repo_relative_figure_path" in env
-    assert "Tick 522" in env
+    assert "def repo_relative_path" in env
+    assert "repo_relative_figure_path = repo_relative_path" in env
+    assert "Tick 522" in env or "Tick 523" in env
     assert "def _repo_relative_figure_path" not in epi
     assert "repo_relative_figure_path" in epi
-    assert "Tick 520" in epi or "Tick 522" in epi
+    assert "Tick 520" in epi or "Tick 522" in epi or "Tick 523" in epi
     fn_idx = epi.find("def _maybe_write_figures")
     next_def = epi.find("\ndef ", fn_idx + 1)
     body = epi[fn_idx:next_def]
@@ -311,11 +313,12 @@ def test_offline_bvd_figures_repo_relative_paths() -> None:
         encoding="utf-8"
     )
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
-    assert "def repo_relative_figure_path" in env
-    assert "Tick 522" in env
+    assert "def repo_relative_path" in env
+    assert "repo_relative_figure_path = repo_relative_path" in env
+    assert "Tick 522" in env or "Tick 523" in env
     assert "def _repo_relative_figure_path" not in offline_cs
     assert "repo_relative_figure_path" in offline_cs
-    assert "Tick 521" in offline_cs or "Tick 522" in offline_cs
+    assert "Tick 521" in offline_cs or "Tick 522" in offline_cs or "Tick 523" in offline_cs
     fn_idx = offline_cs.find("def _maybe_figures")
     next_def = offline_cs.find("\ndef ", fn_idx + 1)
     body = offline_cs[fn_idx:next_def]
@@ -330,17 +333,36 @@ def test_offline_bvd_figures_repo_relative_paths() -> None:
 
 def test_repo_relative_figure_path_shared_helper(tmp_path: Path) -> None:
     """Tick 522: canonical helper is in icml_env_checks (not per-writer copies)."""
-    from icml_env_checks import repo_relative_figure_path
+    from icml_env_checks import repo_relative_figure_path, repo_relative_path
 
     root = Path(__file__).resolve().parents[1]
     inside = root / "docs" / "figures" / "fig1_learning_curves.png"
     assert repo_relative_figure_path(inside, repo_root=root) == (
         "docs/figures/fig1_learning_curves.png"
     )
+    # Tick 523: general alias for non-figure durable paths (G2 / lift proof).
+    assert repo_relative_path is repo_relative_figure_path
+    assert repo_relative_path(inside, repo_root=root) == (
+        "docs/figures/fig1_learning_curves.png"
+    )
     outside = tmp_path / "elsewhere" / "fig.png"
     outside.parent.mkdir(parents=True)
     outside.write_bytes(b"x")
     assert repo_relative_figure_path(outside, repo_root=root) == str(outside)
+
+
+def test_repo_relative_path_alias_source_lock() -> None:
+    """Tick 523: repo_relative_path is the canonical name; figure name is alias."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    g2 = (root / "scripts" / "run_g2_smoke.py").read_text(encoding="utf-8")
+    assert "def repo_relative_path" in env
+    assert "repo_relative_figure_path = repo_relative_path" in env
+    assert "Tick 523" in env
+    assert "repo_relative_path" in g2
+    assert "_repo_relative_detail" in g2
+    assert "Tick 523" in g2
+
 
 def test_ensure_deps_before_diamond_fetch_delegates(
     monkeypatch: pytest.MonkeyPatch,

@@ -868,10 +868,10 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     return ensure_icml_runtime_deps(allow_install=allow_install)
 
 
-def repo_relative_figure_path(
+def repo_relative_path(
     path: Path | str, *, repo_root: Path | None = None
 ) -> str:
-    """Return a portable repo-relative path for paper-pack figure lists.
+    """Return a portable repo-relative path for durable ICML artifacts.
 
     Tick 522: Tick 519 (live G4), Tick 520 (``epistemic_results``), and Tick 521
     (offline Bvd) each shipped a private ``_repo_relative_figure_path`` copy.
@@ -879,6 +879,10 @@ def repo_relative_figure_path(
     while source locks only cover that file). Canonicalize here so offline /
     live / epistemic Figs all emit ``docs/figures/figN_….png`` when under the
     repo, and fall back to ``str(path)`` outside the repo (tmp / absolute outs).
+
+    Tick 523: same helper covers durable G2 / steering-lift post-check details
+    (``run_dir``, ``belief_store``) so ``docs/gate2_*.json`` do not embed
+    absolute ``/workspace/...`` paths across cold-boot VMs.
     """
     root = (repo_root or _REPO_ROOT).resolve()
     p = Path(path)
@@ -886,6 +890,10 @@ def repo_relative_figure_path(
         return str(p.resolve().relative_to(root))
     except ValueError:
         return str(p)
+
+
+# Tick 522 figure writers import this name; keep as alias of the general helper.
+repo_relative_figure_path = repo_relative_path
 
 
 def estimate_usd_from_tokens(data: dict) -> float | None:

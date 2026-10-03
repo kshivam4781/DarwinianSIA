@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 522: `repo_relative_figure_path` consolidated into `icml_env_checks` (single source for Tick 519–521 trilogy writers); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 523: durable G2/lift-proof `run_dir`/`belief_store` details are repo-relative (`SIA/runs/…`); `repo_relative_path` generalizes Tick 522 figure helper; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -331,6 +331,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 520 epistemic_results figures repo-relative paths — `_repo_relative_figure_path` emits `docs/figures/figN_….png` (Tick 302/519 parity; no absolute `/workspace/…` in `--figures-dir` JSON summaries)
 - [x] Tick 521 offline_bvd figures repo-relative helper — named `_repo_relative_figure_path` + in-repo absolute-path unit test (Tick 302/519/520 trilogy)
 - [x] Tick 522 shared `repo_relative_figure_path` — canonical helper in `icml_env_checks`; live G4 / epistemic_results / offline_bvd import one source (closes trilogy drift)
+- [x] Tick 523 durable G2/lift-proof repo-relative path details — `repo_relative_path` + `_repo_relative_detail` emit `SIA/runs/…` (no absolute `/workspace/…` in `gate2_report` / `gate2_steering_lift_proof`)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

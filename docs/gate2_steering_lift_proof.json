@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-03T14:03:47Z",
-  "tick": 522,
+  "tick": 523,
   "source": "gate2_dry_run_write",
   "mode": "dry-run",
   "run_id": 1957,
@@ -11,12 +11,12 @@
     {
       "name": "run_dir",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1957"
+      "detail": "SIA/runs/run_1957"
     },
     {
       "name": "belief_store",
       "ok": true,
-      "detail": "/workspace/SIA/runs/run_1957/belief_store"
+      "detail": "SIA/runs/run_1957/belief_store"
     },
     {
       "name": "epistemic_value_jsonl",
@@ -67,5 +67,5 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-03T18:17:44Z"
+  "local_run_flag_refreshed_at": "2026-10-03T20:08:14Z"
 }
