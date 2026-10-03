@@ -364,6 +364,84 @@ def test_repo_relative_path_alias_source_lock() -> None:
     assert "Tick 523" in g2
 
 
+def test_sanitize_repo_paths_in_text_strips_workspace_prefix(tmp_path: Path) -> None:
+    """Tick 524: embedded absolute in-repo prefixes become repo-relative."""
+    from icml_env_checks import sanitize_repo_paths_in_text
+
+    root = tmp_path / "repo"
+    (root / "SIA").mkdir(parents=True)
+    abs_sia = str((root / "SIA").resolve())
+    raw = (
+        f"uv available on PATH; sia importable via PYTHONPATH={abs_sia}; "
+        f"materialized diamond from CSV → ['{abs_sia}/sia/tasks/gpqa']"
+    )
+    cleaned = sanitize_repo_paths_in_text(raw, repo_root=root)
+    assert "/workspace" not in cleaned
+    assert abs_sia not in cleaned
+    assert "PYTHONPATH=SIA" in cleaned
+    assert "SIA/sia/tasks/gpqa" in cleaned
+
+
+def test_ensure_sia_on_pythonpath_repo_relative_detail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 524: runtime_deps PYTHONPATH detail is repo-relative (not /workspace)."""
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    sys.modules.pop("sia", None)
+    ok, detail = ensure_sia_on_pythonpath()
+    assert ok is True
+    assert "sia importable via PYTHONPATH=SIA" in detail
+    assert "/workspace" not in detail
+    # Env still uses absolute path for imports; only the durable detail is relative.
+    assert "SIA" in (os.environ.get("PYTHONPATH") or "")
+
+
+def test_ensure_runtime_deps_detail_repo_relative(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 524: ensure_icml_runtime_deps durable detail has no absolute repo paths."""
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_uv_on_path",
+        lambda *, allow_install=True: (True, "uv available on PATH"),
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_sia_on_pythonpath",
+        lambda: (True, "sia importable via PYTHONPATH=SIA"),
+    )
+    monkeypatch.setattr(
+        "icml_env_checks._module_importable",
+        lambda name: name in {"huggingface_hub", "pydantic_ai", "matplotlib"},
+    )
+    monkeypatch.setattr(
+        "icml_env_checks._expose_user_site_on_pythonpath",
+        lambda *_a, **_k: "/home/ubuntu/.local/lib/python3.12/site-packages",
+    )
+    ok, detail = ensure_icml_runtime_deps(allow_install=True)
+    assert ok is True
+    assert "uv available on PATH" in detail
+    assert "PYTHONPATH=SIA" in detail
+    assert "user site on PYTHONPATH" in detail
+    assert "/workspace" not in detail
+    assert "/home/ubuntu" not in detail
+
+
+def test_preflight_runtime_deps_repo_relative_source_lock() -> None:
+    """Tick 524: sanitize + diamond materialize + uv PATH wording are locked."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    prep = (root / "scripts" / "prepare_gpqa_diamond.py").read_text(encoding="utf-8")
+    assert "def sanitize_repo_paths_in_text" in env
+    assert "Tick 524" in env
+    assert 'return True, "uv available on PATH"' in env
+    assert 'notes.append("user site on PYTHONPATH")' in env
+    assert "repo_relative_path" in prep
+    assert "Tick 524" in prep
+    assert 'wrote.append(str(task_dir))' not in prep
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_sanitize_repo_paths_in_text_strips_workspace_prefix" in tests
+    assert "test_ensure_runtime_deps_detail_repo_relative" in tests
+
+
 def test_ensure_deps_before_diamond_fetch_delegates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -427,7 +505,8 @@ def test_uv_pip_install_targets_user_site(monkeypatch: pytest.MonkeyPatch, tmp_p
     monkeypatch.setattr("icml_env_checks.subprocess.run", _run)
     ok, detail = _uv_pip_install("huggingface_hub")
     assert ok is True
-    assert str(target) in detail
+    assert "uv pip installed huggingface_hub" in detail
+    assert "user site" in detail
     assert calls, "uv pip should be invoked"
     cmd = calls[0]
     assert cmd[0] == "/tmp/fake-uv"

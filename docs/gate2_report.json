@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-03T00:04:13Z",
-  "mode": "dry-run",
-  "run_id": 1957,
+  "timestamp": "2026-10-03T22:18:09Z",
+  "mode": "preflight",
+  "run_id": 1850,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -46,17 +46,17 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1957 unused"
+      "detail": "run_1850 unused"
     },
     {
       "name": "per_run_venv",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path)"
+      "detail": "uv available on PATH (SIA per-run venv path)"
     },
     {
       "name": "runtime_deps",
       "ok": true,
-      "detail": "uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)"
+      "detail": "uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH"
     },
     {
       "name": "nebius_meta_profile",
@@ -71,7 +71,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 512 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 523 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "command": [
@@ -89,9 +89,9 @@
     "--elite_count",
     "1",
     "--max_gen",
-    "3",
+    "2",
     "--run_id",
-    "1957",
+    "1850",
     "--eval_subset",
     "5",
     "--no-web",
@@ -103,56 +103,5 @@
     "--target-agent-profile",
     "kimi-nebius-target"
   ],
-  "post": [
-    {
-      "name": "run_dir",
-      "ok": true,
-      "detail": "SIA/runs/run_1957"
-    },
-    {
-      "name": "belief_store",
-      "ok": true,
-      "detail": "SIA/runs/run_1957/belief_store"
-    },
-    {
-      "name": "epistemic_value_jsonl",
-      "ok": true,
-      "detail": "present"
-    },
-    {
-      "name": "cabs_json",
-      "ok": true,
-      "detail": "contradictions/beliefs present"
-    },
-    {
-      "name": "scoped_mutation_bias",
-      "ok": true,
-      "detail": "fields=['memory', 'planning_style', 'tool_strategy']"
-    },
-    {
-      "name": "delay_all_feedback_skip",
-      "ok": true,
-      "detail": "gen2 n=2 feedback prompts lack 'Contradiction-Aware Research Agenda' (delay-all)"
-    },
-    {
-      "name": "delay_all_technique_seeds_skip",
-      "ok": true,
-      "detail": "gen2 n=2 DNA technique_seeds empty (delay-all)"
-    },
-    {
-      "name": "steering_applied_run_1957",
-      "ok": true,
-      "detail": "gen3 n=2 agenda in ['agent_0', 'agent_1'] (delay-all lifted)"
-    },
-    {
-      "name": "steering_applied_gen3",
-      "ok": true,
-      "detail": "Condition D n=1 gen\u22653 steering evidenced"
-    },
-    {
-      "name": "nonzero_fitness",
-      "ok": true,
-      "detail": "best=0.2440 > min=0"
-    }
-  ]
+  "post": []
 }

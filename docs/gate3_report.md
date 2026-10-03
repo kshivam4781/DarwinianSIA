@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-02T14:21:19Z
+**Timestamp:** 2026-10-03T22:18:16Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -38,13 +38,14 @@
 | `run_ids_free` | yes | all planned run IDs unused |
 | `sequential_only` | yes | 1 seed pair(s); runner executes B then D serially (no parallel GPQA) |
 | `seed_count` | yes | 1 seed(s) (G3 pilot shape) |
-| `per_run_venv` | yes | uv available at /home/ubuntu/.local/bin/uv (SIA per-run venv path) |
-| `runtime_deps` | yes | uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages) |
+| `per_run_venv` | yes | uv available on PATH (SIA per-run venv path) |
+| `runtime_deps` | yes | uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 507 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `tip_ok_for_live` | yes | local Tick 523 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `g2_steering_lift` | yes | durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness |
 
 ### Planned seed pairs
 
@@ -64,14 +65,15 @@
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- runtime deps before diamond: uv available at /home/ubuntu/.local/bin/uv; sia importable via PYTHONPATH=/workspace/SIA; huggingface_hub + pydantic_ai already importable; user site on PYTHONPATH (/home/ubuntu/.local/lib/python3.12/site-packages)
-- materialized diamond from CSV → ['/workspace/SIA/sia/tasks/gpqa', '/workspace/sia-upstream/sia/tasks/gpqa']
+- Tick 511: G3 steering-lift proof OK — durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness
+- Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv
+- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 
 **Live G3 status:** NOT RUN this tick
 
 ## Next
 
-1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`).
+1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`) and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).
 2. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 3. Budget-check, then:
    `python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`

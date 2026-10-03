@@ -1,5 +1,35 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T22:20Z — Tick 524 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-48c9` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 523 closed durable G2/lift-proof `run_dir`/`belief_store` absolute paths, but preflight `runtime_deps` details and diamond materialize notes still embedded absolute `/workspace/SIA…` (and host uv/user-site paths) into committed `docs/gate2/3/4_report.*`. Highest leverage without paid spend / STATUS-peel churn: **repo-relative preflight runtime_deps + diamond notes + rematerialize**.
+
+### What we did
+**Tick 524 — preflight runtime_deps / diamond notes repo-relative (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `48c9`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `sanitize_repo_paths_in_text`; moved `repo_relative_path` earlier; `ensure_sia_on_pythonpath` emits `PYTHONPATH=SIA`; `ensure_icml_runtime_deps` / uv / user-site / uv-pip details omit host-absolute paths; `materialize_from_rows` returns repo-relative task dirs
+3. Unit tests: sanitize + sia detail + runtime_deps detail + source lock + uv-pip wording; focused suite green (7/7 + prior path locks)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); figures remain repo-relative
+5. Refreshed durable lift proof `local_run_present=false` / `tick=524` + G2/G3/G4 preflight reports (no `/workspace` in `runtime_deps`)
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 523) | After (Tick 524) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Gate `runtime_deps` detail | absolute `PYTHONPATH=/workspace/SIA` (+ host uv/user-site) | **repo-relative** `PYTHONPATH=SIA`; uv/user-site path-free |
+| Diamond materialize notes | absolute `/workspace/SIA/sia/tasks/gpqa` | **repo-relative** `SIA/sia/tasks/gpqa` |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (523) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T20:08Z — Tick 523 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

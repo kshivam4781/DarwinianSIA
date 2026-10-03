@@ -457,6 +457,79 @@ def probe_icml_meta_profile(profile: str | None = None) -> tuple[bool, str]:
     return True, f"{name} → {provider} / {agent_impl} ({model or 'model?'})"
 
 
+def repo_relative_path(
+    path: Path | str, *, repo_root: Path | None = None
+) -> str:
+    """Return a portable repo-relative path for durable ICML artifacts.
+
+    Tick 522: Tick 519 (live G4), Tick 520 (``epistemic_results``), and Tick 521
+    (offline Bvd) each shipped a private ``_repo_relative_figure_path`` copy.
+    Three identical helpers can drift (one writer regresses to bare ``str(path)``
+    while source locks only cover that file). Canonicalize here so offline /
+    live / epistemic Figs all emit ``docs/figures/figN_….png`` when under the
+    repo, and fall back to ``str(path)`` outside the repo (tmp / absolute outs).
+
+    Tick 523: same helper covers durable G2 / steering-lift post-check details
+    (``run_dir``, ``belief_store``) so ``docs/gate2_*.json`` do not embed
+    absolute ``/workspace/...`` paths across cold-boot VMs.
+
+    Tick 524: also used by ``sanitize_repo_paths_in_text`` / diamond materialize
+    / ``ensure_sia_on_pythonpath`` so preflight ``runtime_deps`` + fetch notes
+    stay repo-relative in gate2/3/4 reports.
+    """
+    root = (repo_root or _REPO_ROOT).resolve()
+    p = Path(path)
+    try:
+        return str(p.resolve().relative_to(root))
+    except ValueError:
+        return str(p)
+
+
+# Tick 522 figure writers import this name; keep as alias of the general helper.
+repo_relative_figure_path = repo_relative_path
+
+
+def sanitize_repo_paths_in_text(
+    text: str, *, repo_root: Path | None = None
+) -> str:
+    """Rewrite absolute in-repo path prefixes embedded in durable detail strings.
+
+    Tick 524: ``ensure_icml_runtime_deps`` historically joined absolute
+    ``PYTHONPATH=/workspace/SIA`` and diamond notes listed
+    ``['/workspace/SIA/sia/tasks/gpqa', ...]``. ``repo_relative_path`` only
+    covers whole-string paths; this strips the absolute repo-root prefix from
+    longer ``; ``-joined / list-repr detail strings so gate2/3/4 reports stay
+    portable across cold-boot VMs.
+    """
+    if not text:
+        return text
+    root = (repo_root or _REPO_ROOT).resolve()
+    prefixes = {str(root)}
+    # Also cover unresolved / alternate spellings of the same root.
+    if repo_root is not None:
+        prefixes.add(str(Path(repo_root)))
+        try:
+            prefixes.add(str(Path(repo_root).resolve()))
+        except OSError:
+            pass
+    prefixes.add(str(_REPO_ROOT))
+    try:
+        prefixes.add(str(_REPO_ROOT.resolve()))
+    except OSError:
+        pass
+    out = text
+    for prefix in sorted((p for p in prefixes if p), key=len, reverse=True):
+        # Prefer dropping "prefix/" so remaining path is repo-relative.
+        for sep in ("/", os.sep):
+            token = prefix.rstrip("/\\") + sep
+            if token in out:
+                out = out.replace(token, "")
+        # Bare prefix (e.g. trailing path with no child) → "."
+        if prefix in out:
+            out = out.replace(prefix, ".")
+    return out
+
+
 def _prepend_local_bin_to_path() -> None:
     """Ensure ``~/.local/bin`` is first on PATH (Astral uv default install dir)."""
     local = str(_LOCAL_BIN)
@@ -480,7 +553,9 @@ def ensure_uv_on_path(*, allow_install: bool = True) -> tuple[bool, str]:
     _prepend_local_bin_to_path()
     existing = shutil.which("uv")
     if existing:
-        return True, f"uv available at {existing}"
+        # Tick 524: durable gate reports must not embed host-absolute uv paths
+        # (e.g. /home/ubuntu/.local/bin/uv) — presence on PATH is enough.
+        return True, "uv available on PATH"
 
     if not allow_install:
         return False, "uv not on PATH (install disabled)"
@@ -501,7 +576,7 @@ def ensure_uv_on_path(*, allow_install: bool = True) -> tuple[bool, str]:
     _prepend_local_bin_to_path()
     installed = shutil.which("uv")
     if installed:
-        return True, f"uv installed at {installed} (Astral bootstrap)"
+        return True, "uv installed on PATH (Astral bootstrap)"
 
     err = (proc.stderr or proc.stdout or "").strip()
     return (
@@ -531,7 +606,7 @@ def probe_per_run_venv_capable(*, bootstrap_uv: bool = False) -> tuple[bool, str
         bootstrap_note = ""
         _prepend_local_bin_to_path()
         if shutil.which("uv"):
-            return True, f"uv available at {shutil.which('uv')} (SIA per-run venv path)"
+            return True, "uv available on PATH (SIA per-run venv path)"
 
     try:
         import venv  # noqa: F401
@@ -707,7 +782,8 @@ def _uv_pip_install(*packages: str) -> tuple[bool, str]:
             f"{err[:400] or 'no output'}",
         )
     _expose_user_site_on_pythonpath(target)
-    return True, f"uv pip installed {', '.join(packages)} into {target}"
+    # Tick 524: omit host-absolute --target path from durable gate details.
+    return True, f"uv pip installed {', '.join(packages)} into user site"
 
 
 def _pip_install_user(*packages: str) -> tuple[bool, str]:
@@ -768,10 +844,14 @@ def ensure_sia_on_pythonpath() -> tuple[bool, str]:
     Gate runners default ``cwd=SIA/``, which already makes ``-m sia`` work, but
     child tools / preflight imports often run from the repo root. Mutating
     ``os.environ['PYTHONPATH']`` (and ``sys.path``) keeps both consistent.
+
+    Tick 524: durable detail strings use repo-relative ``SIA`` (not absolute
+    ``/workspace/SIA``) so gate2/3/4 ``runtime_deps`` rows stay portable.
     """
     sia_root = _SIA_PKG_ROOT
+    rel = repo_relative_path(sia_root)
     if not (sia_root / "sia" / "__init__.py").is_file():
-        return False, f"SIA package missing at {sia_root}"
+        return False, f"SIA package missing at {rel}"
 
     sia_s = str(sia_root)
     if sia_s not in sys.path:
@@ -786,8 +866,8 @@ def ensure_sia_on_pythonpath() -> tuple[bool, str]:
     os.environ["PYTHONPATH"] = os.pathsep.join(parts)
 
     if _module_importable("sia"):
-        return True, f"sia importable via PYTHONPATH={sia_s}"
-    return False, f"sia still not importable after PYTHONPATH prepend ({sia_s})"
+        return True, f"sia importable via PYTHONPATH={rel}"
+    return False, f"sia still not importable after PYTHONPATH prepend ({rel})"
 
 
 def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
@@ -808,12 +888,14 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
 
     ok_uv, uv_detail = ensure_uv_on_path(allow_install=allow_install)
     if not ok_uv:
-        return False, f"uv required for SIA per-run venvs: {uv_detail}"
+        return False, sanitize_repo_paths_in_text(
+            f"uv required for SIA per-run venvs: {uv_detail}"
+        )
     notes.append(uv_detail)
 
     ok_sia, sia_detail = ensure_sia_on_pythonpath()
     if not ok_sia:
-        return False, sia_detail
+        return False, sanitize_repo_paths_in_text(sia_detail)
     notes.append(sia_detail)
 
     missing = [p for p in _RUNTIME_PIP_PACKAGES if not _module_importable(p)]
@@ -821,14 +903,16 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
         if not allow_install:
             return (
                 False,
-                f"missing runtime packages {missing} (install disabled); "
-                + "; ".join(notes),
+                sanitize_repo_paths_in_text(
+                    f"missing runtime packages {missing} (install disabled); "
+                    + "; ".join(notes)
+                ),
             )
         pip_names = [_RUNTIME_PIP_DIST_NAMES.get(p, p) for p in missing]
         ok_pip, pip_detail = _pip_install_user(*pip_names)
         notes.append(pip_detail)
         if not ok_pip:
-            return False, "; ".join(notes)
+            return False, sanitize_repo_paths_in_text("; ".join(notes))
         still = [p for p in missing if not _module_importable(p)]
         if still:
             # User-site may need a path refresh in this process.
@@ -837,7 +921,10 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
             if still:
                 return (
                     False,
-                    f"packages still missing after pip: {still}; " + "; ".join(notes),
+                    sanitize_repo_paths_in_text(
+                        f"packages still missing after pip: {still}; "
+                        + "; ".join(notes)
+                    ),
                 )
         notes.append(f"bootstrapped {', '.join(missing)}")
     else:
@@ -849,9 +936,12 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
     # already importable via ENABLE_USER_SITE) so child env copies inherit them.
     exposed = _expose_user_site_on_pythonpath()
     if exposed:
-        notes.append(f"user site on PYTHONPATH ({exposed})")
+        # Tick 524: omit host-absolute user-site path from durable gate details.
+        notes.append("user site on PYTHONPATH")
 
-    return True, "; ".join(notes)
+    # Tick 524: belt-and-suspenders — strip any absolute in-repo prefixes that
+    # pip/uv install notes may still embed before they land in gate reports.
+    return True, sanitize_repo_paths_in_text("; ".join(notes))
 
 
 def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[bool, str]:
@@ -868,32 +958,9 @@ def ensure_deps_before_diamond_fetch(*, allow_install: bool = True) -> tuple[boo
     return ensure_icml_runtime_deps(allow_install=allow_install)
 
 
-def repo_relative_path(
-    path: Path | str, *, repo_root: Path | None = None
-) -> str:
-    """Return a portable repo-relative path for durable ICML artifacts.
-
-    Tick 522: Tick 519 (live G4), Tick 520 (``epistemic_results``), and Tick 521
-    (offline Bvd) each shipped a private ``_repo_relative_figure_path`` copy.
-    Three identical helpers can drift (one writer regresses to bare ``str(path)``
-    while source locks only cover that file). Canonicalize here so offline /
-    live / epistemic Figs all emit ``docs/figures/figN_….png`` when under the
-    repo, and fall back to ``str(path)`` outside the repo (tmp / absolute outs).
-
-    Tick 523: same helper covers durable G2 / steering-lift post-check details
-    (``run_dir``, ``belief_store``) so ``docs/gate2_*.json`` do not embed
-    absolute ``/workspace/...`` paths across cold-boot VMs.
-    """
-    root = (repo_root or _REPO_ROOT).resolve()
-    p = Path(path)
-    try:
-        return str(p.resolve().relative_to(root))
-    except ValueError:
-        return str(p)
-
-
-# Tick 522 figure writers import this name; keep as alias of the general helper.
-repo_relative_figure_path = repo_relative_path
+# repo_relative_path / repo_relative_figure_path / sanitize_repo_paths_in_text
+# are defined earlier (before ensure_uv_on_path) so runtime-deps details can use
+# them without forward references (Tick 522–524).
 
 
 def estimate_usd_from_tokens(data: dict) -> float | None:

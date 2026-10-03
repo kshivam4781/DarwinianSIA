@@ -45,6 +45,7 @@ if str(REPO_ROOT / "scripts") not in sys.path:
 from icml_env_checks import (  # noqa: E402
     icml_human_required_secrets_phrase,
     icml_python_cli,
+    repo_relative_path,
 )
 
 DEFAULT_ROOTS = ("SIA", "sia-upstream")
@@ -292,7 +293,11 @@ def materialize_from_rows(
     force: bool = False,
     repo_root: Path | None = None,
 ) -> list[str]:
-    """Write diamond JSON under each root's sia/tasks/gpqa. Returns written paths."""
+    """Write diamond JSON under each root's sia/tasks/gpqa. Returns written paths.
+
+    Tick 524: return repo-relative paths (e.g. ``SIA/sia/tasks/gpqa``) so gate
+    fetch notes do not embed absolute ``/workspace/...`` into durable reports.
+    """
     root = repo_root or REPO_ROOT
     questions = rows_to_sia_questions(rows, n=n, seed=seed)
     wrote: list[str] = []
@@ -301,10 +306,11 @@ def materialize_from_rows(
         task_dir = repo / "sia" / "tasks" / "gpqa"
         if not task_dir.is_dir():
             raise FileNotFoundError(f"missing task dir: {task_dir}")
+        rel = repo_relative_path(task_dir, repo_root=root)
         pub_q = task_dir / "data" / "public" / "diamond_questions.json"
         if pub_q.exists() and not force:
             # Keep existing unless force; still useful when real data already present.
-            wrote.append(f"{task_dir} (kept existing; pass --force to overwrite)")
+            wrote.append(f"{rel} (kept existing; pass --force to overwrite)")
             continue
         write_diamond_task_tree(task_dir, questions)
         # Ensure _shared exists (same as smoke helper)
@@ -313,7 +319,7 @@ def materialize_from_rows(
         sample = shared / "sample_agent_execution.json"
         if not sample.exists():
             sample.write_text("[]\n", encoding="utf-8")
-        wrote.append(str(task_dir))
+        wrote.append(rel)
     return wrote
 
 
