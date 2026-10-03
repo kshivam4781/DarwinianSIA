@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T14:04Z — Tick 520 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-547d` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Separately, Tick 519 fixed live G4 `write_live_bvd_figures` to emit repo-relative paths, but `epistemic_results._maybe_write_figures` still appended `str(path)` — with default `--figures-dir docs/figures` that is absolute `/workspace/...`. Absolute paths then leaked into `epistemic_results` JSON summaries / any caller storing `figures`, breaking Tick 302 offline / Tick 519 live relative-path portability for the third figure writer. Highest leverage without paid spend / STATUS-peel churn: **repo-relative epistemic_results Fig paths + rematerialize**.
+
+### What we did
+**Tick 520 — epistemic_results Figs repo-relative paths (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `547d`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `_repo_relative_figure_path` + `REPO_ROOT` in `epistemic_results.py`; `_maybe_write_figures` now emits `docs/figures/figN_….png` (Tick 302/519 parity; fall back to `str(path)` outside repo)
+3. Unit tests: `test_maybe_write_figures_repo_relative_paths` + fallback + source lock; focused suite green (4/4)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock)
+5. Refreshed durable lift proof `local_run_present=false` / `tick=520` (no new dry-run; Tick 514 VM-ephemeral-safe)
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 519) | After (Tick 520) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| `epistemic_results` `figures` paths | absolute `/workspace/docs/figures/…` | **repo-relative** `docs/figures/…` |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (519) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T12:04Z — Tick 519 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

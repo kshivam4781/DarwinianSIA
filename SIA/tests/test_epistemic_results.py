@@ -538,3 +538,97 @@ def test_compute_h2_post_adoption_tail_excludes_discovery_lag(
     assert post["preferred_share"] == pytest.approx(6 / 8)  # 0.75
     assert post["preferred_share"] >= 0.5
     assert post["preferred_share"] > floor_only["preferred_share"]
+
+
+def test_maybe_write_figures_repo_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 520: epistemic_results Figs emit repo-relative paths (Tick 302/519)."""
+    import sys
+    import types
+
+    import epistemic_results as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+
+    fake_env = types.ModuleType("icml_env_checks")
+    fake_env.ensure_icml_runtime_deps = lambda **_k: (True, "ok")
+    monkeypatch.setitem(sys.modules, "icml_env_checks", fake_env)
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+
+    class _Plt:
+        def subplots(self, *a, **k):  # noqa: ANN001, ARG002
+            class _Fig:
+                def tight_layout(self):
+                    return None
+
+                def savefig(self, path, *a, **k):  # noqa: ANN001, ARG002
+                    Path(path).parent.mkdir(parents=True, exist_ok=True)
+                    Path(path).write_bytes(b"\x89PNG\r\n\x1a\n")
+
+            class _Ax:
+                def plot(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def bar(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_title(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def grid(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def legend(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            return _Fig(), _Ax()
+
+        def close(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", _Plt())
+
+    figures_dir = tmp_path / "docs" / "figures"
+    summary = {
+        "learning_curve": {
+            "1": {"best": 0.1, "mean": 0.08},
+            "2": {"best": 0.2, "mean": 0.15},
+        },
+        "h2": {
+            "field": "tool_strategy",
+            "counts": {"selective": 3, "aggressive": 1},
+        },
+    }
+    written = mod._maybe_write_figures(summary, figures_dir)
+    assert written == [
+        "docs/figures/fig1_learning_curves.png",
+        "docs/figures/fig2_mechanism.png",
+    ]
+    assert not any(p.startswith("/") for p in written)
+    assert (figures_dir / "fig1_learning_curves.png").is_file()
+    assert (figures_dir / "fig2_mechanism.png").is_file()
+
+
+def test_repo_relative_figure_path_fallback_outside_repo(tmp_path: Path) -> None:
+    """Tick 520: outside-repo figures fall back to str(path)."""
+    from epistemic_results import _repo_relative_figure_path
+
+    outside = tmp_path / "elsewhere" / "fig1_learning_curves.png"
+    outside.parent.mkdir(parents=True)
+    outside.write_bytes(b"x")
+    # REPO_ROOT is the real workspace; outside tmp is not under it.
+    got = _repo_relative_figure_path(outside)
+    assert got == str(outside)

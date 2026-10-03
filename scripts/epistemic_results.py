@@ -18,6 +18,25 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _repo_relative_figure_path(path: Path, *, repo_root: Path | None = None) -> str:
+    """Return a portable repo-relative path for figure lists.
+
+    Tick 520: ``_maybe_write_figures`` historically appended ``str(path)``, which
+    is absolute when ``--figures-dir`` defaults to ``docs/figures`` under the
+    cloud workspace. Absolute ``/workspace/...`` paths then leaked into
+    ``epistemic_results`` JSON summaries (and any caller that stores ``figures``)
+    — breaking Tick 302 offline / Tick 519 live relative-path portability.
+    Prefer ``docs/figures/figN_….png``; fall back to ``str(path)`` outside repo.
+    """
+    root = (repo_root or REPO_ROOT).resolve()
+    try:
+        return str(path.resolve().relative_to(root))
+    except ValueError:
+        return str(path)
+
 
 def _load_json(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
@@ -798,7 +817,8 @@ def _maybe_write_figures(summary: dict[str, Any], out_dir: Path) -> list[str]:
         fig.tight_layout()
         fig.savefig(path, dpi=120)
         plt.close(fig)
-        written.append(str(path))
+        # Tick 520: repo-relative paths (Tick 302/519 parity).
+        written.append(_repo_relative_figure_path(path))
 
     h2 = summary.get("h2") or summary.get("h2_memory") or {}
     counts = h2.get("counts") or {}
@@ -814,7 +834,7 @@ def _maybe_write_figures(summary: dict[str, Any], out_dir: Path) -> list[str]:
         fig.tight_layout()
         fig.savefig(path, dpi=120)
         plt.close(fig)
-        written.append(str(path))
+        written.append(_repo_relative_figure_path(path))
     return written
 
 

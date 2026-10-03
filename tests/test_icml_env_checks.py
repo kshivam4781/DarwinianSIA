@@ -279,6 +279,23 @@ def test_live_g4_figures_call_ensure_runtime_deps() -> None:
     assert "test_write_live_bvd_figures_repo_relative_paths" in tests
 
 
+def test_epistemic_results_figures_repo_relative_paths() -> None:
+    """Tick 520: epistemic_results Figs emit repo-relative paths (Tick 302/519)."""
+    root = Path(__file__).resolve().parents[1]
+    epi = (root / "scripts" / "epistemic_results.py").read_text(encoding="utf-8")
+    assert "def _repo_relative_figure_path" in epi
+    assert "Tick 520" in epi
+    fn_idx = epi.find("def _maybe_write_figures")
+    next_def = epi.find("\ndef ", fn_idx + 1)
+    body = epi[fn_idx:next_def]
+    assert "_repo_relative_figure_path" in body
+    assert "written.append(str(path))" not in body
+    tests = (root / "SIA" / "tests" / "test_epistemic_results.py").read_text(
+        encoding="utf-8"
+    )
+    assert "test_maybe_write_figures_repo_relative_paths" in tests
+
+
 def test_ensure_deps_before_diamond_fetch_delegates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
