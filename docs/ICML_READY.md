@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 515: cold-boot rematerialized offline Bvd `1930–1944` + Figs 1–2; matplotlib missing now WARNs (no silent empty figures); diamond rematerialized; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 516: matplotlib now in `ensure_icml_runtime_deps` (cold-boot bootstrap with hub/pydantic_ai); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -272,7 +272,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 263 Portal Save re-link — env `31d13f14-…` / build `104c2352` **SUCCEEDED** + proposed (uv 0.12.7); Tick 262 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
 - [x] Tick 264 Portal Save re-link — env `31d13f14-…` / build `cf7c2280` **SUCCEEDED** + proposed (uv 0.12.7); Tick 263 build not proposable from this run; rebuilt uv onto same RUNTIME_FORWARD_FILL personal env
 - [x] Tick 265 uv auto-bootstrap — `ensure_uv_on_path` + G2/G3/G4 `probe_per_run_venv_capable(bootstrap_uv=True)` so `per_run_venv` no longer depends on Portal Save; env `31d13f14-…` / build `ec92739d` **SUCCEEDED** + proposed (uv 0.12.7)
-- [x] Tick 266 runtime-deps bootstrap — `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps` (`huggingface_hub` + SIA PYTHONPATH); env `31d13f14-…` / build `5a2d7f34` **SUCCEEDED** + proposed (uv 0.12.7)
+- [x] Tick 266 runtime-deps bootstrap — `ensure_icml_runtime_deps` + G2/G3/G4 `runtime_deps` (`huggingface_hub` + SIA PYTHONPATH; Tick 289 `pydantic_ai`; Tick **516** `matplotlib`); env `31d13f14-…` / build `5a2d7f34` **SUCCEEDED** + proposed (uv 0.12.7)
 - [x] Tick 267 secrets-only live gate verified — SYSTEM-boot G2/G3/G4 preflight `per_run_venv` + `runtime_deps` **yes**; live blockers = API keys + real diamond only; env `31d13f14-…` / build `0eb37243` **SUCCEEDED** + proposed (uv 0.12.7)
 - [x] Tick 268 secrets-first human unblock — `docs/icml_secrets_status.json` + `docs/ICML_HUMAN_UNBLOCK.md`; pipeline Next prioritizes secrets (Portal Save optional; no new AGENT build)
 - [x] Tick 269 tip lineage recovery — `scripts/icml_recover_tip.py` + `docs/icml_tip_status.json`; live pipeline refuses `--live` on stale/main trees (cron often boots without ICML docs)
@@ -324,6 +324,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 513 cold-boot lift re-verify + proof tick stamp — dry-run `run_1957` PASS; `write_steering_lift_proof` stamps progress tick (not frozen 510)
 - [x] Tick 514 durable lift proof VM-ephemeral-safe — `local_run_present` / `vm_ephemeral_safe` + `refresh_steering_lift_proof_local_run_flag`; missing gitignored run dir does **not** invalidate proof or auto dry-run
 - [x] Tick 515 cold-boot offline Bvd rematerialize + matplotlib warn — rematerialized `1930–1944` + Figs 1–2; `_maybe_figures` / `_maybe_write_figures` WARN on ImportError (no silent empty figures); matplotlib in `pyproject.toml` + env install
+- [x] Tick 516 matplotlib runtime-deps bootstrap — `matplotlib` in `_RUNTIME_PIP_PACKAGES` / `ensure_icml_runtime_deps` (G2/G3/G4 cold-boot install); rematerialized `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

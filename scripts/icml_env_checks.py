@@ -125,7 +125,10 @@ UV_INSTALL_URL = "https://astral.sh/uv/install.sh"
 _LOCAL_BIN = Path.home() / ".local" / "bin"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SIA_PKG_ROOT = _REPO_ROOT / "SIA"
-_RUNTIME_PIP_PACKAGES = ("huggingface_hub", "pydantic_ai")
+# Tick 516: also bootstrap matplotlib so cold-boot offline Bvd / paper Figs
+# 1–2 rematerialize does not WARN-and-skip (Tick 515) when Portal Save /
+# env install snapshot is absent — G2/G3/G4 already call ensure_icml_runtime_deps.
+_RUNTIME_PIP_PACKAGES = ("huggingface_hub", "pydantic_ai", "matplotlib")
 # Pip distribution names when they differ from the import name (Tick 289).
 _RUNTIME_PIP_DIST_NAMES = {
     "pydantic_ai": "pydantic-ai",
@@ -793,7 +796,9 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
     1. ``ensure_uv_on_path`` (per-run venvs)
     2. ``ensure_sia_on_pythonpath`` (``python -m sia`` from repo root)
     3. ``huggingface_hub`` for ``--fetch-diamond`` / HF gpqa materialization
-    4. Tick 281: expose user site on ``PYTHONPATH`` so PYTHONNOUSERSITE /
+    4. ``pydantic_ai`` for Nebius meta (Tick 289)
+    5. ``matplotlib`` for offline Bvd / paper Figs 1–2 (Tick 516)
+    6. Tick 281: expose user site on ``PYTHONPATH`` so PYTHONNOUSERSITE /
        venv children still import ``--target`` bootstrapped packages
 
     Returns ``(ok, detail)``. When ``allow_install`` is False, missing pip
@@ -836,7 +841,9 @@ def ensure_icml_runtime_deps(*, allow_install: bool = True) -> tuple[bool, str]:
                 )
         notes.append(f"bootstrapped {', '.join(missing)}")
     else:
-        notes.append("huggingface_hub + pydantic_ai already importable")
+        notes.append(
+            "huggingface_hub + pydantic_ai + matplotlib already importable"
+        )
 
     # Tick 281: always publish user site on PYTHONPATH (even when packages were
     # already importable via ENABLE_USER_SITE) so child env copies inherit them.

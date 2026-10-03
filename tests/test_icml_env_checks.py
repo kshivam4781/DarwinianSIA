@@ -188,7 +188,7 @@ def test_ensure_runtime_deps_install_disabled_reports_missing(
 def test_ensure_runtime_deps_bootstraps_missing_hub(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tick 266: missing huggingface_hub triggers package install helper."""
+    """Tick 266/289/516: missing hub/pydantic_ai/matplotlib triggers install."""
     monkeypatch.setattr(
         "icml_env_checks.ensure_uv_on_path",
         lambda *, allow_install=True: (True, "uv available at /tmp/uv"),
@@ -197,24 +197,32 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
         "icml_env_checks.ensure_sia_on_pythonpath",
         lambda: (True, "sia importable via PYTHONPATH=/tmp/SIA"),
     )
-    state = {"hub": False, "pydantic_ai": False}
+    state = {"hub": False, "pydantic_ai": False, "matplotlib": False}
 
     def _imp(name: str) -> bool:
         if name == "huggingface_hub":
             return state["hub"]
         if name == "pydantic_ai":
             return state["pydantic_ai"]
+        if name == "matplotlib":
+            return state["matplotlib"]
         return False
 
     monkeypatch.setattr("icml_env_checks._module_importable", _imp)
 
     def _pip(*packages: str):
         # Tick 289: also bootstraps pydantic-ai (pip name) for Nebius meta.
-        assert "huggingface_hub" in packages or "pydantic-ai" in packages
+        # Tick 516: also bootstraps matplotlib for offline Figs 1–2.
+        assert any(
+            p in packages
+            for p in ("huggingface_hub", "pydantic-ai", "matplotlib")
+        )
         if "huggingface_hub" in packages:
             state["hub"] = True
         if "pydantic-ai" in packages or "pydantic_ai" in packages:
             state["pydantic_ai"] = True
+        if "matplotlib" in packages:
+            state["matplotlib"] = True
         return True, f"pip installed {', '.join(packages)}"
 
     monkeypatch.setattr("icml_env_checks._pip_install_user", _pip)
@@ -222,8 +230,17 @@ def test_ensure_runtime_deps_bootstraps_missing_hub(
     assert ok is True
     assert "bootstrapped" in detail
     assert "huggingface_hub" in detail
+    assert "matplotlib" in detail
     assert state["hub"] is True
     assert state["pydantic_ai"] is True
+    assert state["matplotlib"] is True
+
+
+def test_runtime_pip_packages_include_matplotlib() -> None:
+    """Tick 516: matplotlib is a runtime bootstrap package (cold-boot Figs)."""
+    from icml_env_checks import _RUNTIME_PIP_PACKAGES
+
+    assert "matplotlib" in _RUNTIME_PIP_PACKAGES
 
 
 def test_ensure_deps_before_diamond_fetch_delegates(
