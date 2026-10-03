@@ -1687,6 +1687,77 @@ def test_ensure_steering_lift_proof_without_autorun_uses_durable(
     assert "durable" in detail
 
 
+def test_steering_lift_proof_ok_when_local_run_dir_gone(tmp_path: Path) -> None:
+    """Tick 514: vanished gitignored runs/ must not invalidate durable proof."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    mod.write_steering_lift_proof(
+        run_id=1957,
+        post=_steering_lift_pass_post(),
+        source="unit",
+        repo_root=tmp_path,
+        tick=514,
+    )
+    data = json.loads(
+        (docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8")
+    )
+    assert data["ok"] is True
+    assert data["local_run_present"] is False
+    assert data["vm_ephemeral_safe"] is True
+
+    ok, detail = mod.steering_lift_proof_ok(tmp_path)
+    assert ok is True
+    assert "1957" in detail
+    assert "durable JSON authoritative" in detail
+
+    flag_ok, flag_detail = mod.refresh_steering_lift_proof_local_run_flag(
+        tmp_path, tick=514
+    )
+    assert flag_ok is True
+    assert "local absent" in flag_detail or "VM-ephemeral-safe" in flag_detail
+    refreshed = json.loads(
+        (docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8")
+    )
+    assert refreshed["local_run_present"] is False
+    assert refreshed["tick"] == 514
+
+
+def test_ensure_steering_lift_does_not_autorun_when_only_run_dir_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 514: cold boot with JSON-only proof must not invent a new dry-run."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    mod.write_steering_lift_proof(
+        run_id=1957,
+        post=_steering_lift_pass_post(),
+        source="unit",
+        repo_root=tmp_path,
+        tick=513,
+    )
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod,
+        "main",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("must not auto dry-run")),
+    )
+    ok, detail = mod.ensure_g2_steering_lift_proof(
+        repo_root=tmp_path, auto_run=True
+    )
+    assert ok is True
+    assert "durable" in detail
+    data = json.loads(
+        (docs / mod.STEERING_LIFT_PROOF_NAME).read_text(encoding="utf-8")
+    )
+    assert data["local_run_present"] is False
+    assert data["vm_ephemeral_safe"] is True
+    assert data["run_id"] == 1957  # must not invent 1958+
+
+
 def test_write_gate2_report_persists_steering_lift_proof(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

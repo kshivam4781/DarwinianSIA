@@ -314,6 +314,29 @@ def _resolve_steering_lift_proof_tick(
     return 510  # first tick that introduced the durable sidecar
 
 
+def local_steering_lift_run_present(
+    run_id: int | None,
+    repo_root: Path | None = None,
+) -> bool:
+    """True when ``runs/run_<id>`` (or ``SIA/runs/…``) still exists on this VM.
+
+    Tick 514: cold boots routinely lose gitignored ``runs/``. Durable proof
+    must remain valid without a local dir — do **not** treat a vanished path
+    as a reason to re-burn a dry-run ``--max-gen ≥3``.
+    """
+    if run_id is None:
+        return False
+    root = repo_root if repo_root is not None else REPO_ROOT
+    # Prefer REPO_ROOT-scoped lookup when tests monkeypatch REPO_ROOT.
+    for base in (root / "runs", root / "SIA" / "runs"):
+        if (base / f"run_{int(run_id)}").is_dir():
+            return True
+    # Fall back to process-global helpers (live repo layout).
+    if root == REPO_ROOT:
+        return _run_dir_for(int(run_id)) is not None
+    return False
+
+
 def write_steering_lift_proof(
     *,
     run_id: int,
@@ -330,17 +353,22 @@ def write_steering_lift_proof(
         raise ValueError(f"refuse to write steering-lift proof: {detail}")
     path = steering_lift_proof_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
+    rid = int(run_id)
+    local_present = local_steering_lift_run_present(rid, root)
     payload = {
         "timestamp": timestamp or _utc_now(),
         "tick": _resolve_steering_lift_proof_tick(root, tick),
         "source": source,
         "mode": "dry-run",
-        "run_id": int(run_id),
+        "run_id": rid,
         "max_gen": 3,
         "ok": True,
         "detail": detail,
         "post": _post_as_check_dicts(post),
         "required_checks": list(STEERING_LIFT_REQUIRED_CHECKS),
+        # Tick 514: honest cold-boot flag — JSON proof is authoritative.
+        "local_run_present": local_present,
+        "vm_ephemeral_safe": True,
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
@@ -357,8 +385,59 @@ def load_steering_lift_proof(repo_root: Path | None = None) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def refresh_steering_lift_proof_local_run_flag(
+    repo_root: Path | None = None,
+    *,
+    tick: int | None = None,
+) -> tuple[bool, str]:
+    """Tick 514: update ``local_run_present`` without re-running dry-run.
+
+    Cold-boot cron must not invent a new ``run_19xx`` solely because the
+    cited gitignored run dir vanished — durable post checks already PASS.
+    """
+    root = repo_root if repo_root is not None else REPO_ROOT
+    data = load_steering_lift_proof(root)
+    if not data:
+        return False, f"missing {STEERING_LIFT_PROOF_NAME}"
+    if not data.get("ok"):
+        return False, f"proof sidecar ok=false ({data.get('detail') or 'no detail'})"
+    post_ok, post_detail = post_checks_satisfy_steering_lift(data.get("post"))
+    if not post_ok:
+        return False, f"proof sidecar post invalid: {post_detail}"
+    rid = data.get("run_id")
+    try:
+        rid_i = int(rid) if rid is not None else None
+    except (TypeError, ValueError):
+        rid_i = None
+    local_present = local_steering_lift_run_present(rid_i, root)
+    data["local_run_present"] = local_present
+    data["vm_ephemeral_safe"] = True
+    data["local_run_flag_refreshed_at"] = _utc_now()
+    data["tick"] = _resolve_steering_lift_proof_tick(root, tick)
+    # Keep prior detail; annotate when run dir is gone on this VM.
+    if not local_present:
+        data["detail"] = (
+            f"{post_detail} (local run_{rid_i} dir absent — durable JSON authoritative)"
+        )
+    else:
+        data["detail"] = post_detail
+    path = steering_lift_proof_path(root)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    if local_present:
+        return True, f"run_{rid_i} local present; {post_detail}"
+    return True, (
+        f"run_{rid_i} local absent (VM-ephemeral-safe); durable proof still PASS — "
+        f"{post_detail}"
+    )
+
+
 def steering_lift_proof_ok(repo_root: Path | None = None) -> tuple[bool, str]:
-    """Tick 510: durable proof sidecar documents a PASS gen≥3 lift dry-run."""
+    """Tick 510: durable proof sidecar documents a PASS gen≥3 lift dry-run.
+
+    Tick 514: a missing local ``runs/run_<id>`` does **not** invalidate the
+    sidecar — gitignored runs vanish on cold boots; post-check payload is
+    the evidence.
+    """
     data = load_steering_lift_proof(repo_root)
     if not data:
         return False, f"missing {STEERING_LIFT_PROOF_NAME}"
@@ -368,7 +447,17 @@ def steering_lift_proof_ok(repo_root: Path | None = None) -> tuple[bool, str]:
     if not post_ok:
         return False, f"proof sidecar post invalid: {post_detail}"
     run_id = data.get("run_id")
-    return True, f"run_{run_id} {post_detail}"
+    try:
+        rid_i = int(run_id) if run_id is not None else None
+    except (TypeError, ValueError):
+        rid_i = None
+    local_present = local_steering_lift_run_present(rid_i, repo_root)
+    if local_present:
+        return True, f"run_{run_id} {post_detail}"
+    return True, (
+        f"run_{run_id} {post_detail} "
+        f"(local dir absent — durable JSON authoritative; Tick 514)"
+    )
 
 
 def maybe_bootstrap_steering_lift_proof_from_gate2(
@@ -434,6 +523,11 @@ def ensure_g2_steering_lift_proof(
     root = repo_root if repo_root is not None else REPO_ROOT
     ok, detail = steering_lift_proof_ok(root)
     if ok:
+        # Tick 514: refresh local_run_present without inventing a new dry-run
+        # when cold boots wipe gitignored runs/ (JSON remains authoritative).
+        flag_ok, flag_detail = refresh_steering_lift_proof_local_run_flag(root)
+        if flag_ok:
+            return True, f"durable proof: {flag_detail}"
         return True, f"durable proof: {detail}"
 
     boot_ok, boot_detail = maybe_bootstrap_steering_lift_proof_from_gate2(root)

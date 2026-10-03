@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-03T02:10Z — Tick 514 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-1e12` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional). Cold boot again lost gitignored `runs/run_1957` and on-disk diamond — Tick 513 treated that as needing another dry-run, but durable `gate2_steering_lift_proof.json` post checks already PASS and `ensure_g2_steering_lift_proof` trusts JSON without a local dir. Highest leverage without paid spend / STATUS-peel churn: **make durable proof VM-ephemeral-safe (`local_run_present`) so cold boots stop inventing `run_1958+`, rematerialize diamond, re-file NEBIUS**.
+
+### What we did
+**Tick 514 — durable lift proof VM-ephemeral-safe (no API spend; no new dry-run):**
+1. Recovered tip `f49c` from greenfield boot `1e12`; rematerialized non-synthetic GPQA diamond via public OpenAI mirror (`--n 10`); re-filed NEBIUS secrets request
+2. `local_steering_lift_run_present` + `refresh_steering_lift_proof_local_run_flag`; write/ensure stamp `local_run_present` / `vm_ephemeral_safe`; missing local run dir **does not** invalidate proof or trigger auto dry-run
+3. Refreshed sidecar: `run_id=1957` / `tick=514` / `local_run_present=false` — durable JSON authoritative; tests 4/4 green
+4. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline/dry-run
+
+| Metric | Before (Tick 513) | After (Tick 514) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | unchanged |
+| Cold boot with JSON-only lift proof | re-ran dry-run (`1957`) | **trusts JSON**; stamps `local_run_present=false` |
+| Auto dry-run when only run dir missing | risk of inventing `1958+` | **refuses** (ensure stays on durable) |
+| Diamond on cold boot | rematerialized (513) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-03T00:05Z — Tick 513 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

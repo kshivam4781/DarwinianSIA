@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 513: cold-boot rematerialized diamond + dry-run `--max-gen ≥3` `run_1957` PASS refreshed durable lift proof (prior `run_1956` dir gone on this VM); proof sidecar now stamps progress tick (not frozen 510). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 514: durable lift proof is VM-ephemeral-safe (`local_run_present` / `vm_ephemeral_safe`) — missing gitignored `runs/run_1957` no longer forces a new dry-run; diamond rematerialized via public mirror; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -321,6 +321,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 510 durable steering-lift proof gate — `docs/gate2_steering_lift_proof.json` + `ensure_g2_steering_lift_proof`; pipeline `--live` / preflight refuse without gen≥3 delay-all lift (survives gate2 preflight rewrite)
 - [x] Tick 511 G3/G4 direct `--live` steering-lift lock — `run_g3_pilot` / `run_g4_multiseed` preflight require `g2_steering_lift` (`ensure_g2_steering_lift_proof(auto_run=False)`); closes Tick 510 pipeline-only bypass
 - [x] Tick 512 durable lift-proof foreign CheckResult fix — `_post_as_check_dicts` duck-types G3 `CheckResult`; `_steering_lift_gen3_checks` re-wraps locally; dry-run `run_1956` refreshes `gate2_steering_lift_proof.json` (was stuck on bootstrap `1955`)
+- [x] Tick 513 cold-boot lift re-verify + proof tick stamp — dry-run `run_1957` PASS; `write_steering_lift_proof` stamps progress tick (not frozen 510)
+- [x] Tick 514 durable lift proof VM-ephemeral-safe — `local_run_present` / `vm_ephemeral_safe` + `refresh_steering_lift_proof_local_run_flag`; missing gitignored run dir does **not** invalidate proof or auto dry-run
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

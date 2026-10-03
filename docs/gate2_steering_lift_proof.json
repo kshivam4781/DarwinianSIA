@@ -1,12 +1,12 @@
 {
   "timestamp": "2026-10-03T00:04:13Z",
-  "tick": 513,
+  "tick": 514,
   "source": "gate2_dry_run_write",
   "mode": "dry-run",
   "run_id": 1957,
   "max_gen": 3,
   "ok": true,
-  "detail": "delay-all skip + gen\u22653 lift + nonzero fitness",
+  "detail": "delay-all skip + gen\u22653 lift + nonzero fitness (local run_1957 dir absent \u2014 durable JSON authoritative)",
   "post": [
     {
       "name": "run_dir",
@@ -64,5 +64,8 @@
     "delay_all_technique_seeds_skip",
     "steering_applied_gen3",
     "nonzero_fitness"
-  ]
+  ],
+  "local_run_present": false,
+  "vm_ephemeral_safe": true,
+  "local_run_flag_refreshed_at": "2026-10-03T02:09:28Z"
 }
