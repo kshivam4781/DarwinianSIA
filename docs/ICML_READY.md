@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 517: offline rematerialize now calls `ensure_icml_runtime_deps` before Figs (closes Tick 516 G2/G3/G4-only hole); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 518: live G4 `write_live_bvd_figures` now calls `ensure_icml_runtime_deps` before matplotlib (closes Tick 517 offline-only hole for ledger-skip / `apply_paper_pack`); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

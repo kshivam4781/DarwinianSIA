@@ -966,6 +966,130 @@ def test_write_live_bvd_figures(tmp_path: Path) -> None:
         assert (tmp_path / "figures" / "fig1_learning_curves.png").is_file()
 
 
+def test_write_live_bvd_figures_bootstraps_runtime_deps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 518: live paper-pack Figs call ensure_icml_runtime_deps before import."""
+    import sys
+    import types
+
+    import run_g4_multiseed as mod
+
+    called: list[dict] = []
+
+    def _fake_ensure(*, allow_install: bool = True) -> tuple[bool, str]:
+        called.append({"allow_install": allow_install})
+        return True, "bootstrapped matplotlib"
+
+    monkeypatch.setattr(mod, "ensure_icml_runtime_deps", _fake_ensure)
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+
+    class _Plt:
+        def subplots(self, *a, **k):  # noqa: ANN001, ARG002
+            class _Fig:
+                def tight_layout(self):
+                    return None
+
+                def savefig(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            class _Ax:
+                def plot(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def bar(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_title(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def grid(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def legend(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def axhline(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            return _Fig(), _Ax()
+
+        def close(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", _Plt())
+
+    comparison = {
+        "rows": [
+            {
+                "B": {"learning_curve": {"1": {"best": 0.1}}},
+                "D": {"learning_curve": {"1": {"best": 0.2}}},
+            }
+        ]
+    }
+    h2 = {
+        "run_1311": {
+            "field": "memory",
+            "preferred_value": "failure_based",
+            "counts": {"failure_based": 3, "none": 1},
+        }
+    }
+    written = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run=h2,
+        figures_dir=tmp_path / "figures",
+    )
+    assert called == [{"allow_install": True}]
+    assert any("fig1_learning_curves.png" in p for p in written)
+    assert any("fig2_mechanism.png" in p for p in written)
+
+
+def test_write_live_bvd_figures_warns_when_matplotlib_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Tick 518: missing matplotlib WARNs (not silent empty) after ensure."""
+    import sys
+
+    import run_g4_multiseed as mod
+
+    monkeypatch.setattr(
+        mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok")
+    )
+
+    real_import = __import__
+
+    def _fake_import(name, *args, **kwargs):  # noqa: ANN001
+        if name == "matplotlib" or name.startswith("matplotlib."):
+            raise ImportError("matplotlib deliberately missing for Tick 518 test")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", _fake_import)
+    for key in list(sys.modules):
+        if key == "matplotlib" or key.startswith("matplotlib."):
+            del sys.modules[key]
+
+    written = write_live_bvd_figures(
+        comparison={"rows": []},
+        h2_by_d_run={},
+        figures_dir=tmp_path / "figures",
+    )
+    assert written == []
+    err = capsys.readouterr().err
+    assert "matplotlib unavailable" in err
+
+
 def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     from run_g4_multiseed import G4PreflightReport
 

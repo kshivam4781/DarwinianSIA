@@ -781,14 +781,34 @@ def write_live_bvd_figures(
     h2_by_d_run: dict[str, Any],
     figures_dir: Path,
 ) -> list[str]:
-    """Refresh Fig 1 (B vs D mean learning curves) and Fig 2 (pooled H2 histogram)."""
+    """Refresh Fig 1 (B vs D mean learning curves) and Fig 2 (pooled H2 histogram).
+
+    Tick 518: bootstrap matplotlib via ``ensure_icml_runtime_deps`` before import
+    (parity with Tick 517 offline rematerialize). Ledger-skip / ``apply_paper_pack``
+    can refresh Figs without re-entering G4 ``run_preflight``, so a silent
+    ``ImportError`` → ``[]`` would leave Live Table paper pack without Figs 1–2
+    after NEBIUS arrives.
+    """
     written: list[str] = []
+    # Tick 518: paper-pack figure path must not assume preflight already ran.
+    deps_ok, deps_detail = ensure_icml_runtime_deps(allow_install=True)
+    if not deps_ok:
+        print(
+            f"WARNING: ensure_icml_runtime_deps failed ({deps_detail}); "
+            "live Figs 1–2 may be skipped",
+            file=sys.stderr,
+        )
     try:
         import matplotlib
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-    except ImportError:
+    except ImportError as exc:
+        # Tick 515/518: WARN (not silent empty) when matplotlib still missing.
+        print(
+            f"WARNING: matplotlib unavailable for live Figs ({exc})",
+            file=sys.stderr,
+        )
         return written
 
     figures_dir.mkdir(parents=True, exist_ok=True)
