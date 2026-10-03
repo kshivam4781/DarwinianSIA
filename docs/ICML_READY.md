@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 512: durable lift-proof refresh was broken — `_post_as_check_dicts` dropped foreign `run_g3_pilot.CheckResult` rows from gen≥3 lift, so PASS dry-run `run_1956` never overwrote bootstrap `run_1955` proof. Fixed + dry-run `run_1956` proof refreshed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
+_Tick 513: cold-boot rematerialized diamond + dry-run `--max-gen ≥3` `run_1957` PASS refreshed durable lift proof (prior `run_1956` dir gone on this VM); proof sidecar now stamps progress tick (not frozen 510). Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

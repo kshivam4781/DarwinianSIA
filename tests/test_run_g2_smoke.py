@@ -1625,6 +1625,41 @@ def test_steering_lift_proof_roundtrip_and_bootstrap(tmp_path: Path) -> None:
     assert "1955" in boot_detail
 
 
+def test_write_steering_lift_proof_stamps_explicit_or_progress_tick(
+    tmp_path: Path,
+) -> None:
+    """Tick 513: durable proof tick must not stay frozen at 510 forever."""
+    import run_g2_smoke as mod
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    post = _steering_lift_pass_post()
+
+    path = mod.write_steering_lift_proof(
+        run_id=1957,
+        post=post,
+        source="unit",
+        repo_root=tmp_path,
+        tick=513,
+    )
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["tick"] == 513
+    assert data["run_id"] == 1957
+
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-03T00:04Z — Tick 512 (automation cron)\n",
+        encoding="utf-8",
+    )
+    path2 = mod.write_steering_lift_proof(
+        run_id=1957,
+        post=post,
+        source="unit",
+        repo_root=tmp_path,
+    )
+    data2 = json.loads(path2.read_text(encoding="utf-8"))
+    assert data2["tick"] == 512
+
+
 def test_ensure_steering_lift_proof_without_autorun_uses_durable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

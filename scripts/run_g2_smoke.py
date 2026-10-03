@@ -40,6 +40,9 @@ turnkey and hard-stops unsafe paid runs:
     regression could still reach paid G3 without a surviving gen≥3 proof.
     ``ensure_g2_steering_lift_proof`` auto-runs dry-run max_gen≥3 when missing;
     the live pipeline refuses spend without a PASS sidecar.
+  - Tick 513: cold-boot re-verify dry-run ``--max-gen ≥3`` (``run_1957``) when
+    prior lift run dirs are gone; durable proof tick stamps current
+    ``ICML_PROGRESS`` tick (no longer frozen at 510).
 
 Modes:
   --preflight-only   check keys/data/run_id; write docs/gate2_report.md; no sia run
@@ -286,6 +289,31 @@ def post_checks_satisfy_steering_lift(post) -> tuple[bool, str]:
     return True, "delay-all skip + gen≥3 lift + nonzero fitness"
 
 
+def _resolve_steering_lift_proof_tick(
+    repo_root: Path,
+    tick: int | None = None,
+) -> int:
+    """Tick 513: stamp the current ICML progress tick (not a frozen 510).
+
+    Hard-coding ``tick: 510`` left durable proof looking stale after Tick 512+
+    refreshes (``run_1956`` / ``run_1957`` still said tick 510), which misled
+    operators reading ``gate2_steering_lift_proof.json`` on cold boots.
+    """
+    if tick is not None:
+        return int(tick)
+    progress = repo_root / "docs" / "ICML_PROGRESS.md"
+    if progress.is_file():
+        try:
+            from icml_env_checks import parse_latest_icml_tick
+
+            parsed = parse_latest_icml_tick(progress.read_text(encoding="utf-8"))
+            if parsed is not None:
+                return int(parsed)
+        except Exception:
+            pass
+    return 510  # first tick that introduced the durable sidecar
+
+
 def write_steering_lift_proof(
     *,
     run_id: int,
@@ -293,6 +321,7 @@ def write_steering_lift_proof(
     timestamp: str | None = None,
     source: str = "dry-run",
     repo_root: Path | None = None,
+    tick: int | None = None,
 ) -> Path:
     """Persist Tick 509/510 steering-lift PASS so preflight cannot wipe it."""
     root = repo_root if repo_root is not None else REPO_ROOT
@@ -303,7 +332,7 @@ def write_steering_lift_proof(
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "timestamp": timestamp or _utc_now(),
-        "tick": 510,
+        "tick": _resolve_steering_lift_proof_tick(root, tick),
         "source": source,
         "mode": "dry-run",
         "run_id": int(run_id),
