@@ -260,20 +260,23 @@ def test_offline_bvd_figures_call_ensure_runtime_deps() -> None:
 
 
 def test_live_g4_figures_call_ensure_runtime_deps() -> None:
-    """Tick 518: live paper-pack Figs must invoke ensure (ledger-skip safe)."""
+    """Tick 518/519: live paper-pack Figs ensure + repo-relative paths."""
     root = Path(__file__).resolve().parents[1]
     g4 = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
     assert "def write_live_bvd_figures" in g4
     assert "Tick 518" in g4
+    assert "def _repo_relative_figure_path" in g4
+    assert "Tick 519" in g4
     # Ensure is called inside write_live_bvd_figures, not only in run_preflight.
     fn_idx = g4.find("def write_live_bvd_figures")
     next_def = g4.find("\ndef ", fn_idx + 1)
     body = g4[fn_idx:next_def]
     assert "ensure_icml_runtime_deps" in body
     assert "matplotlib unavailable" in body
-    assert "test_write_live_bvd_figures_bootstraps_runtime_deps" in (
-        root / "tests" / "test_run_g4_multiseed.py"
-    ).read_text(encoding="utf-8")
+    assert "_repo_relative_figure_path" in body
+    tests = (root / "tests" / "test_run_g4_multiseed.py").read_text(encoding="utf-8")
+    assert "test_write_live_bvd_figures_bootstraps_runtime_deps" in tests
+    assert "test_write_live_bvd_figures_repo_relative_paths" in tests
 
 
 def test_ensure_deps_before_diamond_fetch_delegates(

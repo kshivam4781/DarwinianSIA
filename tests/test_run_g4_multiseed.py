@@ -1056,6 +1056,99 @@ def test_write_live_bvd_figures_bootstraps_runtime_deps(
     assert any("fig2_mechanism.png" in p for p in written)
 
 
+def test_write_live_bvd_figures_repo_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 519: live Figs emit repo-relative paths (Tick 302 offline parity)."""
+    import sys
+    import types
+
+    import run_g4_multiseed as mod
+
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        mod, "ensure_icml_runtime_deps", lambda **_k: (True, "ok")
+    )
+
+    fake_mpl = types.ModuleType("matplotlib")
+    fake_mpl.use = lambda *a, **k: None  # noqa: ARG005
+
+    class _Plt:
+        def subplots(self, *a, **k):  # noqa: ANN001, ARG002
+            class _Fig:
+                def tight_layout(self):
+                    return None
+
+                def savefig(self, path, *a, **k):  # noqa: ANN001, ARG002
+                    Path(path).parent.mkdir(parents=True, exist_ok=True)
+                    Path(path).write_bytes(b"\x89PNG\r\n\x1a\n")
+
+            class _Ax:
+                def plot(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def bar(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_xlabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_ylabel(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def set_title(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def grid(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def legend(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def tick_params(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+                def axhline(self, *a, **k):  # noqa: ANN001, ARG002
+                    return None
+
+            return _Fig(), _Ax()
+
+        def close(self, *a, **k):  # noqa: ANN001, ARG002
+            return None
+
+    monkeypatch.setitem(sys.modules, "matplotlib", fake_mpl)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", _Plt())
+
+    comparison = {
+        "rows": [
+            {
+                "B": {"learning_curve": {"1": {"best": 0.1}}},
+                "D": {"learning_curve": {"1": {"best": 0.2}}},
+            }
+        ]
+    }
+    h2 = {
+        "run_1311": {
+            "field": "tool_strategy",
+            "preferred_value": "selective",
+            "counts": {"selective": 3, "aggressive": 1},
+        }
+    }
+    figures_dir = tmp_path / "docs" / "figures"
+    written = write_live_bvd_figures(
+        comparison=comparison,
+        h2_by_d_run=h2,
+        figures_dir=figures_dir,
+    )
+    assert written == [
+        "docs/figures/fig1_learning_curves.png",
+        "docs/figures/fig2_mechanism.png",
+    ]
+    assert not any(p.startswith("/") for p in written)
+    assert (figures_dir / "fig1_learning_curves.png").is_file()
+    assert (figures_dir / "fig2_mechanism.png").is_file()
+
+
 def test_write_live_bvd_figures_warns_when_matplotlib_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 518: live G4 `write_live_bvd_figures` now calls `ensure_icml_runtime_deps` before matplotlib (closes Tick 517 offline-only hole for ledger-skip / `apply_paper_pack`); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 519: live G4 `write_live_bvd_figures` now emits repo-relative `docs/figures/…` paths (Tick 302 offline parity; closes absolute `/workspace/…` leak into paper pack / durable ledgers); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -326,6 +326,8 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 515 cold-boot offline Bvd rematerialize + matplotlib warn — rematerialized `1930–1944` + Figs 1–2; `_maybe_figures` / `_maybe_write_figures` WARN on ImportError (no silent empty figures); matplotlib in `pyproject.toml` + env install
 - [x] Tick 516 matplotlib runtime-deps bootstrap — `matplotlib` in `_RUNTIME_PIP_PACKAGES` / `ensure_icml_runtime_deps` (G2/G3/G4 cold-boot install); rematerialized `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed
 - [x] Tick 517 offline rematerialize ensure — `offline_bvd_case_study._maybe_figures` + `epistemic_results._maybe_write_figures` call `ensure_icml_runtime_deps` before matplotlib import; rematerialized `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed
+- [x] Tick 518 live G4 figures ensure — `run_g4_multiseed.write_live_bvd_figures` calls `ensure_icml_runtime_deps` + WARNs on ImportError (closes Tick 517 offline-only hole for ledger-skip / `apply_paper_pack`)
+- [x] Tick 519 live G4 figures repo-relative paths — `_repo_relative_figure_path` emits `docs/figures/figN_….png` (Tick 302 offline parity; no absolute `/workspace/…` in paper pack / durable ledgers)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table
