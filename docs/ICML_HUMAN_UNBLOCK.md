@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 529:** public-mirror / resolve / human_next use `$TMPDIR/gpqa_diamond.csv` via `tempfile.gettempdir()` (closes remaining hardcoded `/tmp/gpqa_diamond.csv` after Tick 525 labels); secrets status sanitizes blockers/human_next at write; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 528:** gate2/3/4 report free-text sanitized at write (`sanitize_repo_paths_in_text` on notes/blockers/check details + G4 `figures_written`; Tick 527 pipeline parity); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 527:** pipeline report free-text sanitized at write (`sanitize_repo_paths_in_text` on notes/blockers/stage details/Next); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 526:** durable gate planned commands emit portable argv (`python3 -m sia …` via `portable_argv_for_durable`; closes absolute `/usr/bin/python3` leak); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
@@ -257,7 +258,7 @@ Also (if using HF): accept the HuggingFace dataset **`Idavidrein/gpqa`** while l
 
 If you already have `gpqa_diamond.csv`, drop it at one of:
 
-- `/tmp/gpqa_diamond.csv`
+- `$TMPDIR/gpqa_diamond.csv` (Tick 529; legacy `/tmp/gpqa_diamond.csv` still resolved)
 - `docs/private/gpqa_diamond.csv` (gitignored)
 - path in `$ICML_DIAMOND_CSV` / `$SIA_DIAMOND_CSV`
 

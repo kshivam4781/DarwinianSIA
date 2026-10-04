@@ -20,7 +20,7 @@ Sources (first match wins when using CLI defaults):
 ``diamond_questions.json`` from this script. Data dirs stay gitignored.
 
 Examples (Linux/cloud: python3; Windows venv: python):
-  python3 scripts/prepare_gpqa_diamond.py --from-csv /tmp/gpqa_diamond.csv --n 5
+  python3 scripts/prepare_gpqa_diamond.py --from-csv "$TMPDIR/gpqa_diamond.csv" --n 5
   python3 scripts/prepare_gpqa_diamond.py --from-public-mirror --n 5 --force
   python3 scripts/prepare_gpqa_diamond.py --from-hf --n 5 --seed 1
   python3 scripts/prepare_gpqa_diamond.py --from-hf --roots SIA sia-upstream --force
@@ -35,6 +35,7 @@ import json
 import os
 import random
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -58,7 +59,20 @@ SOURCE_TAG = "gpqa_diamond"
 PUBLIC_MIRROR_URL = (
     "https://openaipublic.blob.core.windows.net/simple-evals/gpqa_diamond.csv"
 )
-DEFAULT_PUBLIC_MIRROR_DEST = Path("/tmp/gpqa_diamond.csv")
+
+
+def default_public_mirror_dest() -> Path:
+    """Tick 529: host-tmp via ``tempfile.gettempdir()`` (not hardcoded ``/tmp``).
+
+    Matches Tick 525 durable ``$TMPDIR/gpqa_diamond.csv`` labeling so mirror
+    downloads land where ``resolve_diamond_csv_path`` / portable path helpers
+    expect them when ``TMPDIR`` ≠ ``/tmp`` (some CI / macOS hosts).
+    """
+    return Path(tempfile.gettempdir()) / "gpqa_diamond.csv"
+
+
+# Evaluated at import for back-compat importers; prefer ``default_public_mirror_dest()``.
+DEFAULT_PUBLIC_MIRROR_DEST = default_public_mirror_dest()
 
 
 def live_g2_next_steps_message() -> str:
@@ -217,13 +231,14 @@ def download_gpqa_diamond_csv_public_mirror(
 ) -> Path:
     """Download ``gpqa_diamond.csv`` from the OpenAI simple-evals public mirror.
 
-    Tick 497: no ``HF_TOKEN`` required. Writes to ``/tmp/gpqa_diamond.csv`` by
-    default (gitignored). Does not overwrite an existing usable file.
+    Tick 497: no ``HF_TOKEN`` required. Tick 529: default dest is
+    ``$TMPDIR/gpqa_diamond.csv`` via ``tempfile.gettempdir()`` (gitignored;
+    not hardcoded ``/tmp``). Does not overwrite an existing usable file.
     """
     import urllib.error
     import urllib.request
 
-    out = Path(dest) if dest is not None else DEFAULT_PUBLIC_MIRROR_DEST
+    out = Path(dest) if dest is not None else default_public_mirror_dest()
     if out.is_file() and out.stat().st_size >= min_bytes:
         return out.resolve()
     mirror = (url or os.environ.get("ICML_GPQA_PUBLIC_MIRROR_URL") or PUBLIC_MIRROR_URL).strip()
@@ -412,7 +427,7 @@ def main(argv: list[str] | None = None) -> int:
         "--mirror-dest",
         type=Path,
         default=None,
-        help="Where to write public-mirror CSV (default /tmp/gpqa_diamond.csv)",
+        help="Where to write public-mirror CSV (default $TMPDIR/gpqa_diamond.csv)",
     )
     args = parser.parse_args(argv)
 

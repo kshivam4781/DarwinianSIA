@@ -6804,8 +6804,9 @@ def resolve_diamond_csv_path(repo_root: Path | None = None) -> Path | None:
     passes ``--diamond-csv`` into the live pipeline. Order:
 
     1. ``ICML_DIAMOND_CSV`` / ``SIA_DIAMOND_CSV`` env path
-    2. ``/tmp/gpqa_diamond.csv``
-    3. repo-relative candidates under ``docs/private/``, ``.local/``, root
+    2. ``$TMPDIR/gpqa_diamond.csv`` (Tick 529 — ``tempfile.gettempdir()``)
+    3. legacy ``/tmp/gpqa_diamond.csv`` when TMPDIR ≠ /tmp
+    4. repo-relative candidates under ``docs/private/``, ``.local/``, root
     """
     root = repo_root or _REPO_ROOT
     env_override = (
@@ -6814,7 +6815,15 @@ def resolve_diamond_csv_path(repo_root: Path | None = None) -> Path | None:
     candidates: list[Path] = []
     if env_override:
         candidates.append(Path(env_override).expanduser())
-    candidates.append(Path("/tmp/gpqa_diamond.csv"))
+    # Tick 529: prefer host temp root (may be /var/folders/… or /tmp).
+    try:
+        tmp_diamond = Path(tempfile.gettempdir()) / "gpqa_diamond.csv"
+        candidates.append(tmp_diamond)
+    except OSError:
+        tmp_diamond = None
+    legacy_tmp = Path("/tmp/gpqa_diamond.csv")
+    if tmp_diamond is None or legacy_tmp.resolve() != tmp_diamond.resolve():
+        candidates.append(legacy_tmp)
     for rel in _DIAMOND_CSV_CANDIDATES:
         candidates.append(root / rel)
     for path in candidates:
@@ -6835,8 +6844,9 @@ def ensure_diamond_csv_via_public_mirror(
 
     Returns an existing path from ``resolve_diamond_csv_path`` when present.
     Otherwise downloads OpenAI simple-evals ``gpqa_diamond.csv`` to
-    ``/tmp/gpqa_diamond.csv`` (never committed). Set
-    ``ICML_DISABLE_PUBLIC_DIAMOND_MIRROR=1`` to skip network.
+    ``$TMPDIR/gpqa_diamond.csv`` via ``tempfile.gettempdir()`` (Tick 529;
+    never committed). Set ``ICML_DISABLE_PUBLIC_DIAMOND_MIRROR=1`` to skip
+    network.
     """
     existing = resolve_diamond_csv_path(repo_root)
     if existing is not None:
@@ -6853,7 +6863,7 @@ def ensure_diamond_csv_via_public_mirror(
     # Lazy import keeps unit tests that never call this free of urllib side effects.
     try:
         from prepare_gpqa_diamond import (  # type: ignore
-            DEFAULT_PUBLIC_MIRROR_DEST,
+            default_public_mirror_dest,
             download_gpqa_diamond_csv_public_mirror,
         )
     except ImportError:
@@ -6861,11 +6871,11 @@ def ensure_diamond_csv_via_public_mirror(
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
         from prepare_gpqa_diamond import (  # type: ignore
-            DEFAULT_PUBLIC_MIRROR_DEST,
+            default_public_mirror_dest,
             download_gpqa_diamond_csv_public_mirror,
         )
     try:
-        return download_gpqa_diamond_csv_public_mirror(DEFAULT_PUBLIC_MIRROR_DEST)
+        return download_gpqa_diamond_csv_public_mirror(default_public_mirror_dest())
     except Exception:
         return None
 
@@ -8325,7 +8335,7 @@ def collect_icml_secrets_status() -> dict:
         blockers.append(
             "HF_TOKEN / HUGGINGFACE_HUB_TOKEN missing "
             "(required for --fetch-diamond; or provide --diamond-csv / "
-            "drop gpqa_diamond.csv at /tmp or docs/private/; or allow "
+            "drop gpqa_diamond.csv at $TMPDIR or docs/private/; or allow "
             "Tick 497 public OpenAI mirror fetch)"
         )
     main_has_tip = main_has_icml_tip_files()
@@ -8351,7 +8361,7 @@ def collect_icml_secrets_status() -> dict:
     if not diamond_ready:
         secrets_lines.append(
             "Accept HuggingFace access for Idavidrein/gpqa with that HF token "
-            "(or drop a real gpqa_diamond.csv at /tmp/gpqa_diamond.csv / "
+            "(or drop a real gpqa_diamond.csv at $TMPDIR/gpqa_diamond.csv / "
             "docs/private/gpqa_diamond.csv / $ICML_DIAMOND_CSV to skip HF; "
             "or rely on Tick 497 public OpenAI simple-evals mirror auto-fetch)"
         )
@@ -8680,6 +8690,18 @@ def write_icml_secrets_status(
     # Tick 274: cron / pipeline --live --fetch-diamond needs HF too.
     # Synthetic fixture is OK as a starting point when fetch_diamond_ok (HF will replace it).
     status["ready_for_live_pipeline"] = bool(status.get("fetch_diamond_ok"))
+    # Tick 529: durable secrets free-text must not embed absolute host-tmp /
+    # workspace paths (Tick 525/527/528 parity). Source strings already use
+    # $TMPDIR, but sanitize blockers/human_next at write so future notes stay
+    # portable.
+    status["blockers"] = [
+        sanitize_repo_paths_in_text(str(b), repo_root=root)
+        for b in (status.get("blockers") or [])
+    ]
+    status["human_next"] = [
+        sanitize_repo_paths_in_text(str(h), repo_root=root)
+        for h in (status.get("human_next") or [])
+    ]
     out = path or (_REPO_ROOT / "docs" / "icml_secrets_status.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
@@ -8775,7 +8797,7 @@ def live_pipeline_next_steps(
                 "API keys present but diamond still blocked "
                 "(`fetch_diamond_ok=false`): add `HF_TOKEN` + accept HF "
                 "`Idavidrein/gpqa`, **or** drop a real `gpqa_diamond.csv` at "
-                "`/tmp/gpqa_diamond.csv` / `docs/private/gpqa_diamond.csv` / "
+                "`$TMPDIR/gpqa_diamond.csv` / `docs/private/gpqa_diamond.csv` / "
                 f"`$ICML_DIAMOND_CSV`, **or** rely on Tick 497 public OpenAI "
                 f"mirror auto-fetch. Add HF/CSV to {_AUTOMATION_URL}. "
                 "See `docs/ICML_HUMAN_UNBLOCK.md`.",

@@ -424,6 +424,99 @@ def test_portable_path_for_durable_host_tmp_diamond(tmp_path: Path) -> None:
     assert "/tmp/" not in scrubbed
 
 
+def test_default_public_mirror_dest_uses_tmpdir(monkeypatch, tmp_path: Path) -> None:
+    """Tick 529: public-mirror default dest follows tempfile.gettempdir()."""
+    import tempfile
+
+    import prepare_gpqa_diamond as prep
+    from icml_env_checks import resolve_diamond_csv_path
+
+    host_tmp = tmp_path / "host-tmp"
+    host_tmp.mkdir()
+    monkeypatch.setenv("TMPDIR", str(host_tmp))
+    monkeypatch.setattr(tempfile, "tempdir", None)  # clear gettempdir cache
+    dest = prep.default_public_mirror_dest()
+    assert dest == host_tmp / "gpqa_diamond.csv"
+
+    csv_path = host_tmp / "gpqa_diamond.csv"
+    csv_path.write_text(
+        "Question,A,B,C,D,Correct\n" + ("q,a,b,c,d,A\n" * 8),
+        encoding="utf-8",
+    )
+    assert csv_path.stat().st_size >= 64
+    found = resolve_diamond_csv_path(repo_root=tmp_path / "repo")
+    assert found is not None
+    assert found.resolve() == csv_path.resolve()
+
+
+def test_secrets_human_next_uses_tmpdir_not_hardcoded_tmp(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Tick 529: secrets human_next / blockers prefer $TMPDIR; write sanitizes."""
+    from icml_env_checks import (
+        collect_icml_secrets_status,
+        write_icml_secrets_status,
+    )
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path", lambda *_a, **_k: None
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.icml_ondisk_nonsynthetic_gpqa", lambda *_a, **_k: False
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files", lambda *_a, **_k: True
+    )
+    status = collect_icml_secrets_status()
+    blob = "\n".join(status.get("human_next") or []) + "\n".join(
+        status.get("blockers") or []
+    )
+    assert "/tmp/gpqa_diamond.csv" not in blob
+    assert "$TMPDIR" in blob
+
+    out = tmp_path / "icml_secrets_status.json"
+    # Inject a legacy absolute path and prove write-time sanitize.
+    status["human_next"] = list(status.get("human_next") or []) + [
+        "drop CSV at /tmp/gpqa_diamond.csv"
+    ]
+    monkeypatch.setattr(
+        "icml_env_checks.collect_icml_secrets_status", lambda: status
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.detect_gpqa_is_synthetic", lambda *_a, **_k: False
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.write_icml_open_git_pr_hint", lambda **_k: {}
+    )
+    written = write_icml_secrets_status(path=out, repo_root=tmp_path)
+    assert all("/tmp/gpqa_diamond.csv" not in h for h in written["human_next"])
+    assert any("$TMPDIR/gpqa_diamond.csv" in h for h in written["human_next"])
+
+
+def test_portable_tmpdir_public_mirror_source_lock() -> None:
+    """Tick 529: gettempdir public-mirror + $TMPDIR human_next locked."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    prep = (root / "scripts" / "prepare_gpqa_diamond.py").read_text(encoding="utf-8")
+    assert "def default_public_mirror_dest" in prep
+    assert "tempfile.gettempdir()" in prep
+    assert 'Path("/tmp/gpqa_diamond.csv")' not in prep
+    assert "default_public_mirror_dest()" in env
+    assert "$TMPDIR/gpqa_diamond.csv" in env
+    assert "Tick 529" in env
+    assert "sanitize_repo_paths_in_text(str(h), repo_root=root)" in env
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_default_public_mirror_dest_uses_tmpdir" in tests
+    assert "test_secrets_human_next_uses_tmpdir_not_hardcoded_tmp" in tests
+
+
 def test_portable_diamond_csv_source_lock() -> None:
     """Tick 525: portable diamond CSV helper + auto-wire call sites locked."""
     root = Path(__file__).resolve().parents[1]
