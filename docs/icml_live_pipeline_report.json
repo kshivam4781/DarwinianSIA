@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-10-04T08:20:39Z",
+  "mode": "preflight",
+  "ready_for_live": false,
+  "budget": {
+    "spent": 0.0,
+    "ceiling": 20.0,
+    "g2_estimate": 2.0,
+    "g3_estimate": 3.0,
+    "g4_estimate": 14.0,
+    "stack_estimate": 19.0,
+    "projected": 19.0,
+    "ok": true,
+    "g3_pairs": 1,
+    "g4_pairs": 5,
+    "skip_g2": false,
+    "skip_g3": false,
+    "skip_g4": false
+  },
+  "stages": [
+    {
+      "name": "G2_steering_lift",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness"
+    },
+    {
+      "name": "G2",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    },
+    {
+      "name": "G3",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    },
+    {
+      "name": "G4",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "preflight invoked (+fetch-diamond)"
+    }
+  ],
+  "blockers": [
+    "G2: nebius_key: NEBIUS_API_KEY missing",
+    "G3: nebius_key: NEBIUS_API_KEY missing",
+    "G4: nebius_key: NEBIUS_API_KEY missing",
+    "fetch_diamond_ok=false \u2014 need NEBIUS_API_KEY (ANTHROPIC_API_KEY optional \u2014 Tick 289 Nebius pydantic-ai meta)"
+  ],
+  "notes": [
+    "Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv",
+    "Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)",
+    "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
+    "Tick 510: steering-lift proof OK \u2014 durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness",
+    "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
+    "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"
+  ],
+  "g3_promising": null,
+  "g3_comparison": null,
+  "g3_h2_by_d_run": {},
+  "stopped_after": null,
+  "icml_ready_status": "IN_PROGRESS"
+}
