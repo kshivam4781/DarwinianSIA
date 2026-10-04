@@ -23,6 +23,9 @@ from sia.evolution.evolution_prompts import (
 from sia.evolution.dry_run import (
     agent_creation_complete,
     agent_run_complete,
+    deterministic_fitness,
+    parse_agent_coords,
+    write_mock_results,
     write_mock_target_agent,
 )
 from sia.evolution.operators import breed_offspring, extract_fitness, select_elites
@@ -74,6 +77,9 @@ def _run_single_agent(
     eval_subset: int | None = None,
     resume: bool = False,
     dry_run: bool = False,
+    task_name: str = "gpqa",
+    agent_id: int | None = None,
+    generation: int | None = None,
 ) -> tuple[bool, float, float]:
     """Run target agent + evaluation in an agent directory. Returns (success, fitness, duration)."""
     if resume and agent_run_complete(agent_dir):
@@ -82,11 +88,24 @@ def _run_single_agent(
         logger.info(f"  → Resume: using cached fitness={fitness:.4f}")
         return True, fitness, 0.0
 
+    # Dry-run: DNA-hash fitness (varied Δfitness for offline H5). Skip real eval —
+    # mock GPQA agents that always answer "A" collapse every agent to accuracy=1.0.
+    if dry_run:
+        dna_path = os.path.join(agent_dir, Names.AGENT_DNA)
+        dna = AgentDNA.load(dna_path) if os.path.isfile(dna_path) else AgentDNA()
+        parsed_id, parsed_gen = parse_agent_coords(agent_dir)
+        aid = agent_id if agent_id is not None else parsed_id
+        gen = generation if generation is not None else parsed_gen
+        fitness = deterministic_fitness(aid, dna, gen)
+        write_mock_results(agent_dir, fitness, task_name, eval_subset)
+        logger.info(f"  → Dry-run: deterministic fitness={fitness:.4f} (agent={aid}, gen={gen})")
+        return True, fitness, 0.0
+
     target_path = os.path.join(agent_dir, Names.TARGET_AGENT if focus == "harness" else Names.TRAIN_SCRIPT)
     stdout_log = os.path.join(agent_dir, Names.STDOUT_LOG if focus == "harness" else Names.TRAIN_STDOUT_LOG)
 
     gen_requirements = os.path.join(agent_dir, Names.REQUIREMENTS_TXT)
-    if os.path.isfile(gen_requirements) and not dry_run:
+    if os.path.isfile(gen_requirements):
         install_requirements(run_setup.venv_dir, gen_requirements)
 
     start = time.time()
@@ -101,9 +120,6 @@ def _run_single_agent(
         env_config=env_config,
     )
     duration = time.time() - start
-
-    if dry_run and not success:
-        logger.warning(f"  ⚠ Dry-run target agent failed: {error_msg}")
 
     orch.run_evaluation(
         agent_dir,
@@ -222,8 +238,18 @@ def _create_offspring_with_feedback(
     task_name: str = "gpqa",
     enable_cabs: bool = False,
     cabs_store: str | None = None,
+    apply_cabs_feedback: bool = True,
 ) -> None:
-    """Breed offspring via feedback agent using best parent code + new DNA."""
+    """Breed offspring via feedback agent using best parent code + new DNA.
+
+    Tick 404: ``apply_cabs_feedback`` mirrors delay-all DNA steering — when False
+    (fair gen1→gen2), skip contradiction-scoped CABS agenda in the feedback
+    prompt so Condition D early breed stays Condition-B-like.
+
+    Tick 405: dry-run still resolves and writes the CABS feedback header into
+    ``feedback_agent_prompt.txt`` (no API call) so G1/G2 dry-run artifacts prove
+    the delay-all gate instead of a stub that hides scoped-agenda injection.
+    """
     os.makedirs(agent_dir, exist_ok=True)
     offspring_dna.save(os.path.join(agent_dir, Names.AGENT_DNA))
 
@@ -244,8 +270,35 @@ def _create_offspring_with_feedback(
 
     if dry_run:
         write_mock_target_agent(agent_dir, task_name)
-        write_text(os.path.join(agent_dir, Names.FEEDBACK_PROMPT), "# Dry-run: offspring from parent mock agents\n")
-        logger.info(f"  → Dry-run: wrote mock offspring target agent in {agent_dir}")
+        # Tick 405: resolve the same CABS gate as the live path so dry-run
+        # FEEDBACK_PROMPT artifacts can prove delay-all skips scoped agenda.
+        from sia.evolution.evolution_prompts import cabs_feedback_addon
+
+        cabs_addon = _resolve_cabs_feedback_addon(
+            enable_cabs=enable_cabs,
+            apply_cabs_feedback=apply_cabs_feedback,
+            run_dir=run_dir,
+            cabs_store=cabs_store,
+        )
+        civ_insights = civilization.summary_markdown()
+        evolution_addon = darwinian_feedback_addon(
+            offspring_dna,
+            parent_dnas,
+            parent_fitnesses,
+            agent_id,
+            population_size,
+            civilization_insights=civ_insights,
+        )
+        dry_prompt = (
+            "# Dry-run: offspring from parent mock agents (no meta/feedback API)\n"
+            + cabs_feedback_addon(cabs_addon)
+            + evolution_addon
+        )
+        write_text(os.path.join(agent_dir, Names.FEEDBACK_PROMPT), dry_prompt)
+        logger.info(
+            f"  → Dry-run: wrote mock offspring + resolved feedback prompt "
+            f"(cabs_scoped={'on' if cabs_addon.strip() else 'off'}) in {agent_dir}"
+        )
         return
 
     agent_file = os.path.join(agent_dir, Names.TARGET_AGENT if focus == "harness" else Names.TRAIN_SCRIPT)
@@ -300,11 +353,12 @@ def _create_offspring_with_feedback(
         civilization_insights=civ_insights,
     )
 
-    cabs_addon = ""
-    if enable_cabs:
-        from sia.evolution.cabs_bridge import load_cabs_agenda
-
-        cabs_addon = load_cabs_agenda(run_dir, cabs_store)
+    cabs_addon = _resolve_cabs_feedback_addon(
+        enable_cabs=enable_cabs,
+        apply_cabs_feedback=apply_cabs_feedback,
+        run_dir=run_dir,
+        cabs_store=cabs_store,
+    )
 
     from sia.evolution.evolution_prompts import cabs_feedback_addon
 
@@ -359,6 +413,8 @@ def run_population_generation(
             eval_subset=eval_subset,
             resume=resume,
             dry_run=dry_run,
+            agent_id=agent_id,
+            generation=gen,
         )
 
         dna_path = os.path.join(agent_dir, Names.AGENT_DNA)
@@ -377,6 +433,45 @@ def run_population_generation(
         logger.info(f"  agent_{agent_id} fitness={fitness:.4f} success={success}")
 
     return records
+
+
+def _resolve_cabs_feedback_addon(
+    *,
+    enable_cabs: bool,
+    apply_cabs_feedback: bool,
+    run_dir: str,
+    cabs_store: str | None,
+) -> str:
+    """Return contradiction-scoped CABS agenda text, or "" under delay-all.
+
+    Tick 404: fair gen1→gen2 must not inject scoped DNA targets / RQs /
+    committee techniques into the feedback prompt while DNA steering is also
+    deferred (Ticks 14 / 402 / 403).
+    """
+    if not enable_cabs or not apply_cabs_feedback:
+        return ""
+    from sia.evolution.cabs_bridge import load_cabs_agenda
+
+    return load_cabs_agenda(run_dir, cabs_store)
+
+
+def _cabs_steering_log_line(kind: str, payload: object, *, applied: bool) -> str:
+    """Tick 402–404: honest delay-all log line for loaded CABS steering.
+
+    Bias / technique seeds / scoped feedback are loaded or considered every
+    breed step, but under delay-all they are not applied until breeding from
+    gen≥2 (Tick 403 gates ``inject_technique_seeds``; Tick 404 gates scoped
+    feedback agenda). Saying only ``CABS mutation bias: …`` made dry-run/live
+    logs look steered on the fair gen1→gen2 step.
+    """
+    if applied:
+        return f"  CABS {kind} (applied): {payload}"
+    return (
+        f"  CABS {kind} (deferred until gen≥2 breed; "
+        f"fair mutate this step): {payload}"
+        if kind == "mutation bias"
+        else f"  CABS {kind} (deferred until gen≥2 breed): {payload}"
+    )
 
 
 def run_darwinian_loop(
@@ -406,12 +501,15 @@ def run_darwinian_loop(
     baseline_seed: str | None = None,
     enable_cabs: bool = False,
     cabs_store: str | None = None,
+    cabs_inline: bool = False,
 ) -> None:
     """Main Darwinian evolution loop."""
     layout = RunLayout(run_setup.run_directory)
     rng = random.Random(seed)
 
     task_root = task_root or dataset_dir
+    if cabs_inline:
+        enable_cabs = True
 
     civilization = CivilizationMemory(
         path=layout.civilization_json,
@@ -436,6 +534,8 @@ def run_darwinian_loop(
         logger.info(f"  Baseline seed: gen 1 agents copied from {baseline_seed}")
     if enable_cabs:
         logger.info(f"  CABS integration: enabled (belief_store in run dir)")
+    if cabs_inline:
+        logger.info("  CABS inline: analyze after each gen eval (Condition D / epistemic_full)")
     logger.info("=" * 80)
 
     # Generation 1: create initial population with diverse DNA
@@ -499,6 +599,29 @@ def run_darwinian_loop(
             marker = " ★ ELITE" if r["agent_id"] in elite_ids else ""
             logger.info(f"  agent_{r['agent_id']}: fitness={r['fitness']:.4f}{marker}")
 
+        # Condition D: refresh belief_store before breeding so bias/agenda see this gen
+        if cabs_inline:
+            from sia.evolution.cabs_inline import run_cabs_inline
+
+            try:
+                inline_summary = run_cabs_inline(
+                    run_setup.run_directory,
+                    current_gen,
+                    cabs_store=cabs_store,
+                    task_hint=task_name,
+                    enable_committee=False,
+                )
+                logger.info(
+                    "  CABS inline gen %s: beliefs+%s contradictions+%s RQs+%s epistemic_value=%.3f",
+                    current_gen,
+                    inline_summary.get("beliefs_added"),
+                    inline_summary.get("contradictions_added"),
+                    inline_summary.get("research_questions_added"),
+                    float(inline_summary.get("epistemic_value") or 0),
+                )
+            except Exception as exc:  # noqa: BLE001 — never abort evolution on CABS analyze failure
+                logger.warning("  CABS inline analyze failed (continuing Darwinian loop): %s", exc)
+
         # Log to context.md
         run_setup.context_mgr.add_generation(
             gen_num=current_gen,
@@ -534,15 +657,42 @@ def run_darwinian_loop(
 
         mutation_bias = None
         cabs_technique_seeds: list[str] = []
+        # Delay *all* Condition D DNA steering until breeding from gen≥2:
+        # gen1→gen2 stays fair (no XO bias, no mutation bias) so preferred
+        # share cannot collapse before H5 / gens-to-threshold accumulate.
+        # From gen≥2 onward: soft bias-aware XO + full preferred anchoring.
+        apply_crossover_bias = current_gen >= 2
+        apply_mutation_bias = current_gen >= 2
+        apply_mutation_anchor = current_gen >= 2
+
         if enable_cabs:
             from sia.evolution.cabs_bridge import load_approved_technique_names, load_mutation_bias
 
             mutation_bias = load_mutation_bias(run_setup.run_directory, cabs_store)
             cabs_technique_seeds = load_approved_technique_names(run_setup.run_directory, cabs_store)
+            # Tick 402: log deferred vs applied (see `_cabs_steering_log_line`).
             if mutation_bias:
-                logger.info(f"  CABS mutation bias: {mutation_bias}")
+                logger.info(
+                    _cabs_steering_log_line(
+                        "mutation bias", mutation_bias, applied=apply_mutation_bias
+                    )
+                )
             if cabs_technique_seeds:
-                logger.info(f"  CABS technique seeds: {cabs_technique_seeds}")
+                logger.info(
+                    _cabs_steering_log_line(
+                        "technique seeds",
+                        cabs_technique_seeds,
+                        applied=apply_mutation_bias,
+                    )
+                )
+            # Tick 404: same delay-all gate for contradiction-scoped feedback.
+            logger.info(
+                _cabs_steering_log_line(
+                    "scoped feedback",
+                    "contradiction-scoped DNA targets in feedback prompt",
+                    applied=apply_mutation_bias,
+                )
+            )
 
         for agent_id in range(population_size):
             # Tournament selection: pick two elites (with replacement if only one)
@@ -555,6 +705,9 @@ def run_darwinian_loop(
                 rng=rng,
                 bias=mutation_bias,
                 technique_seeds=cabs_technique_seeds,
+                apply_crossover_bias=apply_crossover_bias,
+                apply_mutation_bias=apply_mutation_bias,
+                apply_mutation_anchor=apply_mutation_anchor,
             )
 
             agent_dir = layout.gen_agent_dir(next_gen, agent_id)
@@ -585,6 +738,7 @@ def run_darwinian_loop(
                 task_name=task_name,
                 enable_cabs=enable_cabs,
                 cabs_store=cabs_store,
+                apply_cabs_feedback=apply_mutation_bias,
             )
 
     # Append civilization summary to context.md
