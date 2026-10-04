@@ -1211,6 +1211,57 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert "ready_status" in payload
 
 
+def test_write_gate4_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
+    """Tick 528: notes/blockers/check details/figs drop absolute /workspace and /tmp diamond."""
+    from run_g4_multiseed import G4PreflightReport, _sanitize_gate_report_text
+
+    workspace = Path("/workspace")
+    abs_note = (
+        f"materialized diamond from CSV → ['{workspace}/SIA/sia/tasks/gpqa']; "
+        f"auto-wired --diamond-csv from /tmp/gpqa_diamond.csv"
+    )
+    report = G4PreflightReport(
+        timestamp="2026-10-04T06:00:00Z",
+        mode="preflight",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1200 + s, d_run_id=1300 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=False,
+        blockers=[f"diamond fetch failed: No such file: {workspace}/missing.csv"],
+        notes=[abs_note],
+        figures_written=[f"{workspace}/docs/figures/fig1_learning_curves.png"],
+    )
+    report.add(
+        "runtime_deps",
+        True,
+        f"PYTHONPATH={workspace}/SIA; ok",
+    )
+    out = tmp_path / "gate4_report.md"
+    write_gate4_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    payload = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "/workspace" not in text
+    assert "/tmp/gpqa_diamond.csv" not in text
+    blob = json.dumps(payload)
+    assert "/workspace" not in blob
+    assert "/tmp/gpqa_diamond.csv" not in blob
+    assert any("docs/figures/fig1_learning_curves.png" in p for p in payload["figures_written"])
+    cleaned = _sanitize_gate_report_text(abs_note, repo_root=Path("/workspace"))
+    assert "/workspace" not in cleaned
+    assert "/tmp/gpqa_diamond.csv" not in cleaned
+
+
+def test_write_gate4_report_sanitize_source_lock() -> None:
+    """Tick 528: gate4 writer must keep sanitize helper + write-time wiring."""
+    src = Path("scripts/run_g4_multiseed.py").read_text(encoding="utf-8")
+    tests = Path("tests/test_run_g4_multiseed.py").read_text(encoding="utf-8")
+    assert "def _sanitize_gate_report_text" in src
+    assert "sanitize_repo_paths_in_text" in src
+    assert "Tick 528" in src
+    assert "test_write_gate4_report_sanitizes_absolute_paths" in tests
+
+
 def test_gate4_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
     """Tick 500: non-synthetic diamond → Next leads with NEBIUS, no HF chase."""
     from run_g4_multiseed import G4PreflightReport

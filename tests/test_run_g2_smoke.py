@@ -508,6 +508,65 @@ def test_write_gate2_report(tmp_path: Path) -> None:
     assert "Accept HF access for `Idavidrein/gpqa`" not in text
 
 
+def test_write_gate2_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
+    """Tick 528: notes/blockers/check details drop absolute /workspace and /tmp diamond."""
+    from run_g2_smoke import (
+        CheckResult,
+        PreflightReport,
+        _sanitize_gate_report_text,
+        write_gate2_report,
+    )
+
+    workspace = Path("/workspace")
+    abs_note = (
+        f"runtime deps before diamond: PYTHONPATH={workspace}/SIA; "
+        f"materialized → ['{workspace}/SIA/sia/tasks/gpqa']; "
+        f"auto-wired --diamond-csv from /tmp/gpqa_diamond.csv"
+    )
+    report = PreflightReport(
+        timestamp="2026-10-04T06:00:00Z",
+        mode="preflight",
+        run_id=1850,
+        ready_for_dry_run=True,
+        ready_for_live=False,
+        command=["python3", "-m", "sia", "run", "--dry-run"],
+        blockers=[f"diamond fetch failed: No such file: {workspace}/missing.csv"],
+        notes=[abs_note],
+    )
+    report.checks.append(
+        CheckResult(
+            "runtime_deps",
+            True,
+            f"PYTHONPATH={workspace}/SIA; ok under {workspace}/runs",
+        )
+    )
+    out = tmp_path / "gate2_report.md"
+    write_gate2_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    sidecar = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "/workspace" not in text
+    assert "/tmp/gpqa_diamond.csv" not in text
+    assert "$TMPDIR/gpqa_diamond.csv" in text or "gpqa_diamond.csv" in text
+    blob = json.dumps(sidecar)
+    assert "/workspace" not in blob
+    assert "/tmp/gpqa_diamond.csv" not in blob
+    cleaned = _sanitize_gate_report_text(abs_note, repo_root=Path("/workspace"))
+    assert "/workspace" not in cleaned
+    assert "/tmp/gpqa_diamond.csv" not in cleaned
+
+
+def test_write_gate2_report_sanitize_source_lock() -> None:
+    """Tick 528: gate2 writer must keep sanitize helper + write-time wiring."""
+    from pathlib import Path
+
+    src = Path("scripts/run_g2_smoke.py").read_text(encoding="utf-8")
+    tests = Path("tests/test_run_g2_smoke.py").read_text(encoding="utf-8")
+    assert "def _sanitize_gate_report_text" in src
+    assert "sanitize_repo_paths_in_text" in src
+    assert "Tick 528" in src
+    assert "test_write_gate2_report_sanitizes_absolute_paths" in tests
+
+
 def test_gate2_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
     """Tick 498: non-synthetic diamond → Next leads with NEBIUS, no HF-accept step."""
     from run_g2_smoke import (

@@ -110,6 +110,7 @@ from icml_env_checks import (  # noqa: E402
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
     repo_relative_path,
+    sanitize_repo_paths_in_text,
     write_icml_tip_status,
 )
 
@@ -1323,7 +1324,30 @@ def gate2_next_markdown_lines(report: PreflightReport) -> list[str]:
     return lines
 
 
+def _sanitize_gate_report_text(text: str, *, repo_root: Path | None = None) -> str:
+    """Tick 528: durable gate free-text must not embed absolute repo / host-tmp paths.
+
+    Tick 527 sanitized the unified pipeline report; gate2/3/4 writers still
+    persisted raw notes/blockers/check details (diamond-fetch exceptions,
+    ``ok → {run_dir}``, deps probes) that can embed ``/workspace/…`` or
+    ``/tmp/gpqa_diamond.csv``. Sanitize at write time so committed
+    ``gate2_report.*`` stays portable across cold-boot VMs.
+    """
+    return sanitize_repo_paths_in_text(text or "", repo_root=repo_root or REPO_ROOT)
+
+
 def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResult] | None = None) -> None:
+    # Tick 528: sanitize free-text in-place before MD/JSON so both stay portable.
+    root = REPO_ROOT
+    report.notes[:] = [
+        _sanitize_gate_report_text(n, repo_root=root) for n in report.notes
+    ]
+    report.blockers[:] = [
+        _sanitize_gate_report_text(b, repo_root=root) for b in report.blockers
+    ]
+    for c in report.checks:
+        c.detail = _sanitize_gate_report_text(c.detail, repo_root=root)
+
     lines = [
         "# Gate 2 report — GPQA smoke (Condition D)",
         "",

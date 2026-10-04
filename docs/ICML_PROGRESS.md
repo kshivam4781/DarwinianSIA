@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T06:25Z — Tick 528 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-9cd5` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 527 sanitized unified pipeline report free-text, but gate2/3/4 writers still persisted raw notes/blockers/check details (diamond-fetch exceptions, `ok → {run_dir}`, deps probes, figures_written) that can embed `/workspace/…` or `/tmp/gpqa_diamond.csv`. Highest leverage without paid spend / STATUS-peel churn: **sanitize gate2/3/4 report free-text at write time + rematerialize**.
+
+### What we did
+**Tick 528 — gate2/3/4 report free-text path sanitization (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `9cd5`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Wired `sanitize_repo_paths_in_text` into `write_gate2_report` / `write_gate3_report` / `write_gate4_report` via `_sanitize_gate_report_text` — notes / blockers / check details (+ G4 `figures_written`) sanitized before MD+JSON write (closes absolute path leak class in `docs/gate{2,3,4}_report.*`; Tick 527 pipeline parity)
+3. Unit tests: sanitize absolute paths + source locks for G2/G3/G4; focused suite green (6/6)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed G2/G3/G4/pipeline preflight
+5. Refreshed durable lift proof `local_run_present=false` / `tick=528` + secrets status
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 527) | After (Tick 528) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Gate2/3/4 report free-text | unsanitized notes/blockers/details | **sanitize_repo_paths_in_text** at write |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (527) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T04:20Z — Tick 527 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

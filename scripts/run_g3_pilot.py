@@ -113,6 +113,7 @@ from icml_env_checks import (  # noqa: E402
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
+    sanitize_repo_paths_in_text,
     write_icml_tip_status,
 )
 from run_g2_smoke import ensure_g2_steering_lift_proof  # noqa: E402
@@ -1059,6 +1060,16 @@ def gate3_next_markdown_lines(report: G3PreflightReport) -> list[str]:
     return lines
 
 
+def _sanitize_gate_report_text(text: str, *, repo_root: Path | None = None) -> str:
+    """Tick 528: durable gate free-text must not embed absolute repo / host-tmp paths.
+
+    Parity with Tick 527 pipeline sanitize and Tick 528 gate2 — notes/blockers/
+    check details (diamond-fetch exceptions, ``ok → {run_dir}``) can embed
+    ``/workspace/…`` or ``/tmp/gpqa_diamond.csv``.
+    """
+    return sanitize_repo_paths_in_text(text or "", repo_root=repo_root or REPO_ROOT)
+
+
 def write_gate3_report(
     report: G3PreflightReport,
     out: Path,
@@ -1069,6 +1080,17 @@ def write_gate3_report(
     if existing_text is None and out.is_file():
         existing_text = out.read_text(encoding="utf-8")
     offline = _extract_offline_block(existing_text)
+
+    # Tick 528: sanitize free-text in-place before MD/JSON so both stay portable.
+    root = REPO_ROOT
+    report.notes[:] = [
+        _sanitize_gate_report_text(n, repo_root=root) for n in report.notes
+    ]
+    report.blockers[:] = [
+        _sanitize_gate_report_text(b, repo_root=root) for b in report.blockers
+    ]
+    for c in report.checks:
+        c.detail = _sanitize_gate_report_text(c.detail, repo_root=root)
 
     plan_rows = [
         f"| {p.seed} | B `{p.b_run_id}` | D `{p.d_run_id}` |" for p in report.plans

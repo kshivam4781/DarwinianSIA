@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 527: pipeline report free-text sanitized at write (`sanitize_repo_paths_in_text` on notes/blockers/stage details/Next — closes `/workspace/…` + `/tmp/gpqa_diamond.csv` leak class in `icml_live_pipeline_report.*`); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 528: gate2/3/4 report free-text sanitized at write (`sanitize_repo_paths_in_text` on notes/blockers/check details + G4 `figures_written` — closes `/workspace/…` + `/tmp/gpqa_diamond.csv` leak class in `gate{2,3,4}_report.*`; Tick 527 pipeline parity); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Tip PR #337 anti-churn head. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -336,6 +336,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 525 portable host-tmp diamond CSV paths — `portable_path_for_durable` / `diamond_csv_autowire_note` emit `$TMPDIR/gpqa_diamond.csv` (no absolute `/tmp/gpqa_diamond.csv` in secrets / gate auto-wire notes)
 - [x] Tick 526 portable planned argv in gate reports — `portable_argv_for_durable` emits `python3 -m sia …` (no absolute `/usr/bin/python3` in gate2/3/4 planned commands)
 - [x] Tick 527 pipeline report free-text sanitize — `write_pipeline_report` runs notes/blockers/stage details/Next through `sanitize_repo_paths_in_text` (no absolute `/workspace/…` or `/tmp/gpqa_diamond.csv` in `icml_live_pipeline_report.*`)
+- [x] Tick 528 gate2/3/4 report free-text sanitize — `write_gate{2,3,4}_report` runs notes/blockers/check details (+ G4 `figures_written`) through `sanitize_repo_paths_in_text` (Tick 527 pipeline parity; no absolute `/workspace/…` or `/tmp/gpqa_diamond.csv` in `gate{2,3,4}_report.*`)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

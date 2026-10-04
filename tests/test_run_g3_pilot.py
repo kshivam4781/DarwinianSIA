@@ -470,6 +470,55 @@ def test_write_gate3_report_preserves_offline_block(tmp_path: Path) -> None:
     assert payload["plans"][0]["b_run_id"] == 1201
 
 
+def test_write_gate3_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
+    """Tick 528: notes/blockers/check details drop absolute /workspace and /tmp diamond."""
+    from run_g3_pilot import _sanitize_gate_report_text
+
+    workspace = Path("/workspace")
+    abs_note = (
+        f"B run_1201 ok → {workspace}/runs/run_1201; "
+        f"auto-wired --diamond-csv from /tmp/gpqa_diamond.csv"
+    )
+    report = G3PreflightReport(
+        timestamp="2026-10-04T06:00:00Z",
+        mode="preflight",
+        plans=[PilotPlan(seed=1, b_run_id=1201, d_run_id=1301)],
+        ready_for_live=False,
+        commands=[["python3", "-m", "sia", "run", "--darwinian"]],
+        blockers=[f"diamond fetch failed: No such file: {workspace}/missing.csv"],
+        notes=[abs_note],
+    )
+    report.checks.append(
+        CheckResult(
+            "runtime_deps",
+            True,
+            f"PYTHONPATH={workspace}/SIA; ok",
+        )
+    )
+    out = tmp_path / "gate3_report.md"
+    write_gate3_report(report, out, existing_text="# Gate 3\n")
+    text = out.read_text(encoding="utf-8")
+    payload = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "/workspace" not in text
+    assert "/tmp/gpqa_diamond.csv" not in text
+    blob = json.dumps(payload)
+    assert "/workspace" not in blob
+    assert "/tmp/gpqa_diamond.csv" not in blob
+    cleaned = _sanitize_gate_report_text(abs_note, repo_root=Path("/workspace"))
+    assert "/workspace" not in cleaned
+    assert "/tmp/gpqa_diamond.csv" not in cleaned
+
+
+def test_write_gate3_report_sanitize_source_lock() -> None:
+    """Tick 528: gate3 writer must keep sanitize helper + write-time wiring."""
+    src = Path("scripts/run_g3_pilot.py").read_text(encoding="utf-8")
+    tests = Path("tests/test_run_g3_pilot.py").read_text(encoding="utf-8")
+    assert "def _sanitize_gate_report_text" in src
+    assert "sanitize_repo_paths_in_text" in src
+    assert "Tick 528" in src
+    assert "test_write_gate3_report_sanitizes_absolute_paths" in tests
+
+
 def test_gate3_next_nebius_first_when_diamond_ready(tmp_path: Path) -> None:
     """Tick 500: non-synthetic diamond → Next leads with NEBIUS, no HF chase."""
     report = G3PreflightReport(
