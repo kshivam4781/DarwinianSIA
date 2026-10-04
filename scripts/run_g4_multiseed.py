@@ -124,6 +124,7 @@ from icml_env_checks import (  # noqa: E402
     committed_offline_bvd_matches_live_shape,
     darwinian_run_complete,
     default_g4_pair_estimate_usd,
+    diamond_csv_autowire_note,
     ensure_deps_before_diamond_fetch,
     ensure_icml_runtime_deps,
     hydrate_direct_gate_budget_spent,
@@ -2283,9 +2284,7 @@ def main(argv: list[str] | None = None) -> int:
             return 4
 
     if csv_auto and args.diamond_csv is not None:
-        fetch_notes.append(
-            f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
-        )
+        fetch_notes.append(diamond_csv_autowire_note(args.diamond_csv))
     if args.fetch_diamond or args.diamond_csv is not None:
         ondisk_ready = icml_ondisk_nonsynthetic_gpqa(REPO_ROOT)
         # Tick 504: auto-wired CSV must not force rematerialize when ondisk ready.

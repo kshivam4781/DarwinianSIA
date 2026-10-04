@@ -382,6 +382,70 @@ def test_sanitize_repo_paths_in_text_strips_workspace_prefix(tmp_path: Path) -> 
     assert "SIA/sia/tasks/gpqa" in cleaned
 
 
+def test_portable_path_for_durable_host_tmp_diamond(tmp_path: Path) -> None:
+    """Tick 525: host-tmp gpqa_diamond.csv → $TMPDIR/gpqa_diamond.csv."""
+    from icml_env_checks import (
+        diamond_csv_autowire_note,
+        portable_path_for_durable,
+        sanitize_repo_paths_in_text,
+    )
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "docs" / "private").mkdir(parents=True)
+    in_repo = root / "docs" / "private" / "gpqa_diamond.csv"
+    in_repo.write_text("x", encoding="utf-8")
+    assert (
+        portable_path_for_durable(in_repo, repo_root=root)
+        == "docs/private/gpqa_diamond.csv"
+    )
+
+    host_tmp = Path("/tmp") / "gpqa_diamond.csv"
+    assert portable_path_for_durable(host_tmp, repo_root=root) == (
+        "$TMPDIR/gpqa_diamond.csv"
+    )
+    note = diamond_csv_autowire_note(host_tmp, repo_root=root)
+    assert note == (
+        "Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv"
+    )
+    assert "/tmp/" not in note
+
+    nested = Path("/tmp/pytest-of-ubuntu/pytest-0/test_x/gpqa_diamond.csv")
+    assert portable_path_for_durable(nested, repo_root=root) == (
+        "$TMPDIR/gpqa_diamond.csv"
+    )
+    scrubbed = sanitize_repo_paths_in_text(
+        "Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv",
+        repo_root=root,
+    )
+    assert scrubbed == (
+        "Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv"
+    )
+    assert "/tmp/" not in scrubbed
+
+
+def test_portable_diamond_csv_source_lock() -> None:
+    """Tick 525: portable diamond CSV helper + auto-wire call sites locked."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def portable_path_for_durable" in env
+    assert "def diamond_csv_autowire_note" in env
+    assert "$TMPDIR/gpqa_diamond.csv" in env
+    assert "Tick 525" in env
+    assert "_sanitize_host_tmp_diamond_csv" in env
+    for rel in (
+        "scripts/run_g2_smoke.py",
+        "scripts/run_g3_pilot.py",
+        "scripts/run_g4_multiseed.py",
+        "scripts/run_icml_live_pipeline.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "diamond_csv_autowire_note" in src
+        assert "auto-wired --diamond-csv from {args.diamond_csv}" not in src
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_portable_path_for_durable_host_tmp_diamond" in tests
+
+
 def test_ensure_sia_on_pythonpath_repo_relative_detail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2480,7 +2544,8 @@ def test_fetch_diamond_ok_with_local_csv_skips_hf(
     monkeypatch.setenv("ICML_DIAMOND_CSV", str(csv_path))
     status = collect_icml_secrets_status()
     assert status["diamond_csv_present"] is True
-    assert status["diamond_csv_path"] == str(csv_path.resolve())
+    # Tick 525: host-tmp / outside-repo diamond CSV → portable $TMPDIR label.
+    assert status["diamond_csv_path"] == "$TMPDIR/gpqa_diamond.csv"
     assert status["hf_token_present"] is False
     assert status["fetch_diamond_ok"] is True
     assert status["cron_live_ok"] is True

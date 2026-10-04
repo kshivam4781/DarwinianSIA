@@ -38,7 +38,7 @@
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv
+- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
 - Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 
 **G2 live status:** NOT RUN this tick

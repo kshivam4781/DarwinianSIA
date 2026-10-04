@@ -489,6 +489,84 @@ def repo_relative_path(
 repo_relative_figure_path = repo_relative_path
 
 
+def portable_path_for_durable(
+    path: Path | str, *, repo_root: Path | None = None
+) -> str:
+    """Return a portable path label for durable ICML JSON/MD (Tick 525).
+
+    - In-repo paths → ``repo_relative_path`` (``SIA/...``, ``docs/...``).
+    - Host-tmp ``gpqa_diamond.csv`` (``/tmp/...``, ``$TMPDIR/...``) →
+      ``$TMPDIR/gpqa_diamond.csv`` so gate notes / secrets status do not embed
+      absolute host paths across cold-boot VMs.
+    - Other absolute outs → ``str(path)`` fallback (operator debugging).
+    """
+    root = (repo_root or _REPO_ROOT).resolve()
+    p = Path(path)
+    try:
+        resolved = p.resolve()
+    except OSError:
+        resolved = p
+    try:
+        return str(resolved.relative_to(root))
+    except ValueError:
+        pass
+    if resolved.name == "gpqa_diamond.csv":
+        tmp_roots: set[Path] = set()
+        try:
+            tmp_roots.add(Path(tempfile.gettempdir()).resolve())
+        except OSError:
+            pass
+        for candidate in ("/tmp", "/var/tmp"):
+            try:
+                tmp_roots.add(Path(candidate).resolve())
+            except OSError:
+                tmp_roots.add(Path(candidate))
+        for tmp in tmp_roots:
+            try:
+                resolved.relative_to(tmp)
+                return "$TMPDIR/gpqa_diamond.csv"
+            except ValueError:
+                continue
+    return str(resolved)
+
+
+def diamond_csv_autowire_note(
+    csv_path: Path | str, *, repo_root: Path | None = None
+) -> str:
+    """Tick 278 auto-wire note with Tick 525 portable diamond CSV path."""
+    return (
+        "Tick 278: auto-wired --diamond-csv from "
+        f"{portable_path_for_durable(csv_path, repo_root=repo_root)}"
+    )
+
+
+def _sanitize_host_tmp_diamond_csv(text: str) -> str:
+    """Rewrite absolute host-tmp ``gpqa_diamond.csv`` paths to ``$TMPDIR/...``."""
+    if not text or "gpqa_diamond.csv" not in text:
+        return text
+    out = text
+    # Explicit tempfile.gettempdir() prefix (may differ from /tmp on some hosts).
+    try:
+        tmp = str(Path(tempfile.gettempdir()).resolve())
+    except OSError:
+        tmp = ""
+    if tmp:
+        # Escape for regex; allow nested pytest dirs under the temp root.
+        esc = re.escape(tmp.rstrip("/\\"))
+        out = re.sub(
+            esc + r"[/\\](?:[^/\\\s\"']+[/\\])*gpqa_diamond\.csv",
+            "$TMPDIR/gpqa_diamond.csv",
+            out,
+        )
+    # Common Unix temp roots (including /tmp/pytest-of-*/... nested).
+    out = re.sub(
+        r"(?:/var)?/tmp/(?:[^/\s\"']+/)*gpqa_diamond\.csv",
+        "$TMPDIR/gpqa_diamond.csv",
+        out,
+    )
+    return out
+
+
 def sanitize_repo_paths_in_text(
     text: str, *, repo_root: Path | None = None
 ) -> str:
@@ -500,6 +578,9 @@ def sanitize_repo_paths_in_text(
     covers whole-string paths; this strips the absolute repo-root prefix from
     longer ``; ``-joined / list-repr detail strings so gate2/3/4 reports stay
     portable across cold-boot VMs.
+
+    Tick 525: also rewrite host-tmp ``gpqa_diamond.csv`` absolute paths to
+    ``$TMPDIR/gpqa_diamond.csv`` (auto-wire notes / secrets ``diamond_csv_path``).
     """
     if not text:
         return text
@@ -527,7 +608,7 @@ def sanitize_repo_paths_in_text(
         # Bare prefix (e.g. trailing path with no child) → "."
         if prefix in out:
             out = out.replace(prefix, ".")
-    return out
+    return _sanitize_host_tmp_diamond_csv(out)
 
 
 def _prepend_local_bin_to_path() -> None:
@@ -8401,7 +8482,12 @@ def collect_icml_secrets_status() -> dict:
         "nebius_key_present": nebius,
         "hf_token_present": hf,
         "diamond_csv_present": diamond_csv_ok,
-        "diamond_csv_path": str(diamond_csv) if diamond_csv is not None else None,
+        # Tick 525: portable label (repo-relative or $TMPDIR/gpqa_diamond.csv).
+        "diamond_csv_path": (
+            portable_path_for_durable(diamond_csv)
+            if diamond_csv is not None
+            else None
+        ),
         "public_mirror_csv": public_mirror_used,
         # Tick 499: CSV **or** non-synthetic on-disk diamond (Gate2 parity).
         "diamond_ready": diamond_ready,

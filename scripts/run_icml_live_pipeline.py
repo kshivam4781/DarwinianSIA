@@ -124,6 +124,7 @@ from icml_env_checks import (  # noqa: E402
     default_g2_estimate_usd,
     default_g3_pair_estimate_usd,
     default_g4_pair_estimate_usd,
+    diamond_csv_autowire_note,
     ensure_deps_before_diamond_fetch,
     icml_diamond_n_for_stack,
     icml_g3g4_live_shape,
@@ -2060,9 +2061,7 @@ def main(argv: list[str] | None = None) -> int:
         budget=project_budget(g3_pairs=g3_pairs, g4_pairs=5),
     )
     if csv_auto and args.diamond_csv is not None:
-        report.notes.append(
-            f"Tick 278: auto-wired --diamond-csv from {args.diamond_csv}"
-        )
+        report.notes.append(diamond_csv_autowire_note(args.diamond_csv))
 
     # Tick 269: refuse paid stack on stale / missing ICML tip (unless override).
     tip_status = write_icml_tip_status(

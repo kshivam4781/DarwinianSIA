@@ -39,7 +39,7 @@ G3 promising: n/a (G3 not scored this run)
 
 ## Notes
 
-- Tick 278: auto-wired --diamond-csv from /tmp/gpqa_diamond.csv
+- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
 - Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 - Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6
 - Tick 299: committed G3/G4 recipes match live shape 5/4/2/6
