@@ -1,8 +1,8 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-04T02:17:41Z
+**Timestamp:** 2026-10-04T04:17:06Z
 **Mode:** `preflight`
-**Run ID:** `1850`
+**Run ID:** `1300`
 
 ## Preflight checks
 
@@ -15,7 +15,7 @@
 | `nebius_key` | NO | NEBIUS_API_KEY missing |
 | `hf_token_optional` | yes | missing (optional; needed for HF gpqa download) |
 | `budget` | yes | spent=$0.00 ceiling=$20.00 |
-| `run_id_free` | yes | run_1850 unused |
+| `run_id_free` | yes | run_1300 unused |
 | `per_run_venv` | yes | uv available on PATH (SIA per-run venv path) |
 | `runtime_deps` | yes | uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
@@ -28,7 +28,7 @@
 ## Planned command
 
 ```bash
-python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1850 --eval_subset 5 --no-web --seed 42 --dry-run --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target
+python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_size 2 --elite_count 1 --max_gen 2 --run_id 1300 --eval_subset 5 --no-web --seed 42 --dry-run --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target
 ```
 
 ## Blockers
@@ -38,8 +38,8 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
-- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
+- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
+- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
 
 **G2 live status:** NOT RUN this tick
 

@@ -1808,6 +1808,64 @@ def test_write_pipeline_report(tmp_path: Path) -> None:
     assert any("Tick 296 G3/G4 shape:" in n for n in sidecar["notes"])
 
 
+def test_write_pipeline_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
+    """Tick 527: notes/blockers/stage details drop absolute /workspace and /tmp diamond."""
+    from run_icml_live_pipeline import StageResult, _sanitize_pipeline_report_text
+
+    workspace = Path("/workspace")
+    abs_note = (
+        f"runtime deps before diamond: PYTHONPATH={workspace}/SIA; "
+        f"materialized → ['{workspace}/SIA/sia/tasks/gpqa']; "
+        f"auto-wired --diamond-csv from /tmp/gpqa_diamond.csv"
+    )
+    report = PipelineReport(
+        timestamp="2026-10-04T04:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+        ready_for_live=False,
+        blockers=[f"diamond fetch failed: No such file: {workspace}/missing.csv"],
+        notes=[abs_note],
+    )
+    report.add_stage(
+        StageResult(
+            name="G2",
+            attempted=True,
+            exit_code=1,
+            ok=False,
+            detail=f"failed under {workspace}/SIA/runs/run_1300",
+            skipped_reason=f"CSV missing at /tmp/gpqa_diamond.csv ({workspace}/docs)",
+        )
+    )
+    path = tmp_path / "icml_live_pipeline_report.md"
+    write_pipeline_report(report, path)
+    text = path.read_text(encoding="utf-8")
+    sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert "/workspace" not in text
+    assert "/tmp/gpqa_diamond.csv" not in text
+    assert "$TMPDIR/gpqa_diamond.csv" in text or "gpqa_diamond.csv" in text
+    assert "PYTHONPATH=SIA" in text or "SIA/sia/tasks/gpqa" in text
+    blob = json.dumps(sidecar)
+    assert "/workspace" not in blob
+    assert "/tmp/gpqa_diamond.csv" not in blob
+    # Helper matches sanitize_repo_paths_in_text contract.
+    cleaned = _sanitize_pipeline_report_text(abs_note, repo_root=Path("/workspace"))
+    assert "/workspace" not in cleaned
+    assert "/tmp/gpqa_diamond.csv" not in cleaned
+
+
+def test_write_pipeline_report_sanitize_source_lock() -> None:
+    """Tick 527: pipeline report writer imports + applies sanitize_repo_paths_in_text."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    src = (root / "scripts" / "run_icml_live_pipeline.py").read_text(encoding="utf-8")
+    tests = (root / "tests" / "test_run_icml_live_pipeline.py").read_text(encoding="utf-8")
+    assert "sanitize_repo_paths_in_text" in src
+    assert "def _sanitize_pipeline_report_text" in src
+    assert "Tick 527" in src
+    assert "test_write_pipeline_report_sanitizes_absolute_paths" in tests
+
+
 def test_write_pipeline_report_stamps_shape_note_after_secrets_wipe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

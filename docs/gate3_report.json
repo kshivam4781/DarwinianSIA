@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-04T02:17:49Z",
+  "timestamp": "2026-10-04T04:17:12Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -161,8 +161,8 @@
   "notes": [
     "Tick 377 hydrate: env=$0.0000 \u2265 ledger=$0.0000; no unbilled local completes",
     "Tick 511: G3 steering-lift proof OK \u2014 durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness",
-    "Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv",
-    "Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)"
+    "runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH",
+    "materialized diamond from CSV \u2192 ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']"
   ],
   "executed": false
 }

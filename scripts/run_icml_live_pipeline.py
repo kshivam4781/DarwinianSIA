@@ -135,6 +135,7 @@ from icml_env_checks import (  # noqa: E402
     ledger_stage_complete,
     live_pipeline_next_steps,
     load_budget_spent_ledger,
+    sanitize_repo_paths_in_text,
     write_budget_spent_ledger,
     write_icml_secrets_status,
     write_icml_tip_status,
@@ -1074,10 +1075,37 @@ def stamp_pipeline_report_shape_note(
     return True
 
 
+def _sanitize_pipeline_report_text(text: str, *, repo_root: Path | None = None) -> str:
+    """Tick 527: durable pipeline free-text must not embed absolute repo / host-tmp paths.
+
+    Gate2/3/4 writers already sanitize runtime_deps / planned argv / lift-proof
+    details. The unified pipeline report aggregates notes, blockers, and stage
+    details from many sources (diamond fetch exceptions, resume sync, deps
+    probes) — sanitize at write time so committed ``icml_live_pipeline_report.*``
+    stays portable across cold-boot VMs.
+    """
+    return sanitize_repo_paths_in_text(text or "", repo_root=repo_root or REPO_ROOT)
+
+
 def write_pipeline_report(report: PipelineReport, path: Path) -> None:
     # Tick 507: every write (incl. secrets early-refuse) keeps the shape note so
     # the next --live recipe lock cannot fail on a wiped report.
     ensure_notes_have_shape_note(report.notes)
+    # Tick 527: sanitize free-text in-place before MD/JSON so both stay portable.
+    root = REPO_ROOT
+    report.notes[:] = [
+        _sanitize_pipeline_report_text(n, repo_root=root) for n in report.notes
+    ]
+    report.blockers[:] = [
+        _sanitize_pipeline_report_text(b, repo_root=root) for b in report.blockers
+    ]
+    for s in report.stages:
+        if s.detail:
+            s.detail = _sanitize_pipeline_report_text(s.detail, repo_root=root)
+        if s.skipped_reason:
+            s.skipped_reason = _sanitize_pipeline_report_text(
+                s.skipped_reason, repo_root=root
+            )
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# ICML live pipeline report — G2 → G3 → G4",
@@ -1195,7 +1223,9 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
     )
     lines.extend(["", "## Next", ""])
     for i, step in enumerate(next_lines, start=1):
-        lines.append(f"{i}. {step}")
+        lines.append(
+            f"{i}. {_sanitize_pipeline_report_text(step, repo_root=REPO_ROOT)}"
+        )
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     sidecar = path.with_suffix(".json")
