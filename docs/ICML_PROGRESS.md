@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T10:22Z — Tick 530 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip recover: `cursor/icml-epistemic-results-f49c` (Tick 529) → boot `cursor/icml-epistemic-results-9e39`
+- Designated cloud boot branch for this tick: `9e39` (commits land here)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 529 portabilized runtime public-mirror dest + secrets human_next, but the operator-facing G2 module Examples still documented `--diamond-csv /tmp/gpqa_diamond.csv` (copy-paste reintroduces the absolute host-tmp path Tick 525–529 closed). Highest leverage without paid spend / STATUS-peel churn: **G2 docstring `$TMPDIR` + source lock + rematerialize**.
+
+### What we did
+**Tick 530 — G2 operator Examples use `$TMPDIR` (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `9e39`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. `scripts/run_g2_smoke.py` Examples: `--diamond-csv "$TMPDIR/gpqa_diamond.csv"` (closes remaining hardcoded `/tmp/gpqa_diamond.csv` in operator docs after Tick 529 runtime dest)
+3. Unit test + source lock: `test_g2_docstring_diamond_csv_uses_tmpdir_not_hardcoded_tmp`; focused suite green (3/3 incl. Tick 529 locks)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed G2/G3/G4/pipeline preflight
+5. Refreshed durable lift proof `local_run_present=false` / `tick=530` + secrets status (no `/tmp/gpqa_diamond.csv` in machine docs)
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 529) | After (Tick 530) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| G2 Examples `--diamond-csv` | hardcoded `/tmp/gpqa_diamond.csv` | **`$TMPDIR/gpqa_diamond.csv`** |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (529) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge latest tip PR (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T08:25Z — Tick 529 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

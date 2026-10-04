@@ -517,6 +517,17 @@ def test_portable_tmpdir_public_mirror_source_lock() -> None:
     assert "test_secrets_human_next_uses_tmpdir_not_hardcoded_tmp" in tests
 
 
+def test_g2_docstring_diamond_csv_uses_tmpdir_not_hardcoded_tmp() -> None:
+    """Tick 530: G2 operator Examples use $TMPDIR, not hardcoded /tmp."""
+    root = Path(__file__).resolve().parents[1]
+    g2 = (root / "scripts" / "run_g2_smoke.py").read_text(encoding="utf-8")
+    # Operator-facing example must stay portable (Tick 529 runtime dest parity).
+    assert '--diamond-csv "$TMPDIR/gpqa_diamond.csv"' in g2
+    assert "--diamond-csv /tmp/gpqa_diamond.csv" not in g2
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_g2_docstring_diamond_csv_uses_tmpdir_not_hardcoded_tmp" in tests
+
+
 def test_portable_diamond_csv_source_lock() -> None:
     """Tick 525: portable diamond CSV helper + auto-wire call sites locked."""
     root = Path(__file__).resolve().parents[1]

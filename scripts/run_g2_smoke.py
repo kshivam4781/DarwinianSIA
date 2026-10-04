@@ -55,7 +55,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
   python3 scripts/run_g2_smoke.py --dry-run --max-gen 3 --run-id 1955
   python3 scripts/run_g2_smoke.py --live --run-id 1300 --seed 1
   python3 scripts/run_g2_smoke.py --live --run-id 1300 --fetch-diamond
-  python3 scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv /tmp/gpqa_diamond.csv
+  python3 scripts/run_g2_smoke.py --preflight-only --fetch-diamond --diamond-csv "$TMPDIR/gpqa_diamond.csv"
 """
 
 from __future__ import annotations
