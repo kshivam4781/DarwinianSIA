@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 533:** pipeline ## Next refreshes from tip-status write (closes Tick 531–532 dual-unblock drift to superseded #337/`…-f49c`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.
+
 **Tick 532:** cron anti-churn `already_on` uses live `resolve_anti_churn_checkout_branch` (closes tip_status JSON-first skip after Tick 531 checkout-script fix); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 531:** anti-churn checkout prefers live tip-PR resolve over stale `docs/icml_tip_status.json` (closes tip rewind `9e39`→`f49c` after tip `--apply`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 530:** G2 operator Examples use `--diamond-csv "$TMPDIR/gpqa_diamond.csv"` (closes remaining hardcoded `/tmp/gpqa_diamond.csv` in module docs after Tick 529 runtime dest); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

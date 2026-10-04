@@ -607,6 +607,97 @@ def test_cron_anti_churn_already_on_uses_live_resolve_source_lock() -> None:
     assert "test_cron_anti_churn_already_on_uses_live_resolve_source_lock" in tests
 
 
+def test_refresh_pipeline_report_next_rewrites_stale_tip_pr(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 533: pipeline ## Next drops superseded tip PR after tip-status refresh."""
+    from icml_env_checks import refresh_pipeline_report_next
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_ok_for_live": True,
+                "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+                "tip_pr_number": 339,
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-9e39",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_secrets_status.json").write_text(
+        json.dumps(
+            {
+                "secrets_ok_for_paid_sia": False,
+                "fetch_diamond_ok": False,
+                "main_has_icml_tip": False,
+                "diamond_ready": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    stale = (
+        "# ICML live pipeline report\n\n"
+        "**Mode:** `preflight`\n\n"
+        "## Next\n\n"
+        "1. Add NEBIUS_API_KEY\n"
+        "6. Merge tip PR #337 — checkout `cursor/icml-epistemic-results-f49c`\n"
+    )
+    report = docs / "icml_live_pipeline_report.md"
+    report.write_text(stale, encoding="utf-8")
+
+    # live_pipeline_next_steps resolves tip PR via gh — stub to current tip.
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_tip_pr",
+        lambda **_k: {
+            "number": 339,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/339",
+            "title": "ICML Tick 533: add NEBIUS_API_KEY — live G2→G4 still blocked",
+            "head_ref": "cursor/icml-epistemic-results-9e39",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files",
+        lambda **_k: False,
+    )
+
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is True
+    text = report.read_text(encoding="utf-8")
+    assert "## Next" in text
+    assert "#339" in text or "pull/339" in text
+    assert "cursor/icml-epistemic-results-9e39" in text
+    assert "#337" not in text
+    assert "cursor/icml-epistemic-results-f49c" not in text
+    # Idempotent when already current.
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is False
+
+
+def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
+    """Tick 533: write_icml_tip_status calls refresh_pipeline_report_next."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def refresh_pipeline_report_next" in env
+    assert "Tick 533" in env
+    # write_icml_tip_status must invoke the refresh (closes gate-only drift).
+    tip_fn_start = env.find("def write_icml_tip_status")
+    assert tip_fn_start >= 0
+    tip_fn = env[tip_fn_start : tip_fn_start + 3500]
+    assert "refresh_pipeline_report_next" in tip_fn
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_refresh_pipeline_report_next_rewrites_stale_tip_pr" in tests
+    assert "test_pipeline_next_refresh_on_tip_status_write_source_lock" in tests
+
+
 def test_anti_churn_checkout_live_first_source_lock() -> None:
     """Tick 531: checkout script + helper prefer live resolve over tip_status."""
     root = Path(__file__).resolve().parents[1]

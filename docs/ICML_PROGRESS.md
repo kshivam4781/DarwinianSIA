@@ -1,5 +1,35 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T16:09:39Z — Tick 533 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-756b` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 531–532 refreshed gate2/3/4 + tip/secrets but left committed `docs/icml_live_pipeline_report.md` ## Next citing superseded tip PR **#337** / `…-f49c` while tip_status already pointed at **#339** / `…-9e39` — dual-unblock humans could merge the wrong tip. Highest leverage without paid spend / STATUS-peel churn: **pipeline Next refresh on tip-status write + rematerialize**.
+
+### What we did
+**Tick 533 — pipeline ## Next tip-PR identity lock (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `756b`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `refresh_pipeline_report_next()` — rewrites pipeline `## Next` from live tip/secrets status (closes Tick 531–532 #337/`f49c` drift)
+3. `write_icml_tip_status` calls the helper after every tip rewrite (gate-only ticks can no longer leave Next stale)
+4. Unit + source lock: `test_refresh_pipeline_report_next_rewrites_stale_tip_pr` + `test_pipeline_next_refresh_on_tip_status_write_source_lock`; focused suite green (4/4)
+5. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=533` / `local_run_present=false`
+6. Full pipeline preflight refreshed gate2/3/4 + pipeline Next (now cites tip PR #339 / `…-9e39`)
+7. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 532) | After (Tick 533) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Pipeline ## Next tip PR | stale **#337** / `…-f49c` (Tick 530 era) | **#339** / `…-9e39` via tip-status refresh |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (532) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T14:20Z — Tick 532 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

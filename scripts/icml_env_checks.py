@@ -8945,6 +8945,91 @@ def live_pipeline_next_steps(
     return steps
 
 
+def refresh_pipeline_report_next(
+    *,
+    repo_root: Path | None = None,
+) -> bool:
+    """Tick 533: rewrite pipeline ``## Next`` from live tip/secrets status.
+
+    Tick 531–532 refreshed gate2/3/4 + tip/secrets sidecars but skipped the
+    unified ``docs/icml_live_pipeline_report.md`` rewrite — committed Next still
+    told humans to merge superseded tip PR #337 / checkout ``…-f49c`` while
+    tip_status already pointed at #339 / ``…-9e39``. Call this whenever tip
+    status is rewritten so dual-unblock Next cannot drift from tip PR identity
+    even when agents run individual gate preflights instead of the full
+    pipeline.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    path = root / "docs" / "icml_live_pipeline_report.md"
+    if not path.is_file():
+        return False
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    tip_blob: dict[str, Any] = {}
+    tip_path = root / "docs" / "icml_tip_status.json"
+    if tip_path.is_file():
+        try:
+            loaded = json.loads(tip_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                tip_blob = loaded
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            tip_blob = {}
+    secrets_blob: dict[str, Any] = {}
+    secrets_path = root / "docs" / "icml_secrets_status.json"
+    if secrets_path.is_file():
+        try:
+            loaded = json.loads(secrets_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                secrets_blob = loaded
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            secrets_blob = {}
+    tip_ok = tip_blob.get("tip_ok_for_live")
+    if tip_ok is None:
+        tip_ok = True
+    tip_ref = tip_blob.get("remote_tip_ref") or tip_blob.get("tip_ref")
+    secrets_ok = bool(secrets_blob.get("secrets_ok_for_paid_sia"))
+    fetch_diamond_ok = secrets_blob.get("fetch_diamond_ok")
+    if fetch_diamond_ok is not None:
+        fetch_diamond_ok = bool(fetch_diamond_ok)
+    main_has = secrets_blob.get("main_has_icml_tip")
+    if main_has is not None:
+        main_has = bool(main_has)
+    diamond_ready = secrets_blob.get("diamond_ready")
+    if diamond_ready is not None:
+        diamond_ready = bool(diamond_ready)
+    next_lines = live_pipeline_next_steps(
+        secrets_ok=secrets_ok,
+        tip_ok=bool(tip_ok),
+        tip_ref=tip_ref if isinstance(tip_ref, str) else None,
+        fetch_diamond_ok=fetch_diamond_ok,
+        main_has_icml_tip=main_has,
+        diamond_ready=diamond_ready,
+    )
+    next_block = ["## Next", ""]
+    for i, step in enumerate(next_lines, start=1):
+        cleaned = sanitize_repo_paths_in_text(str(step), repo_root=root)
+        next_block.append(f"{i}. {cleaned}")
+    next_block.append("")
+    next_text = "\n".join(next_block)
+    marker = "## Next"
+    idx = text.find(marker)
+    if idx < 0:
+        # Append Next when a truncated report lacks the section.
+        new_text = text.rstrip() + "\n\n" + next_text
+    else:
+        # Drop everything from ## Next through EOF (Next is always last).
+        new_text = text[:idx].rstrip() + "\n\n" + next_text
+    if new_text == text:
+        return False
+    try:
+        path.write_text(new_text, encoding="utf-8")
+    except OSError:
+        return False
+    return True
+
+
 # --- Tick 269: ICML tip lineage (cron boots often start from main) -----------------
 
 _TICK_HEADING_RE = re.compile(
@@ -9293,6 +9378,10 @@ def write_icml_tip_status(
         )
         status["open_git_pr_description"] = hint.get("open_git_pr_description")
         out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    # Tick 533: keep pipeline ## Next tip-PR identity in sync with tip status
+    # (closes Tick 531–532 drift where gates/tip refreshed but Next stayed on
+    # superseded #337 / …-f49c).
+    refresh_pipeline_report_next(repo_root=root)
     return status
 
 
