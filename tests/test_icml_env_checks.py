@@ -671,6 +671,22 @@ def test_refresh_pipeline_report_next_rewrites_stale_tip_pr(
         lambda **_k: False,
     )
 
+    # Pre-existing JSON sidecar with stale / missing next_steps (Tick 535).
+    json_path = docs / "icml_live_pipeline_report.json"
+    json_path.write_text(
+        json.dumps(
+            {
+                "mode": "preflight",
+                "ready_for_live": False,
+                "next_steps": [
+                    "Merge tip PR #337 — checkout `cursor/icml-epistemic-results-f49c`"
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     assert refresh_pipeline_report_next(repo_root=tmp_path) is True
     text = report.read_text(encoding="utf-8")
     assert "## Next" in text
@@ -678,8 +694,113 @@ def test_refresh_pipeline_report_next_rewrites_stale_tip_pr(
     assert "cursor/icml-epistemic-results-9e39" in text
     assert "#337" not in text
     assert "cursor/icml-epistemic-results-f49c" not in text
-    # Idempotent when already current.
+    blob = json.loads(json_path.read_text(encoding="utf-8"))
+    assert isinstance(blob.get("next_steps"), list)
+    assert blob["next_steps"]
+    joined = "\n".join(blob["next_steps"])
+    assert "#339" in joined or "pull/339" in joined
+    assert "cursor/icml-epistemic-results-9e39" in joined
+    assert "#337" not in joined
+    assert "cursor/icml-epistemic-results-f49c" not in joined
+    # Idempotent when MD + JSON already current.
     assert refresh_pipeline_report_next(repo_root=tmp_path) is False
+
+
+def test_refresh_pipeline_report_next_updates_json_when_md_current(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 535: JSON next_steps still refreshes when MD ## Next is already current."""
+    from icml_env_checks import live_pipeline_next_steps, refresh_pipeline_report_next
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_ok_for_live": True,
+                "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+                "tip_pr_number": 339,
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-9e39",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_secrets_status.json").write_text(
+        json.dumps(
+            {
+                "secrets_ok_for_paid_sia": False,
+                "fetch_diamond_ok": False,
+                "main_has_icml_tip": True,
+                "diamond_ready": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_tip_pr",
+        lambda **_k: {
+            "number": 339,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/339",
+            "title": "ICML Tick 535: add NEBIUS_API_KEY — live G2→G4 still blocked",
+            "head_ref": "cursor/icml-epistemic-results-9e39",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files",
+        lambda **_k: True,
+    )
+    steps = live_pipeline_next_steps(
+        secrets_ok=False,
+        tip_ok=True,
+        tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+        fetch_diamond_ok=False,
+        main_has_icml_tip=True,
+        diamond_ready=True,
+    )
+    # MD already has current Next (Tick 533/534 only patched MD).
+    md_lines = ["# ICML live pipeline report", "", "## Next", ""]
+    for i, step in enumerate(steps, start=1):
+        md_lines.append(f"{i}. {step}")
+    md_lines.append("")
+    (docs / "icml_live_pipeline_report.md").write_text(
+        "\n".join(md_lines), encoding="utf-8"
+    )
+    json_path = docs / "icml_live_pipeline_report.json"
+    json_path.write_text(
+        json.dumps({"mode": "preflight", "ready_for_live": False}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is True
+    blob = json.loads(json_path.read_text(encoding="utf-8"))
+    assert blob.get("next_steps") == steps
+    # Second call is idempotent.
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is False
+
+
+def test_pipeline_next_json_sidecar_source_lock() -> None:
+    """Tick 535: pipeline JSON next_steps written + refreshed with MD ## Next."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 535" in env
+    assert '"next_steps"' in env or "'next_steps'" in env
+    pipe = (root / "scripts" / "run_icml_live_pipeline.py").read_text(encoding="utf-8")
+    assert '"next_steps": cleaned_next' in pipe or '"next_steps": cleaned_next,' in pipe
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_refresh_pipeline_report_next_updates_json_when_md_current" in tests
+    assert "test_pipeline_next_json_sidecar_source_lock" in tests
+    pipe_tests = (root / "tests" / "test_run_icml_live_pipeline.py").read_text(
+        encoding="utf-8"
+    )
+    assert "test_write_pipeline_report_persists_next_steps_json" in pipe_tests
 
 
 def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:

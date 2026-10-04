@@ -1221,14 +1221,18 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         main_has_icml_tip=secrets_status.get("main_has_icml_tip"),
         diamond_ready=bool(secrets_status.get("diamond_ready")),
     )
+    cleaned_next = [
+        _sanitize_pipeline_report_text(step, repo_root=REPO_ROOT)
+        for step in next_lines
+    ]
     lines.extend(["", "## Next", ""])
-    for i, step in enumerate(next_lines, start=1):
-        lines.append(
-            f"{i}. {_sanitize_pipeline_report_text(step, repo_root=REPO_ROOT)}"
-        )
+    for i, step in enumerate(cleaned_next, start=1):
+        lines.append(f"{i}. {step}")
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     sidecar = path.with_suffix(".json")
+    # Tick 535: persist next_steps on the JSON sidecar (MD ## Next parity) so
+    # tip→secrets refresh and machine readers share the same dual-unblock text.
     sidecar.write_text(
         json.dumps(
             {
@@ -1244,6 +1248,7 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
                 "g3_h2_by_d_run": report.g3_h2_by_d_run,
                 "stopped_after": report.stopped_after,
                 "icml_ready_status": report.icml_ready_status,
+                "next_steps": cleaned_next,
             },
             indent=2,
         )

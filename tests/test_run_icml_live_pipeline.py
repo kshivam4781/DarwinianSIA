@@ -1806,6 +1806,36 @@ def test_write_pipeline_report(tmp_path: Path) -> None:
     assert sidecar["ready_for_live"] is False
     assert sidecar["stages"][0]["name"] == "G2"
     assert any("Tick 296 G3/G4 shape:" in n for n in sidecar["notes"])
+    # Tick 535: JSON next_steps mirrors MD ## Next.
+    assert isinstance(sidecar.get("next_steps"), list)
+    assert sidecar["next_steps"]
+
+
+def test_write_pipeline_report_persists_next_steps_json(tmp_path: Path) -> None:
+    """Tick 535: write_pipeline_report persists sanitized next_steps on JSON sidecar."""
+    report = PipelineReport(
+        timestamp="2026-10-04T20:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+        ready_for_live=False,
+        blockers=["G2: nebius_key: NEBIUS_API_KEY missing"],
+        notes=["test"],
+    )
+    path = tmp_path / "icml_live_pipeline_report.md"
+    write_pipeline_report(report, path)
+    text = path.read_text(encoding="utf-8")
+    assert "## Next" in text
+    sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+    assert isinstance(sidecar.get("next_steps"), list)
+    assert len(sidecar["next_steps"]) >= 1
+    # MD numbered Next lines should match JSON next_steps text.
+    after = text.split("## Next", 1)[-1]
+    md_steps = [
+        line.split(". ", 1)[1]
+        for line in after.splitlines()
+        if line and line[0].isdigit() and ". " in line
+    ]
+    assert md_steps == sidecar["next_steps"]
 
 
 def test_write_pipeline_report_sanitizes_absolute_paths(tmp_path: Path) -> None:

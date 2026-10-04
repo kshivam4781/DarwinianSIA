@@ -8954,7 +8954,7 @@ def refresh_pipeline_report_next(
     *,
     repo_root: Path | None = None,
 ) -> bool:
-    """Tick 533/534: rewrite pipeline ``## Next`` from live tip/secrets status.
+    """Tick 533/534/535: rewrite pipeline ``## Next`` (+ JSON ``next_steps``).
 
     Tick 531–532 refreshed gate2/3/4 + tip/secrets sidecars but skipped the
     unified ``docs/icml_live_pipeline_report.md`` rewrite — committed Next still
@@ -8968,15 +8968,23 @@ def refresh_pipeline_report_next(
     then secrets (and refreshes secrets again after diamond rematerialize /
     preflight). Tip-only refresh left Next reading the *pre-secrets* JSON
     (stale ``diamond_ready`` / HF-chase vs NEBIUS-first).
+
+    Tick **535**: also rewrite ``docs/icml_live_pipeline_report.json``
+    ``next_steps`` — Tick 533/534 only patched the markdown ``## Next``, so
+    machine readers of the JSON sidecar still saw no / stale dual-unblock
+    guidance after tip→secrets refresh (MD/JSON drift).
     """
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT
     path = root / "docs" / "icml_live_pipeline_report.md"
-    if not path.is_file():
+    json_path = root / "docs" / "icml_live_pipeline_report.json"
+    if not path.is_file() and not json_path.is_file():
         return False
-    try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
-        return False
+    text = ""
+    if path.is_file():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
     tip_blob: dict[str, Any] = {}
     tip_path = root / "docs" / "icml_tip_status.json"
     if tip_path.is_file():
@@ -9017,27 +9025,59 @@ def refresh_pipeline_report_next(
         main_has_icml_tip=main_has,
         diamond_ready=diamond_ready,
     )
-    next_block = ["## Next", ""]
-    for i, step in enumerate(next_lines, start=1):
-        cleaned = sanitize_repo_paths_in_text(str(step), repo_root=root)
-        next_block.append(f"{i}. {cleaned}")
-    next_block.append("")
-    next_text = "\n".join(next_block)
-    marker = "## Next"
-    idx = text.find(marker)
-    if idx < 0:
-        # Append Next when a truncated report lacks the section.
-        new_text = text.rstrip() + "\n\n" + next_text
-    else:
-        # Drop everything from ## Next through EOF (Next is always last).
-        new_text = text[:idx].rstrip() + "\n\n" + next_text
-    if new_text == text:
-        return False
-    try:
-        path.write_text(new_text, encoding="utf-8")
-    except OSError:
-        return False
-    return True
+    cleaned_steps = [
+        sanitize_repo_paths_in_text(str(step), repo_root=root) for step in next_lines
+    ]
+    changed = False
+    if path.is_file() or text:
+        next_block = ["## Next", ""]
+        for i, step in enumerate(cleaned_steps, start=1):
+            next_block.append(f"{i}. {step}")
+        next_block.append("")
+        next_text = "\n".join(next_block)
+        marker = "## Next"
+        idx = text.find(marker)
+        if idx < 0:
+            # Append Next when a truncated report lacks the section.
+            new_text = text.rstrip() + "\n\n" + next_text if text else next_text
+        else:
+            # Drop everything from ## Next through EOF (Next is always last).
+            new_text = text[:idx].rstrip() + "\n\n" + next_text
+        if new_text != text:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(new_text, encoding="utf-8")
+                changed = True
+            except OSError:
+                pass
+    # Tick 535: keep JSON next_steps in sync with MD ## Next.
+    if json_path.is_file():
+        try:
+            blob = json.loads(json_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            blob = None
+        if isinstance(blob, dict):
+            if blob.get("next_steps") != cleaned_steps:
+                blob["next_steps"] = cleaned_steps
+                try:
+                    json_path.write_text(
+                        json.dumps(blob, indent=2) + "\n", encoding="utf-8"
+                    )
+                    changed = True
+                except OSError:
+                    pass
+    elif cleaned_steps and not path.is_file():
+        # JSON-only tree (tests): create minimal sidecar with next_steps.
+        try:
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+            json_path.write_text(
+                json.dumps({"next_steps": cleaned_steps}, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            changed = True
+        except OSError:
+            pass
+    return changed
 
 
 # --- Tick 269: ICML tip lineage (cron boots often start from main) -----------------

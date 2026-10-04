@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 535:** pipeline JSON sidecar persists + refreshes `next_steps` with MD `## Next` (closes Tick 533/534 MD-only dual-unblock drift); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 534:** pipeline ## Next also refreshes from secrets-status write (closes tip→secrets / post-preflight `diamond_ready` drift after Tick 533 tip-only wire); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.
 
 **Tick 533:** pipeline ## Next refreshes from tip-status write (closes Tick 531–532 dual-unblock drift to superseded #337/`…-f49c`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.
