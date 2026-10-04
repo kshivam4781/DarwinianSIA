@@ -7493,8 +7493,9 @@ def suggested_open_git_pr_body(
     local_tick: int | None,
     fetch_diamond_ok: bool | None = None,
     tip_pr_number: int | None = None,
+    tip_commit_branch: str | None = None,
 ) -> str:
-    """Tick 346–349: secrets-first tip PR body for ``gh pr edit`` / open_git_pr.
+    """Tick 346–349/532: secrets-first tip PR body for ``gh pr edit`` / open_git_pr.
 
     Tick 345 covered title-only refresh. ``gh pr view 337`` still showed a
     **Tick 336 body** after Ticks 337–345 — ``open_git_pr`` MCP does not rewrite
@@ -7555,6 +7556,12 @@ def suggested_open_git_pr_body(
     n = tip_pr_number if tip_pr_number is not None else "N"
     offline_ids = _offline_bvd_id_range_blurb()
     h2_blurb = _offline_bvd_h2_blurb()
+    # Tick 532: use live tip PR head — do not hardcode historical …-f49c.
+    tip_branch = (
+        (tip_commit_branch or "").strip()
+        or (prefer_tip_pr_commit_branch() or "").strip()
+        or "tip_pr_commit_branch"
+    )
     if fetch_diamond_ok is False:
         load_icml_dotenv()
         nebius = _secret_present("NEBIUS_API_KEY")
@@ -7619,7 +7626,7 @@ def suggested_open_git_pr_body(
         f"- {primary}\n"
         f"- Tip recover / chicken-egg + prior_live stack (see "
         f"`docs/ICML_PROGRESS.md`); tip PR anti-churn on this PR "
-        f"(`cursor/icml-epistemic-results-f49c`). Tip PR GitHub **title and "
+        f"(`{tip_branch}`). Tip PR GitHub **title and "
         f"body** stay frozen when using `open_git_pr` MCP (does **not** "
         f"rewrite either on existing PRs — Tick 345–350; prefer verbatim "
         f"args from `{ICML_OPEN_GIT_PR_CALL_RELPATH}`). Refresh via "
@@ -7787,7 +7794,7 @@ def resolve_anti_churn_checkout_branch(
     live_branch: str | None = None,
     status_branch: str | None = None,
 ) -> str | None:
-    """Tick 531: live tip-PR resolve wins over stale tip_status.json.
+    """Tick 531/532: live tip-PR resolve wins over stale tip_status.json.
 
     Pre-531 ``icml_checkout_tip_pr_branch.sh`` preferred
     ``docs/icml_tip_status.json`` tip_pr_commit_branch. After tip ``--apply``
@@ -7795,6 +7802,10 @@ def resolve_anti_churn_checkout_branch(
     the prior tip PR head (``…-f49c`` / #337) — anti-churn then *rewound* tip
     from Tick 530 → 529. Prefer live ``prefer_tip_pr_commit_branch()``; fall
     back to status JSON only when live resolve is empty (gh down / no tip PR).
+
+    Tick **532**: ``icml_cron_entry.sh`` also uses this helper for the
+    ``already_on`` gate (pre-532 read tip_status JSON-first and could skip
+    live re-resolve when HEAD matched a *stale* tip_pr_commit_branch).
     """
     root = repo_root or _REPO_ROOT
     live = (live_branch if live_branch is not None else prefer_tip_pr_commit_branch())
@@ -7952,6 +7963,7 @@ def build_icml_open_git_pr_hint(
             local_tick=local_tick,
             fetch_diamond_ok=fetch_diamond_ok,
             tip_pr_number=pr.get("number"),
+            tip_commit_branch=prefer_tip_pr_commit_branch(pr),
         )
         if body_stale
         else None

@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-04T12:20:44Z",
-  "tick": 531,
+  "tick": 532,
   "source": "gate2_dry_run_write",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,6 +67,6 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-04T12:20:44Z",
+  "local_run_flag_refreshed_at": "2026-10-04T14:17:42Z",
   "updated_at": "2026-10-04T06:20:49Z"
 }

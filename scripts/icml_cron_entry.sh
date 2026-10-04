@@ -364,7 +364,7 @@ print(f"budget_ledger={ledger_path} created={ledger_created}")
 PY
 fi
 
-# --- Tip PR anti-churn auto-checkout (Tick 338 / 351) ---------------------------
+# --- Tip PR anti-churn auto-checkout (Tick 338 / 351 / 531 / 532) ----------------
 # Tick 337 added prefer_tip_pr_commit_branch + a manual checkout script, but
 # cron still left HEAD on the greenfield boot branch after tip recover
 # (boot_recover --apply = git reset --hard tip SHA; branch name unchanged).
@@ -373,20 +373,20 @@ fi
 # tip PR head.
 # Tick 351: fall back to tip_pr_head_ref when tip_pr_commit_branch is empty
 # but head_ref is set and mergeable is not CONFLICTING (GitHub UNKNOWN/null
-# mergeable used to null tip_pr_commit_branch and skip checkout).
-if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]] && [[ -f docs/icml_tip_status.json ]]; then
+# mergeable used to null tip_pr_commit_branch and skip checkout) — now inside
+# tip_pr_commit_branch_from_status_json / resolve_anti_churn_checkout_branch.
+# Tick 531: checkout script itself is live-first (not tip_status JSON-first).
+# Tick 532: cron *already_on* gate must also use resolve_anti_churn_checkout_branch
+# — pre-532 read tip_status tip_pr_commit_branch, so a stale JSON name (e.g.
+# …-f49c after tip --apply to …-9e39) could mark already_on on the *prior* tip
+# PR head and skip live re-resolve forever.
+if [[ -f scripts/icml_checkout_tip_pr_branch.sh ]] && [[ -f scripts/icml_env_checks.py ]]; then
   _anti_branch="$(python3 -c "
-import json
+import sys
 from pathlib import Path
-d = json.loads(Path('docs/icml_tip_status.json').read_text(encoding='utf-8'))
-branch = d.get('tip_pr_commit_branch') or ''
-if not branch:
-    mergeable = str(d.get('tip_pr_mergeable') or '').strip().upper()
-    state = str(d.get('tip_pr_merge_state_status') or '').strip().upper()
-    head = (d.get('tip_pr_head_ref') or '').strip()
-    if head and mergeable != 'CONFLICTING' and state != 'DIRTY':
-        branch = head
-print(branch)
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import resolve_anti_churn_checkout_branch
+print(resolve_anti_churn_checkout_branch() or '')
 " 2>/dev/null || true)"
   _cur_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
   if [[ -n "${_anti_branch}" ]]; then

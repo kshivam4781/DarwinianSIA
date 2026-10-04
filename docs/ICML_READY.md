@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 531: anti-churn checkout prefers live tip-PR resolve over stale `docs/icml_tip_status.json` (closes tip rewind `9e39`→`f49c` after tip `--apply`); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `c481` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 532: cron anti-churn `already_on` gate uses `resolve_anti_churn_checkout_branch` (closes tip_status JSON-first skip that could leave HEAD on prior tip PR after Tick 531 checkout-script fix); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `5986` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

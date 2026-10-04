@@ -588,6 +588,25 @@ def test_resolve_anti_churn_checkout_branch_live_over_stale_status(
     )
 
 
+def test_cron_anti_churn_already_on_uses_live_resolve_source_lock() -> None:
+    """Tick 532: cron already_on gate uses live resolve (not tip_status JSON)."""
+    root = Path(__file__).resolve().parents[1]
+    cron = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    # Must call the live-first helper for _anti_branch (Tick 531 checkout parity).
+    assert "resolve_anti_churn_checkout_branch" in cron
+    # Pre-532 JSON-first already_on: read tip_pr_commit_branch from tip_status.
+    # Keep tip_status reads elsewhere (open_git_pr fallback) but the anti-churn
+    # gate block must not decide already_on from raw tip_status alone.
+    anti_block_start = cron.find("# --- Tip PR anti-churn auto-checkout")
+    assert anti_block_start >= 0
+    anti_block = cron[anti_block_start : anti_block_start + 2500]
+    assert "resolve_anti_churn_checkout_branch" in anti_block
+    assert "d.get('tip_pr_commit_branch')" not in anti_block
+    assert "json.loads(Path('docs/icml_tip_status.json')" not in anti_block
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_cron_anti_churn_already_on_uses_live_resolve_source_lock" in tests
+
+
 def test_anti_churn_checkout_live_first_source_lock() -> None:
     """Tick 531: checkout script + helper prefer live resolve over tip_status."""
     root = Path(__file__).resolve().parents[1]
@@ -1285,11 +1304,14 @@ def test_secrets_status_human_next_nebius_first_when_diamond_ready(
 
 
 def test_suggested_open_git_pr_body_secrets_first_generic() -> None:
-    """Tick 393: tip PR body stays secrets-first; no frozen infra changelog."""
+    """Tick 393/532: tip PR body stays secrets-first; live tip branch (not hardcoded f49c)."""
     from icml_env_checks import suggested_open_git_pr_body
 
     body = suggested_open_git_pr_body(
-        local_tick=393, fetch_diamond_ok=False, tip_pr_number=337
+        local_tick=393,
+        fetch_diamond_ok=False,
+        tip_pr_number=337,
+        tip_commit_branch="cursor/icml-epistemic-results-9e39",
     )
     assert "Tick 393" in body
     assert "PRIMARY" in body
@@ -1299,11 +1321,18 @@ def test_suggested_open_git_pr_body_secrets_first_generic() -> None:
     # Tick 394: durable recover note must not freeze a single tip-apply Tick.
     assert "through Tick 392" not in body
     assert "ICML_PROGRESS.md" in body
+    # Tick 532: anti-churn branch is the live tip head, not a frozen …-f49c example.
+    assert "cursor/icml-epistemic-results-9e39" in body
+    assert "cursor/icml-epistemic-results-f49c" not in body
     ready = suggested_open_git_pr_body(
-        local_tick=393, fetch_diamond_ok=True, tip_pr_number=337
+        local_tick=393,
+        fetch_diamond_ok=True,
+        tip_pr_number=337,
+        tip_commit_branch="cursor/icml-epistemic-results-9e39",
     )
     assert "Secrets OK" in ready or "secrets present" in ready.lower()
     assert "icml_cron_entry.sh" in ready
+    assert "cursor/icml-epistemic-results-9e39" in ready
 
 
 def test_detect_gpqa_is_synthetic_and_secrets_auto_probe(
