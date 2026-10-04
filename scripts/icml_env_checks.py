@@ -540,6 +540,58 @@ def diamond_csv_autowire_note(
     )
 
 
+_PYTHON_INTERPRETER_NAME_RE = re.compile(r"^python(\d+(\.\d+)*)?$")
+
+
+def portable_argv_for_durable(
+    argv: Sequence[str] | list[str], *, repo_root: Path | None = None
+) -> list[str]:
+    """Return argv with host-absolute interpreter/repo paths made portable (Tick 526).
+
+    Gate2/3/4 planned-command writers historically persisted ``sys.executable``
+    (``/usr/bin/python3``) and absolute in-repo paths into committed
+    ``docs/gate*_report.*``. Sanitize at **write time only** — live execution
+    still uses the real absolute argv from ``build_sia_command``.
+
+    - ``sys.executable`` / absolute ``python`` / ``python3`` / ``python3.x`` →
+      basename (``icml_python_cli()`` when matching this process)
+    - Absolute in-repo paths / host-tmp diamond CSV → ``portable_path_for_durable``
+    - Other tokens unchanged
+    """
+    root = (repo_root or _REPO_ROOT).resolve()
+    try:
+        exe_resolved = str(Path(sys.executable).resolve())
+    except OSError:
+        exe_resolved = str(sys.executable)
+    py_cli = icml_python_cli()
+    out: list[str] = []
+    for raw in argv:
+        s = str(raw)
+        if not s:
+            out.append(s)
+            continue
+        if s == sys.executable:
+            out.append(py_cli)
+            continue
+        p = Path(s)
+        resolved: Path | None = None
+        if p.is_absolute():
+            try:
+                resolved = p.resolve()
+            except OSError:
+                resolved = p
+            if str(resolved) == exe_resolved:
+                out.append(py_cli)
+                continue
+            if _PYTHON_INTERPRETER_NAME_RE.match(resolved.name):
+                out.append(resolved.name)
+                continue
+            out.append(portable_path_for_durable(resolved, repo_root=root))
+            continue
+        out.append(s)
+    return out
+
+
 def _sanitize_host_tmp_diamond_csv(text: str) -> str:
     """Rewrite absolute host-tmp ``gpqa_diamond.csv`` paths to ``$TMPDIR/...``."""
     if not text or "gpqa_diamond.csv" not in text:

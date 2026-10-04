@@ -105,6 +105,7 @@ from icml_env_checks import (  # noqa: E402
     icml_should_keep_ondisk_diamond,
     icml_python_cli,
     icml_target_profile_cli_flags,
+    portable_argv_for_durable,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
@@ -1347,7 +1348,8 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
             "## Planned command",
             "",
             "```bash",
-            " ".join(report.command),
+            # Tick 526: durable planned argv — basename python, no /usr/bin/…
+            " ".join(portable_argv_for_durable(report.command)),
             "```",
             "",
         ]
@@ -1446,7 +1448,8 @@ def write_gate2_report(report: PreflightReport, out: Path, post: list[CheckResul
         "ready_for_dry_run": report.ready_for_dry_run,
         "blockers": report.blockers,
         "checks": [asdict(c) for c in report.checks],
-        "command": report.command,
+        # Tick 526: durable planned argv — basename python, no /usr/bin/…
+        "command": portable_argv_for_durable(report.command),
         "post": post_dicts,
     }
     if prior_live_post is not None:

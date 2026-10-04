@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-03T22:18:16Z",
+  "timestamp": "2026-10-04T02:17:49Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -91,7 +91,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 523 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 526 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     },
     {
       "name": "g2_steering_lift",
@@ -101,7 +101,7 @@
   ],
   "commands": [
     [
-      "/usr/bin/python3",
+      "python3",
       "-m",
       "sia",
       "run",
@@ -127,7 +127,7 @@
       "kimi-nebius-target"
     ],
     [
-      "/usr/bin/python3",
+      "python3",
       "-m",
       "sia",
       "run",

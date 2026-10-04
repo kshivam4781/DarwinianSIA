@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-02T14:21:03Z",
+  "timestamp": "2026-10-04T02:16:03Z",
   "mode": "preflight",
   "ready_for_live": false,
   "budget": {
@@ -18,6 +18,14 @@
     "skip_g4": false
   },
   "stages": [
+    {
+      "name": "G2_steering_lift",
+      "attempted": true,
+      "exit_code": 0,
+      "ok": true,
+      "skipped_reason": null,
+      "detail": "durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness"
+    },
     {
       "name": "G2",
       "attempted": true,
@@ -53,6 +61,7 @@
     "Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv",
     "Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)",
     "Tick 296 G3/G4 shape: eval_subset=5 pop=4 elite=2 max_gen=6",
+    "Tick 510: steering-lift proof OK \u2014 durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness",
     "Tick 299: committed G3/G4 recipes match live shape 5/4/2/6",
     "Tick 300\u2013301: offline Bvd summary matches live shape 5/4/2/6 (paper/READY/Section12 ID citations locked)"
   ],

@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T02:15Z — Tick 526 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-f49c` / PR #337
+- Boot: `cursor/icml-epistemic-results-7322` (anti-churn onto tip)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 525 closed host-tmp diamond CSV absolute paths, but durable gate2/3/4 planned commands still embedded host-absolute `/usr/bin/python3` from `sys.executable`. Highest leverage without paid spend / STATUS-peel churn: **portable planned argv (`python3 -m sia …`) + rematerialize**.
+
+### What we did
+**Tick 526 — portable planned argv in gate reports (no API spend):**
+1. Recovered tip `f49c` from greenfield boot `7322`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `portable_argv_for_durable` — write-time sanitize of planned commands (`sys.executable` / absolute `python3` → basename; in-repo abs paths → `portable_path_for_durable`); wired into G2/G3/G4 MD+JSON writers (live execution still uses real absolute argv)
+3. Unit tests: portable argv + source lock; focused suite green (2/2 + prior path locks)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed preflight reports (planned cmds start with `python3`)
+5. Refreshed durable lift proof `local_run_present=false` / `tick=526` + secrets status
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 525) | After (Tick 526) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Gate planned command argv | absolute `/usr/bin/python3 -m sia …` | **portable** `python3 -m sia …` |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (525) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: `gh pr ready 337 && gh pr merge 337 --merge` (and/or bootstrap #338); `gh pr edit 337 --title … --body-file docs/icml_tip_pr_body.md`. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T00:10Z — Tick 525 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

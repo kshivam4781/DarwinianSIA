@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-03T22:18:09Z",
+  "timestamp": "2026-10-04T02:17:41Z",
   "mode": "preflight",
   "run_id": 1850,
   "ready_for_live": false,
@@ -71,11 +71,11 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 523 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
+      "detail": "local Tick 526 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c"
     }
   ],
   "command": [
-    "/usr/bin/python3",
+    "python3",
     "-m",
     "sia",
     "run",

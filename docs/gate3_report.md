@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-03T22:18:16Z
+**Timestamp:** 2026-10-04T02:17:49Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -44,7 +44,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 523 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
+| `tip_ok_for_live` | yes | local Tick 526 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-f49c |
 | `g2_steering_lift` | yes | durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness |
 
 ### Planned seed pairs
@@ -55,8 +55,8 @@
 
 ### Planned commands (sequential: B then D per seed; never parallel)
 
-1. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
-2. `/usr/bin/python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1301 --eval_subset 5 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+1. `python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1201 --eval_subset 5 --no-web --seed 1 --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
+2. `python3 -m sia run --task gpqa --darwinian --population_size 4 --elite_count 2 --max_gen 6 --run_id 1301 --eval_subset 5 --no-web --seed 1 --cabs --cabs-inline --meta-agent-profile kimi-nebius-pydantic-meta --target-agent-profile kimi-nebius-target`
 
 ## Blockers (live G3)
 

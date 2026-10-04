@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 526:** durable gate planned commands emit portable argv (`python3 -m sia …` via `portable_argv_for_durable`; closes absolute `/usr/bin/python3` leak); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 525:** host-tmp diamond CSV paths emit portable `$TMPDIR/gpqa_diamond.csv` (closes absolute `/tmp/gpqa_diamond.csv` leak in secrets / gate auto-wire notes); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 524:** preflight `runtime_deps` + diamond materialize notes emit repo-relative `PYTHONPATH=SIA` / `SIA/sia/tasks/gpqa` (closes absolute `/workspace/…` leak in gate2/3/4 reports); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 523:** durable G2/lift-proof post details emit repo-relative `SIA/runs/…` (closes absolute `/workspace/…` leak in `gate2_report` / `gate2_steering_lift_proof`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

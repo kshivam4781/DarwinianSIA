@@ -446,6 +446,54 @@ def test_portable_diamond_csv_source_lock() -> None:
     assert "test_portable_path_for_durable_host_tmp_diamond" in tests
 
 
+def test_portable_argv_for_durable_python_and_repo_paths(tmp_path: Path) -> None:
+    """Tick 526: durable planned argv drops /usr/bin/python3 + in-repo abs paths."""
+    from icml_env_checks import icml_python_cli, portable_argv_for_durable
+
+    root = tmp_path / "repo"
+    (root / "SIA" / "runs").mkdir(parents=True)
+    sia_bin = root / "SIA" / "runs" / "dummy"
+    sia_bin.write_text("x", encoding="utf-8")
+
+    argv = [
+        "/usr/bin/python3",
+        "-m",
+        "sia",
+        "run",
+        "--task",
+        "gpqa",
+        str(sia_bin),
+    ]
+    out = portable_argv_for_durable(argv, repo_root=root)
+    assert out[0] == "python3"
+    assert "/usr/bin/" not in " ".join(out)
+    assert out[-1] == "SIA/runs/dummy"
+    assert str(root) not in " ".join(out)
+
+    # Matching this process executable → icml_python_cli basename.
+    self_argv = [sys.executable, "-m", "sia", "run"]
+    self_out = portable_argv_for_durable(self_argv, repo_root=root)
+    assert self_out[0] == icml_python_cli()
+    assert "/" not in self_out[0]
+
+
+def test_portable_argv_for_durable_source_lock() -> None:
+    """Tick 526: portable argv helper + gate writer call sites locked."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def portable_argv_for_durable" in env
+    assert "Tick 526" in env
+    for rel in (
+        "scripts/run_g2_smoke.py",
+        "scripts/run_g3_pilot.py",
+        "scripts/run_g4_multiseed.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "portable_argv_for_durable" in src
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_portable_argv_for_durable_python_and_repo_paths" in tests
+
+
 def test_ensure_sia_on_pythonpath_repo_relative_detail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

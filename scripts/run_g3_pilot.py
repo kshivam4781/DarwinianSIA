@@ -109,6 +109,7 @@ from icml_env_checks import (  # noqa: E402
     icml_preflight_diamond_ready,
     icml_python_cli,
     icml_target_profile_cli_flags,
+    portable_argv_for_durable,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
     probe_per_run_venv_capable,
@@ -1103,7 +1104,9 @@ def write_gate3_report(
         ]
     )
     for i, cmd in enumerate(report.commands, 1):
-        lines.append(f"{i}. `{ ' '.join(cmd) }`")
+        # Tick 526: durable planned argv — basename python, no /usr/bin/…
+        portable = portable_argv_for_durable(cmd)
+        lines.append(f"{i}. `{ ' '.join(portable) }`")
     lines.append("")
 
     if report.blockers:
@@ -1245,7 +1248,8 @@ def write_gate3_report(
         "plans": [asdict(p) for p in report.plans],
         "blockers": report.blockers,
         "checks": [asdict(c) for c in report.checks],
-        "commands": report.commands,
+        # Tick 526: durable planned argv — basename python, no /usr/bin/…
+        "commands": [portable_argv_for_durable(c) for c in report.commands],
         "comparison": report.comparison,
         "h5_by_d_run": report.h5_by_d_run,
         "h2_by_d_run": report.h2_by_d_run,
