@@ -8818,6 +8818,11 @@ def write_icml_secrets_status(
         status["open_git_pr_description"] = hint.get("open_git_pr_description")
         status["local_tick"] = hint.get("local_tick")
         out.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+    # Tick 534: secrets rewrite (cron after preflight / diamond rematerialize)
+    # updates diamond_ready + tip_pr fields that pipeline ## Next reads — refresh
+    # Next here so tip→secrets order cannot leave Next on pre-secrets status
+    # (Tick 533 only wired tip-status write).
+    refresh_pipeline_report_next(repo_root=root)
     return status
 
 
@@ -8949,7 +8954,7 @@ def refresh_pipeline_report_next(
     *,
     repo_root: Path | None = None,
 ) -> bool:
-    """Tick 533: rewrite pipeline ``## Next`` from live tip/secrets status.
+    """Tick 533/534: rewrite pipeline ``## Next`` from live tip/secrets status.
 
     Tick 531–532 refreshed gate2/3/4 + tip/secrets sidecars but skipped the
     unified ``docs/icml_live_pipeline_report.md`` rewrite — committed Next still
@@ -8958,6 +8963,11 @@ def refresh_pipeline_report_next(
     status is rewritten so dual-unblock Next cannot drift from tip PR identity
     even when agents run individual gate preflights instead of the full
     pipeline.
+
+    Tick **534**: also call from ``write_icml_secrets_status`` — cron writes tip
+    then secrets (and refreshes secrets again after diamond rematerialize /
+    preflight). Tip-only refresh left Next reading the *pre-secrets* JSON
+    (stale ``diamond_ready`` / HF-chase vs NEBIUS-first).
     """
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT
     path = root / "docs" / "icml_live_pipeline_report.md"

@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 534:** pipeline ## Next also refreshes from secrets-status write (closes tip→secrets / post-preflight `diamond_ready` drift after Tick 533 tip-only wire); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.
+
 **Tick 533:** pipeline ## Next refreshes from tip-status write (closes Tick 531–532 dual-unblock drift to superseded #337/`…-f49c`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.
 
 **Tick 532:** cron anti-churn `already_on` uses live `resolve_anti_churn_checkout_branch` (closes tip_status JSON-first skip after Tick 531 checkout-script fix); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

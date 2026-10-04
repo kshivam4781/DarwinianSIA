@@ -698,6 +698,122 @@ def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
     assert "test_pipeline_next_refresh_on_tip_status_write_source_lock" in tests
 
 
+def test_pipeline_next_refresh_on_secrets_write_source_lock() -> None:
+    """Tick 534: write_icml_secrets_status also calls refresh_pipeline_report_next."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def refresh_pipeline_report_next" in env
+    assert "Tick 534" in env
+    secrets_fn_start = env.find("def write_icml_secrets_status")
+    assert secrets_fn_start >= 0
+    # Bound the function body so we do not match tip-status's Tick 533 call.
+    tip_fn_start = env.find("def write_icml_tip_status")
+    secrets_fn = env[
+        secrets_fn_start : tip_fn_start if tip_fn_start > secrets_fn_start else secrets_fn_start + 4500
+    ]
+    assert "refresh_pipeline_report_next" in secrets_fn
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_pipeline_next_refresh_on_secrets_write_source_lock" in tests
+    assert "test_write_icml_secrets_status_refreshes_pipeline_next_diamond_ready" in tests
+
+
+def test_write_icml_secrets_status_refreshes_pipeline_next_diamond_ready(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 534: secrets write refreshes Next after diamond_ready flips True."""
+    from icml_env_checks import write_icml_secrets_status
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_ok_for_live": True,
+                "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+                "tip_pr_number": 339,
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-9e39",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    # Stale Next still chases HF (pre-diamond / pre-Tick-501 phrasing).
+    report = docs / "icml_live_pipeline_report.md"
+    report.write_text(
+        "# ICML live pipeline report\n\n"
+        "**Mode:** `preflight`\n\n"
+        "## Next\n\n"
+        "1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`)\n"
+        "2. Accept HF `Idavidrein/gpqa` if using HF.\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda *_a, **_k: tmp_path / "gpqa_diamond.csv",
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.icml_ondisk_nonsynthetic_gpqa",
+        lambda *_a, **_k: False,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files",
+        lambda *_a, **_k: True,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.write_icml_open_git_pr_hint",
+        lambda **_k: {},
+    )
+    # Force diamond_ready via CSV present path inside collect — stub the
+    # readiness helper used by collect_icml_secrets_status when available.
+    monkeypatch.setattr(
+        "icml_env_checks.collect_icml_secrets_status",
+        lambda: {
+            "secrets": {
+                "ANTHROPIC_API_KEY": "ABSENT",
+                "NEBIUS_API_KEY": "ABSENT",
+                "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "ABSENT",
+            },
+            "anthropic_key_present": False,
+            "nebius_key_present": False,
+            "hf_token_present": False,
+            "diamond_csv_present": True,
+            "diamond_csv_path": "$TMPDIR/gpqa_diamond.csv",
+            "public_mirror_csv": True,
+            "diamond_ready": True,
+            "meta_requires_anthropic": False,
+            "secrets_ok_for_paid_sia": False,
+            "fetch_diamond_ok": False,
+            "cron_live_ok": False,
+            "ready_for_live_pipeline": False,
+            "main_has_icml_tip": True,
+            "blockers": ["NEBIUS_API_KEY missing"],
+            "human_next": [
+                "Add NEBIUS_API_KEY (diamond ready — HF optional)",
+                "Next cron: bash scripts/icml_cron_entry.sh",
+            ],
+            "open_git_pr_branch": None,
+        },
+    )
+
+    out = docs / "icml_secrets_status.json"
+    write_icml_secrets_status(path=out, repo_root=tmp_path, gpqa_is_synthetic=False)
+    text = report.read_text(encoding="utf-8")
+    assert "## Next" in text
+    assert "NEBIUS_API_KEY" in text
+    # NEBIUS-first when diamond_ready — must not still hard-chase HF accept.
+    assert "Idavidrein/gpqa" not in text
+    assert "HF_TOKEN` **or**" not in text
+
+
 def test_anti_churn_checkout_live_first_source_lock() -> None:
     """Tick 531: checkout script + helper prefer live resolve over tip_status."""
     root = Path(__file__).resolve().parents[1]
