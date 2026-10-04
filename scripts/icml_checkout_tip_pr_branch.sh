@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357–358).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357–358 / 531).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
@@ -18,6 +18,9 @@
 # Tick 358: after checkout, refresh ``docs/icml_open_git_pr_call.json`` so
 # ``cloud_boot_branch`` matches the just-persisted boot (not a stale prior-tick
 # value left when agents skip full cron status rewrite).
+# Tick 531: prefer *live* tip-PR resolve over committed tip_status.json —
+# stale tip_pr_commit_branch (e.g. …-f49c after tip --apply to …-9e39) must
+# not rewind tip Tick N → N-1.
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh
@@ -50,36 +53,17 @@ if [[ -z "${ROOT}" ]]; then
 fi
 cd "$ROOT"
 
-# Prefer fresh tip/secrets JSON; fall back to resolve via Python.
-# Tick 351: tip_pr_head_ref fallback when tip_pr_commit_branch empty but
-# mergeable is not CONFLICTING (UNKNOWN/null used to skip anti-churn).
-BRANCH=""
-if [[ -f docs/icml_tip_status.json ]]; then
-  BRANCH="$(python3 -c "
-import json
-from pathlib import Path
-p = Path('docs/icml_tip_status.json')
-d = json.loads(p.read_text(encoding='utf-8'))
-branch = d.get('tip_pr_commit_branch') or ''
-if not branch:
-    mergeable = str(d.get('tip_pr_mergeable') or '').strip().upper()
-    state = str(d.get('tip_pr_merge_state_status') or '').strip().upper()
-    head = (d.get('tip_pr_head_ref') or '').strip()
-    if head and mergeable != 'CONFLICTING' and state != 'DIRTY':
-        branch = head
-print(branch)
-" 2>/dev/null || true)"
-fi
-if [[ -z "${BRANCH}" ]]; then
-  BRANCH="$(python3 -c "
+# Tick 531: live tip-PR resolve first; tip_status.json only as fallback.
+# Pre-531 preferred committed tip_status tip_pr_commit_branch, which rewound
+# tip after --apply when JSON still named the prior tip PR head (f49c vs 9e39).
+# Tick 351 tip_pr_head_ref fallback remains inside tip_pr_commit_branch_from_status_json.
+BRANCH="$(python3 -c "
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path('scripts').resolve()))
-from icml_env_checks import prefer_tip_pr_commit_branch, resolve_icml_tip_pr
-pr = resolve_icml_tip_pr()
-print(prefer_tip_pr_commit_branch(pr) or '')
+from icml_env_checks import resolve_anti_churn_checkout_branch
+print(resolve_anti_churn_checkout_branch() or '')
 " 2>/dev/null || true)"
-fi
 
 if [[ -z "${BRANCH}" ]]; then
   echo "tip_pr_anti_churn: no usable tip_pr_commit_branch (main may already have tip, or tip PR CONFLICTING)" >&2

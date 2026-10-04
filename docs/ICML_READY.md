@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 530: G2 operator Examples use `--diamond-csv "$TMPDIR/gpqa_diamond.csv"` (closes remaining hardcoded `/tmp/gpqa_diamond.csv` in module docs after Tick 529 runtime dest); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `9e39` recovered tip `f49c`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 531: anti-churn checkout prefers live tip-PR resolve over stale `docs/icml_tip_status.json` (closes tip rewind `9e39`→`f49c` after tip `--apply`); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `c481` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -339,6 +339,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 528 gate2/3/4 report free-text sanitize — `write_gate{2,3,4}_report` runs notes/blockers/check details (+ G4 `figures_written`) through `sanitize_repo_paths_in_text` (Tick 527 pipeline parity; no absolute `/workspace/…` or `/tmp/gpqa_diamond.csv` in `gate{2,3,4}_report.*`)
 - [x] Tick 529 portable `$TMPDIR` public-mirror dest + human_next — `default_public_mirror_dest()` / `resolve_diamond_csv_path` / secrets+pipeline human_next use `tempfile.gettempdir()`; secrets write sanitizes blockers/human_next (closes remaining hardcoded `/tmp/gpqa_diamond.csv` after Tick 525 labels)
 - [x] Tick 530 G2 operator Examples `$TMPDIR` diamond CSV — `run_g2_smoke.py` Examples use `--diamond-csv "$TMPDIR/gpqa_diamond.csv"` (no hardcoded `/tmp/gpqa_diamond.csv` in operator-facing docs after Tick 529 runtime dest)
+- [x] Tick 531 anti-churn live-first tip checkout — `resolve_anti_churn_checkout_branch` prefers live tip-PR resolve over committed `tip_status.json` (closes tip rewind `9e39`→`f49c` after `--apply`)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

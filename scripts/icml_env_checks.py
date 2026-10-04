@@ -7749,6 +7749,67 @@ def prefer_tip_pr_commit_branch(pr: dict | None = None) -> str | None:
     return head
 
 
+def tip_pr_commit_branch_from_status_json(
+    repo_root: Path | None = None,
+) -> str | None:
+    """Read tip_pr_commit_branch (or Tick 351 head_ref fallback) from tip status.
+
+    Tick 531: helper only — callers must prefer live resolve via
+    ``resolve_anti_churn_checkout_branch`` so a committed stale
+    ``docs/icml_tip_status.json`` cannot rewind tip after ``--apply``.
+    """
+    root = repo_root or _REPO_ROOT
+    path = root / "docs" / "icml_tip_status.json"
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    branch = str(data.get("tip_pr_commit_branch") or "").strip()
+    if branch:
+        return branch
+    # Tick 351: tip_pr_head_ref fallback when tip_pr_commit_branch empty but
+    # mergeable is not CONFLICTING (UNKNOWN/null used to skip anti-churn).
+    mergeable = str(data.get("tip_pr_mergeable") or "").strip().upper()
+    state = str(data.get("tip_pr_merge_state_status") or "").strip().upper()
+    head = str(data.get("tip_pr_head_ref") or "").strip()
+    if head and mergeable != "CONFLICTING" and state != "DIRTY":
+        return head
+    return None
+
+
+def resolve_anti_churn_checkout_branch(
+    repo_root: Path | None = None,
+    *,
+    live_branch: str | None = None,
+    status_branch: str | None = None,
+) -> str | None:
+    """Tick 531: live tip-PR resolve wins over stale tip_status.json.
+
+    Pre-531 ``icml_checkout_tip_pr_branch.sh`` preferred
+    ``docs/icml_tip_status.json`` tip_pr_commit_branch. After tip ``--apply``
+    to a newer tip SHA (e.g. Tick 530 on ``…-9e39``), that JSON may still name
+    the prior tip PR head (``…-f49c`` / #337) — anti-churn then *rewound* tip
+    from Tick 530 → 529. Prefer live ``prefer_tip_pr_commit_branch()``; fall
+    back to status JSON only when live resolve is empty (gh down / no tip PR).
+    """
+    root = repo_root or _REPO_ROOT
+    live = (live_branch if live_branch is not None else prefer_tip_pr_commit_branch())
+    live = (live or "").strip() or None
+    status = (
+        status_branch
+        if status_branch is not None
+        else tip_pr_commit_branch_from_status_json(repo_root=root)
+    )
+    status = (status or "").strip() or None
+    if live:
+        return live
+    return status
+
+
 _PR_TITLE_TICK_RE = re.compile(r"\bTick\s+(\d+)\b", re.IGNORECASE)
 
 

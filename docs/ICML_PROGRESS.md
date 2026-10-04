@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T12:20Z — Tick 531 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-c481` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, cold-boot tip recover hard-reset to Tick 530 (`…-9e39`) then anti-churn **rewound** to Tick 529 (`…-f49c` / #337) because `icml_checkout_tip_pr_branch.sh` preferred committed `docs/icml_tip_status.json` `tip_pr_commit_branch` over live tip-PR resolve. Highest leverage without paid spend / STATUS-peel churn: **live-first anti-churn checkout + rematerialize**.
+
+### What we did
+**Tick 531 — anti-churn live-first (no tip rewind; no API spend):**
+1. Recovered tip `9e39` from greenfield boot `c481`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `resolve_anti_churn_checkout_branch` + `tip_pr_commit_branch_from_status_json` — live `prefer_tip_pr_commit_branch()` wins; tip_status JSON only when live empty
+3. `icml_checkout_tip_pr_branch.sh` uses the helper (closes pre-531 JSON-first rewind `9e39`→`f49c`)
+4. Unit + source lock: `test_resolve_anti_churn_checkout_branch_live_over_stale_status`, `test_anti_churn_checkout_live_first_source_lock`; focused suite green (3/3)
+5. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=531` / `local_run_present=false`
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 530) | After (Tick 531) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Anti-churn after tip `--apply` | tip_status JSON-first (rewound `9e39`→`f49c`) | **live-first** (`resolve_anti_churn_checkout_branch`) |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (530) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T10:22Z — Tick 530 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

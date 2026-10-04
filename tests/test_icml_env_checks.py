@@ -528,6 +528,84 @@ def test_g2_docstring_diamond_csv_uses_tmpdir_not_hardcoded_tmp() -> None:
     assert "test_g2_docstring_diamond_csv_uses_tmpdir_not_hardcoded_tmp" in tests
 
 
+def test_resolve_anti_churn_checkout_branch_live_over_stale_status(
+    tmp_path: Path,
+) -> None:
+    """Tick 531: live tip PR wins over stale tip_status (no tip rewind)."""
+    from icml_env_checks import (
+        resolve_anti_churn_checkout_branch,
+        tip_pr_commit_branch_from_status_json,
+    )
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-f49c",
+                "tip_pr_head_ref": "cursor/icml-epistemic-results-f49c",
+                "tip_pr_mergeable": "MERGEABLE",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert (
+        tip_pr_commit_branch_from_status_json(repo_root=tmp_path)
+        == "cursor/icml-epistemic-results-f49c"
+    )
+    # Stale JSON names prior tip PR head; live names current tip — live wins.
+    assert (
+        resolve_anti_churn_checkout_branch(
+            repo_root=tmp_path,
+            live_branch="cursor/icml-epistemic-results-9e39",
+            status_branch=None,
+        )
+        == "cursor/icml-epistemic-results-9e39"
+    )
+    # Live empty → JSON fallback (gh down / no tip PR).
+    assert (
+        resolve_anti_churn_checkout_branch(
+            repo_root=tmp_path,
+            live_branch="",
+            status_branch=None,
+        )
+        == "cursor/icml-epistemic-results-f49c"
+    )
+    # Tick 351: tip_pr_head_ref fallback when tip_pr_commit_branch empty.
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_pr_commit_branch": "",
+                "tip_pr_head_ref": "cursor/icml-epistemic-results-9e39",
+                "tip_pr_mergeable": "UNKNOWN",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert (
+        tip_pr_commit_branch_from_status_json(repo_root=tmp_path)
+        == "cursor/icml-epistemic-results-9e39"
+    )
+
+
+def test_anti_churn_checkout_live_first_source_lock() -> None:
+    """Tick 531: checkout script + helper prefer live resolve over tip_status."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    checkout = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "def resolve_anti_churn_checkout_branch" in env
+    assert "def tip_pr_commit_branch_from_status_json" in env
+    assert "Tick 531" in env
+    assert "resolve_anti_churn_checkout_branch" in checkout
+    assert "Tick 531" in checkout
+    # Must not prefer tip_status JSON before live resolve (pre-531 rewind).
+    assert "Prefer fresh tip/secrets JSON" not in checkout
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_resolve_anti_churn_checkout_branch_live_over_stale_status" in tests
+
+
 def test_portable_diamond_csv_source_lock() -> None:
     """Tick 525: portable diamond CSV helper + auto-wire call sites locked."""
     root = Path(__file__).resolve().parents[1]
