@@ -1211,6 +1211,49 @@ def test_write_gate4_report_sidecar(tmp_path: Path) -> None:
     assert "ready_status" in payload
 
 
+def test_write_gate4_report_persists_next_steps_json(tmp_path: Path) -> None:
+    """Tick 536: gate4 JSON next_steps mirrors MD ## Next (pipeline Tick 535 parity)."""
+    from run_g4_multiseed import G4PreflightReport
+
+    report = G4PreflightReport(
+        timestamp="2026-10-04T22:00:00Z",
+        mode="preflight",
+        plans=[
+            PilotPlan(seed=s, b_run_id=1200 + s, d_run_id=1300 + s)
+            for s in range(1, 6)
+        ],
+        ready_for_live=False,
+        blockers=["nebius_key: NEBIUS_API_KEY missing"],
+        notes=["diamond already ready via public mirror"],
+    )
+    report.add("gpqa_not_synthetic", True, "ok")
+    report.add("nebius_key", False, "missing")
+    out = tmp_path / "gate4_report.md"
+    write_gate4_report(report, out)
+    text = out.read_text(encoding="utf-8")
+    sidecar = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
+    assert isinstance(sidecar.get("next_steps"), list)
+    assert sidecar["next_steps"]
+    assert any("NEBIUS_API_KEY" in s for s in sidecar["next_steps"])
+    after = text.split("## Next", 1)[-1]
+    md_steps = [
+        line.split(". ", 1)[1]
+        for line in after.splitlines()
+        if line and line[0].isdigit() and ". " in line
+    ]
+    assert md_steps == sidecar["next_steps"]
+
+
+def test_gate4_next_steps_json_source_lock() -> None:
+    """Tick 536: gate4 writer + tests keep JSON next_steps with MD ## Next."""
+    root = Path(__file__).resolve().parents[1]
+    src = (root / "scripts" / "run_g4_multiseed.py").read_text(encoding="utf-8")
+    tests = (root / "tests" / "test_run_g4_multiseed.py").read_text(encoding="utf-8")
+    assert "extract_numbered_next_steps" in src
+    assert '"next_steps": cleaned_next' in src or "'next_steps': cleaned_next" in src
+    assert "test_write_gate4_report_persists_next_steps_json" in tests
+
+
 def test_write_gate4_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
     """Tick 528: notes/blockers/check details/figs drop absolute /workspace and /tmp diamond."""
     from run_g4_multiseed import G4PreflightReport, _sanitize_gate_report_text

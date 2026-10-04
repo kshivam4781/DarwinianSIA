@@ -1,5 +1,35 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-04T22:24:30Z — Tick 536 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-b2e1` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 535 closed pipeline JSON `next_steps`, but gate2/3/4 writers still wrote MD `## Next` only — machine readers of `docs/gate{2,3,4}_report.json` still missed NEBIUS-first dual-unblock after MD-only Next (pipeline Tick 535 parity hole). Highest leverage without paid spend / STATUS-peel churn: **gate2/3/4 JSON next_steps + rematerialize**.
+
+### What we did
+**Tick 536 — gate2/3/4 JSON `next_steps` sidecars (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `b2e1`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `extract_numbered_next_steps` in `icml_env_checks` — bodies of numbered `## Next` lines for JSON sidecars
+3. `write_gate{2,3,4}_report` now persist sanitized `next_steps` on JSON sidecars (MD `## Next` parity; pipeline Tick 535)
+4. Unit + source locks: helper + gate2/3/4 persist tests; focused suite green (8/8)
+5. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=536` / `local_run_present=false`
+6. Full pipeline preflight refreshed gate2/3/4 + pipeline MD+JSON Next (tip PR #339 / `…-9e39`; boot `b2e1`; NEBIUS-first)
+7. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 535) | After (Tick 536) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Gate2/3/4 JSON `next_steps` | **absent** (MD-only Next) | **persisted** (pipeline Tick 535 parity) |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (535) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-04T20:16:41Z — Tick 535 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

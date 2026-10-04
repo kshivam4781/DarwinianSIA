@@ -141,6 +141,7 @@ from icml_env_checks import (  # noqa: E402
     repo_relative_figure_path,
     icml_preflight_diamond_ready,
     icml_python_cli,
+    extract_numbered_next_steps,
     portable_argv_for_durable,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -1577,7 +1578,13 @@ def write_gate4_report(
         )
         lines.append("")
 
-    lines.extend(gate4_next_markdown_lines(report))
+    next_md = gate4_next_markdown_lines(report)
+    lines.extend(next_md)
+    # Tick 536: JSON next_steps mirrors MD ## Next (pipeline Tick 535 parity).
+    cleaned_next = [
+        _sanitize_gate_report_text(s, repo_root=root)
+        for s in extract_numbered_next_steps(next_md)
+    ]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -1669,6 +1676,7 @@ def write_gate4_report(
         "notes": report.notes,
         "executed": executed,
         "paper_refreshed": paper_refreshed,
+        "next_steps": cleaned_next,
     }
     if steering_flag is not None:
         payload["steering_applied_gen3"] = steering_flag

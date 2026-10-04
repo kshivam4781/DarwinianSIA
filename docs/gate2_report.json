@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-04T20:15:11Z",
+  "timestamp": "2026-10-04T22:23:28Z",
   "mode": "preflight",
   "run_id": 1300,
   "ready_for_live": false,
@@ -71,7 +71,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 534 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+      "detail": "local Tick 535 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
     }
   ],
   "command": [
@@ -103,5 +103,10 @@
     "--target-agent-profile",
     "kimi-nebius-target"
   ],
-  "post": []
+  "post": [],
+  "next_steps": [
+    "Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional \u2014 Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional \u2014 Tick 289 Nebius pydantic-ai meta)`.",
+    "Budget-check, then live G2 (unused integer run_id):",
+    "Only then start live G3 B vs D pilot (Section 21.5)."
+  ]
 }

@@ -619,6 +619,25 @@ def _sanitize_host_tmp_diamond_csv(text: str) -> str:
     return out
 
 
+def extract_numbered_next_steps(md_lines: list[str]) -> list[str]:
+    """Tick 536: bodies of numbered ``## Next`` lines for JSON gate sidecars.
+
+    Gate2/G3/G4 writers keep human ``## Next`` in markdown only; machine
+    readers of ``gate*_report.json`` previously had no ``next_steps`` (Tick 535
+    closed the same MD/JSON drift for the unified pipeline). Return the text
+    after each ``N. `` prefix so JSON mirrors MD Next without the header or
+    blank/continuation lines.
+    """
+    steps: list[str] = []
+    for line in md_lines or []:
+        s = (line or "").strip()
+        if not s or s.startswith("#"):
+            continue
+        if s[0].isdigit() and ". " in s:
+            steps.append(s.split(". ", 1)[1])
+    return steps
+
+
 def sanitize_repo_paths_in_text(
     text: str, *, repo_root: Path | None = None
 ) -> str:

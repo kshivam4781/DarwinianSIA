@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 535: pipeline JSON sidecar now persists + refreshes `next_steps` with MD `## Next` (closes Tick 533/534 MD-only dual-unblock drift); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `1c86` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 536: gate2/3/4 JSON sidecars now persist sanitized `next_steps` with MD `## Next` (pipeline Tick 535 parity; closes MD-only dual-unblock drift on gate reports); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `b2e1` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -344,6 +344,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 533 pipeline ## Next tip-PR refresh — `refresh_pipeline_report_next` + `write_icml_tip_status` wire (closes Tick 531–532 dual-unblock drift `#337`/`f49c` → `#339`/`9e39`)
 - [x] Tick 534 pipeline ## Next secrets-write refresh — `write_icml_secrets_status` also calls `refresh_pipeline_report_next` (closes tip→secrets / post-preflight `diamond_ready` Next drift)
 - [x] Tick 535 pipeline JSON `next_steps` sidecar — `write_pipeline_report` + `refresh_pipeline_report_next` persist/refresh JSON `next_steps` with MD `## Next` (closes Tick 533/534 MD-only dual-unblock drift for machine readers)
+- [x] Tick 536 gate2/3/4 JSON `next_steps` sidecars — `extract_numbered_next_steps` + `write_gate{2,3,4}_report` persist sanitized `next_steps` with MD `## Next` (pipeline Tick 535 parity; closes MD-only dual-unblock drift on gate JSON)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

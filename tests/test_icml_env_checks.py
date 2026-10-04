@@ -46,6 +46,7 @@ from icml_env_checks import (  # noqa: E402
     is_ephemeral_icml_path,
     iter_shape_flag_dicts_from_text,
     live_pipeline_next_steps,
+    extract_numbered_next_steps,
     parse_latest_icml_tick,
     prefer_tip_pr_commit_branch,
     probe_icml_meta_profile,
@@ -801,6 +802,44 @@ def test_pipeline_next_json_sidecar_source_lock() -> None:
         encoding="utf-8"
     )
     assert "test_write_pipeline_report_persists_next_steps_json" in pipe_tests
+
+
+def test_extract_numbered_next_steps_skips_header_and_continuations() -> None:
+    """Tick 536: helper returns numbered ## Next bodies only (gate JSON sidecars)."""
+    lines = [
+        "## Next",
+        "",
+        "1. Add **NEBIUS_API_KEY** to the cloud environment.",
+        "2. Budget-check, then live G2:",
+        "   `python3 scripts/run_g2_smoke.py --live`",
+        "3. Only then start live G3.",
+        "",
+    ]
+    steps = extract_numbered_next_steps(lines)
+    assert steps == [
+        "Add **NEBIUS_API_KEY** to the cloud environment.",
+        "Budget-check, then live G2:",
+        "Only then start live G3.",
+    ]
+
+
+def test_gate_next_steps_json_helper_source_lock() -> None:
+    """Tick 536: extract_numbered_next_steps + gate2/3/4 writers persist next_steps."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def extract_numbered_next_steps" in env
+    assert "Tick 536" in env
+    for rel in (
+        "scripts/run_g2_smoke.py",
+        "scripts/run_g3_pilot.py",
+        "scripts/run_g4_multiseed.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "extract_numbered_next_steps" in src
+        assert '"next_steps": cleaned_next' in src or "'next_steps': cleaned_next" in src
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_extract_numbered_next_steps_skips_header_and_continuations" in tests
+    assert "test_gate_next_steps_json_helper_source_lock" in tests
 
 
 def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
