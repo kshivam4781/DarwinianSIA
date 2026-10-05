@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 544: bare `detect_cloud_boot_branch()` after tip anti-churn resolves tip from `icml_tip_status.json` so tip HEAD is not persisted as boot (closes tip-as-boot poison after Tick 543); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `44d0` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 545: bare `detect_cloud_boot_branch()` tip resolve is **live-first** via `resolve_anti_churn_checkout_branch` (Tick 531 parity) so stale tip_status prior-tip cannot make live tip HEAD look like boot after `--apply`; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `2eb7` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -351,6 +351,9 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 540 tip recover tip+secrets status refresh — `refresh_tip_and_secrets_status_after_recover`; `icml_boot_recover.sh` + `icml_recover_tip.py --apply` rewrite tip+secrets after anti-churn (closes Tick 358 open_git_pr_call-only / tip-only secrets hole; stale prior-boot `cloud_boot_branch`)
 - [x] Tick 541 cron anti-churn tip+secrets refresh — `icml_cron_entry.sh` boot→tip checkout calls `refresh_tip_and_secrets_status_after_recover` after `checkout=ok` (closes Tick 540 cron-path hole; tip/secrets were pre-checkout; already_on unchanged)
 - [x] Tick 542 checkout tip+secrets refresh — `icml_checkout_tip_pr_branch.sh` calls `refresh_tip_and_secrets_status_after_recover` after Tick 358 call-JSON refresh (closes mid-tick checkout-only hole; Tick 540/541 covered recover/cron but not the shared entrypoint)
+- [x] Tick 543 detect stale boot-file heal — `detect_cloud_boot_branch` prefers live greenfield HEAD / latest reflog tip-checkout over warm-fork-stale `icml_cloud_boot_branch.txt` (closes Tick 542 follow-up hand-restore)
+- [x] Tick 544 tip-as-boot poison heal — bare `detect()` resolves tip when `tip_commit_branch` omitted so tip HEAD is not persisted as boot after anti-churn
+- [x] Tick 545 bare detect live-first tip resolve — bare `detect()` uses `resolve_anti_churn_checkout_branch` (Tick 531 parity) so stale tip_status prior-tip cannot accept live tip HEAD as boot after `--apply`
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

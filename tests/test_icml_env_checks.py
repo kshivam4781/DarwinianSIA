@@ -1309,6 +1309,10 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "test_detect_without_tip_arg_does_not_poison_boot_file_as_tip" in tests
     assert "test_detect_without_tip_arg_heals_tip_poisoned_boot_file" in tests
     assert "test_detect_tip_as_boot_poison_source_lock" in tests
+    # Tick 545: bare detect tip resolve must be live-first (not status-only).
+    assert "Tick 545" in env
+    assert "test_detect_without_tip_arg_prefers_live_tip_over_stale_status" in tests
+    assert "test_detect_live_first_tip_resolve_source_lock" in tests
 
 
 def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
@@ -3183,6 +3187,10 @@ def test_detect_without_tip_arg_does_not_poison_boot_file_as_tip(
         encoding="utf-8",
     )
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    # Avoid real gh; Tick 545 falls back to status when live is empty.
+    monkeypatch.setattr(
+        "icml_env_checks.prefer_tip_pr_commit_branch", lambda pr=None: None
+    )
     # Pre-544: detect() with tip=None accepted tip HEAD and rewrote boot file
     # to the tip name — poisoning open_git_pr warn / mid-tick agents.
     got = detect_cloud_boot_branch(repo_root=repo)
@@ -3240,24 +3248,106 @@ def test_detect_without_tip_arg_heals_tip_poisoned_boot_file(
         encoding="utf-8",
     )
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.prefer_tip_pr_commit_branch", lambda pr=None: None
+    )
     got = detect_cloud_boot_branch(repo_root=repo)
     assert got == boot
     assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
 
 
+def test_detect_without_tip_arg_prefers_live_tip_over_stale_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 545: stale tip_status prior-tip must not make live tip HEAD look like boot."""
+    import json
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        detect_cloud_boot_branch,
+    )
+
+    live_tip = "cursor/icml-epistemic-results-9e39"
+    stale_tip = "cursor/icml-epistemic-results-f49c"
+    boot = "cursor/icml-epistemic-results-2eb7"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "checkout", "-b", boot], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", live_tip], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_cloud_boot_branch.txt").write_text(boot + "\n", encoding="utf-8")
+    # Pre-545 hole: tip_status still names prior tip after --apply advanced HEAD.
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps({"tip_pr_commit_branch": stale_tip, "local_tick": 529}),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.prefer_tip_pr_commit_branch",
+        lambda pr=None: live_tip,
+    )
+    # Status-only resolve would set tip=stale_tip, accept live_tip HEAD as boot.
+    got = detect_cloud_boot_branch(repo_root=repo)
+    assert got == boot
+    assert (
+        repo / ICML_CLOUD_BOOT_BRANCH_RELPATH
+    ).read_text(encoding="utf-8").strip() == boot
+
+
 def test_detect_tip_as_boot_poison_source_lock() -> None:
-    """Tick 544: detect resolves tip from status when tip_commit_branch omitted."""
+    """Tick 544: detect resolves tip when tip_commit_branch omitted."""
     root = Path(__file__).resolve().parents[1]
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     assert "Tick 544" in env
     detect_idx = env.index("def detect_cloud_boot_branch")
     window = env[detect_idx : detect_idx + 5500]
-    assert "tip_pr_commit_branch_from_status_json" in window
+    assert "tip_pr_commit_branch_from_status_json" in window or (
+        "resolve_anti_churn_checkout_branch" in window
+    )
     assert "tip-as-boot" in window or "tip as boot" in window.lower()
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert "test_detect_without_tip_arg_does_not_poison_boot_file_as_tip" in tests
     assert "test_detect_without_tip_arg_heals_tip_poisoned_boot_file" in tests
     assert "test_detect_tip_as_boot_poison_source_lock" in tests
+
+
+def test_detect_live_first_tip_resolve_source_lock() -> None:
+    """Tick 545: bare detect uses live-first tip resolve (Tick 531 parity)."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 545" in env
+    detect_idx = env.index("def detect_cloud_boot_branch")
+    window = env[detect_idx : detect_idx + 6500]
+    assert "resolve_anti_churn_checkout_branch" in window
+    assert "Tick 545" in window
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_detect_without_tip_arg_prefers_live_tip_over_stale_status" in tests
+    assert "test_detect_live_first_tip_resolve_source_lock" in tests
 
 
 def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:

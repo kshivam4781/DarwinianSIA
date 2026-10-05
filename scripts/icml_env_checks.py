@@ -7710,7 +7710,7 @@ def detect_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 352–357/543/544: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+    """Tick 352–357/543/544/545: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
 
     Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
     After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
@@ -7740,19 +7740,25 @@ def detect_cloud_boot_branch(
     Tick **543**: warm-fork VMs can keep a prior tick's boot file; prefer
     live greenfield HEAD / latest reflog tip-checkout over that stale name
     (closes Tick 542 follow-up ``cloud_boot_branch`` restore churn).
-    Tick **544**: when ``tip_commit_branch`` is omitted, resolve tip from
-    ``docs/icml_tip_status.json`` (status ``tip_pr_commit_branch`` /
-    head_ref) before accepting HEAD — bare ``detect()`` after tip anti-churn
-    must not treat tip HEAD as boot or rewrite the boot file to the tip name
-    (closes tip-as-boot poison after Tick 543 greenfield-HEAD preference).
+    Tick **544**: when ``tip_commit_branch`` is omitted, resolve tip before
+    accepting HEAD — bare ``detect()`` after tip anti-churn must not treat tip
+    HEAD as boot or rewrite the boot file to the tip name (closes tip-as-boot
+    poison after Tick 543 greenfield-HEAD preference).
+    Tick **545**: that tip resolve must be **live-first** via
+    ``resolve_anti_churn_checkout_branch`` (Tick 531 parity). Status-only
+    ``tip_pr_commit_branch_from_status_json`` left a hole when committed
+    ``icml_tip_status.json`` still named a *prior* tip (e.g. ``…-f49c``) after
+    tip ``--apply`` advanced HEAD to the live tip (``…-9e39``): bare detect
+    treated live tip HEAD as ≠ stale status tip and **accepted tip-as-boot**.
     """
     import subprocess
 
     root = Path(repo_root) if repo_root is not None else Path(__file__).resolve().parents[1]
     tip = (tip_commit_branch or "").strip() or None
-    # Tick 544: bare detect() after tip checkout must know tip ≠ boot.
+    # Tick 544/545: bare detect() after tip checkout must know tip ≠ boot.
+    # Tick 545: live tip-PR resolve wins over stale tip_status (Tick 531 parity).
     if tip is None:
-        tip = tip_pr_commit_branch_from_status_json(repo_root=root)
+        tip = resolve_anti_churn_checkout_branch(repo_root=root)
 
     def _accept(candidate: str | None) -> str | None:
         name = (candidate or "").strip()
@@ -9746,8 +9752,13 @@ def refresh_tip_and_secrets_status_after_recover(
     callers inherit that detect fix automatically.
 
     Tick **544**: bare ``detect_cloud_boot_branch()`` (no tip arg) after tip
-    anti-churn must resolve tip from ``icml_tip_status.json`` so tip HEAD is
-    not persisted as boot — refresh callers inherit that heal too.
+    anti-churn must resolve tip so tip HEAD is not persisted as boot — refresh
+    callers inherit that heal too.
+
+    Tick **545**: that bare-detect tip resolve is **live-first** via
+    ``resolve_anti_churn_checkout_branch`` (Tick 531 parity) — status-only
+    resolve left live tip HEAD accepted as boot when tip_status still named a
+    prior tip after ``--apply``.
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.
