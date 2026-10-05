@@ -1252,6 +1252,93 @@ def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
     assert "test_pipeline_next_refresh_on_tip_status_write_source_lock" in tests
 
 
+def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
+    """Tick 540: tip --apply refreshes tip+secrets status after anti-churn."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    boot = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
+    recover = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
+    assert "def refresh_tip_and_secrets_status_after_recover" in env
+    assert "Tick 540" in env
+    helper_start = env.find("def refresh_tip_and_secrets_status_after_recover")
+    assert helper_start >= 0
+    helper = env[helper_start : helper_start + 2200]
+    assert "write_icml_tip_status" in helper
+    assert "write_icml_secrets_status" in helper
+    # Chicken-egg boot_recover --apply must rewrite tip+secrets (Tick 358
+    # open_git_pr_call-only left tip/secrets cloud_boot_branch stale).
+    assert "refresh_tip_and_secrets_status_after_recover" in boot
+    assert "tip_secrets_status_after_recover" in boot
+    assert "Tick 540" in boot
+    # recover_tip --apply must also refresh secrets (pre-540 tip-only).
+    assert "refresh_tip_and_secrets_status_after_recover" in recover
+    assert "tip_secrets_status_after_recover" in recover
+    assert "Tick 540" in recover
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_refresh_tip_and_secrets_status_after_recover_source_lock" in tests
+    assert "test_refresh_tip_and_secrets_status_after_recover_rewrites_cloud_boot" in tests
+
+
+def test_refresh_tip_and_secrets_status_after_recover_rewrites_cloud_boot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 540: recover refresh rewrites tip+secrets with current cloud boot."""
+    from icml_env_checks import refresh_tip_and_secrets_status_after_recover
+
+    root = tmp_path
+    docs = root / "docs"
+    docs.mkdir(parents=True)
+    (docs / "ICML_PROGRESS.md").write_text(
+        "## 2026-10-05T06:00:00Z — Tick 540 (automation cron)\n\n"
+        "secrets-first write_icml_secrets_status ensure_icml_runtime_deps "
+        "ensure_uv_on_path Astral uv\n",
+        encoding="utf-8",
+    )
+    # Stale prior-boot tip/secrets (pre-540 chicken-egg hole).
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "local_tick": 539,
+                "cloud_boot_branch": "cursor/icml-epistemic-results-42f8",
+                "tip_ok_for_live": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_secrets_status.json").write_text(
+        json.dumps(
+            {
+                "cloud_boot_branch": "cursor/icml-epistemic-results-42f8",
+                "fetch_diamond_ok": False,
+                "diamond_ready": True,
+                "nebius_key_present": False,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    boot_name = "cursor/icml-epistemic-results-5010"
+    (docs / "icml_cloud_boot_branch.txt").write_text(boot_name + "\n", encoding="utf-8")
+    monkeypatch.setenv("ICML_CLOUD_BOOT_BRANCH", boot_name)
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    tip, sec = refresh_tip_and_secrets_status_after_recover(
+        repo_root=root, fetch=False
+    )
+    assert tip.get("cloud_boot_branch") == boot_name
+    assert sec.get("cloud_boot_branch") == boot_name
+    tip_disk = json.loads((docs / "icml_tip_status.json").read_text(encoding="utf-8"))
+    sec_disk = json.loads(
+        (docs / "icml_secrets_status.json").read_text(encoding="utf-8")
+    )
+    assert tip_disk.get("cloud_boot_branch") == boot_name
+    assert sec_disk.get("cloud_boot_branch") == boot_name
+
+
 def test_pipeline_next_refresh_on_secrets_write_source_lock() -> None:
     """Tick 534: write_icml_secrets_status also calls refresh_pipeline_report_next."""
     root = Path(__file__).resolve().parents[1]

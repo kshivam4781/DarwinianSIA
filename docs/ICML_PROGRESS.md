@@ -1,5 +1,37 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T06:12:39Z — Tick 540 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-5010` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 358 refreshed `docs/icml_open_git_pr_call.json` `cloud_boot_branch` after tip-PR checkout, but chicken-egg `icml_boot_recover.sh --apply` never rewrote `docs/icml_tip_status.json` / `docs/icml_secrets_status.json` — those sidecars (and pipeline/gate `## Next` via tip/secrets refresh) kept the *prior* boot's `cloud_boot_branch` (e.g. `…-42f8`) until cron_entry ran. `icml_recover_tip.py --apply` rewrote tip status only and skipped secrets. Highest leverage without paid spend / STATUS-peel churn: **tip+secrets status refresh after tip recover + rematerialize**.
+
+### What we did
+**Tick 540 — tip recover refreshes tip+secrets status after anti-churn (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `5010`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `refresh_tip_and_secrets_status_after_recover` — writes tip + secrets status (pipeline/gate Next refresh via existing Tick 533–537 wires)
+3. `icml_boot_recover.sh --apply` calls the helper after durable-ledger reinject (closes chicken-egg open_git_pr_call-only hole)
+4. `icml_recover_tip.py --apply` calls the helper after anti-churn (closes tip-only / secrets-skipped hole)
+5. Unit + source locks: cloud_boot rewrite + boot_recover/recover_tip wire; focused suite green (2/2)
+6. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=540` / `local_run_present=false`
+7. Tip/secrets refresh now reports `cloud_boot_branch=…-5010` (was stale `…-42f8` on tip tree after recover)
+8. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 539) | After (Tick 540) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| tip/secrets `cloud_boot_branch` after chicken-egg `--apply` | **stale** prior boot until cron_entry | **refreshed** to persisted boot (`…-5010`) |
+| recover_tip `--apply` secrets JSON | tip-only rewrite | tip **+ secrets** (Next refresh parity) |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (539) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T04:15:11Z — Tick 539 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

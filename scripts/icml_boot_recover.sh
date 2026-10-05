@@ -278,4 +278,24 @@ ok, detail = commit_durable_ledgers_on_tip_recover()
 print(f"durable_ledgers_tip_recover: ok={ok} {detail}")
 PY
 fi
+
+# Tick 540: rewrite tip + secrets status after anti-churn (cron_entry parity).
+# Tick 358 refreshed open_git_pr_call.json cloud_boot_branch, but tip/secrets
+# JSON (+ pipeline/gate ## Next) still advertised the *prior* boot until cron
+# wrote status — chicken-egg boot_recover alone left dual-unblock Next stale.
+if command -v python3 >/dev/null 2>&1 && [[ -f scripts/icml_env_checks.py ]]; then
+  python3 - <<'PY' || true
+import sys
+sys.path.insert(0, "scripts")
+from icml_env_checks import refresh_tip_and_secrets_status_after_recover
+tip, sec = refresh_tip_and_secrets_status_after_recover(fetch=False)
+boot = tip.get("cloud_boot_branch") or sec.get("cloud_boot_branch")
+print(
+    "tip_secrets_status_after_recover: "
+    f"local_tick={tip.get('local_tick')} "
+    f"cloud_boot_branch={boot} "
+    f"fetch_diamond_ok={sec.get('fetch_diamond_ok')}"
+)
+PY
+fi
 exit 0

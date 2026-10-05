@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 539: pipeline Next restores Tick 538 indented command continuations (`_gate_next_markdown_from_bodies` / `gate_next_numbered_bodies`) — secrets-OK path's bare `` `bash scripts/icml_cron_entry.sh` `` body was still a separate numbered step (and JSON command-only entry) the moment NEBIUS flips `fetch_diamond_ok`; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `42f8` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 540: tip recover (`icml_boot_recover.sh` / `icml_recover_tip.py --apply`) now rewrites tip **+ secrets** status after anti-churn (`refresh_tip_and_secrets_status_after_recover`) — closes Tick 358 open_git_pr_call-only hole where tip/secrets JSON (+ pipeline/gate Next) kept the prior boot's `cloud_boot_branch` until cron_entry; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `5010` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -348,6 +348,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 537 gate Next tip/secrets refresh — `refresh_gate_reports_next` + shared `gate{2,3,4}_next_step_bodies`; tip+secrets writers refresh gate MD/JSON Next from `diamond_ready` (pipeline Tick 533–535 parity; closes tip→secrets HF-chase drift)
 - [x] Tick 538 gate Next continuation indentation — `_is_gate_next_continuation` + `gate_next_numbered_bodies`; `_gate_next_markdown_from_bodies` indents backtick / `or …` under prior `N.` (pre-537 parity; closes Tick 537 numbered-command regression); JSON `next_steps` numbered-only
 - [x] Tick 539 pipeline Next continuation indentation — `refresh_pipeline_report_next` + `write_pipeline_report` use gate Tick 538 helpers; secrets-OK bare cron command indents under prior step; JSON `next_steps` numbered-only (closes pre-539 numbered-command regression the moment NEBIUS lands)
+- [x] Tick 540 tip recover tip+secrets status refresh — `refresh_tip_and_secrets_status_after_recover`; `icml_boot_recover.sh` + `icml_recover_tip.py --apply` rewrite tip+secrets after anti-churn (closes Tick 358 open_git_pr_call-only / tip-only secrets hole; stale prior-boot `cloud_boot_branch`)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

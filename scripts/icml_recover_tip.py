@@ -15,6 +15,7 @@ Examples (Linux/cloud: python3; Windows venv: python):
                                                # (+ Tick 388 prior_live stash/reinject)
                                                # (+ Tick 390 dirty evidence blocks --apply)
                                                # (+ Tick 420 prepare/commit prior_live evidence)
+                                               # (+ Tick 540 tip+secrets status after anti-churn)
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from icml_env_checks import (  # noqa: E402
     commit_durable_ledgers_on_tip_recover,
     discard_ephemeral_icml_dirt,
     prepare_prior_live_evidence_for_tip_apply,
+    refresh_tip_and_secrets_status_after_recover,
     reinject_budget_spent_stash,
     reinject_paper_pack_stash,
     reinject_prior_live_stash,
@@ -154,6 +156,21 @@ def apply_tip(tip_ref: str) -> int:
     # mid-tick death after tip --apply does not leave spend/prior_live unpushed.
     ok_ev, detail_ev = commit_durable_ledgers_on_tip_recover(REPO_ROOT)
     print(f"durable_ledgers_tip_recover: ok={ok_ev} {detail_ev}")
+
+    # Tick 540: tip + secrets status after anti-churn (boot_recover / cron parity).
+    # Pre-540 --apply rewrote tip status only (main()) and skipped secrets —
+    # secrets JSON cloud_boot_branch + secrets-driven pipeline/gate Next stayed
+    # on the prior boot until cron_entry wrote secrets.
+    tip, sec = refresh_tip_and_secrets_status_after_recover(
+        repo_root=REPO_ROOT, fetch=False
+    )
+    boot = tip.get("cloud_boot_branch") or sec.get("cloud_boot_branch")
+    print(
+        "tip_secrets_status_after_recover: "
+        f"local_tick={tip.get('local_tick')} "
+        f"cloud_boot_branch={boot} "
+        f"fetch_diamond_ok={sec.get('fetch_diamond_ok')}"
+    )
     return 0
 
 
@@ -215,7 +232,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Already on tip Tick {local_tick}; --apply is a no-op reset to {tip_ref}")
     rc = apply_tip(str(tip_ref))
     if rc == 0:
-        # Refresh status after reset.
+        # Refresh status after reset (Tick 540: tip+secrets also refreshed inside
+        # apply_tip after anti-churn; this tip-only rewrite stays as belt-and-
+        # suspenders when callers pass --status-out elsewhere).
         write_icml_tip_status(args.status_out, fetch=False)
     return rc
 

@@ -9657,6 +9657,39 @@ def collect_icml_tip_status(
     }
 
 
+def refresh_tip_and_secrets_status_after_recover(
+    *,
+    repo_root: Path | None = None,
+    fetch: bool = False,
+) -> tuple[dict, dict]:
+    """Tick 540: after tip ``--apply`` + anti-churn, rewrite tip + secrets status.
+
+    Tick 358 refreshed ``docs/icml_open_git_pr_call.json`` ``cloud_boot_branch``
+    after tip-PR checkout, but chicken-egg ``icml_boot_recover.sh --apply`` never
+    rewrote ``docs/icml_tip_status.json`` / ``docs/icml_secrets_status.json``.
+    Those sidecars (and pipeline/gate ``## Next`` via tip/secrets refresh) kept
+    the *prior* boot's ``cloud_boot_branch`` until ``icml_cron_entry.sh`` ran —
+    operators reading tip/secrets JSON or dual-unblock Next could warn about a
+    superseded greenfield boot. ``icml_recover_tip.py --apply`` already rewrote
+    tip status but skipped secrets (``cloud_boot_branch`` in secrets JSON +
+    secrets-driven Next refresh after diamond_ready).
+
+    Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
+    current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    tip = write_icml_tip_status(
+        root / "docs" / "icml_tip_status.json",
+        fetch=fetch,
+        repo_root=root,
+    )
+    sec = write_icml_secrets_status(
+        root / "docs" / "icml_secrets_status.json",
+        repo_root=root,
+    )
+    return tip, sec
+
+
 def write_icml_tip_status(
     path: Path | None = None,
     *,
