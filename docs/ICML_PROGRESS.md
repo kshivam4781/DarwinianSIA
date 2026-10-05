@@ -1,5 +1,36 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T02:20:00Z — Tick 538 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-24fb` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 537 shared `gate{2,3,4}_next_step_bodies` + `_gate_next_markdown_from_bodies` numbered *every* body — live commands / `or …` diamond alternates became separate numbered steps (`2. Budget-check…` / `3. \`python3 scripts/…\``) and JSON `next_steps` gained command-only entries (Tick 536 extract skipped continuations). Pre-537 MD indented those under the prior step. Highest leverage without paid spend / STATUS-peel churn: **restore gate Next continuations + rematerialize**.
+
+### What we did
+**Tick 538 — gate Next continuation indentation (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `24fb`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `_is_gate_next_continuation` + `gate_next_numbered_bodies`; `_gate_next_markdown_from_bodies` indents backtick / `or …` bodies under the prior `N.` step (pre-537 parity)
+3. `refresh_gate_reports_next` JSON `next_steps` now stores numbered bodies only (Tick 536 extract parity — no command-only entries)
+4. Unit + source locks: indent + helper + refresh assertions; focused suite green (5/5)
+5. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=538` / `local_run_present=false`
+6. Full pipeline preflight refreshed gate2/3/4 + pipeline MD+JSON Next (tip PR #339 / `…-9e39`; boot `24fb`; NEBIUS-first; commands indented)
+7. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 537) | After (Tick 538) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Gate2/3/4 Next command lines | **numbered** as separate steps (Tick 537 regression) | **indented** under Budget-check / Materialize (pre-537) |
+| Gate JSON `next_steps` | included command-only bodies | **numbered only** (Tick 536 extract parity) |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (537) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T00:11:00Z — Tick 537 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

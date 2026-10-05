@@ -638,8 +638,35 @@ def extract_numbered_next_steps(md_lines: list[str]) -> list[str]:
     return steps
 
 
+def _is_gate_next_continuation(body: str) -> bool:
+    """Tick 538: command / 'or …' lines indent under the prior numbered step.
+
+    Pre-537 gate Next markdown indented live commands and alternate diamond
+    materialize lines under the preceding ``N.`` step. Tick 537's shared
+    ``_gate_next_markdown_from_bodies`` numbered every body, so operators saw
+    ``2. Budget-check…`` / ``3. `python3 scripts/…``` as separate steps and
+    JSON ``next_steps`` gained command-only entries (Tick 536 extract skipped
+    continuation lines). Bodies that start with a backtick command or ``or ``
+    are continuations — not new numbered steps.
+    """
+    s = (body or "").strip()
+    if not s:
+        return False
+    return s.startswith("`") or s.startswith("or ")
+
+
+def gate_next_numbered_bodies(bodies: list[str]) -> list[str]:
+    """Tick 538: JSON ``next_steps`` = numbered bodies only (no continuations)."""
+    return [str(b) for b in (bodies or []) if not _is_gate_next_continuation(str(b))]
+
+
 def gate2_next_step_bodies(*, diamond_ready: bool) -> list[str]:
-    """Tick 537: Gate 2 Next bodies shared by writers + tip/secrets refresh."""
+    """Tick 537/538: Gate 2 Next bodies shared by writers + tip/secrets refresh.
+
+    Mix of numbered step bodies and Tick 538 continuations (backtick commands /
+    ``or …`` lines). ``_gate_next_markdown_from_bodies`` restores pre-537
+    indentation; ``gate_next_numbered_bodies`` feeds JSON sidecars.
+    """
     secrets_line = icml_human_required_secrets_phrase(
         for_fetch_diamond=not diamond_ready
     )
@@ -672,7 +699,7 @@ def gate2_next_step_bodies(*, diamond_ready: bool) -> list[str]:
 
 
 def gate3_next_step_bodies(*, diamond_ready: bool) -> list[str]:
-    """Tick 537: Gate 3 Next bodies shared by writers + tip/secrets refresh."""
+    """Tick 537/538: Gate 3 Next bodies shared by writers + tip/secrets refresh."""
     secrets_line = icml_human_required_secrets_phrase(
         for_fetch_diamond=not diamond_ready
     )
@@ -713,7 +740,7 @@ def gate3_next_step_bodies(*, diamond_ready: bool) -> list[str]:
 
 
 def gate4_next_step_bodies(*, diamond_ready: bool) -> list[str]:
-    """Tick 537: Gate 4 Next bodies shared by writers + tip/secrets refresh."""
+    """Tick 537/538: Gate 4 Next bodies shared by writers + tip/secrets refresh."""
     secrets_line = icml_human_required_secrets_phrase(
         for_fetch_diamond=not diamond_ready
     )
@@ -752,10 +779,22 @@ def gate4_next_step_bodies(*, diamond_ready: bool) -> list[str]:
 
 
 def _gate_next_markdown_from_bodies(bodies: list[str]) -> list[str]:
-    """Numbered ``## Next`` markdown lines from step bodies."""
+    """Numbered ``## Next`` markdown with Tick 538 indented continuations.
+
+    Pre-537 writers indented backtick commands / ``or …`` lines under the
+    prior ``N.`` step. Tick 537 numbered every body — restore indentation so
+    tip/secrets refresh matches gate writer MD (and Tick 536 JSON extract
+    skips continuations).
+    """
     lines = ["## Next", ""]
-    for i, body in enumerate(bodies, start=1):
-        lines.append(f"{i}. {body}")
+    step_n = 0
+    for body in bodies or []:
+        text = str(body)
+        if _is_gate_next_continuation(text):
+            lines.append(f"   {text.strip()}")
+            continue
+        step_n += 1
+        lines.append(f"{step_n}. {text}")
     lines.append("")
     return lines
 
@@ -764,7 +803,7 @@ def refresh_gate_reports_next(
     *,
     repo_root: Path | None = None,
 ) -> bool:
-    """Tick 537: rewrite gate2/3/4 ``## Next`` (+ JSON ``next_steps``).
+    """Tick 537/538: rewrite gate2/3/4 ``## Next`` (+ JSON ``next_steps``).
 
     Tick 533–535 keep the unified pipeline ``## Next`` / JSON ``next_steps``
     fresh on tip/secrets writes (diamond_ready / tip-PR identity). Gate2/3/4
@@ -774,6 +813,10 @@ def refresh_gate_reports_next(
     pipeline correctly said NEBIUS-first. Call this whenever tip or secrets
     status is rewritten so gate dual-unblock Next cannot drift from
     ``diamond_ready``.
+
+    Tick **538**: MD restores pre-537 indented command continuations; JSON
+    ``next_steps`` stores numbered bodies only (Tick 536 extract parity —
+    no command-only entries).
     """
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT
     secrets_blob: dict[str, Any] = {}
@@ -801,6 +844,7 @@ def refresh_gate_reports_next(
             sanitize_repo_paths_in_text(str(s), repo_root=root)
             for s in body_fn(diamond_ready=diamond_ready)
         ]
+        numbered = gate_next_numbered_bodies(bodies)
         next_md_lines = _gate_next_markdown_from_bodies(bodies)
         next_text = "\n".join(next_md_lines)
         if md_path.is_file():
@@ -825,8 +869,8 @@ def refresh_gate_reports_next(
                 blob = json.loads(json_path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
                 blob = None
-            if isinstance(blob, dict) and blob.get("next_steps") != bodies:
-                blob["next_steps"] = bodies
+            if isinstance(blob, dict) and blob.get("next_steps") != numbered:
+                blob["next_steps"] = numbered
                 try:
                     json_path.write_text(
                         json.dumps(blob, indent=2) + "\n", encoding="utf-8"
@@ -834,11 +878,11 @@ def refresh_gate_reports_next(
                     changed = True
                 except OSError:
                     pass
-        elif bodies and not md_path.is_file():
+        elif numbered and not md_path.is_file():
             try:
                 json_path.parent.mkdir(parents=True, exist_ok=True)
                 json_path.write_text(
-                    json.dumps({"next_steps": bodies}, indent=2) + "\n",
+                    json.dumps({"next_steps": numbered}, indent=2) + "\n",
                     encoding="utf-8",
                 )
                 changed = True

@@ -893,6 +893,10 @@ def test_refresh_gate_reports_next_flips_diamond_ready_nebius_first(
         assert "NEBIUS_API_KEY" in md
         assert "Accept HF" not in md
         assert "Idavidrein/gpqa" not in md
+        # Tick 538: live commands stay indented under Budget-check (not numbered).
+        assert "   `python3 scripts/" in md, stem
+        assert "3. `python3 scripts/" not in md
+        assert "4. `python3 scripts/" not in md
         blob = json.loads((docs / f"{stem}.json").read_text(encoding="utf-8"))
         steps = blob.get("next_steps") or []
         assert steps, stem
@@ -900,8 +904,62 @@ def test_refresh_gate_reports_next_flips_diamond_ready_nebius_first(
         assert "NEBIUS_API_KEY" in joined
         assert "Accept HF" not in joined
         assert "Idavidrein/gpqa" not in joined
+        # JSON next_steps = numbered bodies only (no command-only entries).
+        for step in steps:
+            assert not str(step).strip().startswith("`"), (stem, step)
     # Idempotent when already NEBIUS-first.
     assert refresh_gate_reports_next(repo_root=tmp_path) is False
+
+
+def test_gate_next_markdown_indents_command_continuations() -> None:
+    """Tick 538: backtick / 'or …' bodies indent under prior numbered step."""
+    from icml_env_checks import (
+        _gate_next_markdown_from_bodies,
+        extract_numbered_next_steps,
+        gate2_next_step_bodies,
+        gate3_next_step_bodies,
+        gate4_next_step_bodies,
+        gate_next_numbered_bodies,
+    )
+
+    for body_fn, label in (
+        (gate2_next_step_bodies, "g2"),
+        (gate3_next_step_bodies, "g3"),
+        (gate4_next_step_bodies, "g4"),
+    ):
+        bodies = body_fn(diamond_ready=True)
+        md_lines = _gate_next_markdown_from_bodies(bodies)
+        md = "\n".join(md_lines)
+        assert "## Next" in md
+        assert "   `python3 scripts/" in md, label
+        # No numbered command-only steps (Tick 537 regression).
+        for line in md_lines:
+            s = line.strip()
+            if s[:1].isdigit() and ". " in s:
+                body = s.split(". ", 1)[1]
+                assert not body.startswith("`"), (label, line)
+        numbered = gate_next_numbered_bodies(bodies)
+        assert numbered == extract_numbered_next_steps(md_lines), label
+        assert all(not s.strip().startswith("`") for s in numbered), label
+        assert len(numbered) < len(bodies), label
+
+
+def test_gate_next_continuation_helpers_source_lock() -> None:
+    """Tick 538: continuation helpers + numbered-only JSON in refresh/writers."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def _is_gate_next_continuation" in env
+    assert "def gate_next_numbered_bodies" in env
+    assert "Tick 538" in env
+    refresh_start = env.find("def refresh_gate_reports_next")
+    refresh_fn = env[refresh_start : refresh_start + 3500]
+    assert "gate_next_numbered_bodies" in refresh_fn
+    md_fn_start = env.find("def _gate_next_markdown_from_bodies")
+    md_fn = env[md_fn_start : md_fn_start + 1200]
+    assert "_is_gate_next_continuation" in md_fn
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_gate_next_markdown_indents_command_continuations" in tests
+    assert "test_gate_next_continuation_helpers_source_lock" in tests
 
 
 def test_gate_next_refresh_on_tip_and_secrets_write_source_lock() -> None:
@@ -936,6 +994,7 @@ def test_gate_next_refresh_on_tip_and_secrets_write_source_lock() -> None:
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert "test_refresh_gate_reports_next_flips_diamond_ready_nebius_first" in tests
     assert "test_gate_next_refresh_on_tip_and_secrets_write_source_lock" in tests
+    assert "test_gate_next_markdown_indents_command_continuations" in tests
 
 
 def test_write_icml_secrets_status_refreshes_gate_next_diamond_ready(

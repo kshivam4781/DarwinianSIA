@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-05T00:09:58Z",
+  "timestamp": "2026-10-05T02:18:02Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -91,7 +91,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 536 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+      "detail": "local Tick 537 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
     },
     {
       "name": "g2_steering_lift",
@@ -169,7 +169,6 @@
     "Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`) and durable `docs/gate2_steering_lift_proof.json` (Tick 509\u2013511).",
     "Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional \u2014 Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional \u2014 Tick 289 Nebius pydantic-ai meta)`.",
     "Budget-check, then:",
-    "`python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
     "If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).",
     "Do **not** set `ICML_READY` STATUS: READY from offline / preflight alone."
   ]
