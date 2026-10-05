@@ -9662,7 +9662,7 @@ def refresh_tip_and_secrets_status_after_recover(
     repo_root: Path | None = None,
     fetch: bool = False,
 ) -> tuple[dict, dict]:
-    """Tick 540/541: after tip ``--apply`` / cron anti-churn, rewrite tip + secrets.
+    """Tick 540/541/542: after tip checkout / ``--apply`` / cron anti-churn, rewrite tip + secrets.
 
     Tick 358 refreshed ``docs/icml_open_git_pr_call.json`` ``cloud_boot_branch``
     after tip-PR checkout, but chicken-egg ``icml_boot_recover.sh --apply`` never
@@ -9678,6 +9678,12 @@ def refresh_tip_and_secrets_status_after_recover(
     checkout, then boot→tip checkout only refreshed open_git_pr call JSON
     (Tick 358 inside the checkout script). Call this helper after cron's
     successful boot→tip anti-churn too so tip/secrets (+ Next) match tip HEAD.
+
+    Tick **542**: ``icml_checkout_tip_pr_branch.sh`` itself now calls this helper
+    after Tick 358 call-JSON refresh — mid-tick agents that only run the shared
+    checkout entrypoint (no full cron / recover ``--apply``) were still leaving
+    tip/secrets (+ Next) on the pre-checkout boot identity. Tick 540/541 covered
+    boot_recover / recover_tip / cron entry, but not this script alone.
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.

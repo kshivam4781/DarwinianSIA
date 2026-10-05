@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 542:** `icml_checkout_tip_pr_branch.sh` refreshes tip **+ secrets** after tip switch (`refresh_tip_and_secrets_status_after_recover`) — closes mid-tick checkout-only hole left by Tick 540/541 (recover/cron covered; shared entrypoint did not); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
+**Tick 541:** cron boot→tip anti-churn refreshes tip+secrets after `checkout=ok` (closes Tick 540 cron-path hole); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 540:** tip recover `--apply` refreshes tip **+ secrets** status after anti-churn (`refresh_tip_and_secrets_status_after_recover`) — closes Tick 358 open_git_pr_call-only / recover_tip tip-only hole (stale prior-boot `cloud_boot_branch` in tip/secrets + Next); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 539:** pipeline Next restores Tick 538 indented command continuations (`_gate_next_markdown_from_bodies` / `gate_next_numbered_bodies`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 538:** gate Next restores pre-537 indented command continuations (Tick 537 numbered every body); JSON `next_steps` numbered-only; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

@@ -1253,21 +1253,26 @@ def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
 
 
 def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
-    """Tick 540/541: tip --apply + cron anti-churn refresh tip+secrets status."""
+    """Tick 540/541/542: tip --apply + cron + checkout refresh tip+secrets status."""
     root = Path(__file__).resolve().parents[1]
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     boot = (root / "scripts" / "icml_boot_recover.sh").read_text(encoding="utf-8")
     recover = (root / "scripts" / "icml_recover_tip.py").read_text(encoding="utf-8")
     cron = (root / "scripts" / "icml_cron_entry.sh").read_text(encoding="utf-8")
+    checkout = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
+        encoding="utf-8"
+    )
     assert "def refresh_tip_and_secrets_status_after_recover" in env
     assert "Tick 540" in env
     assert "Tick 541:" in env or "Tick **541**" in env or "540/541" in env
+    assert "Tick 542" in env or "Tick **542**" in env or "540/541/542" in env
     helper_start = env.find("def refresh_tip_and_secrets_status_after_recover")
     assert helper_start >= 0
-    helper = env[helper_start : helper_start + 2800]
+    helper = env[helper_start : helper_start + 3200]
     assert "write_icml_tip_status" in helper
     assert "write_icml_secrets_status" in helper
     assert "icml_cron_entry.sh" in helper
+    assert "icml_checkout_tip_pr_branch.sh" in helper
     # Chicken-egg boot_recover --apply must rewrite tip+secrets (Tick 358
     # open_git_pr_call-only left tip/secrets cloud_boot_branch stale).
     assert "refresh_tip_and_secrets_status_after_recover" in boot
@@ -1283,10 +1288,17 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "refresh_tip_and_secrets_status_after_recover" in cron
     assert "refreshed_tip_secrets_status_after_anti_churn" in cron
     assert "Tick 541" in cron
+    # Tick 542: shared checkout entrypoint must refresh tip+secrets (pre-542
+    # only Tick 358 call JSON; mid-tick agents calling checkout alone left
+    # tip/secrets on pre-checkout boot identity).
+    assert "refresh_tip_and_secrets_status_after_recover" in checkout
+    assert "refreshed_tip_secrets_status_after_checkout" in checkout
+    assert "Tick 542" in checkout
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert "test_refresh_tip_and_secrets_status_after_recover_source_lock" in tests
     assert "test_refresh_tip_and_secrets_status_after_recover_rewrites_cloud_boot" in tests
     assert "test_cron_anti_churn_refreshes_tip_secrets_status_source_lock" in tests
+    assert "test_checkout_refreshes_tip_secrets_status_source_lock" in tests
 
 
 def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
@@ -1304,12 +1316,34 @@ def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
     assert "refreshed_tip_secrets_status_after_anti_churn" in window
     assert "Tick 541" in window
     # already_on path still refreshes call JSON only (tip/secrets already
-    # written while on tip); do not require the helper there.
+    # written while on tip; Tick 542 tip+secrets live in checkout script).
     already = cron.find("tip_pr_anti_churn_checkout=already_on")
     assert already >= 0
     already_window = cron[already : already + 900]
     assert "refreshed_open_git_pr_call_already_on" in already_window
     assert "refreshed_tip_secrets_status_after_anti_churn" not in already_window
+
+
+def test_checkout_refreshes_tip_secrets_status_source_lock() -> None:
+    """Tick 542: checkout script rewrites tip+secrets after tip switch."""
+    root = Path(__file__).resolve().parents[1]
+    checkout = (root / "scripts" / "icml_checkout_tip_pr_branch.sh").read_text(
+        encoding="utf-8"
+    )
+    # Tick 358 call JSON refresh must still precede tip+secrets rewrite.
+    call_idx = checkout.find("refresh_open_git_pr_after_tip_checkout")
+    tip_idx = checkout.find("refresh_tip_and_secrets_status_after_recover")
+    assert call_idx >= 0
+    assert tip_idx >= 0
+    assert call_idx < tip_idx
+    assert "refreshed_tip_secrets_status_after_checkout" in checkout
+    assert "Tick 542" in checkout
+    # Header documents the mid-tick agent hole closed by Tick 542.
+    header = checkout[:2500]
+    assert "Tick 542" in header
+    assert "mid-tick" in header.lower() or "agents" in header.lower()
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_checkout_refreshes_tip_secrets_status_source_lock" in tests
 
 
 def test_refresh_tip_and_secrets_status_after_recover_rewrites_cloud_boot(

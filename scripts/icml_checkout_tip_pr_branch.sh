@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357–358 / 531).
+# ICML Thesis 1 — Tip PR anti-churn checkout (Tick 337–340 / 357–358 / 531 / 542).
 #
 # Cron boots a greenfield branch every tick. Opening a *new* tip PR supersedes
 # the MERGEABLE one and defeats tip→main. When tip/secrets JSON has
@@ -21,6 +21,11 @@
 # Tick 531: prefer *live* tip-PR resolve over committed tip_status.json —
 # stale tip_pr_commit_branch (e.g. …-f49c after tip --apply to …-9e39) must
 # not rewind tip Tick N → N-1.
+# Tick 542: after Tick 358 call-JSON refresh, also rewrite tip + secrets status
+# (Tick 540 helper) so mid-tick agents that only run this script do not leave
+# tip/secrets (+ pipeline/gate Next) on the pre-checkout boot identity —
+# Tick 540/541 covered boot_recover / recover_tip / cron entry, but not this
+# shared checkout entrypoint.
 #
 # Usage:
 #   bash scripts/icml_checkout_tip_pr_branch.sh
@@ -120,4 +125,22 @@ if hint:
     boot = hint.get('cloud_boot_branch') or ''
     call = hint.get('open_git_pr_call_file') or 'docs/icml_open_git_pr_call.json'
     print(f'refreshed_open_git_pr_call={call} cloud_boot_branch={boot or \"<none>\"}')
+" 2>/dev/null || true
+
+# Tick 542: rewrite tip + secrets status after tip checkout (Tick 540 helper).
+# Mid-tick agents often call this script alone (no full cron / recover --apply).
+# Pre-542 only Tick 358 call JSON refreshed here — tip/secrets (+ pipeline/gate
+# Next) kept pre-checkout boot identity until a later full status rewrite.
+python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import refresh_tip_and_secrets_status_after_recover
+tip, sec = refresh_tip_and_secrets_status_after_recover(fetch=False)
+boot = tip.get('cloud_boot_branch') or sec.get('cloud_boot_branch') or ''
+print(
+    'refreshed_tip_secrets_status_after_checkout '
+    f'cloud_boot_branch={boot or \"<none>\"} '
+    f'fetch_diamond_ok={sec.get(\"fetch_diamond_ok\")}'
+)
 " 2>/dev/null || true
