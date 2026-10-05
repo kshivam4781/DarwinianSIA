@@ -1,6 +1,8 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 548:** `_reflog_src_establishes_tip_destination` accepts `main`→dest only when dest SHA ≠ main (closes Tick 547 greenfield-at-main-SHA bare-detect-`None`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
+**Tick 547:** `_reflog_latest_tip_checkout_destination` also accepts `main`/`origin/main` → tip (closes chicken-egg main→tip tip-as-boot after Tick 546); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 546:** bare detect prefers reflog tip-checkout destination when live gh empty + stale tip_status (closes gh-down tip-as-boot after Tick 545); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 545:** bare `detect_cloud_boot_branch()` tip resolve is **live-first** via `resolve_anti_churn_checkout_branch` (Tick 531 parity) — closes tip-as-boot when tip_status still names a prior tip after `--apply`; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 544:** bare `detect_cloud_boot_branch()` after tip anti-churn resolves tip so tip HEAD is not persisted as boot (closes tip-as-boot poison after Tick 543); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  

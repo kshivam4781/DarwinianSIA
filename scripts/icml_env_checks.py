@@ -7705,7 +7705,51 @@ def _reflog_cloud_boot_hints(
     return tip_checkout_boot, boot_from_main
 
 
-def _reflog_src_establishes_tip_destination(src: str, *, tip_dst: str) -> bool:
+def _ref_sha_differs_from_main(ref: str, *, repo_root: Path) -> bool:
+    """True when ``ref`` resolves to a commit ≠ ``main`` / ``origin/main``.
+
+    Tick **548**: greenfield boots are often ``git checkout -b cursor/…`` from
+    main and stay at the main SHA. Tip recover / tip PR heads have tip
+    commits. Distinguishes ``main→greenfield`` (must not count as tip dest)
+    from ``main→tip`` chicken-egg (Tick 547).
+    """
+    import subprocess
+
+    name = (ref or "").strip()
+    if not name:
+        return False
+    try:
+        ref_sha = subprocess.check_output(
+            ["git", "rev-parse", "--verify", name],
+            cwd=str(repo_root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    for main_ref in ("main", "origin/main"):
+        try:
+            main_sha = subprocess.check_output(
+                ["git", "rev-parse", "--verify", main_ref],
+                cwd=str(repo_root),
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        if main_sha and ref_sha == main_sha:
+            return False
+        if main_sha:
+            return True
+    return False
+
+
+def _reflog_src_establishes_tip_destination(
+    src: str,
+    *,
+    tip_dst: str,
+    repo_root: Path | None = None,
+) -> bool:
     """True when reflog ``src`` is a credible prior branch for tip ``dst``.
 
     Tick **546**: greenfield ``cursor/*`` boot ≠ tip (anti-churn boot→tip).
@@ -7713,10 +7757,15 @@ def _reflog_src_establishes_tip_destination(src: str, *, tip_dst: str) -> bool:
     ``git checkout -b <tip>`` from main — Tick 546 required a valid boot
     ``src`` and skipped these lines, so bare detect accepted live tip HEAD
     as boot when live gh was empty and tip_status named a prior tip).
+    Tick **548**: ``main`` / ``origin/main`` → dest only when ``tip_dst`` SHA
+    ≠ main (greenfield boots created at main SHA must not overwrite a real
+    tip candidate — bare detect on greenfield returned ``None`` after Tick 547).
     """
     name = (src or "").strip()
     if name in {"main", "origin/main"}:
-        return True
+        if repo_root is None:
+            return True
+        return _ref_sha_differs_from_main(tip_dst, repo_root=repo_root)
     return _is_valid_cloud_boot_branch_name(name, tip_commit_branch=tip_dst)
 
 
@@ -7724,7 +7773,7 @@ def _reflog_latest_tip_checkout_destination(
     *,
     repo_root: Path,
 ) -> str | None:
-    """Tick 546/547: most recent reflog tip-checkout destination (live tip HEAD).
+    """Tick 546/547/548: most recent reflog tip-checkout destination (live tip HEAD).
 
     After tip ``--apply`` / anti-churn, reflog records
     ``checkout: moving from <boot> to <tip>``. When live gh tip resolve is
@@ -7733,6 +7782,9 @@ def _reflog_latest_tip_checkout_destination(
 
     Tick **547**: also recognize ``main`` / ``origin/main`` → tip (chicken-egg
     or agent checkout that never landed on a greenfield boot name first).
+    Tick **548**: ``main`` → dest only when dest SHA ≠ main — otherwise
+    greenfield creation (``main→cursor/…-boot`` at main SHA) was treated as
+    tip dest and bare detect on the boot branch returned ``None``.
     """
     import subprocess
 
@@ -7752,7 +7804,9 @@ def _reflog_latest_tip_checkout_destination(
         src, dst = match.group(1), match.group(2)
         if not dst.startswith("cursor/icml-epistemic-results-"):
             continue
-        if _reflog_src_establishes_tip_destination(src, tip_dst=dst):
+        if _reflog_src_establishes_tip_destination(
+            src, tip_dst=dst, repo_root=repo_root
+        ):
             return dst
     return None
 
@@ -7810,6 +7864,10 @@ def detect_cloud_boot_branch(
     chicken-egg / manual ``main`` → tip checkout left reflog dest empty so
     bare detect still accepted live tip HEAD as boot under gh-down + stale
     tip_status. Reflog dest now also accepts ``main`` / ``origin/main`` src.
+    Tick **548**: Tick 547's ``main`` → dest accepted greenfield creation at
+    main SHA as tip dest, so bare detect on the boot branch overwrote the real
+    tip candidate with HEAD and returned ``None``. ``main`` → dest now requires
+    dest SHA ≠ main.
     """
     import subprocess
 
@@ -9842,6 +9900,9 @@ def refresh_tip_and_secrets_status_after_recover(
     Tick **547**: that reflog tip dest also accepts ``main`` / ``origin/main``
     → tip (Tick 546 required a greenfield boot ``src`` and missed chicken-egg
     main→tip checkouts).
+
+    Tick **548**: ``main`` → dest requires dest SHA ≠ main so greenfield
+    creation at main SHA does not poison tip dest / bare detect (``None``).
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.

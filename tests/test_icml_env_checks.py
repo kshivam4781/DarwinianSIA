@@ -1268,7 +1268,7 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "Tick 542" in env or "Tick **542**" in env or "540/541/542" in env
     helper_start = env.find("def refresh_tip_and_secrets_status_after_recover")
     assert helper_start >= 0
-    helper = env[helper_start : helper_start + 3200]
+    helper = env[helper_start : helper_start + 3800]
     assert "write_icml_tip_status" in helper
     assert "write_icml_secrets_status" in helper
     assert "icml_cron_entry.sh" in helper
@@ -1318,7 +1318,14 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "_reflog_latest_tip_checkout_destination" in env
     assert "test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty" in tests
     assert "test_detect_reflog_tip_destination_source_lock" in tests
-
+    # Tick 547: main→tip chicken-egg accepted as tip dest.
+    assert "Tick 547" in env or "Tick **547**" in env
+    assert "test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_empty" in tests
+    # Tick 548: main→greenfield at main SHA must not poison tip dest.
+    assert "Tick 548" in env or "Tick **548**" in env
+    assert "def _ref_sha_differs_from_main" in env
+    assert "test_detect_on_greenfield_boot_before_tip_checkout_not_none" in tests
+    assert "Tick **548**" in helper or "Tick 548" in helper
 
 def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
     """Tick 541: cron boot→tip checkout rewrites tip+secrets after anti-churn."""
@@ -3458,8 +3465,15 @@ def test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_e
     )
     subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
     # Chicken-egg / manual: main → tip directly (no greenfield boot checkout).
+    # Tick 548: tip must have commits ≠ main SHA so main→tip is distinguishable
+    # from greenfield creation at main SHA.
     subprocess.run(
         ["git", "checkout", "-b", live_tip], cwd=repo, check=True, capture_output=True
+    )
+    (repo / "TIP").write_text("tip\n", encoding="utf-8")
+    subprocess.run(["git", "add", "TIP"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "tip"], cwd=repo, check=True, capture_output=True
     )
     docs = repo / "docs"
     docs.mkdir()
@@ -3467,7 +3481,7 @@ def test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_e
         prior_boot + "\n", encoding="utf-8"
     )
     (docs / "icml_tip_status.json").write_text(
-        json.dumps({"tip_pr_commit_branch": stale_tip, "local_tick": 546}),
+        json.dumps({"tip_pr_commit_branch": stale_tip, "local_tick": 547}),
         encoding="utf-8",
     )
     monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
@@ -3485,20 +3499,83 @@ def test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_e
     )
 
 
+def test_detect_on_greenfield_boot_before_tip_checkout_not_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 548: bare detect on greenfield (main SHA) must return boot, not None."""
+    import json
+    import subprocess
+
+    import icml_env_checks
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        _reflog_latest_tip_checkout_destination,
+        detect_cloud_boot_branch,
+    )
+
+    boot = "cursor/icml-epistemic-results-f536"
+    live_tip = "cursor/icml-epistemic-results-9e39"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    # Warm-fork / cron greenfield: main → boot at main SHA (no tip commits yet).
+    subprocess.run(
+        ["git", "checkout", "-b", boot], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps({"tip_pr_commit_branch": live_tip, "local_tick": 547}),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    monkeypatch.setattr(
+        icml_env_checks,
+        "prefer_tip_pr_commit_branch",
+        lambda pr=None: None,
+    )
+    # main→boot at main SHA must not count as tip dest (Tick 547 hole).
+    assert _reflog_latest_tip_checkout_destination(repo_root=repo) is None
+    got = detect_cloud_boot_branch(repo_root=repo)
+    assert got == boot
+    assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
+
+
 def test_detect_reflog_tip_destination_source_lock() -> None:
-    """Tick 546/547: bare detect prefers reflog tip-checkout dest when live gh empty."""
+    """Tick 546/547/548: bare detect prefers reflog tip-checkout dest when live gh empty."""
     root = Path(__file__).resolve().parents[1]
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     assert "Tick 546" in env
     assert "Tick 547" in env
+    assert "Tick 548" in env or "Tick **548**" in env
     assert "def _reflog_latest_tip_checkout_destination" in env
     assert "def _reflog_src_establishes_tip_destination" in env
+    assert "def _ref_sha_differs_from_main" in env
     assert '"main"' in env and "origin/main" in env
     detect_idx = env.index("def detect_cloud_boot_branch")
-    window = env[detect_idx : detect_idx + 8500]
+    window = env[detect_idx : detect_idx + 9000]
     assert "_reflog_latest_tip_checkout_destination" in window
     assert "Tick 546" in window
     assert "Tick 547" in window or "Tick **547**" in window
+    assert "Tick 548" in window or "Tick **548**" in window
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert (
         "test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty"
@@ -3508,11 +3585,13 @@ def test_detect_reflog_tip_destination_source_lock() -> None:
         "test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_empty"
         in tests
     )
+    assert "test_detect_on_greenfield_boot_before_tip_checkout_not_none" in tests
     assert "test_detect_reflog_tip_destination_source_lock" in tests
     refresh_idx = env.index("def refresh_tip_and_secrets_status_after_recover")
-    refresh_doc = env[refresh_idx : refresh_idx + 3200]
+    refresh_doc = env[refresh_idx : refresh_idx + 3800]
     assert "Tick **546**" in refresh_doc or "Tick 546" in refresh_doc
     assert "Tick **547**" in refresh_doc or "Tick 547" in refresh_doc
+    assert "Tick **548**" in refresh_doc or "Tick 548" in refresh_doc
 
 
 def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:

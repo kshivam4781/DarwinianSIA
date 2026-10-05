@@ -1,5 +1,32 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T22:15:00Z — Tick 548 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-f536` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Tick 547 accepted `main`→tip as tip dest, but also treated **greenfield creation** (`main`→`cursor/…-boot` at main SHA) as tip dest — bare detect on the boot branch overwrote the real tip candidate with HEAD and returned **`None`** (open_git_pr warn / tip+secrets refresh broken before anti-churn). Highest leverage without paid spend: **main→greenfield SHA guard + rematerialize**.
+
+### What we did
+**Tick 548 — main→greenfield must not poison tip dest (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `f536`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. Added `_ref_sha_differs_from_main`; `_reflog_src_establishes_tip_destination` accepts `main`/`origin/main` → dest **only when dest SHA ≠ main** (closes Tick 547 greenfield-at-main-SHA hole)
+3. Unit + source locks: greenfield-before-tip detect / Tick 547 tip SHA≠main / dest+refresh source locks; focused suite green (5/5)
+4. Offline Bvd `1930–1944` + Figs 1–2 reconfirmed; refreshed lift proof `tick=548` / `local_run_present=false`
+5. Tip/secrets/open_git_pr report `cloud_boot_branch=…-f536`
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4
+
+| Metric | Before (Tick 547) | After (Tick 548) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** |
+| Bare detect on greenfield (main SHA) before tip checkout | **`None`** (tip overwritten with boot) | **returns greenfield boot** |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional). Optional: undraft+merge tip PR #339. Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T20:08:00Z — Tick 547 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
