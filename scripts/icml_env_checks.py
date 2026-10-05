@@ -7658,12 +7658,59 @@ def _read_persisted_cloud_boot_branch(
     return name
 
 
+def _reflog_cloud_boot_hints(
+    *,
+    tip_commit_branch: str | None,
+    repo_root: Path,
+) -> tuple[str | None, str | None]:
+    """Scan recent reflog for tip-checkout boot + first main→cursor/* boot.
+
+    Returns ``(latest_boot_that_checked_out_tip, boot_from_main)``.
+    Tick 543: callers compare these to a warm-fork-stale boot file.
+    """
+    import subprocess
+
+    tip = (tip_commit_branch or "").strip() or None
+    try:
+        out = subprocess.check_output(
+            ["git", "reflog", "-n", "50", "--format=%gs"],
+            cwd=str(repo_root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None, None
+    tip_checkout_boot: str | None = None
+    boot_from_main: str | None = None
+    for line in out.splitlines():
+        match = _REFLOG_CHECKOUT_RE.search(line)
+        if not match:
+            continue
+        src, dst = match.group(1), match.group(2)
+        if (
+            tip
+            and tip_checkout_boot is None
+            and dst == tip
+            and _is_valid_cloud_boot_branch_name(src, tip_commit_branch=tip)
+        ):
+            tip_checkout_boot = src
+        if (
+            src in {"main", "origin/main"}
+            and _is_valid_cloud_boot_branch_name(dst, tip_commit_branch=tip)
+            and boot_from_main is None
+        ):
+            boot_from_main = dst
+        if tip_checkout_boot is not None and boot_from_main is not None:
+            break
+    return tip_checkout_boot, boot_from_main
+
+
 def detect_cloud_boot_branch(
     *,
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 352–357: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+    """Tick 352–357/543: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
 
     Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
     After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
@@ -7679,15 +7726,20 @@ def detect_cloud_boot_branch(
        Tick 354: **ignore** when env equals ``tip_commit_branch`` (false capture
        after an agent already checked out tip before cron).
        Tick 357: **ignore** short/non-``cursor/*`` poison names.
-    2. Gitignored ``docs/icml_cloud_boot_branch.txt`` (Tick 354 persist;
+    2. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
+       (Tick **543**: live greenfield HEAD beats a warm-fork-stale boot file).
+    3. Gitignored ``docs/icml_cloud_boot_branch.txt`` (Tick 354 persist;
        Tick 356: survives discard / tip --apply; never committed;
-       Tick 357: invalid short names are unlinked so reflog can win)
-    3. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
-    4. Current branch when it is a greenfield ``cursor/*`` name ≠ tip
+       Tick 357: invalid short names are unlinked so reflog can win) —
+       **unless** a newer reflog tip-checkout disagrees (Tick **543**).
+    4. ``git reflog`` — checkout from ``cursor/*`` → tip, or ``main`` → ``cursor/*``
 
     When a non-tip boot is resolved, persist it to the ephemeral file.
     Tick 357: ``icml_checkout_tip_pr_branch.sh`` also persists *before* tip
     checkout so mid-tick agents without cron capture still keep the warn.
+    Tick **543**: warm-fork VMs can keep a prior tick's boot file; prefer
+    live greenfield HEAD / latest reflog tip-checkout over that stale name
+    (closes Tick 542 follow-up ``cloud_boot_branch`` restore churn).
     """
     import subprocess
 
@@ -7705,45 +7757,6 @@ def detect_cloud_boot_branch(
         persist_cloud_boot_branch(env, tip_commit_branch=tip, repo_root=root)
         return env
 
-    persisted = _read_persisted_cloud_boot_branch(
-        tip_commit_branch=tip, repo_root=root
-    )
-    if persisted:
-        return persisted
-
-    try:
-        out = subprocess.check_output(
-            ["git", "reflog", "-n", "50", "--format=%gs"],
-            cwd=str(root),
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        out = ""
-    boot_from_main: str | None = None
-    for line in out.splitlines():
-        match = _REFLOG_CHECKOUT_RE.search(line)
-        if not match:
-            continue
-        src, dst = match.group(1), match.group(2)
-        if (
-            tip
-            and dst == tip
-            and _is_valid_cloud_boot_branch_name(src, tip_commit_branch=tip)
-        ):
-            persist_cloud_boot_branch(src, tip_commit_branch=tip, repo_root=root)
-            return src
-        if (
-            src in {"main", "origin/main"}
-            and _is_valid_cloud_boot_branch_name(dst, tip_commit_branch=tip)
-            and boot_from_main is None
-        ):
-            boot_from_main = dst
-    if boot_from_main:
-        persist_cloud_boot_branch(
-            boot_from_main, tip_commit_branch=tip, repo_root=root
-        )
-        return boot_from_main
     try:
         cur = subprocess.check_output(
             ["git", "branch", "--show-current"],
@@ -7755,8 +7768,39 @@ def detect_cloud_boot_branch(
         cur = ""
     cur_ok = _accept(cur)
     if cur_ok:
+        # Tick 543: still on this tick's greenfield boot — do not let a
+        # warm-fork-stale boot file from a prior tip win.
         persist_cloud_boot_branch(cur_ok, tip_commit_branch=tip, repo_root=root)
         return cur_ok
+
+    tip_checkout_boot, boot_from_main = _reflog_cloud_boot_hints(
+        tip_commit_branch=tip, repo_root=root
+    )
+
+    persisted = _read_persisted_cloud_boot_branch(
+        tip_commit_branch=tip, repo_root=root
+    )
+    if persisted:
+        if tip_checkout_boot and tip_checkout_boot != persisted:
+            # Tick 543: ephemeral boot file from a prior VM boot poisoned
+            # detect ahead of reflog (Tick 542 follow-up had to hand-restore
+            # cloud_boot_branch). Prefer the latest tip-checkout source.
+            persist_cloud_boot_branch(
+                tip_checkout_boot, tip_commit_branch=tip, repo_root=root
+            )
+            return tip_checkout_boot
+        return persisted
+
+    if tip_checkout_boot:
+        persist_cloud_boot_branch(
+            tip_checkout_boot, tip_commit_branch=tip, repo_root=root
+        )
+        return tip_checkout_boot
+    if boot_from_main:
+        persist_cloud_boot_branch(
+            boot_from_main, tip_commit_branch=tip, repo_root=root
+        )
+        return boot_from_main
     return None
 
 
@@ -9662,7 +9706,7 @@ def refresh_tip_and_secrets_status_after_recover(
     repo_root: Path | None = None,
     fetch: bool = False,
 ) -> tuple[dict, dict]:
-    """Tick 540/541/542: after tip checkout / ``--apply`` / cron anti-churn, rewrite tip + secrets.
+    """Tick 540/541/542/543: after tip checkout / ``--apply`` / cron anti-churn, rewrite tip + secrets.
 
     Tick 358 refreshed ``docs/icml_open_git_pr_call.json`` ``cloud_boot_branch``
     after tip-PR checkout, but chicken-egg ``icml_boot_recover.sh --apply`` never
@@ -9684,6 +9728,11 @@ def refresh_tip_and_secrets_status_after_recover(
     checkout entrypoint (no full cron / recover ``--apply``) were still leaving
     tip/secrets (+ Next) on the pre-checkout boot identity. Tick 540/541 covered
     boot_recover / recover_tip / cron entry, but not this script alone.
+
+    Tick **543**: ``detect_cloud_boot_branch`` must not prefer a warm-fork-stale
+    ephemeral boot file over live greenfield HEAD / latest reflog tip-checkout
+    (Tick 542 follow-up had to hand-restore ``cloud_boot_branch``). Refresh
+    callers inherit that detect fix automatically.
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.

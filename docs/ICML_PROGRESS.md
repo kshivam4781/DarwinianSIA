@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T12:17:03Z — Tick 543 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-d29d` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 542 follow-up had to hand-restore `cloud_boot_branch` after `detect_cloud_boot_branch` preferred a **warm-fork-stale** ephemeral `docs/icml_cloud_boot_branch.txt` (prior tick) over this tick's greenfield HEAD / latest reflog tip-checkout — refresh paths (540–542) inherit poisoned detect and rewrite tip/secrets/open_git_pr with the wrong boot. Highest leverage without paid spend / STATUS-peel churn: **detect stale-boot-file heal + rematerialize**.
+
+### What we did
+**Tick 543 — detect prefers live greenfield HEAD / reflog tip-checkout over warm-fork-stale boot file (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `d29d`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. `detect_cloud_boot_branch`: live greenfield HEAD beats stale boot file; latest reflog tip-checkout overrides disagreeing persisted name (`_reflog_cloud_boot_hints`) — closes Tick 542 follow-up restore churn
+3. Unit + source locks: greenfield-head / reflog-over-stale / detect lock + Tick 540 helper docstring Tick 543 note; focused suite green (8/8)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=543` / `local_run_present=false`
+5. Tip/secrets/open_git_pr now report `cloud_boot_branch=…-d29d` after stale-`c9d8`-file heal
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 542) | After (Tick 543) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Warm-fork stale boot file vs reflog | **stale file wins** (Tick 542 follow-up hand-restore) | **live HEAD / reflog tip-checkout win** |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (542) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T10:23:51Z — Tick 542 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
@@ -27,7 +56,7 @@ Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready 
 | Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
 
 ### Next recommended step
-Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G4 + paper pack.
 
 ## 2026-10-05T08:12:10Z — Tick 541 (automation cron)
 ### STATUS

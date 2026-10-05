@@ -1299,6 +1299,11 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "test_refresh_tip_and_secrets_status_after_recover_rewrites_cloud_boot" in tests
     assert "test_cron_anti_churn_refreshes_tip_secrets_status_source_lock" in tests
     assert "test_checkout_refreshes_tip_secrets_status_source_lock" in tests
+    # Tick 543: detect must not prefer warm-fork-stale boot file.
+    assert "Tick 543" in env
+    assert "test_detect_prefers_reflog_tip_checkout_over_stale_boot_file" in tests
+    assert "test_detect_prefers_live_greenfield_head_over_stale_boot_file" in tests
+    assert "test_detect_stale_boot_file_source_lock" in tests
 
 
 def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
@@ -2990,6 +2995,136 @@ def test_reject_short_boot_poison_and_checkout_persists(tmp_path, monkeypatch) -
         assert not live_poison.is_file() or live_poison.read_text(
             encoding="utf-8"
         ).strip() != "48b0"
+
+
+def test_detect_prefers_live_greenfield_head_over_stale_boot_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 543: live greenfield HEAD beats warm-fork-stale boot file."""
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        detect_cloud_boot_branch,
+    )
+
+    tip = "cursor/icml-epistemic-results-9e39"
+    stale = "cursor/icml-epistemic-results-c9d8"
+    fresh = "cursor/icml-epistemic-results-d29d"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "branch", tip], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", "-b", fresh], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_cloud_boot_branch.txt").write_text(stale + "\n", encoding="utf-8")
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    got = detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=repo)
+    assert got == fresh
+    assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == fresh
+
+
+def test_detect_prefers_reflog_tip_checkout_over_stale_boot_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 543: latest reflog tip-checkout beats warm-fork-stale boot file."""
+    import subprocess
+
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        detect_cloud_boot_branch,
+    )
+
+    tip = "cursor/icml-epistemic-results-9e39"
+    stale = "cursor/icml-epistemic-results-c9d8"
+    fresh = "cursor/icml-epistemic-results-d29d"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    # Prior tick: stale boot → tip (older reflog entry).
+    subprocess.run(
+        ["git", "checkout", "-b", stale], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", tip], cwd=repo, check=True, capture_output=True
+    )
+    # This tick: fresh boot → tip (newest tip-checkout in reflog).
+    subprocess.run(
+        ["git", "checkout", "main"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", fresh], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", tip], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    # Warm-fork leftover names the *prior* boot.
+    (docs / "icml_cloud_boot_branch.txt").write_text(stale + "\n", encoding="utf-8")
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    got = detect_cloud_boot_branch(tip_commit_branch=tip, repo_root=repo)
+    assert got == fresh
+    assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == fresh
+
+
+def test_detect_stale_boot_file_source_lock() -> None:
+    """Tick 543: detect docstring + tests lock warm-fork stale boot-file fix."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 543" in env
+    assert "warm-fork" in env or "warm fork" in env.lower()
+    assert "def _reflog_cloud_boot_hints" in env
+    # Live greenfield HEAD before persisted file; reflog tip-checkout overrides
+    # disagreeing persisted name.
+    detect_idx = env.index("def detect_cloud_boot_branch")
+    window = env[detect_idx : detect_idx + 4500]
+    assert "cur_ok" in window
+    assert "tip_checkout_boot" in window
+    assert "tip_checkout_boot != persisted" in window
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_detect_prefers_live_greenfield_head_over_stale_boot_file" in tests
+    assert "test_detect_prefers_reflog_tip_checkout_over_stale_boot_file" in tests
+    assert "test_detect_stale_boot_file_source_lock" in tests
 
 
 def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:

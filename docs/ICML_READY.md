@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 542: `icml_checkout_tip_pr_branch.sh` now calls `refresh_tip_and_secrets_status_after_recover` after Tick 358 call-JSON refresh — closes mid-tick checkout-only hole left by Tick 540/541 (cron/recover covered; shared checkout entrypoint did not); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `c9d8` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 543: `detect_cloud_boot_branch` prefers live greenfield HEAD / latest reflog tip-checkout over a warm-fork-stale ephemeral boot file (closes Tick 542 follow-up `cloud_boot_branch` hand-restore); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `d29d` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
