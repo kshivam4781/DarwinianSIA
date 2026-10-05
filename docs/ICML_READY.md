@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 543: `detect_cloud_boot_branch` prefers live greenfield HEAD / latest reflog tip-checkout over a warm-fork-stale ephemeral boot file (closes Tick 542 follow-up `cloud_boot_branch` hand-restore); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `d29d` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 544: bare `detect_cloud_boot_branch()` after tip anti-churn resolves tip from `icml_tip_status.json` so tip HEAD is not persisted as boot (closes tip-as-boot poison after Tick 543); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `44d0` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

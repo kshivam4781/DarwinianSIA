@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T14:19:30Z — Tick 544 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-44d0` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 543 preferred live greenfield HEAD over a warm-fork-stale boot file, but bare `detect_cloud_boot_branch()` (no `tip_commit_branch`) after tip anti-churn still treated tip HEAD as boot and **rewrote** `docs/icml_cloud_boot_branch.txt` to the tip name — poisoning mid-tick agents / open_git_pr warn when tip arg is omitted. Highest leverage without paid spend / STATUS-peel churn: **tip-as-boot poison heal + rematerialize**.
+
+### What we did
+**Tick 544 — bare detect() resolves tip from tip_status before accepting HEAD (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `44d0`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. `detect_cloud_boot_branch`: when `tip_commit_branch` omitted, resolve tip via `tip_pr_commit_branch_from_status_json` so HEAD==tip is not accepted/persisted as boot (closes tip-as-boot poison after Tick 543)
+3. Unit + source locks: no-poison / heal-poisoned-file / detect lock + Tick 540 helper docstring Tick 544 note; focused suite green (7/7)
+4. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=544` / `local_run_present=false`
+5. Tip/secrets/open_git_pr now report `cloud_boot_branch=…-44d0` after tip-as-boot heal
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 543) | After (Tick 544) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Bare detect() after tip checkout | **persists tip-as-boot** | **resolves tip from status; keeps greenfield boot** |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (543) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T12:17:03Z — Tick 543 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
