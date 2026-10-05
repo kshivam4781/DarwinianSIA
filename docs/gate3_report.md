@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-04T22:23:38Z
+**Timestamp:** 2026-10-05T00:09:58Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -44,7 +44,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 535 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 536 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 | `g2_steering_lift` | yes | durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness |
 
 ### Planned seed pairs
@@ -66,6 +66,8 @@
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
 - Tick 511: G3 steering-lift proof OK — durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness
+- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
+- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
 
 **Live G3 status:** NOT RUN this tick
 
@@ -74,7 +76,6 @@
 1. Ensure live G2 smoke passed (`scripts/run_g2_smoke.py --live ...`) and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).
 2. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 3. Budget-check, then:
-   `python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`
-4. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).
-5. Do **not** set `ICML_READY` STATUS: READY from offline / preflight alone.
-
+4. `python3 scripts/run_g3_pilot.py --live --seeds 1 --b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`
+5. If pilot looks promising, G4 5-seed under remaining budget (never parallel full GPQA).
+6. Do **not** set `ICML_READY` STATUS: READY from offline / preflight alone.

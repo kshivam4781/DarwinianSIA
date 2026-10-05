@@ -142,6 +142,8 @@ from icml_env_checks import (  # noqa: E402
     icml_preflight_diamond_ready,
     icml_python_cli,
     extract_numbered_next_steps,
+    gate4_next_step_bodies,
+    _gate_next_markdown_from_bodies,
     portable_argv_for_durable,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -1377,56 +1379,17 @@ def gate4_diamond_ready(report: G4PreflightReport) -> bool:
 
 
 def gate4_next_markdown_lines(report: G4PreflightReport) -> list[str]:
-    """Build Gate 4 ``## Next`` lines (Tick 500: NEBIUS-first when diamond ready).
+    """Build Gate 4 ``## Next`` lines (Tick 500/537: NEBIUS-first when diamond ready).
 
     Parity with Gate2 Tick 498 / G3 Tick 500 — do not push HF when diamond is
     already materialized via public mirror / CSV / on-disk non-synthetic.
+    Tick **537**: bodies live in ``gate4_next_step_bodies`` for tip/secrets
+    refresh parity.
     """
     diamond_ready = gate4_diamond_ready(report)
-    secrets_line = icml_human_required_secrets_phrase(
-        for_fetch_diamond=not diamond_ready
+    return _gate_next_markdown_from_bodies(
+        gate4_next_step_bodies(diamond_ready=diamond_ready)
     )
-    py = icml_python_cli()
-    lines = ["## Next", ""]
-    if diamond_ready:
-        lines.extend(
-            [
-                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4, "
-                "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
-                "2. Add **`NEBIUS_API_KEY`** to the cloud environment "
-                "(HF optional — Tick 497 public mirror / local "
-                "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
-                f"Full phrase: `{secrets_line}`.",
-                "3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
-                f"   `{py} scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
-                "--b-run-ids 1211,1212,1213,1214,1215 "
-                "--d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
-                "4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 "
-                "+ ICML_READY (or recover via `--refresh-paper-from-runs`).",
-                "5. Do **not** set STATUS: READY from offline / G4 preflight alone.",
-                "",
-            ]
-        )
-    else:
-        lines.extend(
-            [
-                "1. Ensure live G2 smoke + G3 pilot passed before spending on G4, "
-                "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
-                f"2. Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
-                "3. Materialize diamond (prefer public mirror — no HF):",
-                f"   `{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
-                "--n 5 --force`",
-                "4. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
-                f"   `{py} scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
-                "--b-run-ids 1211,1212,1213,1214,1215 "
-                "--d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
-                "5. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 "
-                "+ ICML_READY (or recover via `--refresh-paper-from-runs`).",
-                "6. Do **not** set STATUS: READY from offline / G4 preflight alone.",
-                "",
-            ]
-        )
-    return lines
 
 
 def _sanitize_gate_report_text(text: str, *, repo_root: Path | None = None) -> str:

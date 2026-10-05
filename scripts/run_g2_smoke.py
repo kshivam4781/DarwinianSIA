@@ -106,6 +106,8 @@ from icml_env_checks import (  # noqa: E402
     icml_python_cli,
     icml_target_profile_cli_flags,
     extract_numbered_next_steps,
+    gate2_next_step_bodies,
+    _gate_next_markdown_from_bodies,
     portable_argv_for_durable,
     probe_icml_meta_profile,
     probe_icml_target_profile_nebius,
@@ -1277,52 +1279,18 @@ def gate2_diamond_ready(report: PreflightReport) -> bool:
 
 
 def gate2_next_markdown_lines(report: PreflightReport) -> list[str]:
-    """Build Gate 2 ``## Next`` lines (Tick 498: NEBIUS-first when diamond ready).
+    """Build Gate 2 ``## Next`` lines (Tick 498/537: NEBIUS-first when diamond ready).
 
     Pre-498 always printed ``Accept HF access for Idavidrein/gpqa`` as step 2,
     even after Tick 497 rematerialized non-synthetic diamond via the public
     OpenAI mirror — operators chased HF while the only PRIMARY blocker was
-    ``NEBIUS_API_KEY``.
+    ``NEBIUS_API_KEY``. Tick **537**: bodies live in ``gate2_next_step_bodies``
+    so tip/secrets ``refresh_gate_reports_next`` cannot drift from writers.
     """
     diamond_ready = gate2_diamond_ready(report)
-    secrets_line = icml_human_required_secrets_phrase(
-        for_fetch_diamond=not diamond_ready
+    return _gate_next_markdown_from_bodies(
+        gate2_next_step_bodies(diamond_ready=diamond_ready)
     )
-    py = icml_python_cli()
-    lines = ["## Next", ""]
-    if diamond_ready:
-        lines.extend(
-            [
-                "1. Add **`NEBIUS_API_KEY`** to the cloud environment "
-                "(HF optional — Tick 497 public mirror / local "
-                "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
-                f"Full phrase: `{secrets_line}`.",
-                "2. Budget-check, then live G2 (unused integer run_id):",
-                f"   `{py} scripts/run_g2_smoke.py --live --run-id <unused> "
-                "--fetch-diamond`",
-                "3. Only then start live G3 B vs D pilot (Section 21.5).",
-                "",
-            ]
-        )
-    else:
-        lines.extend(
-            [
-                f"1. Add `{secrets_line}` to the cloud environment "
-                "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
-                "2. Materialize diamond (prefer public mirror — no HF):",
-                f"   `{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
-                "--n 5 --force`",
-                "   or HF (optional): "
-                f"`{py} scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
-                "   or let the runner autowire: "
-                f"`{py} scripts/run_g2_smoke.py --live --run-id <unused> "
-                "--fetch-diamond`",
-                "3. Re-run live G2 after budget check (unused integer run_id).",
-                "4. Only then start live G3 B vs D pilot (Section 21.5).",
-                "",
-            ]
-        )
-    return lines
 
 
 def _sanitize_gate_report_text(text: str, *, repo_root: Path | None = None) -> str:

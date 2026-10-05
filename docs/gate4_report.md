@@ -1,6 +1,6 @@
 # Gate 4 report — 5-seed B vs D
 
-**Timestamp:** 2026-10-04T22:23:47Z
+**Timestamp:** 2026-10-05T00:10:07Z
 **Mode:** `preflight`
 **Live G4 ready:** no
 **PRIMARY pass (≥3/5):** no
@@ -24,7 +24,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 535 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 536 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 | `g2_steering_lift` | yes | durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness |
 
 ### Planned seed pairs
@@ -58,6 +58,8 @@
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
 - Tick 511: G4 steering-lift proof OK — durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness
+- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
+- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
 
 **Live G4 status:** NOT RUN this tick
 
@@ -66,7 +68,6 @@
 1. Ensure live G2 smoke + G3 pilot passed before spending on G4, and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).
 2. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 3. Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:
-   `python3 scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`
-4. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY (or recover via `--refresh-paper-from-runs`).
-5. Do **not** set STATUS: READY from offline / G4 preflight alone.
-
+4. `python3 scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 --b-run-ids 1211,1212,1213,1214,1215 --d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`
+5. After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 + ICML_READY (or recover via `--refresh-paper-from-runs`).
+6. Do **not** set STATUS: READY from offline / G4 preflight alone.

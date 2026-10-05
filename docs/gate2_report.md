@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-04T22:23:28Z
+**Timestamp:** 2026-10-05T00:09:50Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -20,7 +20,7 @@
 | `runtime_deps` | yes | uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
-| `tip_ok_for_live` | yes | local Tick 535 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 536 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -38,6 +38,8 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
+- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
+- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
 
 **G2 live status:** NOT RUN this tick
 
@@ -45,6 +47,5 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 
 1. Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional — Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional — Tick 289 Nebius pydantic-ai meta)`.
 2. Budget-check, then live G2 (unused integer run_id):
-   `python3 scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
-3. Only then start live G3 B vs D pilot (Section 21.5).
-
+3. `python3 scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
+4. Only then start live G3 B vs D pilot (Section 21.5).

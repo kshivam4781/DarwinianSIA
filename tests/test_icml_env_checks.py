@@ -842,6 +842,207 @@ def test_gate_next_steps_json_helper_source_lock() -> None:
     assert "test_gate_next_steps_json_helper_source_lock" in tests
 
 
+def test_refresh_gate_reports_next_flips_diamond_ready_nebius_first(
+    tmp_path: Path,
+) -> None:
+    """Tick 537: tip/secrets refresh drops HF-chase gate Next when diamond_ready."""
+    from icml_env_checks import refresh_gate_reports_next
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_secrets_status.json").write_text(
+        json.dumps(
+            {
+                "secrets_ok_for_paid_sia": False,
+                "fetch_diamond_ok": False,
+                "diamond_ready": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    stale_next = (
+        "## Next\n\n"
+        "1. Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local `gpqa_diamond.csv`)\n"
+        "2. Accept HF `Idavidrein/gpqa` if using HF.\n"
+        "3. Materialize diamond via HF.\n"
+    )
+    for stem in ("gate2_report", "gate3_report", "gate4_report"):
+        (docs / f"{stem}.md").write_text(
+            f"# Gate report\n\n**Mode:** `preflight`\n\n{stale_next}",
+            encoding="utf-8",
+        )
+        (docs / f"{stem}.json").write_text(
+            json.dumps(
+                {
+                    "mode": "preflight",
+                    "next_steps": [
+                        "Add `NEBIUS_API_KEY` + (`HF_TOKEN` **or** local CSV)",
+                        "Accept HF Idavidrein/gpqa",
+                    ],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    assert refresh_gate_reports_next(repo_root=tmp_path) is True
+    for stem in ("gate2_report", "gate3_report", "gate4_report"):
+        md = (docs / f"{stem}.md").read_text(encoding="utf-8")
+        assert "## Next" in md
+        assert "NEBIUS_API_KEY" in md
+        assert "Accept HF" not in md
+        assert "Idavidrein/gpqa" not in md
+        blob = json.loads((docs / f"{stem}.json").read_text(encoding="utf-8"))
+        steps = blob.get("next_steps") or []
+        assert steps, stem
+        joined = "\n".join(steps)
+        assert "NEBIUS_API_KEY" in joined
+        assert "Accept HF" not in joined
+        assert "Idavidrein/gpqa" not in joined
+    # Idempotent when already NEBIUS-first.
+    assert refresh_gate_reports_next(repo_root=tmp_path) is False
+
+
+def test_gate_next_refresh_on_tip_and_secrets_write_source_lock() -> None:
+    """Tick 537: tip + secrets writers call refresh_gate_reports_next."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "def refresh_gate_reports_next" in env
+    assert "Tick 537" in env
+    assert "def gate2_next_step_bodies" in env
+    assert "def gate3_next_step_bodies" in env
+    assert "def gate4_next_step_bodies" in env
+    tip_fn_start = env.find("def write_icml_tip_status")
+    assert tip_fn_start >= 0
+    tip_fn = env[tip_fn_start : tip_fn_start + 4000]
+    assert "refresh_gate_reports_next" in tip_fn
+    secrets_fn_start = env.find("def write_icml_secrets_status")
+    tip_start_for_bound = env.find("def write_icml_tip_status")
+    secrets_fn = env[
+        secrets_fn_start : tip_start_for_bound
+        if tip_start_for_bound > secrets_fn_start
+        else secrets_fn_start + 5000
+    ]
+    assert "refresh_gate_reports_next" in secrets_fn
+    for rel in (
+        "scripts/run_g2_smoke.py",
+        "scripts/run_g3_pilot.py",
+        "scripts/run_g4_multiseed.py",
+    ):
+        src = (root / rel).read_text(encoding="utf-8")
+        assert "_gate_next_markdown_from_bodies" in src
+        assert "next_step_bodies" in src
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert "test_refresh_gate_reports_next_flips_diamond_ready_nebius_first" in tests
+    assert "test_gate_next_refresh_on_tip_and_secrets_write_source_lock" in tests
+
+
+def test_write_icml_secrets_status_refreshes_gate_next_diamond_ready(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 537: secrets write refreshes gate Next after diamond_ready flips True."""
+    from icml_env_checks import write_icml_secrets_status
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_ok_for_live": True,
+                "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+                "tip_pr_number": 339,
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-9e39",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    # Pipeline report so Tick 534 refresh also has a target.
+    (docs / "icml_live_pipeline_report.md").write_text(
+        "# ICML live pipeline report\n\n## Next\n\n1. stale HF chase\n",
+        encoding="utf-8",
+    )
+    for stem in ("gate2_report", "gate3_report", "gate4_report"):
+        (docs / f"{stem}.md").write_text(
+            "# Gate\n\n## Next\n\n1. Accept HF `Idavidrein/gpqa`\n",
+            encoding="utf-8",
+        )
+        (docs / f"{stem}.json").write_text(
+            json.dumps({"next_steps": ["Accept HF Idavidrein/gpqa"]}) + "\n",
+            encoding="utf-8",
+        )
+
+    monkeypatch.delenv("NEBIUS_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("HUGGINGFACE_HUB_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_diamond_csv_path",
+        lambda *_a, **_k: tmp_path / "gpqa_diamond.csv",
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.ensure_diamond_csv_via_public_mirror",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.icml_ondisk_nonsynthetic_gpqa",
+        lambda *_a, **_k: False,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files",
+        lambda *_a, **_k: True,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.write_icml_open_git_pr_hint",
+        lambda **_k: {},
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.collect_icml_secrets_status",
+        lambda: {
+            "secrets": {
+                "ANTHROPIC_API_KEY": "ABSENT",
+                "NEBIUS_API_KEY": "ABSENT",
+                "HF_TOKEN_OR_HUGGINGFACE_HUB_TOKEN": "ABSENT",
+            },
+            "anthropic_key_present": False,
+            "nebius_key_present": False,
+            "hf_token_present": False,
+            "diamond_csv_present": True,
+            "diamond_csv_path": "$TMPDIR/gpqa_diamond.csv",
+            "public_mirror_csv": True,
+            "diamond_ready": True,
+            "meta_requires_anthropic": False,
+            "secrets_ok_for_paid_sia": False,
+            "fetch_diamond_ok": False,
+            "cron_live_ok": False,
+            "ready_for_live_pipeline": False,
+            "main_has_icml_tip": True,
+            "blockers": ["NEBIUS_API_KEY missing"],
+            "human_next": [
+                "Add NEBIUS_API_KEY (diamond ready — HF optional)",
+                "Next cron: bash scripts/icml_cron_entry.sh",
+            ],
+            "open_git_pr_branch": None,
+        },
+    )
+
+    status = write_icml_secrets_status(
+        path=docs / "icml_secrets_status.json",
+        repo_root=tmp_path,
+        gpqa_is_synthetic=False,
+    )
+    assert status.get("diamond_ready") is True
+    for stem in ("gate2_report", "gate3_report", "gate4_report"):
+        md = (docs / f"{stem}.md").read_text(encoding="utf-8")
+        assert "NEBIUS_API_KEY" in md
+        assert "Idavidrein/gpqa" not in md
+        blob = json.loads((docs / f"{stem}.json").read_text(encoding="utf-8"))
+        joined = "\n".join(blob.get("next_steps") or [])
+        assert "NEBIUS_API_KEY" in joined
+        assert "Idavidrein/gpqa" not in joined
+
+
 def test_pipeline_next_refresh_on_tip_status_write_source_lock() -> None:
     """Tick 533: write_icml_tip_status calls refresh_pipeline_report_next."""
     root = Path(__file__).resolve().parents[1]

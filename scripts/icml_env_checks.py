@@ -638,6 +638,215 @@ def extract_numbered_next_steps(md_lines: list[str]) -> list[str]:
     return steps
 
 
+def gate2_next_step_bodies(*, diamond_ready: bool) -> list[str]:
+    """Tick 537: Gate 2 Next bodies shared by writers + tip/secrets refresh."""
+    secrets_line = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
+    py = icml_python_cli()
+    if diamond_ready:
+        return [
+            "Add **`NEBIUS_API_KEY`** to the cloud environment "
+            "(HF optional — Tick 497 public mirror / local "
+            "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
+            f"Full phrase: `{secrets_line}`.",
+            "Budget-check, then live G2 (unused integer run_id):",
+            f"`{py} scripts/run_g2_smoke.py --live --run-id <unused> "
+            "--fetch-diamond`",
+            "Only then start live G3 B vs D pilot (Section 21.5).",
+        ]
+    return [
+        f"Add `{secrets_line}` to the cloud environment "
+        "(see `docs/ICML_HUMAN_UNBLOCK.md`).",
+        "Materialize diamond (prefer public mirror — no HF):",
+        f"`{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
+        "--n 5 --force`",
+        "or HF (optional): "
+        f"`{py} scripts/prepare_gpqa_diamond.py --from-hf --n 5 --force`",
+        "or let the runner autowire: "
+        f"`{py} scripts/run_g2_smoke.py --live --run-id <unused> "
+        "--fetch-diamond`",
+        "Re-run live G2 after budget check (unused integer run_id).",
+        "Only then start live G3 B vs D pilot (Section 21.5).",
+    ]
+
+
+def gate3_next_step_bodies(*, diamond_ready: bool) -> list[str]:
+    """Tick 537: Gate 3 Next bodies shared by writers + tip/secrets refresh."""
+    secrets_line = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
+    py = icml_python_cli()
+    if diamond_ready:
+        return [
+            "Ensure live G2 smoke passed "
+            "(`scripts/run_g2_smoke.py --live ...`) and durable "
+            "`docs/gate2_steering_lift_proof.json` (Tick 509–511).",
+            "Add **`NEBIUS_API_KEY`** to the cloud environment "
+            "(HF optional — Tick 497 public mirror / local "
+            "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
+            f"Full phrase: `{secrets_line}`.",
+            "Budget-check, then:",
+            f"`{py} scripts/run_g3_pilot.py --live --seeds 1 "
+            "--b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
+            "If pilot looks promising, G4 5-seed under remaining budget "
+            "(never parallel full GPQA).",
+            "Do **not** set `ICML_READY` STATUS: READY from offline / "
+            "preflight alone.",
+        ]
+    return [
+        "Ensure live G2 smoke passed "
+        "(`scripts/run_g2_smoke.py --live ...`) and durable "
+        "`docs/gate2_steering_lift_proof.json` (Tick 509–511).",
+        f"Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
+        "Materialize diamond (prefer public mirror — no HF):",
+        f"`{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
+        "--n 5 --force`",
+        "Budget-check, then:",
+        f"`{py} scripts/run_g3_pilot.py --live --seeds 1 "
+        "--b-run-ids 1201 --d-run-ids 1301 --fetch-diamond`",
+        "If pilot looks promising, G4 5-seed under remaining budget "
+        "(never parallel full GPQA).",
+        "Do **not** set `ICML_READY` STATUS: READY from offline / "
+        "preflight alone.",
+    ]
+
+
+def gate4_next_step_bodies(*, diamond_ready: bool) -> list[str]:
+    """Tick 537: Gate 4 Next bodies shared by writers + tip/secrets refresh."""
+    secrets_line = icml_human_required_secrets_phrase(
+        for_fetch_diamond=not diamond_ready
+    )
+    py = icml_python_cli()
+    if diamond_ready:
+        return [
+            "Ensure live G2 smoke + G3 pilot passed before spending on G4, "
+            "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
+            "Add **`NEBIUS_API_KEY`** to the cloud environment "
+            "(HF optional — Tick 497 public mirror / local "
+            "`gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). "
+            f"Full phrase: `{secrets_line}`.",
+            "Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
+            f"`{py} scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
+            "--b-run-ids 1211,1212,1213,1214,1215 "
+            "--d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
+            "After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 "
+            "+ ICML_READY (or recover via `--refresh-paper-from-runs`).",
+            "Do **not** set STATUS: READY from offline / G4 preflight alone.",
+        ]
+    return [
+        "Ensure live G2 smoke + G3 pilot passed before spending on G4, "
+        "and durable `docs/gate2_steering_lift_proof.json` (Tick 509–511).",
+        f"Add `{secrets_line}` (see `docs/ICML_HUMAN_UNBLOCK.md`).",
+        "Materialize diamond (prefer public mirror — no HF):",
+        f"`{py} scripts/prepare_gpqa_diamond.py --from-public-mirror "
+        "--n 5 --force`",
+        "Budget-check (`SIA_BUDGET_*` + `SIA_G4_PAIR_ESTIMATE_USD`), then:",
+        f"`{py} scripts/run_g4_multiseed.py --live --seeds 1,2,3,4,5 "
+        "--b-run-ids 1211,1212,1213,1214,1215 "
+        "--d-run-ids 1311,1312,1313,1314,1315 --fetch-diamond`",
+        "After paid pairs, paper pack auto-refreshes Table 1/2 + Figs 1–2 "
+        "+ ICML_READY (or recover via `--refresh-paper-from-runs`).",
+        "Do **not** set STATUS: READY from offline / G4 preflight alone.",
+    ]
+
+
+def _gate_next_markdown_from_bodies(bodies: list[str]) -> list[str]:
+    """Numbered ``## Next`` markdown lines from step bodies."""
+    lines = ["## Next", ""]
+    for i, body in enumerate(bodies, start=1):
+        lines.append(f"{i}. {body}")
+    lines.append("")
+    return lines
+
+
+def refresh_gate_reports_next(
+    *,
+    repo_root: Path | None = None,
+) -> bool:
+    """Tick 537: rewrite gate2/3/4 ``## Next`` (+ JSON ``next_steps``).
+
+    Tick 533–535 keep the unified pipeline ``## Next`` / JSON ``next_steps``
+    fresh on tip/secrets writes (diamond_ready / tip-PR identity). Gate2/3/4
+    writers already persist JSON ``next_steps`` (Tick 536), but tip→secrets
+    rematerialize (or tip-only recover) without a full gate rewrite left
+    committed gate ``## Next`` on the *pre-secrets* HF-chase wording while
+    pipeline correctly said NEBIUS-first. Call this whenever tip or secrets
+    status is rewritten so gate dual-unblock Next cannot drift from
+    ``diamond_ready``.
+    """
+    root = Path(repo_root) if repo_root is not None else _REPO_ROOT
+    secrets_blob: dict[str, Any] = {}
+    secrets_path = root / "docs" / "icml_secrets_status.json"
+    if secrets_path.is_file():
+        try:
+            loaded = json.loads(secrets_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                secrets_blob = loaded
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            secrets_blob = {}
+    diamond_ready = bool(secrets_blob.get("diamond_ready"))
+    builders = (
+        ("gate2_report", gate2_next_step_bodies),
+        ("gate3_report", gate3_next_step_bodies),
+        ("gate4_report", gate4_next_step_bodies),
+    )
+    changed = False
+    for stem, body_fn in builders:
+        md_path = root / "docs" / f"{stem}.md"
+        json_path = root / "docs" / f"{stem}.json"
+        if not md_path.is_file() and not json_path.is_file():
+            continue
+        bodies = [
+            sanitize_repo_paths_in_text(str(s), repo_root=root)
+            for s in body_fn(diamond_ready=diamond_ready)
+        ]
+        next_md_lines = _gate_next_markdown_from_bodies(bodies)
+        next_text = "\n".join(next_md_lines)
+        if md_path.is_file():
+            try:
+                text = md_path.read_text(encoding="utf-8")
+            except OSError:
+                text = ""
+            marker = "## Next"
+            idx = text.find(marker)
+            if idx < 0:
+                new_text = text.rstrip() + "\n\n" + next_text if text else next_text
+            else:
+                new_text = text[:idx].rstrip() + "\n\n" + next_text
+            if new_text != text:
+                try:
+                    md_path.write_text(new_text, encoding="utf-8")
+                    changed = True
+                except OSError:
+                    pass
+        if json_path.is_file():
+            try:
+                blob = json.loads(json_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                blob = None
+            if isinstance(blob, dict) and blob.get("next_steps") != bodies:
+                blob["next_steps"] = bodies
+                try:
+                    json_path.write_text(
+                        json.dumps(blob, indent=2) + "\n", encoding="utf-8"
+                    )
+                    changed = True
+                except OSError:
+                    pass
+        elif bodies and not md_path.is_file():
+            try:
+                json_path.parent.mkdir(parents=True, exist_ok=True)
+                json_path.write_text(
+                    json.dumps({"next_steps": bodies}, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                changed = True
+            except OSError:
+                pass
+    return changed
+
+
 def sanitize_repo_paths_in_text(
     text: str, *, repo_root: Path | None = None
 ) -> str:
@@ -8842,6 +9051,9 @@ def write_icml_secrets_status(
     # Next here so tip→secrets order cannot leave Next on pre-secrets status
     # (Tick 533 only wired tip-status write).
     refresh_pipeline_report_next(repo_root=root)
+    # Tick 537: same diamond_ready flip must refresh gate2/3/4 ## Next + JSON
+    # next_steps (pipeline-only refresh left gates on HF-chase wording).
+    refresh_gate_reports_next(repo_root=root)
     return status
 
 
@@ -9451,6 +9663,9 @@ def write_icml_tip_status(
     # (closes Tick 531–532 drift where gates/tip refreshed but Next stayed on
     # superseded #337 / …-f49c).
     refresh_pipeline_report_next(repo_root=root)
+    # Tick 537: also refresh gate2/3/4 ## Next + JSON next_steps from secrets
+    # diamond_ready (tip recover without full gate rewrite left gates stale).
+    refresh_gate_reports_next(repo_root=root)
     return status
 
 
