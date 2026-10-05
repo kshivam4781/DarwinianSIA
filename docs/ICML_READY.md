@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 540: tip recover (`icml_boot_recover.sh` / `icml_recover_tip.py --apply`) now rewrites tip **+ secrets** status after anti-churn (`refresh_tip_and_secrets_status_after_recover`) — closes Tick 358 open_git_pr_call-only hole where tip/secrets JSON (+ pipeline/gate Next) kept the prior boot's `cloud_boot_branch` until cron_entry; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `5010` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 541: `icml_cron_entry.sh` boot→tip anti-churn now calls `refresh_tip_and_secrets_status_after_recover` (Tick 540 helper) — closes cron-path hole where tip/secrets were written before checkout and only `open_git_pr_call.json` refreshed; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `6cbb` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -349,6 +349,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 538 gate Next continuation indentation — `_is_gate_next_continuation` + `gate_next_numbered_bodies`; `_gate_next_markdown_from_bodies` indents backtick / `or …` under prior `N.` (pre-537 parity; closes Tick 537 numbered-command regression); JSON `next_steps` numbered-only
 - [x] Tick 539 pipeline Next continuation indentation — `refresh_pipeline_report_next` + `write_pipeline_report` use gate Tick 538 helpers; secrets-OK bare cron command indents under prior step; JSON `next_steps` numbered-only (closes pre-539 numbered-command regression the moment NEBIUS lands)
 - [x] Tick 540 tip recover tip+secrets status refresh — `refresh_tip_and_secrets_status_after_recover`; `icml_boot_recover.sh` + `icml_recover_tip.py --apply` rewrite tip+secrets after anti-churn (closes Tick 358 open_git_pr_call-only / tip-only secrets hole; stale prior-boot `cloud_boot_branch`)
+- [x] Tick 541 cron anti-churn tip+secrets refresh — `icml_cron_entry.sh` boot→tip checkout calls `refresh_tip_and_secrets_status_after_recover` after `checkout=ok` (closes Tick 540 cron-path hole; tip/secrets were pre-checkout; already_on unchanged)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table

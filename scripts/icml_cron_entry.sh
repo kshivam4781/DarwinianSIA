@@ -410,6 +410,26 @@ if hint:
       echo "tip_pr_anti_churn_checkout: ${_cur_branch} → ${_anti_branch}"
       if bash scripts/icml_checkout_tip_pr_branch.sh; then
         echo "tip_pr_anti_churn_checkout=ok branch=$(git rev-parse --abbrev-ref HEAD)"
+        # Tick 541: tip/secrets were written *before* anti-churn (lines above)
+        # while HEAD was still the greenfield boot branch name. Tick 540 wired
+        # refresh into boot_recover / recover_tip --apply, but cron entry's
+        # boot→tip checkout path only refreshed open_git_pr_call (Tick 358)
+        # inside the checkout script — tip/secrets JSON (+ pipeline/gate Next)
+        # kept pre-checkout current_branch / cloud_boot until a later full
+        # recover. Rewrite tip+secrets now that anti-churn landed on tip.
+        python3 -c "
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path('scripts').resolve()))
+from icml_env_checks import refresh_tip_and_secrets_status_after_recover
+tip, sec = refresh_tip_and_secrets_status_after_recover(fetch=False)
+boot = tip.get('cloud_boot_branch') or sec.get('cloud_boot_branch') or ''
+print(
+    'refreshed_tip_secrets_status_after_anti_churn '
+    f'cloud_boot_branch={boot or \"<none>\"} '
+    f'fetch_diamond_ok={sec.get(\"fetch_diamond_ok\")}'
+)
+" 2>/dev/null || true
       else
         echo "tip_pr_anti_churn_checkout=FAILED (continuing on ${_cur_branch}; do NOT open a new tip PR)" >&2
       fi

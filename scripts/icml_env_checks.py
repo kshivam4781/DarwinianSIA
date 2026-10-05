@@ -9662,7 +9662,7 @@ def refresh_tip_and_secrets_status_after_recover(
     repo_root: Path | None = None,
     fetch: bool = False,
 ) -> tuple[dict, dict]:
-    """Tick 540: after tip ``--apply`` + anti-churn, rewrite tip + secrets status.
+    """Tick 540/541: after tip ``--apply`` / cron anti-churn, rewrite tip + secrets.
 
     Tick 358 refreshed ``docs/icml_open_git_pr_call.json`` ``cloud_boot_branch``
     after tip-PR checkout, but chicken-egg ``icml_boot_recover.sh --apply`` never
@@ -9673,6 +9673,11 @@ def refresh_tip_and_secrets_status_after_recover(
     superseded greenfield boot. ``icml_recover_tip.py --apply`` already rewrote
     tip status but skipped secrets (``cloud_boot_branch`` in secrets JSON +
     secrets-driven Next refresh after diamond_ready).
+
+    Tick **541**: ``icml_cron_entry.sh`` writes tip/secrets *before* anti-churn
+    checkout, then boot→tip checkout only refreshed open_git_pr call JSON
+    (Tick 358 inside the checkout script). Call this helper after cron's
+    successful boot→tip anti-churn too so tip/secrets (+ Next) match tip HEAD.
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.

@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-05T08:12:10Z — Tick 541 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-6cbb` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror). Separately, Tick 540 wired `refresh_tip_and_secrets_status_after_recover` into `icml_boot_recover.sh` / `icml_recover_tip.py --apply`, but `icml_cron_entry.sh` still writes tip/secrets *before* anti-churn and on boot→tip checkout only refreshed `open_git_pr_call.json` (Tick 358) — tip/secrets JSON (+ pipeline/gate Next) could keep the pre-checkout boot branch identity. Highest leverage without paid spend / STATUS-peel churn: **cron anti-churn tip+secrets refresh + rematerialize**.
+
+### What we did
+**Tick 541 — cron boot→tip anti-churn refreshes tip+secrets (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `6cbb`; rematerialized non-synthetic GPQA diamond via public mirror (`--n 10`); re-filed NEBIUS secrets request
+2. `icml_cron_entry.sh` calls `refresh_tip_and_secrets_status_after_recover` after successful boot→tip anti-churn (`refreshed_tip_secrets_status_after_anti_churn`) — closes Tick 540 cron-path hole
+3. Docstring notes Tick 541 cron parity; already_on path unchanged (tip/secrets already written while on tip; call-JSON refresh retained)
+4. Unit + source locks: cron window after `checkout=ok` + extended Tick 540 lock; focused suite green (3/3)
+5. Re-ran `scripts/offline_bvd_case_study.py` → `runs/run_1930–1934` / `1940–1944` + Figs 1–2; metrics **unchanged** (PRIMARY/H5/H2 lock); refreshed lift proof `tick=541` / `local_run_present=false`
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 540) | After (Tick 541) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Cron boot→tip tip/secrets after anti-churn | **stale** pre-checkout write | **refreshed** via Tick 540 helper |
+| Offline run dirs on cold boot | missing again (`1930–1944`) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (540) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-05T06:12:39Z — Tick 540 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
