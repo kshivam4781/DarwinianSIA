@@ -3417,25 +3417,102 @@ def test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty(
     assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
 
 
+def test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 547: main→tip + gh-down + stale tip_status must not accept tip-as-boot."""
+    import json
+    import subprocess
+
+    import icml_env_checks
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        _reflog_latest_tip_checkout_destination,
+        detect_cloud_boot_branch,
+    )
+
+    live_tip = "cursor/icml-epistemic-results-9e39"
+    stale_tip = "cursor/icml-epistemic-results-f49c"
+    # Persisted greenfield boot from a *prior* tick (warm-fork) — not this
+    # chicken-egg main→tip path. Detect must keep it, not rewrite to tip.
+    prior_boot = "cursor/icml-epistemic-results-961e"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    # Chicken-egg / manual: main → tip directly (no greenfield boot checkout).
+    subprocess.run(
+        ["git", "checkout", "-b", live_tip], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_cloud_boot_branch.txt").write_text(
+        prior_boot + "\n", encoding="utf-8"
+    )
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps({"tip_pr_commit_branch": stale_tip, "local_tick": 546}),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    monkeypatch.setattr(
+        icml_env_checks,
+        "prefer_tip_pr_commit_branch",
+        lambda pr=None: None,
+    )
+    assert _reflog_latest_tip_checkout_destination(repo_root=repo) == live_tip
+    got = detect_cloud_boot_branch(repo_root=repo)
+    assert got == prior_boot
+    assert (
+        (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip()
+        == prior_boot
+    )
+
+
 def test_detect_reflog_tip_destination_source_lock() -> None:
-    """Tick 546: bare detect prefers reflog tip-checkout dest when live gh empty."""
+    """Tick 546/547: bare detect prefers reflog tip-checkout dest when live gh empty."""
     root = Path(__file__).resolve().parents[1]
     env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
     assert "Tick 546" in env
+    assert "Tick 547" in env
     assert "def _reflog_latest_tip_checkout_destination" in env
+    assert "def _reflog_src_establishes_tip_destination" in env
+    assert '"main"' in env and "origin/main" in env
     detect_idx = env.index("def detect_cloud_boot_branch")
-    window = env[detect_idx : detect_idx + 7500]
+    window = env[detect_idx : detect_idx + 8500]
     assert "_reflog_latest_tip_checkout_destination" in window
     assert "Tick 546" in window
+    assert "Tick 547" in window or "Tick **547**" in window
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert (
         "test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty"
         in tests
     )
+    assert (
+        "test_detect_without_tip_arg_main_to_tip_reflog_over_stale_status_when_live_empty"
+        in tests
+    )
     assert "test_detect_reflog_tip_destination_source_lock" in tests
     refresh_idx = env.index("def refresh_tip_and_secrets_status_after_recover")
-    refresh_doc = env[refresh_idx : refresh_idx + 2800]
+    refresh_doc = env[refresh_idx : refresh_idx + 3200]
     assert "Tick **546**" in refresh_doc or "Tick 546" in refresh_doc
+    assert "Tick **547**" in refresh_doc or "Tick 547" in refresh_doc
 
 
 def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:

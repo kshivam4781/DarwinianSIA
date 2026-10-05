@@ -7705,16 +7705,34 @@ def _reflog_cloud_boot_hints(
     return tip_checkout_boot, boot_from_main
 
 
+def _reflog_src_establishes_tip_destination(src: str, *, tip_dst: str) -> bool:
+    """True when reflog ``src`` is a credible prior branch for tip ``dst``.
+
+    Tick **546**: greenfield ``cursor/*`` boot ≠ tip (anti-churn boot→tip).
+    Tick **547**: also ``main`` / ``origin/main`` (chicken-egg / manual
+    ``git checkout -b <tip>`` from main — Tick 546 required a valid boot
+    ``src`` and skipped these lines, so bare detect accepted live tip HEAD
+    as boot when live gh was empty and tip_status named a prior tip).
+    """
+    name = (src or "").strip()
+    if name in {"main", "origin/main"}:
+        return True
+    return _is_valid_cloud_boot_branch_name(name, tip_commit_branch=tip_dst)
+
+
 def _reflog_latest_tip_checkout_destination(
     *,
     repo_root: Path,
 ) -> str | None:
-    """Tick 546: most recent reflog tip-checkout destination (live tip HEAD).
+    """Tick 546/547: most recent reflog tip-checkout destination (live tip HEAD).
 
     After tip ``--apply`` / anti-churn, reflog records
     ``checkout: moving from <boot> to <tip>``. When live gh tip resolve is
     empty and ``icml_tip_status.json`` still names a *prior* tip, that
     destination is the authoritative live tip identity for bare detect.
+
+    Tick **547**: also recognize ``main`` / ``origin/main`` → tip (chicken-egg
+    or agent checkout that never landed on a greenfield boot name first).
     """
     import subprocess
 
@@ -7734,7 +7752,7 @@ def _reflog_latest_tip_checkout_destination(
         src, dst = match.group(1), match.group(2)
         if not dst.startswith("cursor/icml-epistemic-results-"):
             continue
-        if _is_valid_cloud_boot_branch_name(src, tip_commit_branch=dst):
+        if _reflog_src_establishes_tip_destination(src, tip_dst=dst):
             return dst
     return None
 
@@ -7744,7 +7762,7 @@ def detect_cloud_boot_branch(
     tip_commit_branch: str | None = None,
     repo_root: Path | None = None,
 ) -> str | None:
-    """Tick 352–357/543/544/545/546: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
+    """Tick 352–357/543/544/545/546/547: greenfield boot branch ``open_git_pr`` defaults to when ``branch=`` omitted.
 
     Cloud Agent runs start on a fresh ``cursor/*`` branch (often at ``main`` SHA).
     After tip anti-churn checkout (Tick 337–351), HEAD is ``tip_pr_commit_branch``,
@@ -7788,6 +7806,10 @@ def detect_cloud_boot_branch(
     status and the same tip-as-boot hole returns. Prefer the latest reflog
     tip-checkout destination when it matches HEAD and disagrees with the
     status tip (gh-down / stale-status harden).
+    Tick **547**: Tick 546 only counted greenfield ``cursor/*`` → tip; a
+    chicken-egg / manual ``main`` → tip checkout left reflog dest empty so
+    bare detect still accepted live tip HEAD as boot under gh-down + stale
+    tip_status. Reflog dest now also accepts ``main`` / ``origin/main`` src.
     """
     import subprocess
 
@@ -7809,8 +7831,9 @@ def detect_cloud_boot_branch(
     except (OSError, subprocess.CalledProcessError):
         cur = ""
 
-    # Tick 546: gh-down / status-only fallback still poisoned tip-as-boot when
-    # tip_status named a prior tip while HEAD is the live tip after --apply.
+    # Tick 546/547: gh-down / status-only fallback still poisoned tip-as-boot when
+    # tip_status named a prior tip while HEAD is the live tip after --apply
+    # (or after main→tip chicken-egg checkout — Tick 547).
     # Reflog tip-checkout destination matching HEAD is the live tip identity.
     if bare:
         reflog_tip = _reflog_latest_tip_checkout_destination(repo_root=root)
@@ -7836,7 +7859,7 @@ def detect_cloud_boot_branch(
     if cur_ok:
         # Tick 543: still on this tick's greenfield boot — do not let a
         # warm-fork-stale boot file from a prior tip win.
-        # Tick 544/545/546: cur_ok is False when HEAD==tip (tip resolved
+        # Tick 544/545/546/547: cur_ok is False when HEAD==tip (tip resolved
         # live-first / reflog when tip_commit_branch was omitted) — fall
         # through to boot file / reflog instead of persisting tip-as-boot.
         persist_cloud_boot_branch(cur_ok, tip_commit_branch=tip, repo_root=root)
@@ -9815,6 +9838,10 @@ def refresh_tip_and_secrets_status_after_recover(
     Tick **546**: when live gh is empty, Tick 545 falls back to status and the
     tip-as-boot hole returns; bare detect now prefers the latest reflog
     tip-checkout destination when it matches HEAD (gh-down / stale-status).
+
+    Tick **547**: that reflog tip dest also accepts ``main`` / ``origin/main``
+    → tip (Tick 546 required a greenfield boot ``src`` and missed chicken-egg
+    main→tip checkouts).
 
     Call **after** anti-churn checkout (boot file + open_git_pr call JSON are
     current) so ``detect_cloud_boot_branch`` matches the just-persisted boot.
