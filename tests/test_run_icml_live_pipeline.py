@@ -1838,6 +1838,69 @@ def test_write_pipeline_report_persists_next_steps_json(tmp_path: Path) -> None:
     assert md_steps == sidecar["next_steps"]
 
 
+def test_write_pipeline_report_indents_secrets_ok_command_continuation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 539: write_pipeline_report indents secrets-OK cron command continuation."""
+    from icml_env_checks import gate_next_numbered_bodies, live_pipeline_next_steps
+
+    monkeypatch.setattr(
+        "run_icml_live_pipeline.collect_icml_secrets_status",
+        lambda **_k: {
+            "secrets_ok_for_paid_sia": True,
+            "fetch_diamond_ok": True,
+            "main_has_icml_tip": True,
+            "diamond_ready": True,
+        },
+    )
+    monkeypatch.setattr(
+        "run_icml_live_pipeline.live_pipeline_next_steps",
+        lambda **kwargs: live_pipeline_next_steps(
+            secrets_ok=True,
+            tip_ok=True,
+            tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+            fetch_diamond_ok=True,
+            main_has_icml_tip=True,
+            diamond_ready=True,
+        ),
+    )
+    report = PipelineReport(
+        timestamp="2026-10-05T04:00:00Z",
+        mode="preflight",
+        budget=project_budget(),
+        ready_for_live=True,
+        blockers=[],
+        notes=["secrets ok fixture"],
+    )
+    path = tmp_path / "icml_live_pipeline_report.md"
+    write_pipeline_report(report, path)
+    text = path.read_text(encoding="utf-8")
+    assert "   `bash scripts/icml_cron_entry.sh`" in text
+    for line in text.splitlines():
+        s = line.strip()
+        if s[:1].isdigit() and ". " in s:
+            body = s.split(". ", 1)[1]
+            assert not body.startswith("`"), line
+    sidecar = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+    after = text.split("## Next", 1)[-1]
+    md_steps = [
+        line.split(". ", 1)[1]
+        for line in after.splitlines()
+        if line and line[0].isdigit() and ". " in line
+    ]
+    assert md_steps == sidecar["next_steps"]
+    assert all(not s.strip().startswith("`") for s in sidecar["next_steps"])
+    raw = live_pipeline_next_steps(
+        secrets_ok=True,
+        tip_ok=True,
+        tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+        fetch_diamond_ok=True,
+        main_has_icml_tip=True,
+        diamond_ready=True,
+    )
+    assert sidecar["next_steps"] == gate_next_numbered_bodies(raw)
+    assert len(sidecar["next_steps"]) < len(raw)
+
 def test_write_pipeline_report_sanitizes_absolute_paths(tmp_path: Path) -> None:
     """Tick 527: notes/blockers/stage details drop absolute /workspace and /tmp diamond."""
     from run_icml_live_pipeline import StageResult, _sanitize_pipeline_report_text

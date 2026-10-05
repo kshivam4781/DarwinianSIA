@@ -9248,6 +9248,12 @@ def refresh_pipeline_report_next(
     ``next_steps`` — Tick 533/534 only patched the markdown ``## Next``, so
     machine readers of the JSON sidecar still saw no / stale dual-unblock
     guidance after tip→secrets refresh (MD/JSON drift).
+
+    Tick **539**: MD restores Tick 538 indented command continuations (secrets-OK
+    path's bare `` `bash scripts/icml_cron_entry.sh` `` body); JSON ``next_steps``
+    stores numbered bodies only (gate Tick 538 / extract parity — no
+    command-only entries). Pre-539 numbered every body the moment NEBIUS
+    flipped ``fetch_diamond_ok``.
     """
     root = Path(repo_root) if repo_root is not None else _REPO_ROOT
     path = root / "docs" / "icml_live_pipeline_report.md"
@@ -9303,13 +9309,15 @@ def refresh_pipeline_report_next(
     cleaned_steps = [
         sanitize_repo_paths_in_text(str(step), repo_root=root) for step in next_lines
     ]
+    # Tick 539: gate Tick 538 parity — indent backtick command continuations in
+    # MD; JSON next_steps stores numbered bodies only (no command-only entries).
+    # Secrets-OK path emits ``preferred single entry:`` + bare `` `bash …` `` as
+    # separate bodies; pre-539 numbered both so operators saw the cron command
+    # as its own step the moment NEBIUS landed.
+    numbered_steps = gate_next_numbered_bodies(cleaned_steps)
     changed = False
     if path.is_file() or text:
-        next_block = ["## Next", ""]
-        for i, step in enumerate(cleaned_steps, start=1):
-            next_block.append(f"{i}. {step}")
-        next_block.append("")
-        next_text = "\n".join(next_block)
+        next_text = "\n".join(_gate_next_markdown_from_bodies(cleaned_steps))
         marker = "## Next"
         idx = text.find(marker)
         if idx < 0:
@@ -9325,15 +9333,15 @@ def refresh_pipeline_report_next(
                 changed = True
             except OSError:
                 pass
-    # Tick 535: keep JSON next_steps in sync with MD ## Next.
+    # Tick 535/539: keep JSON next_steps in sync with numbered MD ## Next bodies.
     if json_path.is_file():
         try:
             blob = json.loads(json_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             blob = None
         if isinstance(blob, dict):
-            if blob.get("next_steps") != cleaned_steps:
-                blob["next_steps"] = cleaned_steps
+            if blob.get("next_steps") != numbered_steps:
+                blob["next_steps"] = numbered_steps
                 try:
                     json_path.write_text(
                         json.dumps(blob, indent=2) + "\n", encoding="utf-8"
@@ -9341,12 +9349,12 @@ def refresh_pipeline_report_next(
                     changed = True
                 except OSError:
                     pass
-    elif cleaned_steps and not path.is_file():
+    elif numbered_steps and not path.is_file():
         # JSON-only tree (tests): create minimal sidecar with next_steps.
         try:
             json_path.parent.mkdir(parents=True, exist_ok=True)
             json_path.write_text(
-                json.dumps({"next_steps": cleaned_steps}, indent=2) + "\n",
+                json.dumps({"next_steps": numbered_steps}, indent=2) + "\n",
                 encoding="utf-8",
             )
             changed = True

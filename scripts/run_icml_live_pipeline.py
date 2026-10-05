@@ -133,6 +133,8 @@ from icml_env_checks import (  # noqa: E402
     icml_should_keep_ondisk_diamond,
     icml_python_cli,
     ledger_stage_complete,
+    _gate_next_markdown_from_bodies,
+    gate_next_numbered_bodies,
     live_pipeline_next_steps,
     load_budget_spent_ledger,
     sanitize_repo_paths_in_text,
@@ -1225,14 +1227,16 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
         _sanitize_pipeline_report_text(step, repo_root=REPO_ROOT)
         for step in next_lines
     ]
-    lines.extend(["", "## Next", ""])
-    for i, step in enumerate(cleaned_next, start=1):
-        lines.append(f"{i}. {step}")
-    lines.append("")
+    # Tick 539: gate Tick 538 parity — indent backtick command continuations;
+    # JSON next_steps = numbered bodies only (no command-only entries).
+    numbered_next = gate_next_numbered_bodies(cleaned_next)
+    lines.extend([""])
+    lines.extend(_gate_next_markdown_from_bodies(cleaned_next))
     path.write_text("\n".join(lines), encoding="utf-8")
     sidecar = path.with_suffix(".json")
-    # Tick 535: persist next_steps on the JSON sidecar (MD ## Next parity) so
-    # tip→secrets refresh and machine readers share the same dual-unblock text.
+    # Tick 535/539: persist numbered next_steps on the JSON sidecar (MD ## Next
+    # parity) so tip→secrets refresh and machine readers share dual-unblock text
+    # without bare cron-command entries once secrets flip.
     sidecar.write_text(
         json.dumps(
             {
@@ -1248,7 +1252,7 @@ def write_pipeline_report(report: PipelineReport, path: Path) -> None:
                 "g3_h2_by_d_run": report.g3_h2_by_d_run,
                 "stopped_after": report.stopped_after,
                 "icml_ready_status": report.icml_ready_status,
-                "next_steps": cleaned_next,
+                "next_steps": numbered_next,
             },
             indent=2,
         )

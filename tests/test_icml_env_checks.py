@@ -768,10 +768,15 @@ def test_refresh_pipeline_report_next_updates_json_when_md_current(
         diamond_ready=True,
     )
     # MD already has current Next (Tick 533/534 only patched MD).
-    md_lines = ["# ICML live pipeline report", "", "## Next", ""]
-    for i, step in enumerate(steps, start=1):
-        md_lines.append(f"{i}. {step}")
-    md_lines.append("")
+    # Tick 539: use indented markdown helper so MD matches refresh output when
+    # bodies include command continuations (secrets-OK path).
+    from icml_env_checks import (
+        _gate_next_markdown_from_bodies,
+        gate_next_numbered_bodies,
+    )
+
+    md_lines = ["# ICML live pipeline report", ""]
+    md_lines.extend(_gate_next_markdown_from_bodies(steps))
     (docs / "icml_live_pipeline_report.md").write_text(
         "\n".join(md_lines), encoding="utf-8"
     )
@@ -782,9 +787,133 @@ def test_refresh_pipeline_report_next_updates_json_when_md_current(
     )
     assert refresh_pipeline_report_next(repo_root=tmp_path) is True
     blob = json.loads(json_path.read_text(encoding="utf-8"))
-    assert blob.get("next_steps") == steps
+    assert blob.get("next_steps") == gate_next_numbered_bodies(steps)
     # Second call is idempotent.
     assert refresh_pipeline_report_next(repo_root=tmp_path) is False
+
+
+def test_refresh_pipeline_report_next_indents_secrets_ok_command_continuation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Tick 539: secrets-OK bare cron command indents; JSON drops command-only body."""
+    from icml_env_checks import (
+        _gate_next_markdown_from_bodies,
+        gate_next_numbered_bodies,
+        live_pipeline_next_steps,
+        refresh_pipeline_report_next,
+    )
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps(
+            {
+                "tip_ok_for_live": True,
+                "remote_tip_ref": "refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+                "tip_pr_number": 339,
+                "tip_pr_commit_branch": "cursor/icml-epistemic-results-9e39",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (docs / "icml_secrets_status.json").write_text(
+        json.dumps(
+            {
+                "secrets_ok_for_paid_sia": True,
+                "fetch_diamond_ok": True,
+                "main_has_icml_tip": True,
+                "diamond_ready": True,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_tip_pr",
+        lambda **_k: {
+            "number": 339,
+            "url": "https://github.com/kshivam4781/DarwinianSIA/pull/339",
+            "title": "ICML Tick 539: add NEBIUS_API_KEY — live G2→G4 still blocked",
+            "head_ref": "cursor/icml-epistemic-results-9e39",
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "is_draft": True,
+        },
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.resolve_icml_agents_bootstrap_pr",
+        lambda **_k: None,
+    )
+    monkeypatch.setattr(
+        "icml_env_checks.main_has_icml_tip_files",
+        lambda **_k: True,
+    )
+    steps = live_pipeline_next_steps(
+        secrets_ok=True,
+        tip_ok=True,
+        tip_ref="refs/remotes/origin/cursor/icml-epistemic-results-9e39",
+        fetch_diamond_ok=True,
+        main_has_icml_tip=True,
+        diamond_ready=True,
+    )
+    assert any(s.strip().startswith("`") for s in steps), (
+        "fixture expects secrets-OK bare command continuation body"
+    )
+    # Pre-539 regression: number every body (command becomes its own step).
+    stale_md = ["# ICML live pipeline report", "", "## Next", ""]
+    for i, step in enumerate(steps, start=1):
+        stale_md.append(f"{i}. {step}")
+    stale_md.append("")
+    report = docs / "icml_live_pipeline_report.md"
+    report.write_text("\n".join(stale_md), encoding="utf-8")
+    json_path = docs / "icml_live_pipeline_report.json"
+    json_path.write_text(
+        json.dumps({"mode": "preflight", "next_steps": list(steps)}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is True
+    text = report.read_text(encoding="utf-8")
+    assert "   `bash scripts/icml_cron_entry.sh`" in text
+    for line in text.splitlines():
+        s = line.strip()
+        if s[:1].isdigit() and ". " in s:
+            body = s.split(". ", 1)[1]
+            assert not body.startswith("`"), line
+    blob = json.loads(json_path.read_text(encoding="utf-8"))
+    expected = gate_next_numbered_bodies(steps)
+    assert blob.get("next_steps") == expected
+    assert all(not s.strip().startswith("`") for s in expected)
+    assert len(expected) < len(steps)
+    # Idempotent after Tick 539 indent + numbered-only JSON.
+    assert "\n".join(_gate_next_markdown_from_bodies(steps)) in text
+    assert refresh_pipeline_report_next(repo_root=tmp_path) is False
+
+
+def test_pipeline_next_continuation_source_lock() -> None:
+    """Tick 539: pipeline refresh/writer use gate continuation helpers."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 539" in env
+    refresh_start = env.find("def refresh_pipeline_report_next")
+    refresh_fn = env[refresh_start : refresh_start + 4500]
+    assert "gate_next_numbered_bodies" in refresh_fn
+    assert "_gate_next_markdown_from_bodies" in refresh_fn
+    pipe = (root / "scripts" / "run_icml_live_pipeline.py").read_text(encoding="utf-8")
+    assert "gate_next_numbered_bodies" in pipe
+    assert "_gate_next_markdown_from_bodies" in pipe
+    assert '"next_steps": numbered_next' in pipe or "'next_steps': numbered_next" in pipe
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert (
+        "test_refresh_pipeline_report_next_indents_secrets_ok_command_continuation"
+        in tests
+    )
+    assert "test_pipeline_next_continuation_source_lock" in tests
+    pipe_tests = (root / "tests" / "test_run_icml_live_pipeline.py").read_text(
+        encoding="utf-8"
+    )
+    assert "test_write_pipeline_report_indents_secrets_ok_command_continuation" in pipe_tests
 
 
 def test_pipeline_next_json_sidecar_source_lock() -> None:
@@ -794,7 +923,12 @@ def test_pipeline_next_json_sidecar_source_lock() -> None:
     assert "Tick 535" in env
     assert '"next_steps"' in env or "'next_steps'" in env
     pipe = (root / "scripts" / "run_icml_live_pipeline.py").read_text(encoding="utf-8")
-    assert '"next_steps": cleaned_next' in pipe or '"next_steps": cleaned_next,' in pipe
+    assert (
+        '"next_steps": numbered_next' in pipe
+        or "'next_steps': numbered_next" in pipe
+        or '"next_steps": cleaned_next' in pipe
+        or '"next_steps": cleaned_next,' in pipe
+    )
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert "test_refresh_pipeline_report_next_updates_json_when_md_current" in tests
     assert "test_pipeline_next_json_sidecar_source_lock" in tests
