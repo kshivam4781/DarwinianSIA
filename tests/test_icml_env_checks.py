@@ -1313,6 +1313,11 @@ def test_refresh_tip_and_secrets_status_after_recover_source_lock() -> None:
     assert "Tick 545" in env
     assert "test_detect_without_tip_arg_prefers_live_tip_over_stale_status" in tests
     assert "test_detect_live_first_tip_resolve_source_lock" in tests
+    # Tick 546: gh-down / stale-status — reflog tip-checkout destination.
+    assert "Tick 546" in env
+    assert "_reflog_latest_tip_checkout_destination" in env
+    assert "test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty" in tests
+    assert "test_detect_reflog_tip_destination_source_lock" in tests
 
 
 def test_cron_anti_churn_refreshes_tip_secrets_status_source_lock() -> None:
@@ -3348,6 +3353,89 @@ def test_detect_live_first_tip_resolve_source_lock() -> None:
     tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
     assert "test_detect_without_tip_arg_prefers_live_tip_over_stale_status" in tests
     assert "test_detect_live_first_tip_resolve_source_lock" in tests
+
+
+def test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 546: gh-down + stale tip_status must not accept live tip HEAD as boot."""
+    import json
+    import subprocess
+
+    import icml_env_checks
+    from icml_env_checks import (
+        ICML_CLOUD_BOOT_BRANCH_RELPATH,
+        detect_cloud_boot_branch,
+    )
+
+    live_tip = "cursor/icml-epistemic-results-9e39"
+    stale_tip = "cursor/icml-epistemic-results-f49c"
+    boot = "cursor/icml-epistemic-results-cb77"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "icml@test"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "icml"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    (repo / "README").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(["git", "branch", "-M", "main"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "checkout", "-b", boot], cwd=repo, check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "checkout", "-b", live_tip], cwd=repo, check=True, capture_output=True
+    )
+    docs = repo / "docs"
+    docs.mkdir()
+    (docs / "icml_cloud_boot_branch.txt").write_text(boot + "\n", encoding="utf-8")
+    (docs / "icml_tip_status.json").write_text(
+        json.dumps({"tip_pr_commit_branch": stale_tip, "local_tick": 545}),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ICML_CLOUD_BOOT_BRANCH", raising=False)
+    # Live gh empty → Tick 545 would fall back to stale status tip.
+    monkeypatch.setattr(
+        icml_env_checks,
+        "prefer_tip_pr_commit_branch",
+        lambda pr=None: None,
+    )
+    got = detect_cloud_boot_branch(repo_root=repo)
+    assert got == boot
+    assert (repo / ICML_CLOUD_BOOT_BRANCH_RELPATH).read_text(encoding="utf-8").strip() == boot
+
+
+def test_detect_reflog_tip_destination_source_lock() -> None:
+    """Tick 546: bare detect prefers reflog tip-checkout dest when live gh empty."""
+    root = Path(__file__).resolve().parents[1]
+    env = (root / "scripts" / "icml_env_checks.py").read_text(encoding="utf-8")
+    assert "Tick 546" in env
+    assert "def _reflog_latest_tip_checkout_destination" in env
+    detect_idx = env.index("def detect_cloud_boot_branch")
+    window = env[detect_idx : detect_idx + 7500]
+    assert "_reflog_latest_tip_checkout_destination" in window
+    assert "Tick 546" in window
+    tests = (root / "tests" / "test_icml_env_checks.py").read_text(encoding="utf-8")
+    assert (
+        "test_detect_without_tip_arg_reflog_tip_over_stale_status_when_live_empty"
+        in tests
+    )
+    assert "test_detect_reflog_tip_destination_source_lock" in tests
+    refresh_idx = env.index("def refresh_tip_and_secrets_status_after_recover")
+    refresh_doc = env[refresh_idx : refresh_idx + 2800]
+    assert "Tick **546**" in refresh_doc or "Tick 546" in refresh_doc
 
 
 def test_refresh_open_git_pr_after_tip_checkout_updates_boot(tmp_path, monkeypatch) -> None:

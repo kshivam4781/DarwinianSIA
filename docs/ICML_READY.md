@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 545: bare `detect_cloud_boot_branch()` tip resolve is **live-first** via `resolve_anti_churn_checkout_branch` (Tick 531 parity) so stale tip_status prior-tip cannot make live tip HEAD look like boot after `--apply`; rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `2eb7` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 546: bare `detect_cloud_boot_branch()` prefers latest reflog tip-checkout destination when live gh is empty and tip_status is stale (closes gh-down tip-as-boot hole after Tick 545); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `cb77` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
