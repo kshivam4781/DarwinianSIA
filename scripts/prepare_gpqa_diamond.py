@@ -222,6 +222,149 @@ def load_rows_from_csv(path: Path) -> list[dict[str, str]]:
     return rows
 
 
+def _is_dns_resolution_error(exc: BaseException) -> bool:
+    """Return True when ``exc`` looks like a recursive-DNS / NXDOMAIN failure."""
+    text = f"{exc}".lower()
+    markers = (
+        "name or service not known",
+        "temporary failure in name resolution",
+        "nodename nor servname",
+        "getaddrinfo failed",
+        "name resolution",
+        "errno -2",
+        "errno -3",
+    )
+    return any(m in text for m in markers)
+
+
+def _resolve_host_via_public_dns(hostname: str) -> str | None:
+    """Resolve ``hostname`` via ``dig @8.8.8.8`` when system DNS is broken.
+
+    Tick 557: cloud agent recursive resolvers (e.g. ``198.18.0.53``) sometimes
+    fail for GitHub / Azure blob while upstream ``8.8.8.8`` still answers. Used
+    only as a fallback for the public GPQA mirror download.
+    """
+    import re
+    import shutil
+    import subprocess
+
+    host = (hostname or "").strip().rstrip(".")
+    if not host or re.search(r"[^A-Za-z0-9.-]", host):
+        return None
+    dig = shutil.which("dig")
+    if not dig:
+        return None
+    try:
+        proc = subprocess.run(
+            [dig, "+short", host, "@8.8.8.8"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    for line in (proc.stdout or "").splitlines():
+        line = line.strip().rstrip(".")
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", line):
+            return line
+        # CNAME → follow one hop via dig again
+        if line and not line.startswith(";") and " " not in line:
+            try:
+                hop = subprocess.run(
+                    [dig, "+short", line, "@8.8.8.8"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+            for hop_line in (hop.stdout or "").splitlines():
+                hop_line = hop_line.strip().rstrip(".")
+                if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hop_line):
+                    return hop_line
+    return None
+
+
+def _http_get_bytes_via_ip(
+    *,
+    scheme: str,
+    host: str,
+    ip: str,
+    path: str,
+    query: str,
+    port: int | None,
+    timeout_s: float,
+) -> bytes:
+    """GET ``path`` from ``ip`` with ``Host``/SNI = ``host`` (Tick 557 DNS fallback)."""
+    import http.client
+    import socket
+    import ssl
+
+    target = path or "/"
+    if query:
+        target = f"{target}?{query}"
+    headers = {"Host": host, "User-Agent": "sia-cabs-icml-diamond/1.0"}
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        raw = socket.create_connection((ip, port or 443), timeout=timeout_s)
+        try:
+            ssock = ctx.wrap_socket(raw, server_hostname=host)
+        except Exception:
+            raw.close()
+            raise
+        conn = http.client.HTTPSConnection(host, timeout=timeout_s, context=ctx)
+        try:
+            conn.sock = ssock
+            conn.request("GET", target, headers=headers)
+            resp = conn.getresponse()
+            data = resp.read()
+            if resp.status >= 400:
+                raise OSError(f"HTTP {resp.status} from {host} via {ip}")
+            return data
+        finally:
+            conn.close()
+    conn = http.client.HTTPConnection(ip, port=port or 80, timeout=timeout_s)
+    try:
+        conn.request("GET", target, headers=headers)
+        resp = conn.getresponse()
+        data = resp.read()
+        if resp.status >= 400:
+            raise OSError(f"HTTP {resp.status} from {host} via {ip}")
+        return data
+    finally:
+        conn.close()
+
+
+def _urlopen_bytes_with_dns_fallback(url: str, *, timeout_s: float) -> bytes:
+    """``urlopen`` with Tick 557 public-DNS IP fallback on resolution failure."""
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(url, timeout=timeout_s) as resp:
+            return resp.read()
+    except (urllib.error.URLError, TimeoutError, OSError) as first:
+        if not _is_dns_resolution_error(first):
+            raise
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or ""
+        ip = _resolve_host_via_public_dns(host)
+        if not ip:
+            raise
+        return _http_get_bytes_via_ip(
+            scheme=parsed.scheme or "https",
+            host=host,
+            ip=ip,
+            path=parsed.path or "/",
+            query=parsed.query or "",
+            port=parsed.port,
+            timeout_s=timeout_s,
+        )
+
+
 def download_gpqa_diamond_csv_public_mirror(
     dest: Path | None = None,
     *,
@@ -234,9 +377,11 @@ def download_gpqa_diamond_csv_public_mirror(
     Tick 497: no ``HF_TOKEN`` required. Tick 529: default dest is
     ``$TMPDIR/gpqa_diamond.csv`` via ``tempfile.gettempdir()`` (gitignored;
     not hardcoded ``/tmp``). Does not overwrite an existing usable file.
+    Tick 557: on recursive-DNS failure, resolve the mirror host via
+    ``dig @8.8.8.8`` and retry with an IP URL + ``Host`` header so cold-boot
+    rematerialize still works when the env resolver is broken.
     """
     import urllib.error
-    import urllib.request
 
     out = Path(dest) if dest is not None else default_public_mirror_dest()
     if out.is_file() and out.stat().st_size >= min_bytes:
@@ -245,8 +390,7 @@ def download_gpqa_diamond_csv_public_mirror(
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".partial")
     try:
-        with urllib.request.urlopen(mirror, timeout=timeout_s) as resp:
-            data = resp.read()
+        data = _urlopen_bytes_with_dns_fallback(mirror, timeout_s=timeout_s)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise RuntimeError(
             f"public GPQA diamond mirror download failed ({mirror}): {exc}"

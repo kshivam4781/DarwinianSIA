@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-06T16:17:03Z — Tick 557 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-7c7a` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror / DNS fallback). Separately, cold-boot rematerialize hit a **broken recursive DNS resolver** (`198.18.0.53`) that failed `openaipublic.blob.core.windows.net` / `astral.sh` / `github.com` while upstream `8.8.8.8` still answered — public-mirror download and `uv` bootstrap failed until hosts were patched by hand. Highest leverage without paid spend / STATUS-peel churn: **public-mirror dig@8.8.8.8 DNS fallback + rematerialize**.
+
+### What we did
+**Tick 557 — public GPQA mirror DNS fallback via dig @8.8.8.8 (no API spend):**
+1. Recovered tip `9e39` (incl. Tick 545–556 tip heals) from greenfield boot `7c7a`; rematerialized offline Bvd `1930–1944` + Figs 1–2; rematerialized non-synthetic GPQA diamond via public mirror; re-filed NEBIUS secrets request
+2. `prepare_gpqa_diamond.download_gpqa_diamond_csv_public_mirror`: on recursive-DNS failure, resolve mirror host via `dig @8.8.8.8` and GET via IP with `Host`/SNI = real hostname (closes cold-boot mirror fail without manual `/etc/hosts`)
+3. Unit + source locks: DNS-fallback path + helpers lock; focused suite green (3/3); live integration downloaded ~1.3MB CSV with system DNS still failing
+4. Bootstrapped `uv` + ICML runtime deps; refreshed lift proof `tick=557` / `local_run_present=false`
+5. Tip/secrets/open_git_pr now report `cloud_boot_branch=…-7c7a`
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 556) | After (Tick 557) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Public-mirror download under broken recursive DNS | **fails** (Temporary failure in name resolution) | **dig@8.8.8.8 IP+Host/SNI fallback** |
+| Offline run dirs on cold boot | rematerialized (556) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (556) | rematerialized again (public mirror + DNS fallback) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep / Tick 557 DNS fallback). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-06T14:07:17Z — Tick 556 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

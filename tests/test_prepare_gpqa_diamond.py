@@ -169,6 +169,56 @@ def test_download_gpqa_diamond_csv_public_mirror(
     assert path2 == path
 
 
+def test_public_mirror_dns_fallback_uses_dig_ip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 557: recursive-DNS failure → dig @8.8.8.8 + Host/SNI IP GET."""
+    import urllib.error
+
+    import prepare_gpqa_diamond as prep
+
+    payload = (
+        b"Question,Correct Answer,Incorrect Answer 1,"
+        b"Incorrect Answer 2,Incorrect Answer 3\n"
+        + b"Harness Q?,four,three,five,zero\n" * 40
+    )
+
+    def _boom(*_a, **_k):
+        raise urllib.error.URLError(
+            OSError(-3, "Temporary failure in name resolution")
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom)
+    monkeypatch.setattr(
+        prep, "_resolve_host_via_public_dns", lambda _host: "203.0.113.10"
+    )
+    seen: dict[str, object] = {}
+
+    def _via_ip(**kwargs):
+        seen.update(kwargs)
+        return payload
+
+    monkeypatch.setattr(prep, "_http_get_bytes_via_ip", _via_ip)
+    dest = tmp_path / "gpqa_diamond.csv"
+    path = prep.download_gpqa_diamond_csv_public_mirror(dest)
+    assert path == dest.resolve()
+    assert path.read_bytes().startswith(b"Question")
+    assert seen["host"] == "openaipublic.blob.core.windows.net"
+    assert seen["ip"] == "203.0.113.10"
+    assert seen["scheme"] == "https"
+
+
+def test_public_mirror_dns_helpers_source_lock() -> None:
+    """Tick 557: public-mirror download keeps dig@8.8.8.8 DNS fallback helpers."""
+    src = Path(__file__).resolve().parents[1] / "scripts" / "prepare_gpqa_diamond.py"
+    text = src.read_text(encoding="utf-8")
+    assert "def _resolve_host_via_public_dns" in text
+    assert "def _urlopen_bytes_with_dns_fallback" in text
+    assert "@8.8.8.8" in text
+    assert "Tick 557" in text
+    assert "_urlopen_bytes_with_dns_fallback(mirror" in text
+
+
 def test_cli_from_public_mirror(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from prepare_gpqa_diamond import main as diamond_main
 

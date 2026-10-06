@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 556: cold-boot rematerialize from greenfield `f296` → tip `9e39` (no new tip peel — Tick 548–555 stack already correct for this boot path); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-f296`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 557: public GPQA mirror download falls back to `dig @8.8.8.8` + IP GET with Host/SNI when recursive DNS fails (closes cold-boot rematerialize fail); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `7c7a` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -353,6 +353,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 542 checkout tip+secrets refresh — `icml_checkout_tip_pr_branch.sh` calls `refresh_tip_and_secrets_status_after_recover` after Tick 358 call-JSON refresh (closes mid-tick checkout-only hole; Tick 540/541 covered recover/cron but not the shared entrypoint)
 - [x] Tick 543 detect stale boot-file heal — `detect_cloud_boot_branch` prefers live greenfield HEAD / latest reflog tip-checkout over warm-fork-stale `icml_cloud_boot_branch.txt` (closes Tick 542 follow-up hand-restore)
 - [x] Tick 544 tip-as-boot poison heal — bare `detect()` resolves tip when `tip_commit_branch` omitted so tip HEAD is not persisted as boot after anti-churn
+- [x] Tick 557 public-mirror dig@8.8.8.8 DNS fallback — `download_gpqa_diamond_csv_public_mirror` retries via `dig @8.8.8.8` + IP Host/SNI GET when recursive DNS fails (closes cold-boot rematerialize fail)
 - [x] Tick 545 bare detect live-first tip resolve — bare `detect()` uses `resolve_anti_churn_checkout_branch` (Tick 531 parity) so stale tip_status prior-tip cannot accept live tip HEAD as boot after `--apply`
 - [x] Tick 546 bare detect reflog tip dest when live gh empty — `_reflog_latest_tip_checkout_destination`; bare detect prefers it when HEAD matches (closes gh-down tip-as-boot after Tick 545)
 - [x] Tick 547 main→tip reflog dest — `_reflog_src_establishes_tip_destination` also accepts `main`/`origin/main` → tip (closes chicken-egg main→tip tip-as-boot after Tick 546)
@@ -395,7 +396,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 440 prefer-richer paper_artifacts merge — durable rebase keeps auto-filled Live Table / PRIMARY flags / live seed rows (and larger Figs) instead of phrase-match offline stub; closes thin-local wipe of onto post-G4 paper pack (`test_merge_paper_artifacts_prefers_richer_live_over_thin_stub`)
 - [x] Tick 441 prefer-richer ICML_READY merge — durable rebase keeps richer live `[x]` criteria over length-padded thin IN_PROGRESS (still demotes STATUS); closes thin-local wipe of onto post-G4 checklist (`test_merge_icml_ready_prefers_richer_live_checklist_over_long_thin`)
 - [x] Tick 442 ICML_READY STATUS header-only demote — `_icml_ready_status_header` / demote / merge ignore Tick-note prose mentioning `STATUS: IN_PROGRESS` (closes poisoned READY after durable conflict; `test_merge_icml_ready_demotes_header_despite_prose_status_mention`)
-- [x] Tick 443 G4 demote header-only STATUS — `demote_icml_ready_file` / `update_icml_ready_from_g4` use Tick 442 header-only `**STATUS:` + `strip()` (prose `**STATUS: READY**` no false-trigger; indented READY still demotes/updates; `test_demote_icml_ready_header_only_despite_prose_and_indent`)
+- [x] Tick 443 G4 demote header-only STATUS — `demote_icml_ready_file` / `update_icml_ready_from_g4` use Tick 442 header-only `**STATUS:` + `strip()` (prose `**STATUS: IN_PROGRESS**` no false-trigger; indented READY still demotes/updates; `test_demote_icml_ready_header_only_despite_prose_and_indent`)
 - [x] Tick 444 pipeline STATUS read header-only — `_read_icml_ready_status` uses `_icml_ready_status_header` (not whole-file `re.search`) — prose `**STATUS: READY**` before header no false READY (`test_read_icml_ready_status_header_only_despite_prose_before_header`)
 - [x] Tick 445 judge STATUS header-only — `finish_hackathon` / `present_hackathon` `_icml_status_line` use `_icml_ready_status_header` (not whole-file `re.search`) — prose `**STATUS: READY**` before header no false READY on judge demos (`tests/test_judge_icml_status.py`)
 - [x] Tick 446 STATUS header token parse — `_icml_ready_status_header` matches token after `**STATUS:` (not trailing `IN_PROGRESS` substring) — READY+note still demotes; closes G4 demote no-op / richness zero (`test_icml_ready_status_header_parses_token_not_trailing_substring`)
