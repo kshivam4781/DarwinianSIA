@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-06T00:07:01Z
+**Timestamp:** 2026-10-06T02:04:11Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -38,8 +38,8 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
-- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
+- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
+- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
 
 **G2 live status:** NOT RUN this tick
 

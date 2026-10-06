@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 549: cold-boot rematerialize from greenfield `5ca6` → tip `9e39` (no new tip peel — Tick 548 stack already correct for this boot path); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-5ca6`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 550: cold-boot rematerialize from greenfield `7e07` → tip `9e39` (no new tip peel — Tick 548–549 stack already correct for this boot path); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-7e07`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
