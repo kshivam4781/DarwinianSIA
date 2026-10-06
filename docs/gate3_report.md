@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-06T08:04:18Z
+**Timestamp:** 2026-10-06T10:05:12Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 

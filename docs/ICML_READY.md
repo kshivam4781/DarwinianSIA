@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 553: cold-boot rematerialize from greenfield `47a6` → tip `9e39` (no new tip peel — Tick 548–552 stack already correct for this boot path); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-47a6`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 554: cold-boot rematerialize from greenfield `fc05` → tip `9e39` (no new tip peel — Tick 548–553 stack already correct for this boot path); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-fc05`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -358,6 +358,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 547 main→tip reflog dest — `_reflog_src_establishes_tip_destination` also accepts `main`/`origin/main` → tip (closes chicken-egg main→tip tip-as-boot after Tick 546)
 - [x] Tick 548 main→greenfield SHA guard — `_ref_sha_differs_from_main`; `main`→dest only when dest SHA ≠ main (closes Tick 547 greenfield-at-main-SHA bare-detect-`None`)
 - [x] Tick 549 cold-boot rematerialize — boot `5ca6`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=…-5ca6`; **no new tip peel** (secrets still the largest gap)
+- [x] Tick 554 cold-boot rematerialize — boot `fc05`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=…-fc05`; lift proof `tick=554` / `local_run_present=false`; **no new tip peel** (secrets still the largest gap)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table
