@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-05T22:09:24Z
+**Timestamp:** 2026-10-06T00:07:01Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
@@ -20,7 +20,7 @@
 | `runtime_deps` | yes | uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
-| `tip_ok_for_live` | yes | local Tick 548 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 549 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -38,8 +38,8 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
-- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
-- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
+- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
+- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 
 **G2 live status:** NOT RUN this tick
 
