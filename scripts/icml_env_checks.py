@@ -947,6 +947,121 @@ def _prepend_local_bin_to_path() -> None:
     os.environ["PATH"] = os.pathsep.join(parts)
 
 
+def _uv_linux_gnu_artifact_name() -> str | None:
+    """Return Astral release artifact for this host, or None if unsupported."""
+    import platform
+
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    if system == "linux" and machine in ("x86_64", "amd64"):
+        return "uv-x86_64-unknown-linux-gnu.tar.gz"
+    if system == "linux" and machine in ("aarch64", "arm64"):
+        return "uv-aarch64-unknown-linux-gnu.tar.gz"
+    if system == "darwin" and machine in ("x86_64", "amd64"):
+        return "uv-x86_64-apple-darwin.tar.gz"
+    if system == "darwin" and machine in ("aarch64", "arm64"):
+        return "uv-aarch64-apple-darwin.tar.gz"
+    return None
+
+
+def _parse_uv_app_version_from_install_sh(script: str) -> str | None:
+    """Parse ``APP_VERSION="x.y.z"`` from the Astral uv install script."""
+    m = re.search(r'^APP_VERSION="([^"]+)"', script, flags=re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
+def _install_uv_via_public_dns_fallback() -> tuple[bool, str]:
+    """Tick 558: install uv when recursive DNS breaks ``curl|sh`` Astral bootstrap.
+
+    Reuses Tick 557 ``dig @8.8.8.8`` + Host/SNI IP GET helpers from
+    ``prepare_gpqa_diamond`` to download the install script (for version) and
+    the platform tarball from ``releases.astral.sh`` / GitHub, then extracts
+    ``uv`` into ``~/.local/bin``.
+    """
+    import tarfile
+    import tempfile
+    import urllib.error
+
+    try:
+        from prepare_gpqa_diamond import (  # type: ignore
+            _urlopen_bytes_with_dns_fallback,
+        )
+    except ImportError:  # pragma: no cover — scripts/ already on path in cron
+        scripts_dir = str(Path(__file__).resolve().parent)
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        from prepare_gpqa_diamond import (  # type: ignore
+            _urlopen_bytes_with_dns_fallback,
+        )
+
+    artifact = _uv_linux_gnu_artifact_name()
+    if not artifact:
+        return False, "uv dig DNS fallback: unsupported platform for direct tarball"
+
+    try:
+        script_bytes = _urlopen_bytes_with_dns_fallback(UV_INSTALL_URL, timeout_s=60)
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return False, f"uv dig DNS fallback: install.sh download failed ({exc})"
+
+    version = (
+        os.environ.get("ICML_UV_VERSION", "").strip()
+        or _parse_uv_app_version_from_install_sh(
+            script_bytes.decode("utf-8", errors="replace")
+        )
+        or "0.12.23"
+    )
+    bases = (
+        f"https://releases.astral.sh/github/uv/releases/download/{version}",
+        f"https://github.com/astral-sh/uv/releases/download/{version}",
+    )
+    data: bytes | None = None
+    last_err: Exception | None = None
+    used_url = ""
+    for base in bases:
+        url = f"{base}/{artifact}"
+        try:
+            data = _urlopen_bytes_with_dns_fallback(url, timeout_s=180)
+            used_url = url
+            break
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_err = exc
+            continue
+    if data is None:
+        return (
+            False,
+            f"uv dig DNS fallback: tarball download failed ({last_err})",
+        )
+
+    _LOCAL_BIN.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix="icml-uv-") as tmp:
+            tar_path = Path(tmp) / artifact
+            tar_path.write_bytes(data)
+            with tarfile.open(tar_path, "r:gz") as tf:
+                members = [
+                    m
+                    for m in tf.getmembers()
+                    if Path(m.name).name == "uv" and m.isfile()
+                ]
+                if not members:
+                    return False, "uv dig DNS fallback: tarball missing uv binary"
+                member = members[0]
+                tf.extract(member, path=tmp, filter="data")
+                src = Path(tmp) / member.name
+                dest = _LOCAL_BIN / "uv"
+                shutil.copy2(src, dest)
+                dest.chmod(dest.stat().st_mode | 0o111)
+    except (OSError, tarfile.TarError) as exc:
+        return False, f"uv dig DNS fallback: extract failed ({exc})"
+
+    _prepend_local_bin_to_path()
+    if shutil.which("uv"):
+        # Keep detail free of absolute host paths (Tick 524).
+        host = used_url.split("/")[2] if used_url.startswith("http") else "tarball"
+        return True, f"uv installed on PATH (Astral dig@8.8.8.8 DNS fallback via {host})"
+    return False, "uv dig DNS fallback finished but uv still not on PATH"
+
+
 def ensure_uv_on_path(*, allow_install: bool = True) -> tuple[bool, str]:
     """Return whether ``uv`` is on PATH, optionally installing it.
 
@@ -954,6 +1069,10 @@ def ensure_uv_on_path(*, allow_install: bool = True) -> tuple[bool, str]:
     Astral install script and runs it (no sudo; installs to ``~/.local/bin``).
     Always prepends ``~/.local/bin`` to ``PATH`` when present so child ``sia``
     processes inherit uv.
+
+    Tick 558: when ``curl|sh`` fails (including recursive-DNS failure for
+    ``astral.sh`` / GitHub), fall back to ``dig @8.8.8.8`` + Host/SNI IP GET
+    of the platform tarball (same DNS helpers as Tick 557 public GPQA mirror).
     """
     _prepend_local_bin_to_path()
     existing = shutil.which("uv")
@@ -983,11 +1102,18 @@ def ensure_uv_on_path(*, allow_install: bool = True) -> tuple[bool, str]:
     if installed:
         return True, "uv installed on PATH (Astral bootstrap)"
 
+    # Tick 558: curl|sh often fails under broken recursive DNS even when
+    # dig @8.8.8.8 still answers — retry via public-DNS IP GET.
+    ok_fb, detail_fb = _install_uv_via_public_dns_fallback()
+    if ok_fb:
+        return ok_fb, detail_fb
+
     err = (proc.stderr or proc.stdout or "").strip()
     return (
         False,
         "uv install finished but uv still not on PATH "
-        f"(exit {proc.returncode}: {err[:300] or 'no output'})",
+        f"(exit {proc.returncode}: {err[:200] or 'no output'}; "
+        f"dig fallback: {detail_fb})",
     )
 
 

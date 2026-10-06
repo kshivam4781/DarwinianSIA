@@ -1,5 +1,34 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-06T18:07:00Z — Tick 558 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-a750` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror / Tick 557 DNS fallback). Tick 557 closed public-mirror rematerialize under broken recursive DNS, but **Astral `uv` bootstrap** (`curl|sh` → astral.sh / GitHub releases) still failed the same way — cold boots without Portal-Saved uv could not rematerialize runtime deps / Figs. Highest leverage without paid spend / STATUS-peel churn: **Astral uv dig@8.8.8.8 DNS fallback + rematerialize**.
+
+### What we did
+**Tick 558 — Astral uv dig@8.8.8.8 DNS fallback (no API spend):**
+1. Recovered tip `9e39` from greenfield boot `a750`; rematerialized offline Bvd `1930–1944` + Figs 1–2; rematerialized non-synthetic GPQA diamond via public mirror; re-filed NEBIUS secrets request
+2. `ensure_uv_on_path` / `_install_uv_via_public_dns_fallback`: when `curl|sh` misses, download Astral install.sh + platform tarball via Tick 557 `dig @8.8.8.8` + Host/SNI IP GET helpers; extract `uv` into `~/.local/bin`
+3. Unit + source locks: dig-fallback install + ensure_uv wire + source lock; focused suite green (4/4)
+4. Bootstrapped `uv` + ICML runtime deps; refreshed lift proof `tick=558` / `local_run_present=false`
+5. Tip/secrets/open_git_pr now report `cloud_boot_branch=…-a750`
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 557) | After (Tick 558) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Astral `uv` install under broken recursive DNS | **fails** (`curl|sh` / name resolution) | **dig@8.8.8.8 tarball + Host/SNI fallback** |
+| Offline run dirs on cold boot | rematerialized (557) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (557) | rematerialized again (public mirror) |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep / Tick 557–558 DNS fallbacks). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
 ## 2026-10-06T16:17:03Z — Tick 557 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

@@ -136,6 +136,96 @@ def test_ensure_uv_install_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "install disabled" in detail
 
 
+def test_install_uv_via_public_dns_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tick 558: dig@8.8.8.8 downloads install.sh + tarball into ~/.local/bin."""
+    import io
+    import tarfile
+
+    import icml_env_checks as env
+    import prepare_gpqa_diamond as prep
+
+    monkeypatch.setattr(env, "_LOCAL_BIN", tmp_path / "bin")
+    monkeypatch.setattr(
+        env,
+        "_uv_linux_gnu_artifact_name",
+        lambda: "uv-x86_64-unknown-linux-gnu.tar.gz",
+    )
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        data = b"#!/bin/sh\necho uv-stub\n"
+        info = tarfile.TarInfo(name="uv")
+        info.size = len(data)
+        info.mode = 0o755
+        tf.addfile(info, io.BytesIO(data))
+    tarball = buf.getvalue()
+    calls: list[str] = []
+
+    def _dns_get(url: str, *, timeout_s: float = 60) -> bytes:
+        calls.append(url)
+        if url.endswith("install.sh"):
+            return b'APP_NAME="uv"\nAPP_VERSION="0.12.23"\n'
+        if url.endswith(".tar.gz"):
+            return tarball
+        raise AssertionError(f"unexpected url {url}")
+
+    monkeypatch.setattr(prep, "_urlopen_bytes_with_dns_fallback", _dns_get)
+    monkeypatch.setattr(
+        env.shutil,
+        "which",
+        lambda name: str(tmp_path / "bin" / "uv")
+        if name == "uv" and (tmp_path / "bin" / "uv").is_file()
+        else None,
+    )
+
+    ok, detail = env._install_uv_via_public_dns_fallback()
+    assert ok is True, detail
+    assert "dig@8.8.8.8" in detail
+    assert (tmp_path / "bin" / "uv").is_file()
+    assert any(u.endswith("install.sh") for u in calls)
+    assert any("uv-x86_64-unknown-linux-gnu.tar.gz" in u for u in calls)
+
+
+def test_ensure_uv_falls_back_to_dig_on_curl_miss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tick 558: ensure_uv_on_path wires dig fallback after curl|sh miss."""
+    import icml_env_checks as env
+
+    monkeypatch.setattr(env.shutil, "which", lambda name: None)
+
+    class _Proc:
+        returncode = 1
+        stdout = ""
+        stderr = "curl: (6) Could not resolve host: astral.sh"
+
+    monkeypatch.setattr(env.subprocess, "run", lambda *_a, **_k: _Proc())
+    monkeypatch.setattr(
+        env,
+        "_install_uv_via_public_dns_fallback",
+        lambda: (
+            True,
+            "uv installed on PATH (Astral dig@8.8.8.8 DNS fallback via releases.astral.sh)",
+        ),
+    )
+    ok, detail = env.ensure_uv_on_path(allow_install=True)
+    assert ok is True
+    assert "dig@8.8.8.8" in detail
+
+
+def test_ensure_uv_dig_dns_fallback_source_lock() -> None:
+    """Tick 558: ensure_uv_on_path keeps dig@8.8.8.8 Astral tarball fallback."""
+    src = Path(__file__).resolve().parents[1] / "scripts" / "icml_env_checks.py"
+    text = src.read_text(encoding="utf-8")
+    assert "def _install_uv_via_public_dns_fallback" in text
+    assert "Tick 558" in text
+    assert "dig@8.8.8.8" in text
+    assert "_urlopen_bytes_with_dns_fallback" in text
+    assert "Astral dig@8.8.8.8 DNS fallback" in text
+
+
 def test_probe_bootstrap_uv_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tick 265: bootstrap_uv=True should call ensure_uv and skip stdlib probe."""
 

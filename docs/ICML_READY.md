@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 557: public GPQA mirror download falls back to `dig @8.8.8.8` + IP GET with Host/SNI when recursive DNS fails (closes cold-boot rematerialize fail); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `7c7a` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 558: Astral `uv` bootstrap falls back to `dig @8.8.8.8` + Host/SNI tarball install when `curl|sh` fails under broken recursive DNS (closes cold-boot runtime-deps fail after Tick 557 mirror fix); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `a750` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

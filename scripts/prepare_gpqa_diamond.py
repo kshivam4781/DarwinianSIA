@@ -241,8 +241,9 @@ def _resolve_host_via_public_dns(hostname: str) -> str | None:
     """Resolve ``hostname`` via ``dig @8.8.8.8`` when system DNS is broken.
 
     Tick 557: cloud agent recursive resolvers (e.g. ``198.18.0.53``) sometimes
-    fail for GitHub / Azure blob while upstream ``8.8.8.8`` still answers. Used
-    only as a fallback for the public GPQA mirror download.
+    fail for GitHub / Azure blob while upstream ``8.8.8.8`` still answers.
+    Used for the public GPQA mirror download; Tick 558 also reuses this for
+    Astral ``uv`` tarball bootstrap when ``curl|sh`` fails under the same DNS.
     """
     import re
     import shutil
