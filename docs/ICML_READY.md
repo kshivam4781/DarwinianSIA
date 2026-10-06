@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 558: Astral `uv` bootstrap falls back to `dig @8.8.8.8` + Host/SNI tarball install when `curl|sh` fails under broken recursive DNS (closes cold-boot runtime-deps fail after Tick 557 mirror fix); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Boot `a750` recovered tip `9e39`. Offline PRIMARY/H5/H2 reconfirmed unchanged._
+_Tick 559: cold-boot rematerialize from greenfield `8117` → tip `9e39` (no new tip peel); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-8117`; lift proof `tick=559` / `local_run_present=false`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged (D final 5/5, gens30/cost30 4/5, H5 5/5, H2 preferred 5/5, gap ~6.15pp)._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 

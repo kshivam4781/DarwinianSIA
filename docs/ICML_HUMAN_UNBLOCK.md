@@ -1,6 +1,9 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 559:** cold-boot rematerialize from greenfield `8117` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-8117`; lift proof `tick=559`; NEBIUS secrets re-filed.  
+**Tick 558:** Astral `uv` dig@8.8.8.8 DNS fallback + rematerialize from boot `a750`; NEBIUS secrets re-filed.  
+**Tick 557:** public-mirror dig@8.8.8.8 DNS fallback + rematerialize from boot `7c7a`; NEBIUS secrets re-filed.  
 **Tick 549:** cold-boot rematerialize from greenfield `5ca6` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-5ca6`; NEBIUS secrets re-filed.  
 **Tick 548:** `_reflog_src_establishes_tip_destination` accepts `main`→dest only when dest SHA ≠ main (closes Tick 547 greenfield-at-main-SHA bare-detect-`None`); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
 **Tick 547:** `_reflog_latest_tip_checkout_destination` also accepts `main`/`origin/main` → tip (closes chicken-egg main→tip tip-as-boot after Tick 546); rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed.  
