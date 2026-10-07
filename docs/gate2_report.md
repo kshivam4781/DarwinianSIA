@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-07T08:05:25Z
+**Timestamp:** 2026-10-07T10:04:30Z
 **Mode:** `preflight`
 **Run ID:** `1850`
 
@@ -38,6 +38,8 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 ## Notes
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
+- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
+- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 
 **G2 live status:** NOT RUN this tick
 
@@ -47,4 +49,3 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 2. Budget-check, then live G2 (unused integer run_id):
    `python3 scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
 3. Only then start live G3 B vs D pilot (Section 21.5).
-
