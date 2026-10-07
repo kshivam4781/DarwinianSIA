@@ -1,6 +1,6 @@
 # Gate 3 report — Pilot B vs D
 
-**Timestamp:** 2026-10-07T20:03:29Z
+**Timestamp:** 2026-10-07T22:06:21Z
 **Mode:** `preflight`
 **Live G3 ready:** no
 
@@ -44,7 +44,7 @@
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
 | `g3g4_recipes_match_live_shape` | yes | committed gate3/4 + Section 21.7 match icml_g3g4_live_shape() |
 | `offline_bvd_matches_live_shape` | yes | offline Bvd summary + paper IDs + figures match live shape |
-| `tip_ok_for_live` | yes | local Tick 570 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 571 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 | `g2_steering_lift` | yes | durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness |
 
 ### Planned seed pairs
@@ -66,8 +66,8 @@
 
 - Tick 377 hydrate: env=$0.0000 ≥ ledger=$0.0000; no unbilled local completes
 - Tick 511: G3 steering-lift proof OK — durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS — delay-all skip + gen≥3 lift + nonzero fitness
-- runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH
-- materialized diamond from CSV → ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']
+- Tick 278: auto-wired --diamond-csv from $TMPDIR/gpqa_diamond.csv
+- Tick 502/504: kept existing non-synthetic diamond; skip rematerialize (auto-wired CSV is fallback only; pass explicit --diamond-csv to force refresh; HF optional)
 
 **Live G3 status:** NOT RUN this tick
 
