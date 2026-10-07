@@ -1,6 +1,7 @@
 # ICML Thesis 1 — Human unblock (secrets)
 
 **STATUS:** Live G2→G3→G4 is blocked on **`NEBIUS_API_KEY`** (HF optional after Tick 497 public mirror).  
+**Tick 562:** cold-boot rematerialize from greenfield `0181` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-0181`; lift proof `tick=562`; NEBIUS secrets re-filed.  
 **Tick 561:** cold-boot rematerialize from greenfield `1b31` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-1b31`; lift proof `tick=561`; NEBIUS secrets re-filed.  
 **Tick 560:** cold-boot rematerialize from greenfield `cae1` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-cae1`; lift proof `tick=560`; NEBIUS secrets re-filed.  
 **Tick 559:** cold-boot rematerialize from greenfield `8117` → tip `9e39` (no new tip peel); rematerialized `1930–1944` + diamond; tip/secrets `cloud_boot_branch=…-8117`; lift proof `tick=559`; NEBIUS secrets re-filed.  
