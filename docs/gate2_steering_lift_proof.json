@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-06T22:03:30Z",
-  "tick": 564,
+  "tick": 565,
   "source": "gate2_dry_run_write",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,6 +67,6 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-07T06:03:02Z",
+  "local_run_flag_refreshed_at": "2026-10-07T08:05:24Z",
   "note": "Tick 564 cold-boot rematerialize from boot e8dd; local_run_present refreshed"
 }

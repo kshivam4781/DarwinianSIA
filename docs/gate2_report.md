@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-07T06:02:41Z
+**Timestamp:** 2026-10-07T08:05:25Z
 **Mode:** `preflight`
 **Run ID:** `1850`
 
@@ -20,7 +20,7 @@
 | `runtime_deps` | yes | uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH |
 | `nebius_meta_profile` | yes | kimi-nebius-pydantic-meta → nebius / pydantic-ai (moonshotai/Kimi-K2.6) |
 | `nebius_target_profile` | yes | kimi-nebius-target → nebius (moonshotai/Kimi-K2.6) |
-| `tip_ok_for_live` | yes | local Tick 563 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
+| `tip_ok_for_live` | yes | local Tick 565 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39 |
 
 **Ready for dry-run:** yes
 **Ready for live G2:** no
@@ -47,3 +47,4 @@ python3 -m sia run --task gpqa --darwinian --cabs --cabs-inline --population_siz
 2. Budget-check, then live G2 (unused integer run_id):
    `python3 scripts/run_g2_smoke.py --live --run-id <unused> --fetch-diamond`
 3. Only then start live G3 B vs D pilot (Section 21.5).
+
