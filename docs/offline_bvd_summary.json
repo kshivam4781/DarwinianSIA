@@ -435,7 +435,5 @@
     "tail_generations": 2,
     "note": "Tick 396\u2013398: H2 preferred_share floors at gen\u22653 (delay-all) and defaults to the last 2 gens (post-adoption tail) so \u03b5-discover\u2192adopt lag does not dilute MECHANISM; case study also reports this window."
   },
-  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 397\u2013398 post-adoption H2 (floor gen\u22653, tail=2) + case-study alignment; IDs 1930\u20131934 / 1940\u20131944.",
-  "rematerialized_tick": 562,
-  "rematerialized_at": "2026-10-07T02:05:00Z"
+  "note": "Synthetic additive latent DNA fitness with transferable traits; offline only. Do not set ICML_READY PRIMARY from this. Tick 397\u2013398 post-adoption H2 (floor gen\u22653, tail=2) + case-study alignment; IDs 1930\u20131934 / 1940\u20131944."
 }
