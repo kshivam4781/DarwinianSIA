@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-08T14:05:55Z",
+  "local_run_flag_refreshed_at": "2026-10-08T16:07:10Z",
   "note": "Tick 578 cold-boot rematerialize from boot 328c; local_run_present refreshed (VM-ephemeral-safe; durable JSON authoritative)",
   "updated_at": "2026-10-08T10:07:12Z"
 }
