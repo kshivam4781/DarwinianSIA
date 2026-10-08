@@ -187,6 +187,13 @@ def _add_run_args(parser: argparse.ArgumentParser, env_config: Config) -> None:
         help="Enable CABS integration: read belief_store/ for feedback injection and mutation bias.",
     )
     parser.add_argument(
+        "--cabs-inline",
+        dest="cabs_inline",
+        action="store_true",
+        help="Condition D / epistemic_full: after each darwinian gen eval, run CABS analyze "
+        "before breeding (refreshes belief_store). Implies --cabs.",
+    )
+    parser.add_argument(
         "--cabs-store",
         dest="cabs_store",
         type=str,
