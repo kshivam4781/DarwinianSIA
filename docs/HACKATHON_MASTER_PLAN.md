@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-08 (Section 21 ICML; Tick 582 cold-boot rematerialize boot 5563; Tick 580 cold-boot rematerialize boot 2692; Tick 579 cold-boot rematerialize boot ff90; Tick 578 cold-boot rematerialize boot 328c; Tick 577 cold-boot rematerialize boot f580; Tick 576 cold-boot rematerialize boot 1a1c; Tick 575 cold-boot rematerialize boot 8e81; …)
+**Last updated:** 2026-10-08 (Section 21 ICML; Tick 583 cold-boot rematerialize boot 7f81; Tick 582 cold-boot rematerialize boot 5563; Tick 580 cold-boot rematerialize boot 2692; Tick 579 cold-boot rematerialize boot ff90; Tick 578 cold-boot rematerialize boot 328c; Tick 577 cold-boot rematerialize boot f580; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -1002,6 +1002,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML cold-boot rematerialize (Tick 553) | **DONE** | boot `47a6`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-47a6`; uv/runtime deps bootstrap; NEBIUS secrets re-filed; **no new tip peel** (largest gap remains secrets) |
 | ICML public-mirror DNS fallback (Tick 557) | **DONE** | `prepare_gpqa_diamond` dig@8.8.8.8 + IP Host/SNI fallback when recursive DNS fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `7c7a` |
 | ICML Astral uv DNS fallback (Tick 558) | **DONE** | `ensure_uv_on_path` dig@8.8.8.8 tarball + Host/SNI when `curl|sh` fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `a750` |
+| ICML cold-boot rematerialize (Tick 583) | **DONE** | boot `7f81`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-7f81`; lift proof `tick=583`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 582) | **DONE** | boot `5563`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-5563`; lift proof `tick=582`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 581) | **DONE** | boot `fef5`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-fef5`; lift proof `tick=581`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 580) | **DONE** | boot `2692`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-2692`; lift proof `tick=580`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |

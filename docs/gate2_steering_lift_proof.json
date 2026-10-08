@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-06T22:03:30Z",
-  "tick": 582,
-  "source": "gate2_dry_run_write",
+  "timestamp": "2026-10-08T20:05:38Z",
+  "tick": 583,
+  "source": "cold_boot_refresh",
   "mode": "dry-run",
   "run_id": 1957,
   "max_gen": 3,
@@ -67,7 +67,5 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-08T18:09:51Z",
-  "note": "Tick 582 cold-boot rematerialize from boot 5563; local_run_present refreshed (VM-ephemeral-safe; durable JSON authoritative)",
-  "updated_at": "2026-10-08T18:09:51Z"
+  "local_run_flag_refreshed_at": "2026-10-08T20:06:04Z"
 }

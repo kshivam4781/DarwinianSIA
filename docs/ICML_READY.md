@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 582: cold-boot rematerialize from greenfield `5563` → tip `9e39` (no new tip peel); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-5563`; lift proof `tick=582` / `local_run_present=false`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged (D final 5/5, gens30/cost30 4/5, H5 5/5, H2 preferred 5/5, gap ~6.15pp)._
+_Tick 583: cold-boot rematerialize from greenfield `7f81` → tip `9e39` (no new tip peel); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-7f81`; lift proof `tick=583` / `local_run_present=false`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged (D final 5/5, gens30/cost30 4/5, H5 5/5, H2 preferred 5/5, gap ~6.15pp)._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
@@ -362,6 +362,7 @@ Do not set STATUS: READY until every item below is checked and evidence paths ar
 - [x] Tick 554 cold-boot rematerialize — boot `fc05`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=…-fc05`; lift proof `tick=554` / `local_run_present=false`; **no new tip peel** (secrets still the largest gap)
 - [x] Tick 572 cold-boot rematerialize — boot `52a7`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-52a7`; lift proof `tick=572` / `local_run_present=false`; **no new tip peel** (secrets still the largest gap)
 - [x] Tick 575 cold-boot rematerialize — boot `8e81`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-8e81`; lift proof `tick=575` / `local_run_present=false`; **no new tip peel** (secrets still the largest gap)
+- [x] Tick 583 cold-boot rematerialize — boot `7f81`→tip `9e39`; rematerialized offline `1930–1944` + Figs/diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-7f81`; lift proof `tick=583` / `local_run_present=false`; **no new tip peel** (secrets still the largest gap)
 - [x] Tick 407 G3 steering positive-control — `validate_g3_d_steering` requires gen≥3 Contradiction-Aware agenda on Condition D; refuse G4 / exit 4 on never-steer
 - [x] Tick 408 G4 never-steer refuse before READY — `apply_paper_pack` / ledger-skip / pipeline resume force `allow_ready=False` + refuse sidecar trust when Condition D lacks gen≥3 agenda
 - [x] Tick 409 mid-G4 never-steer abort — `run_sequential_live(abort_on_d_never_steer=True)` aborts remaining pairs after first never-steer D; G4 skips partial paper pack / Live Table
