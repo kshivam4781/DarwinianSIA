@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-06T22:03:30Z",
-  "tick": 579,
+  "tick": 580,
   "source": "gate2_dry_run_write",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-08T12:04:50Z",
+  "local_run_flag_refreshed_at": "2026-10-08T14:05:55Z",
   "note": "Tick 578 cold-boot rematerialize from boot 328c; local_run_present refreshed (VM-ephemeral-safe; durable JSON authoritative)",
   "updated_at": "2026-10-08T10:07:12Z"
 }

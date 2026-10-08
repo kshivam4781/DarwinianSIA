@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-08T12:03:58Z",
+  "timestamp": "2026-10-08T14:05:08Z",
   "mode": "preflight",
   "ready_for_live": false,
   "primary_pass": false,
@@ -115,7 +115,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 578 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+      "detail": "local Tick 579 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
     },
     {
       "name": "g2_steering_lift",
