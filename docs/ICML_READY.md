@@ -2,7 +2,7 @@
 
 **STATUS: IN_PROGRESS**
 
-_Tick 595: cold-boot rematerialize from greenfield `f56c` → tip `9e39` (no new tip peel); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-f56c`; lift proof `tick=595` / `local_run_present=false`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged (D final 5/5, gens30/cost30 4/5, H5 5/5, H2 preferred 5/5, gap ~6.15pp)._
+_Tick 596: cold-boot rematerialize from greenfield `da35` → tip `9e39` (no new tip peel); rematerialized offline Bvd `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-da35`; lift proof `tick=596` / `local_run_present=false`; NEBIUS secrets re-filed. Live PRIMARY still blocked on **NEBIUS_API_KEY only**. Offline PRIMARY/H5/H2 reconfirmed unchanged (D final 5/5, gens30/cost30 4/5, H5 5/5, H2 preferred 5/5, gap ~6.15pp)._
 
 Do not set STATUS: READY until every item below is checked and evidence paths are real.
 
