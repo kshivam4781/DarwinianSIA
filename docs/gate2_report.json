@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-10-09T12:05:00Z",
+  "timestamp": "2026-10-09T14:05:46Z",
   "mode": "preflight",
-  "run_id": 1300,
+  "run_id": 1850,
   "ready_for_live": false,
   "ready_for_dry_run": true,
   "blockers": [
@@ -46,7 +46,7 @@
     {
       "name": "run_id_free",
       "ok": true,
-      "detail": "run_1300 unused"
+      "detail": "run_1850 unused"
     },
     {
       "name": "per_run_venv",
@@ -71,7 +71,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 590 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+      "detail": "local Tick 592 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
     }
   ],
   "command": [
@@ -91,7 +91,7 @@
     "--max_gen",
     "2",
     "--run_id",
-    "1300",
+    "1850",
     "--eval_subset",
     "5",
     "--no-web",
