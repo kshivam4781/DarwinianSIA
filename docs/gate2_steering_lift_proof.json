@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-08T20:05:38Z",
-  "tick": 584,
+  "tick": 585,
   "source": "cold_boot_refresh",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,5 +67,5 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-08T22:06:54Z"
+  "local_run_flag_refreshed_at": "2026-10-09T00:07:15Z"
 }
