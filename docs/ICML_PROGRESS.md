@@ -1,5 +1,35 @@
 # ICML Thesis 1 — Progress log
 
+## 2026-10-10T22:05:00Z — Tick 608 (automation cron)
+### STATUS
+- `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**
+- Tip: `cursor/icml-epistemic-results-9e39` / PR #339
+- Cloud boot branch: `cursor/icml-epistemic-results-d1aa` (anti-churn onto tip `9e39`)
+
+### Largest gap diagnosed
+Live PRIMARY still blocked on **NEBIUS_API_KEY** (HF optional — diamond ready via public mirror / Tick 557–558 dig DNS fallbacks). Cold boot `d1aa` (main-SHA greenfield `cursor/icml-epistemic-results-*`) lost tip tree + gitignored `runs/1930–1944`, diamond JSON, tip/secrets `cloud_boot_branch`, and needed scientific rematerialize. Tip-detect + DNS fallback stack through Tick 607 already correct for this boot path — **no new tip peel**. Highest leverage without paid spend: **scientific rematerialize + tip/secrets refresh + NEBIUS re-file**.
+
+### What we did
+**Tick 608 — cold-boot rematerialize (no API spend; no tip peel):**
+1. Recovered tip `9e39` from greenfield boot `cursor/icml-epistemic-results-d1aa` via `icml_boot_recover.sh --fetch --apply` + anti-churn tip checkout; rematerialized offline Bvd `1930–1944` + Figs 1–2; rematerialized non-synthetic GPQA diamond from public OpenAI mirror → `$TMPDIR/gpqa_diamond.csv` + SIA schema JSON; re-filed NEBIUS secrets request
+2. Refreshed lift proof `tick=608` / `local_run_present=false` (VM-ephemeral-safe; durable JSON authoritative)
+3. Tip/secrets/open_git_pr now report `cloud_boot_branch=cursor/icml-epistemic-results-d1aa`; `detect_cloud_boot_branch` correctly returns boot after tip checkout
+4. G2/G3/G4 `--preflight-only` confirms `ready_for_live=False` with sole BLOCK `nebius_key` (diamond ready; `gpqa_is_synthetic=False`)
+5. Offline metrics **unchanged** (PRIMARY/H5/H2 lock): D final **5/5**, gens30/cost30 **4/5**, H5 **5/5**, H2 preferred **5/5**, mean final gap ~**6.15pp**
+6. STATUS remains IN_PROGRESS — still need NEBIUS for live G2→G4; do **not** set READY from offline rematerialization
+
+| Metric | Before (Tick 607) | After (Tick 608) |
+|--------|-------------------|------------------|
+| Offline PRIMARY / H5 / H2 | 5/5 final; 4/5 gens30/cost30; H5 5/5; H2 5/5 | **reconfirmed** on rematerialized runs |
+| Offline run dirs on cold boot | rematerialized (607 / gitignored) | **present** under `runs/` |
+| Diamond on cold boot | rematerialized (607) | rematerialized again (public mirror) |
+| tip/secrets `cloud_boot_branch` | stale `…-bbd6` | **`cursor/icml-epistemic-results-d1aa`** |
+| Live GPQA | blocked (NEBIUS) | blocked (NEBIUS); secrets re-filed |
+
+### Next recommended step
+Human: add **`NEBIUS_API_KEY`** to the linked Cursor environment / automation (HF optional — Tick 497 mirror / Tick 502–504 on-disk keep / Tick 557–558 DNS fallbacks). Optional: undraft+merge tip PR #339 (and/or bootstrap #338). Then `bash scripts/icml_cron_entry.sh` → live G2→G3→G4 + paper pack.
+
+
 ## 2026-10-10T20:06:39Z — Tick 607 (automation cron)
 ### STATUS
 - `docs/ICML_READY.md`: **STATUS: IN_PROGRESS**

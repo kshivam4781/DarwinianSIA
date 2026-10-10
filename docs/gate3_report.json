@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-10T20:06:49Z",
+  "timestamp": "2026-10-10T22:06:39Z",
   "mode": "preflight",
   "ready_for_live": false,
   "plans": [
@@ -91,7 +91,7 @@
     {
       "name": "tip_ok_for_live",
       "ok": true,
-      "detail": "local Tick 606 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+      "detail": "local Tick 608 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
     },
     {
       "name": "g2_steering_lift",
@@ -160,7 +160,9 @@
   "h2_by_d_run": {},
   "notes": [
     "Tick 377 hydrate: env=$0.0000 \u2265 ledger=$0.0000; no unbilled local completes",
-    "Tick 511: G3 steering-lift proof OK \u2014 durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness"
+    "Tick 511: G3 steering-lift proof OK \u2014 durable proof: run_1957 local absent (VM-ephemeral-safe); durable proof still PASS \u2014 delay-all skip + gen\u22653 lift + nonzero fitness",
+    "runtime deps before diamond: uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH",
+    "materialized diamond from CSV \u2192 ['SIA/sia/tasks/gpqa', 'sia-upstream/sia/tasks/gpqa']"
   ],
   "executed": false,
   "next_steps": [
