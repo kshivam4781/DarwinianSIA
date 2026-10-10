@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-10 (Section 21 ICML; Tick 602 cold-boot rematerialize boot d3cc; Tick 601 cold-boot rematerialize boot 4f2b; Tick 600 cold-boot rematerialize boot cd15; …)
+**Last updated:** 2026-10-10 (Section 21 ICML; Tick 603 cold-boot rematerialize boot 353c; Tick 602 cold-boot rematerialize boot d3cc; Tick 601 cold-boot rematerialize boot 4f2b; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -789,7 +789,7 @@ Computed in `cabs/belief_engine.py`:
 | `.env` + `verify_keys.py` | **DONE** | Nebius required; Anthropic optional under Tick 289 meta (Tick 308+) |
 | `ANTHROPIC_API_KEY` configured | **OPTIONAL (ICML)** | Hackathon local `.env` may have it; **ICML Nebius meta: optional** — do not block G2→G4 waiting on Anthropic |
 | `NEBIUS_API_KEY` configured | **ABSENT (cloud)** | Local hackathon historically DONE; **ICML automation/cloud secrets still ABSENT** — see `docs/ICML_HUMAN_UNBLOCK.md` |
-| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 602 rematerialize) — live blocker is NEBIUS only |
+| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 603 rematerialize) — live blocker is NEBIUS only |
 | Baseline smoke `run_901` | **DONE** | Loop works; 0% acc (parse issue) |
 | CABS smoke `run_902` | **DONE** | belief_store populated |
 | Structured `beliefs.json` from feedback | **DONE** | Feedback prompt + ingest hook |
@@ -1002,6 +1002,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML cold-boot rematerialize (Tick 553) | **DONE** | boot `47a6`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-47a6`; uv/runtime deps bootstrap; NEBIUS secrets re-filed; **no new tip peel** (largest gap remains secrets) |
 | ICML public-mirror DNS fallback (Tick 557) | **DONE** | `prepare_gpqa_diamond` dig@8.8.8.8 + IP Host/SNI fallback when recursive DNS fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `7c7a` |
 | ICML Astral uv DNS fallback (Tick 558) | **DONE** | `ensure_uv_on_path` dig@8.8.8.8 tarball + Host/SNI when `curl|sh` fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `a750` |
+| ICML cold-boot rematerialize (Tick 603) | **DONE** | boot `353c`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-353c`; lift proof `tick=603`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 602) | **DONE** | boot `d3cc`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-d3cc`; lift proof `tick=602`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 601) | **DONE** | boot `4f2b`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-4f2b`; lift proof `tick=601`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 600) | **DONE** | boot `cd15`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-cd15`; lift proof `tick=600`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
