@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-10-10T22:06:28Z",
+  "mode": "preflight",
+  "run_id": 1300,
+  "ready_for_live": false,
+  "ready_for_dry_run": true,
+  "blockers": [
+    "nebius_key: NEBIUS_API_KEY missing"
+  ],
+  "checks": [
+    {
+      "name": "gpqa_layout",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "gpqa_not_synthetic",
+      "ok": true,
+      "detail": "real/non-smoke diamond_questions.json present"
+    },
+    {
+      "name": "gpqa_smoke_or_real",
+      "ok": true,
+      "detail": "non-smoke questions present"
+    },
+    {
+      "name": "anthropic_key",
+      "ok": true,
+      "detail": "optional (Nebius meta; ANTHROPIC unused)"
+    },
+    {
+      "name": "nebius_key",
+      "ok": false,
+      "detail": "NEBIUS_API_KEY missing"
+    },
+    {
+      "name": "hf_token_optional",
+      "ok": true,
+      "detail": "missing (optional; needed for HF gpqa download)"
+    },
+    {
+      "name": "budget",
+      "ok": true,
+      "detail": "spent=$0.00 ceiling=$20.00"
+    },
+    {
+      "name": "run_id_free",
+      "ok": true,
+      "detail": "run_1300 unused"
+    },
+    {
+      "name": "per_run_venv",
+      "ok": true,
+      "detail": "uv available on PATH (SIA per-run venv path)"
+    },
+    {
+      "name": "runtime_deps",
+      "ok": true,
+      "detail": "uv available on PATH; sia importable via PYTHONPATH=SIA; huggingface_hub + pydantic_ai + matplotlib already importable; user site on PYTHONPATH"
+    },
+    {
+      "name": "nebius_meta_profile",
+      "ok": true,
+      "detail": "kimi-nebius-pydantic-meta \u2192 nebius / pydantic-ai (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "nebius_target_profile",
+      "ok": true,
+      "detail": "kimi-nebius-target \u2192 nebius (moonshotai/Kimi-K2.6)"
+    },
+    {
+      "name": "tip_ok_for_live",
+      "ok": true,
+      "detail": "local Tick 608 matches remote tip refs/remotes/origin/cursor/icml-epistemic-results-9e39"
+    }
+  ],
+  "command": [
+    "python3",
+    "-m",
+    "sia",
+    "run",
+    "--task",
+    "gpqa",
+    "--darwinian",
+    "--cabs",
+    "--cabs-inline",
+    "--population_size",
+    "2",
+    "--elite_count",
+    "1",
+    "--max_gen",
+    "2",
+    "--run_id",
+    "1300",
+    "--eval_subset",
+    "5",
+    "--no-web",
+    "--seed",
+    "42",
+    "--dry-run",
+    "--meta-agent-profile",
+    "kimi-nebius-pydantic-meta",
+    "--target-agent-profile",
+    "kimi-nebius-target"
+  ],
+  "post": [],
+  "next_steps": [
+    "Add **`NEBIUS_API_KEY`** to the cloud environment (HF optional \u2014 Tick 497 public mirror / local `gpqa_diamond.csv`; see `docs/ICML_HUMAN_UNBLOCK.md`). Full phrase: `NEBIUS_API_KEY (ANTHROPIC_API_KEY optional \u2014 Tick 289 Nebius pydantic-ai meta)`.",
+    "Budget-check, then live G2 (unused integer run_id):",
+    "Only then start live G3 B vs D pilot (Section 21.5)."
+  ]
+}

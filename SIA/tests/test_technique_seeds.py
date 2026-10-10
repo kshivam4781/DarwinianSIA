@@ -30,6 +30,35 @@ def test_breed_offspring_injects_cabs_seeds():
     assert "stratified_memory" in child.technique_seeds
 
 
+def test_breed_offspring_delay_all_skips_technique_seed_inject():
+    """Tick 403: delay-all must not leak committee seeds onto fair early DNA."""
+    a = AgentDNA(planning_style="stepwise")
+    b = AgentDNA(planning_style="direct")
+    child = breed_offspring(
+        a,
+        b,
+        mutation_rate=0.0,
+        rng=random.Random(1),
+        technique_seeds=["stratified_memory"],
+        apply_crossover_bias=False,
+        apply_mutation_bias=False,
+        apply_mutation_anchor=False,
+    )
+    assert child.technique_seeds == []
+
+    steered = breed_offspring(
+        a,
+        b,
+        mutation_rate=0.0,
+        rng=random.Random(1),
+        technique_seeds=["stratified_memory"],
+        apply_crossover_bias=True,
+        apply_mutation_bias=True,
+        apply_mutation_anchor=True,
+    )
+    assert "stratified_memory" in steered.technique_seeds
+
+
 def test_dna_architecture_section_lists_seeds():
     dna = AgentDNA(technique_seeds=["stratified_memory"])
     section = dna_architecture_section(dna)
