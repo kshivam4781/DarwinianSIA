@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-11T06:04:48Z",
-  "tick": 612,
+  "tick": 614,
   "source": "cold_boot_refresh",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-11T08:08:02Z",
-  "updated_at": "2026-10-11T08:06:56Z",
-  "note": "Tick 613 cold-boot rematerialize: VM-ephemeral runs/ may be absent after next boot; durable offline_bvd_summary.json + Figs remain authoritative. local_run_present=false."
+  "local_run_flag_refreshed_at": "2026-10-11T10:06:25Z",
+  "updated_at": "2026-10-11T10:06:25Z",
+  "note": "Tick 614 cold-boot rematerialize: VM-ephemeral runs/ may be absent after next boot; durable offline_bvd_summary.json + Figs remain authoritative. local_run_present=False."
 }
