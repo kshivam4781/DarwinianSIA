@@ -232,3 +232,31 @@ See `docs/case_study_offline.md`. Summary: gen1 contradiction on `tool_strategy`
 | Live G3 sequential pilot | `scripts/run_g3_pilot.py` (Tick 26; B then D; `docs/gate3_report.md`) |
 | Live G4 5-seed PRIMARY | `scripts/run_g4_multiseed.py` (Tick 27–28; B then D ×5; Live Table 1/2 + Figs + ICML_READY; `docs/gate4_report.md`) |
 | Unified live G2→G3→G4 pipeline | `scripts/run_icml_live_pipeline.py` (Tick 29; preferred live entry; `docs/icml_live_pipeline_report.md`) |
+
+## Auto metrics (scripts/epistemic_results.py)
+
+```json
+{
+  "n_pairs": 5,
+  "d_wins_gens25": 0,
+  "b_wins_gens25": 0,
+  "d_wins_gens30": 4,
+  "b_wins_gens30": 0,
+  "d_wins_cost25": 0,
+  "b_wins_cost25": 0,
+  "d_wins_cost30": 4,
+  "b_wins_cost30": 0,
+  "d_wins_final": 5,
+  "b_wins_final": 0,
+  "d_wins_h2": 5,
+  "mean_final_b": 0.2526,
+  "mean_final_d": 0.3141,
+  "mean_final_gap": 0.0615,
+  "primary_gens25_pass": false,
+  "primary_gens30_pass": true,
+  "primary_cost25_pass": false,
+  "primary_cost30_pass": true,
+  "primary_final_pass": true,
+  "h2_preferred_pass": true
+}
+```
