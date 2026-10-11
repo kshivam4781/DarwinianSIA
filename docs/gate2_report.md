@@ -1,6 +1,6 @@
 # Gate 2 report — GPQA smoke (Condition D)
 
-**Timestamp:** 2026-10-11T16:07:48Z
+**Timestamp:** 2026-10-11T18:05:42Z
 **Mode:** `preflight`
 **Run ID:** `1300`
 
