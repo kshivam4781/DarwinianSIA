@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-11T06:04:48Z",
-  "tick": 618,
+  "tick": 619,
   "source": "cold_boot_refresh",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-11T18:06:11Z",
-  "updated_at": "2026-10-11T18:07:49Z",
-  "note": "Tick 618: cold-boot rematerialize on boot cursor/icml-epistemic-results-fc17; local_run_present refreshed (VM-ephemeral-safe). Durable proof authoritative."
+  "local_run_flag_refreshed_at": "2026-10-11T20:14:16Z",
+  "updated_at": "2026-10-11T20:14:43Z",
+  "note": "Tick 619: cold-boot rematerialize on boot cursor/icml-epistemic-results-824e; local_run_present refreshed (VM-ephemeral-safe). Durable proof authoritative."
 }
