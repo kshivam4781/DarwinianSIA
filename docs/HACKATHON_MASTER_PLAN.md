@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-12 (Section 21 ICML; Tick 631 cold-boot rematerialize boot 48a8; Tick 630 cold-boot rematerialize boot 071b; …)
+**Last updated:** 2026-10-12 (Section 21 ICML; Tick 632 cold-boot rematerialize boot e379; Tick 631 cold-boot rematerialize boot 48a8; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -789,7 +789,7 @@ Computed in `cabs/belief_engine.py`:
 | `.env` + `verify_keys.py` | **DONE** | Nebius required; Anthropic optional under Tick 289 meta (Tick 308+) |
 | `ANTHROPIC_API_KEY` configured | **OPTIONAL (ICML)** | Hackathon local `.env` may have it; **ICML Nebius meta: optional** — do not block G2→G4 waiting on Anthropic |
 | `NEBIUS_API_KEY` configured | **ABSENT (cloud)** | Local hackathon historically DONE; **ICML automation/cloud secrets still ABSENT** — see `docs/ICML_HUMAN_UNBLOCK.md` |
-| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 631 rematerialize) — live blocker is NEBIUS only |
+| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 632 rematerialize) — live blocker is NEBIUS only |
 | Baseline smoke `run_901` | **DONE** | Loop works; 0% acc (parse issue) |
 | CABS smoke `run_902` | **DONE** | belief_store populated |
 | Structured `beliefs.json` from feedback | **DONE** | Feedback prompt + ingest hook |
@@ -828,7 +828,7 @@ Computed in `cabs/belief_engine.py`:
 | `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — ICML-honest (Tick 320–321; pytest bootstrap; no false READY) |
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
 | ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
-| ICML cold-boot rematerialize | **DONE (Tick 631)** | Boot `48a8` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
+| ICML cold-boot rematerialize | **DONE (Tick 632)** | Boot `e379` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
 | CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
 | Fitness-weighted mutation bias | **DONE** | Higher-fitness contradiction side ranked first; exponential rank-weighted `_biased_choice` |
 | Preferred-allele anchoring | **DONE** | Tick 10; **Tick 17**: preserve outsiders (stop forcing onto local winner); ε-greedy explores |
