@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-11 (Section 21 ICML; Tick 620 cold-boot rematerialize boot 7973; Tick 619 cold-boot rematerialize boot 824e; …)
+**Last updated:** 2026-10-12 (Section 21 ICML; Tick 621 cold-boot rematerialize boot 4788; Tick 620 cold-boot rematerialize boot 7973; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -789,7 +789,7 @@ Computed in `cabs/belief_engine.py`:
 | `.env` + `verify_keys.py` | **DONE** | Nebius required; Anthropic optional under Tick 289 meta (Tick 308+) |
 | `ANTHROPIC_API_KEY` configured | **OPTIONAL (ICML)** | Hackathon local `.env` may have it; **ICML Nebius meta: optional** — do not block G2→G4 waiting on Anthropic |
 | `NEBIUS_API_KEY` configured | **ABSENT (cloud)** | Local hackathon historically DONE; **ICML automation/cloud secrets still ABSENT** — see `docs/ICML_HUMAN_UNBLOCK.md` |
-| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 620 rematerialize) — live blocker is NEBIUS only |
+| `HF_TOKEN` / diamond CSV | **OPTIONAL (cloud)** | HF still ABSENT; diamond ready via Tick 497 public mirror / `$TMPDIR/gpqa_diamond.csv` (Tick 621 rematerialize) — live blocker is NEBIUS only |
 | Baseline smoke `run_901` | **DONE** | Loop works; 0% acc (parse issue) |
 | CABS smoke `run_902` | **DONE** | belief_store populated |
 | Structured `beliefs.json` from feedback | **DONE** | Feedback prompt + ingest hook |
@@ -828,7 +828,7 @@ Computed in `cabs/belief_engine.py`:
 | `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — ICML-honest (Tick 320–321; pytest bootstrap; no false READY) |
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
 | ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
-| ICML cold-boot rematerialize | **DONE (Tick 620)** | Boot `7973` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
+| ICML cold-boot rematerialize | **DONE (Tick 621)** | Boot `4788` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
 | CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
 | Fitness-weighted mutation bias | **DONE** | Higher-fitness contradiction side ranked first; exponential rank-weighted `_biased_choice` |
 | Preferred-allele anchoring | **DONE** | Tick 10; **Tick 17**: preserve outsiders (stop forcing onto local winner); ε-greedy explores |
@@ -1003,6 +1003,7 @@ Computed in `cabs/belief_engine.py`:
 | ICML cold-boot rematerialize (Tick 553) | **DONE** | boot `47a6`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=…-47a6`; uv/runtime deps bootstrap; NEBIUS secrets re-filed; **no new tip peel** (largest gap remains secrets) |
 | ICML public-mirror DNS fallback (Tick 557) | **DONE** | `prepare_gpqa_diamond` dig@8.8.8.8 + IP Host/SNI fallback when recursive DNS fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `7c7a` |
 | ICML Astral uv DNS fallback (Tick 558) | **DONE** | `ensure_uv_on_path` dig@8.8.8.8 tarball + Host/SNI when `curl|sh` fails; rematerialized `1930–1944` + diamond; NEBIUS secrets re-filed; tip `9e39` / boot `a750` |
+| ICML cold-boot rematerialize (Tick 621) | **DONE** | boot `4788`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-4788`; lift proof `tick=621`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 620) | **DONE** | boot `7973`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-7973`; lift proof `tick=620`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 619) | **DONE** | boot `824e`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-824e`; lift proof `tick=619`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
 | ICML cold-boot rematerialize (Tick 618) | **DONE** | boot `fc17`→tip `9e39`; rematerialized offline `1930–1944` + Figs 1–2 + diamond; tip/secrets `cloud_boot_branch=cursor/icml-epistemic-results-fc17`; lift proof `tick=618`; NEBIUS secrets re-filed; G2/G3/G4 preflight sole BLOCK `nebius_key`; **no new tip peel** (largest gap remains secrets) |
