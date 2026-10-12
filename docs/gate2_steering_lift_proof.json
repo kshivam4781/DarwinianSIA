@@ -1,6 +1,6 @@
 {
   "timestamp": "2026-10-11T06:04:48Z",
-  "tick": 630,
+  "tick": 631,
   "source": "cold_boot_refresh",
   "mode": "dry-run",
   "run_id": 1957,
@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-12T18:15:19Z",
+  "local_run_flag_refreshed_at": "2026-10-12T20:18:26Z",
   "updated_at": "2026-10-12T18:15:19Z",
   "note": "Tick 630: cold-boot rematerialize on boot cursor/icml-epistemic-results-071b; local_run_present refreshed (VM-ephemeral-safe). Durable proof authoritative."
 }
