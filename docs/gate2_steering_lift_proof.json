@@ -67,7 +67,7 @@
   ],
   "local_run_present": false,
   "vm_ephemeral_safe": true,
-  "local_run_flag_refreshed_at": "2026-10-12T22:04:13Z",
-  "updated_at": "2026-10-12T18:15:19Z",
-  "note": "Tick 630: cold-boot rematerialize on boot cursor/icml-epistemic-results-071b; local_run_present refreshed (VM-ephemeral-safe). Durable proof authoritative."
+  "local_run_flag_refreshed_at": "2026-10-13T04:10:28Z",
+  "updated_at": "2026-10-13T04:09:16Z",
+  "note": "Tick 633: cold-boot rematerialize on boot cursor/icml-epistemic-results-4ffe; local_run_present refreshed (VM-ephemeral-safe). Durable proof authoritative."
 }
