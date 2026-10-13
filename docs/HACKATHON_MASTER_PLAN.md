@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST.** Any agent working on this repo must read this entire document before planning, coding, or running expensive commands. Do not re-plan from scratch. Implement in phase order with gates.
 
-**Last updated:** 2026-10-13 (Section 21 ICML; Tick 633 cold-boot rematerialize boot 4ffe; Tick 632 cold-boot rematerialize boot e379; …)
+**Last updated:** 2026-10-13 (Section 21 ICML; Tick 634 cold-boot rematerialize boot 5823; Tick 633 cold-boot rematerialize boot 4ffe; …)
 **Project:** SIA-CABS (Contradiction-Aware Belief System) — **Layer 1 of unified self-improvement stack**  
 **Workspace:** `c:\Users\MSPSA\Documents\SIA2`  
 **Sibling repo:** Darwinian AI Civilization → `c:\Users\MSPSA\Documents\SIA` (build in parallel; merge later)  
@@ -828,7 +828,7 @@ Computed in `cabs/belief_engine.py`:
 | `scripts/finish_hackathon.py` | **DONE** | One-command judge verify — ICML-honest (Tick 320–321; pytest bootstrap; no false READY) |
 | Submission package | **READY** | `docs/SUBMISSION.md` updated; 35 tests green |
 | ICML Section 21 protocol | **DONE** | Conditions A–D, H2/H5, gates, run ID policy |
-| ICML cold-boot rematerialize | **DONE (Tick 633)** | Boot `4ffe` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
+| ICML cold-boot rematerialize | **DONE (Tick 634)** | Boot `5823` → tip `9e39`; offline `1930–1944` rematerialized; live blocked on NEBIUS only |
 | CABS mutation bias (contradiction-scoped) | **DONE** | `load_mutation_bias` no longer dumps full enum (was D≈B) |
 | Fitness-weighted mutation bias | **DONE** | Higher-fitness contradiction side ranked first; exponential rank-weighted `_biased_choice` |
 | Preferred-allele anchoring | **DONE** | Tick 10; **Tick 17**: preserve outsiders (stop forcing onto local winner); ε-greedy explores |
