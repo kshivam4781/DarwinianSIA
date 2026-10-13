@@ -1,0 +1,6 @@
+{
+  "updated_at": "2026-09-09T00:10:00Z",
+  "tick": 389,
+  "tick_note": "Tick 389: committed prior_live evidence (budget-ledger parity). Gitignored stash dies on fresh boots; commit this file after live so cross-VM reinject can restore gate2/3/4 prior_live_* when runs/ are absent. Empty gates until first live capture.",
+  "gates": {}
+}
